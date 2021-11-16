@@ -55,7 +55,7 @@ class ShardingInfo {
   std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const;
-  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids, bool isSmartOrSatellite = false) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids) const;
 
   std::string const& distributeShardsLike() const;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);

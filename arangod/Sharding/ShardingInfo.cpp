@@ -273,8 +273,7 @@ LogicalCollection* ShardingInfo::collection() const {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
-                                bool isSmartOrSatellite) const {
+void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
   result.add(VPackValue("shards"));

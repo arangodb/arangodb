@@ -789,8 +789,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
                VPackValue(std::to_string(planId().id())));
   }
 
-  bool isSmartOrSatellite = isSatellite() || isSmart();
-  _sharding->toVelocyPack(result, Serialization::List != context, isSmartOrSatellite);
+  _sharding->toVelocyPack(result, Serialization::List != context);
 
   includeVelocyPackEnterprise(result);
 
