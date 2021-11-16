@@ -200,7 +200,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   {
     std::string const url =
         baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(chunkId) +
-        "&chunkSize=" + std::to_string(chunkSize) + "&low=" + lowString;
+        "&chunkSize=" + std::to_string(chunkSize) + "&low=" + basics::StringUtils::encodeURIComponent(lowString);
 
     syncer.setProgress(std::string("fetching keys chunk ") +
                        std::to_string(chunkId) + " from " + url);
@@ -400,7 +400,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     {
       std::string const url =
           baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(chunkId) +
-          "&chunkSize=" + std::to_string(chunkSize) + "&low=" + lowString +
+          "&chunkSize=" + std::to_string(chunkSize) + "&low=" + basics::StringUtils::encodeURIComponent(lowString) +
           "&offset=" + std::to_string(offsetInChunk);
 
       syncer.setProgress(std::string("fetching documents chunk ") +
