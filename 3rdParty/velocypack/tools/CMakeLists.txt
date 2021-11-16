@@ -1,11 +1,13 @@
 # -*- mode: CMAKE; -*-
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+
 # options
 option(BuildBench "Build bench performance test suite" OFF)
-message(STATUS "Building bench performance test suite: ${BuildBench}")
+message(STATUS "VelocyPack building bench performance test suite: ${BuildBench}")
 
 option(BuildTools "Build support programs and tools" ON)
-message(STATUS "Building support programs and tools: ${BuildTools}")
+message(STATUS "VelocyPack building support programs and tools: ${BuildTools}")
 
 # build json-to-vpack.cpp
 if(BuildTools)

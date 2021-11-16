@@ -159,6 +159,12 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
 void VstResponse::addRawPayload(VPackStringRef payload) {
   _payload.append(payload.data(), payload.length());
 }
+  
+ErrorCode VstResponse::deflate() {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
 
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackBuilder builder(buffer);

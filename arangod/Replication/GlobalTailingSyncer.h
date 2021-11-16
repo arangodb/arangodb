@@ -57,7 +57,7 @@ class GlobalTailingSyncer : public TailingSyncer {
   /// @brief save the current applier state
   Result saveApplierState() override;
 
-  bool skipMarker(arangodb::velocypack::Slice const& slice) override;
+  bool skipMarker(arangodb::velocypack::Slice slice) override;
 
  private:
   /// @brief translation between globallyUniqueId and collection name

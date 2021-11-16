@@ -27,7 +27,6 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/asio_ns.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"

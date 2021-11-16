@@ -69,7 +69,9 @@
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
-      this.fetchLicenseInfo();
+      if (window.frontendConfig.isEnterprise === true) {
+        this.fetchLicenseInfo();
+      }
     },
 
     continueRender: function (readOnly) {
