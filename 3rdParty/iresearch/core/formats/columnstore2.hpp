@@ -81,7 +81,7 @@ class column final : public irs::column_output {
   void prepare(doc_id_t key);
 
   bool empty() const noexcept {
-    return addr_table_.empty();
+    return addr_table_.empty() && !docs_count_;
   }
 
   void flush() {

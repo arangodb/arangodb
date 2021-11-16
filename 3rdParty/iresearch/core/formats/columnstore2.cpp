@@ -1012,7 +1012,7 @@ void column::prepare(doc_id_t key) {
 }
 
 void column::reset() {
-  if (empty()) {
+  if (addr_table_.empty()) {
     return;
   }
 
