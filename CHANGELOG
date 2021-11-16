@@ -1,6 +1,9 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
 
+* Extend Windows minidumps with memory regions referenced from CPU registers or
+  the stack to provide more contextual information in case of crashes.
+
 * When using Indexes within traversals (e.g. [_from, date]) and filter based on
   a function (e.g. FILTER path.edges[0].date <= DATE_ADD(@now, 5, "day")) this
   function was passed through to the index. The index cannot evaluate this
