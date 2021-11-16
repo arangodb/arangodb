@@ -22,27 +22,76 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Graph/Providers/BaseProviderOptions.h"
+#include "Aql/NonConstExpression.h"
+#include "Aql/NonConstExpressionContainer.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
-BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
-                                         std::vector<IndexAccessor> indexInfo,
-                                         std::map<std::string, std::string> const& collectionToShardMap)
+IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
+                             aql::AstNode* condition, std::optional<size_t> memberToUpdate,
+                             std::unique_ptr<arangodb::aql::Expression> expression,
+                             std::optional<aql::NonConstExpressionContainer> nonConstPart,
+                             size_t cursorId)
+    : _idx(idx),
+      _indexCondition(condition),
+      _memberToUpdate(memberToUpdate),
+      _cursorId(cursorId),
+      _nonConstContainer(std::move(nonConstPart)) {
+  if (expression != nullptr) {
+    _expression = std::move(expression);
+  }
+}
+
+aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
+
+aql::Expression* IndexAccessor::getExpression() const {
+  return _expression.get();
+}
+
+transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
+  return _idx;
+}
+
+std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
+  return _memberToUpdate;
+}
+
+size_t IndexAccessor::cursorId() const { return _cursorId; }
+
+bool IndexAccessor::hasNonConstParts() const {
+  return _nonConstContainer.has_value() && !_nonConstContainer->_expressions.empty();
+}
+
+aql::NonConstExpressionContainer const& IndexAccessor::nonConstPart() const {
+  TRI_ASSERT(hasNonConstParts());
+  return _nonConstContainer.value();
+}
+
+BaseProviderOptions::BaseProviderOptions(
+    aql::Variable const* tmpVar,
+    std::vector<IndexAccessor> indexInfo,
+    aql::FixedVarExpressionContext& expressionContext,
+    std::map<std::string, std::string> const& collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
+      _expressionContext(expressionContext),
       _collectionToShardMap(collectionToShardMap) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
 }
 
-std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const {
+std::vector<IndexAccessor>& BaseProviderOptions::indexInformations() {
   return _indexInformation;
 }
 
 std::map<std::string, std::string> const& BaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
+}
+
+aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
+  return _expressionContext;
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(

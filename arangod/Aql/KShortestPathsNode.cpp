@@ -347,9 +347,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
       // be changed in the future) create BaseProviderOptions
       BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes(),
+                                                 opts->getExpressionCtx(),
                                                  opts->collectionToShard());
       BaseProviderOptions backwardProviderOptions(opts->tmpVar(),
                                                   buildReverseUsedIndexes(),
+                                                  opts->getExpressionCtx(),
                                                   opts->collectionToShard());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
@@ -357,9 +359,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         using KPathRefactored = KPathEnumerator<SingleServerProvider>;
 
         auto kPathUnique = std::make_unique<KPathRefactored>(
-            SingleServerProvider{opts->query(), forwardProviderOptions,
+            SingleServerProvider{opts->query(), std::move(forwardProviderOptions),
                                  opts->query().resourceMonitor()},
-            SingleServerProvider{opts->query(), backwardProviderOptions,
+            SingleServerProvider{opts->query(), std::move(backwardProviderOptions),
                                  opts->query().resourceMonitor()},
             std::move(enumeratorOptions), opts->query().resourceMonitor());
 
@@ -373,9 +375,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         // TODO: implement better initialization with less duplicate code
         using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
-            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions,
+            ProviderTracer<SingleServerProvider>{opts->query(), std::move(forwardProviderOptions),
                                                  opts->query().resourceMonitor()},
-            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions,
+            ProviderTracer<SingleServerProvider>{opts->query(), std::move(backwardProviderOptions),
                                                  opts->query().resourceMonitor()},
             std::move(enumeratorOptions), opts->query().resourceMonitor());
 
@@ -498,7 +500,8 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _toCondition->clone(options()->query().ast()), 0);
+                                    _toCondition->clone(options()->query().ast()),
+                                    0, nullptr, std::nullopt, i);
         break;
       }
       case TRI_EDGE_OUT: {
@@ -513,7 +516,8 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _fromCondition->clone(options()->query().ast()), 0);
+                                    _fromCondition->clone(options()->query().ast()),
+                                    0, nullptr, std::nullopt, i);
         break;
       }
       case TRI_EDGE_ANY:
@@ -545,7 +549,8 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _fromCondition->clone(options()->query().ast()), 0);
+                                    _fromCondition->clone(options()->query().ast()),
+                                    0, nullptr, std::nullopt, i);
         break;
       }
       case TRI_EDGE_OUT: {
@@ -560,7 +565,8 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsed
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _toCondition->clone(options()->query().ast()), 0);
+                                    _toCondition->clone(options()->query().ast()),
+                                    0, nullptr, std::nullopt, i);
         break;
       }
       case TRI_EDGE_ANY:

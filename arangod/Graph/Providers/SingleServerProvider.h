@@ -148,10 +148,13 @@ struct SingleServerProvider {
 
   aql::TraversalStats stealStats();
 
+  void prepareIndexExpressions(aql::Ast* ast);
+
  private:
   void activateCache(bool enableDocumentCache);
 
-  std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
+  std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor(
+      arangodb::aql::FixedVarExpressionContext& expressionContext);
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()

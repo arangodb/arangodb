@@ -193,6 +193,12 @@ struct TraverserOptions : public graph::BaseOptions {
 
   auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
 
+  void initializeIndexConditions(
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable) override;
+
+  void calculateIndexExpressions(aql::Ast* ast) override;
+
  private:
   void readProduceInfo(VPackSlice obj);
 };

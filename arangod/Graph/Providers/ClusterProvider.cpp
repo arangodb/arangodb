@@ -415,6 +415,11 @@ auto ClusterProvider::addEdgeToBuilder(Step::Edge const& edge,
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
 }
 
+void ClusterProvider::prepareIndexExpressions(aql::Ast* ast) {
+  // Nothing to do here. The variables are send over in a different way.
+  // We do not make use of special indexes here anyways.
+}
+
 arangodb::transaction::Methods* ClusterProvider::trx() { return _trx.get(); }
 
 arangodb::aql::TraversalStats ClusterProvider::stealStats() {
