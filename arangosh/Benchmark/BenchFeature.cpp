@@ -145,7 +145,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--histogram.generate", "display histogram",
                      new BooleanParameter(&_generateHistogram),
                      arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst))
-                      .setIntroducedIn(31000);
+                      .setIntroducedIn(30900);
 
   options->addOption("--async", "send asynchronous requests", new BooleanParameter(&_async));
 
