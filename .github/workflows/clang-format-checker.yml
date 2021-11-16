@@ -12,10 +12,9 @@ jobs:
           filter: |
             **/*.cpp
             **/*.hpp
+            **/*.cc
             **/*.c
             **/*.h
       - uses: aMahanna/clang-format-checker@v1.1.0
         with:
           sources: "${{ steps.gcf.outputs.added_modified }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

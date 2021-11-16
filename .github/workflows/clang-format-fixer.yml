@@ -12,6 +12,7 @@ jobs:
           filter: |
             **/*.cpp
             **/*.hpp
+            **/*.cc
             **/*.c
             **/*.h
       - uses: aMahanna/clang-format-fixer@v1.1.2
