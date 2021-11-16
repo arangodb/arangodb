@@ -78,7 +78,7 @@ namespace container_internal {
 // comparator.
 template <typename Compare, typename T>
 using btree_is_key_compare_to =
-    std::is_convertible<iresearch_absl::result_of_t<Compare, const T &, const T &>,
+    std::is_convertible<iresearch_absl::result_of_t<Compare(const T &, const T &)>,
                         iresearch_absl::weak_ordering>;
 
 struct StringBtreeDefaultLess {
@@ -1868,7 +1868,7 @@ constexpr bool btree<P>::static_assert_validation() {
 
   // Verify that key_compare returns an iresearch_absl::{weak,strong}_ordering or bool.
   using compare_result_type =
-      iresearch_absl::result_of_t<key_compare, key_type, key_type>;
+      iresearch_absl::result_of_t<key_compare(key_type, key_type)>;
   static_assert(
       std::is_same<compare_result_type, bool>::value ||
           std::is_convertible<compare_result_type, iresearch_absl::weak_ordering>::value,
