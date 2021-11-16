@@ -50,6 +50,13 @@ class SingleServerProviderTest : public ::testing::Test {
   std::unique_ptr<arangodb::aql::Query> query{nullptr};
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
+  std::unique_ptr<arangodb::transaction::Methods> _trx{};
+
+    // Expression Parts
+  aql::Variable* _tmpVar{nullptr};
+  aql::AstNode* _varNode{nullptr};
 
   std::map<std::string, std::string> _emptyShardMap{};
 
@@ -70,9 +77,17 @@ class SingleServerProviderTest : public ::testing::Test {
     auto tmpVar = singleServer->generateTempVar(query.get());
     auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
 
-    std::vector<IndexAccessor> usedIndexes{IndexAccessor{edgeIndexHandle, indexCondition, 0}};
+    std::vector<IndexAccessor> usedIndexes{};
 
-    BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
+    // can be used to create an expression, currently unused but may be helpful for additional tests
+    // auto expr = conditionKeyMatches(stringToMatch);
+    usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, std::nullopt, 0});
+
+    _expressionContext =
+        std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx, *query, _functionsCache);
+    BaseProviderOptions opts(_tmpVar,
+                             std::move(usedIndexes),
+                             *_expressionContext.get(), _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 };

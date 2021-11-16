@@ -64,9 +64,12 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<mocks::MockServer> server{nullptr};
   std::unique_ptr<arangodb::aql::Query> query{nullptr};
   std::unique_ptr<std::unordered_map<ServerID, aql::EngineId>> clusterEngines{nullptr};
+  std::unique_ptr<arangodb::transaction::Methods> _trx{};
 
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
 
   std::map<std::string, std::string> _emptyShardMap{};
 
@@ -97,15 +100,18 @@ class GraphProviderTest : public ::testing::Test {
 
       // We now have collections "v" and "e"
       query = singleServer->getQuery("RETURN 1", {"v", "e"});
+      _trx = std::make_unique<arangodb::transaction::Methods>(query->newTrxContext());
 
       auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
       auto tmpVar = singleServer->generateTempVar(query.get());
       auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
 
-      std::vector<IndexAccessor> usedIndexes{
-          IndexAccessor{edgeIndexHandle, indexCondition, 0}};
-
-      BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
+      std::vector<IndexAccessor> usedIndexes{};
+      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, std::nullopt, 0});
+      _expressionContext =
+          std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx.get(), *query,
+                                                                     _functionsCache); 
+      BaseProviderOptions opts(tmpVar, std::move(usedIndexes), *_expressionContext, _emptyShardMap);
       return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {

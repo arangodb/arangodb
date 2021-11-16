@@ -1,6 +1,12 @@
 v3.8.3 (XXXX-XX-XX)
 -------------------
 
+* When using Indexes within traversals (e.g. [_from, date]) and filter based on
+  a function (e.g. FILTER path.edges[0].date <= DATE_ADD(@now, 5, "day")) this
+  function was passed through to the index. The index cannot evaluate this
+  function and returned incorrect results. Now all functions are evaluted before
+  looking into the index. Fixes BTS-407.
+
 * Fixed arangodump not overwriting dump directory when flags `--all-databases`
   and `--overwrite` are set to true.
 
