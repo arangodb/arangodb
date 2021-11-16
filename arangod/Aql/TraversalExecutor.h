@@ -54,7 +54,8 @@ class TraversalExecutorInfos {
   TraversalExecutorInfos(std::unique_ptr<traverser::Traverser>&& traverser,
                          std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
                          std::string fixedSource, RegisterId inputRegister,
-                         std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables);
+                         std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
+                         Ast* ast);
 
   TraversalExecutorInfos() = delete;
 
@@ -88,6 +89,8 @@ class TraversalExecutorInfos {
 
   std::vector<std::pair<Variable const*, RegisterId>> const& filterConditionVariables() const;
 
+  Ast* getAst() const;
+
  private:
   RegisterId findRegisterChecked(OutputName type) const;
 
@@ -97,6 +100,7 @@ class TraversalExecutorInfos {
   std::string _fixedSource;
   RegisterId _inputRegister;
   std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
+  Ast* _ast;
 };
 
 /**

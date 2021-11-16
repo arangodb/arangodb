@@ -34,6 +34,12 @@ let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
 
+function checkDumpJsonFile (dbName, path, id) {
+  let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
+  assertEqual(dbName, data.properties.name);
+  assertEqual(id, data.properties.id);
+}
+
 function dumpIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsDump';
@@ -42,12 +48,23 @@ function dumpIntegrationSuite () {
 
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
 
+  let checkCollections = function (tree, path, subdir="") {
+    db._collections().forEach((collectionObj) => {
+      const collectionName = collectionObj.name();
+      if (!collectionName.startsWith("_")) {
+        checkStructureFile(tree, path, true, collectionName, subdir);
+      }
+    });
+  };
+
   let addConnectionArgs = function(args) {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
-    args.push('--server.database');
-    args.push(arango.getDatabaseName());
+    if(args.indexOf("--all-databases") === -1) {
+      args.push('--server.database');
+      args.push(arango.getDatabaseName());
+    }
     args.push('--server.username');
     args.push(arango.connectedUser());
   };
@@ -60,7 +77,6 @@ function dumpIntegrationSuite () {
     args.push('--output-directory');
     args.push(path);
     addConnectionArgs(args);
-
     let actualRc = internal.executeExternalAndWait(arangodump, args);
     assertTrue(actualRc.hasOwnProperty("exit"));
     assertEqual(rc, actualRc.exit);
@@ -75,6 +91,7 @@ function dumpIntegrationSuite () {
 
   let structureFile = function(path, cn) {
     const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+
     let structure = prefix + ".structure.json";
     if (!fs.isFile(fs.join(path, structure))) {
       // seems necessary in cluster
@@ -83,8 +100,15 @@ function dumpIntegrationSuite () {
     return structure;
   };
 
-  let checkStructureFile = function(tree, path, readable, cn) {
-    let structure = structureFile(path, cn);
+  let checkStructureFile = function(tree, path, readable, cn, subdir="") {
+    let structurePath = path;
+    if(subdir !== "") {
+      structurePath = fs.join(path, subdir);
+    }
+    let structure = structureFile(structurePath, cn);
+    if(subdir !== "") {
+      structure = fs.join(subdir, structure);
+    }
     assertTrue(fs.isFile(fs.join(path, structure)), structure);
     assertNotEqual(-1, tree.indexOf(structure));
 
@@ -190,6 +214,7 @@ function dumpIntegrationSuite () {
       db._drop(cn + "Other");
       db._drop(cn + "Padded");
       db._drop(cn + "AutoIncrement");
+
     },
     
     testDumpOnlyOneShard: function () {
@@ -591,6 +616,46 @@ function dumpIntegrationSuite () {
         try {
           fs.removeDirectory(path);
         } catch (err) {}
+      }
+    },
+
+    testDumpAllDatabasesWithOverwrite: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--all-databases', 'true'];
+        for (let i = 1; i < 3; ++i) {
+          db._createDatabase("databaseTest" + i);
+          db._useDatabase("databaseTest" + i);
+          db._create("collectionTest" + i);
+          db["collectionTest" + i].insert({});
+          db._useDatabase("_system");
+        }
+        runDump(path, args, 0);
+
+        // run the dump a second time, to overwrite all data in the target directory
+        args.push('--overwrite');
+        args.push('true');
+
+
+        let tree = runDump(path, args, 0);
+        for (let i = 1; i < 3; ++i) {
+          const dbName = "databaseTest" + i;
+          db._useDatabase(dbName);
+          assertNotEqual(-1, tree.indexOf(dbName));
+          checkDumpJsonFile(dbName, fs.join(path, dbName), db._id());
+          checkCollections(tree, path, dbName);
+          db._useDatabase("_system");
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+        db._useDatabase("_system");
+        for (let i = 1; i < 3; ++i) {
+          try {
+            db._dropDatabase("databaseTest" + i);
+          } catch (err) {}
+        }
       }
     },
   };
