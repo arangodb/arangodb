@@ -184,22 +184,17 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       if (!_itr || !_itr->next()) {
         if (_readerOffset >= count) {
           break;
-        } else 
-        _segmentReader = (*_reader)[_readerOffset++];
-        if constexpr (produce) {
-          _pkDocItr = ::pkColumn(segmentReader);
-          _pkValue = irs::get<irs::payload>(*_pkDocItr);
-          if constexpr (withExtra || withCovering) {
-            _projections.reset(segmentReader);
-          }
-          if (ADB_UNLIKELY(!_pkValue)) {
-            _pkValue = &NoPayload;
-          }
-        } else {
-          _pkValue = &NoPayload;
-          _pkDocItr.reset();
         }
-        _itr = segmentReader.mask(_filter->execute(_segmentReader));
+        auto& segmentReader = (*_reader)[_readerOffset++];
+        // always init all iterators as we do not know if it will be
+        // skip-next-covering mixture of the calls
+        _pkDocItr = ::pkColumn(segmentReader);
+        _pkValue = irs::get<irs::payload>(*_pkDocItr);
+        if (ADB_UNLIKELY(!_pkValue)) {
+          _pkValue = &NoPayload;
+        }
+        _projections.reset(segmentReader);
+        _itr = segmentReader.mask(_filter->execute(segmentReader));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
@@ -501,7 +496,6 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   irs::document const* _doc{};
   const irs::payload* _pkValue{};
   irs::index_reader const* _reader{0};
-  irs::sub_reader const* _segmentReader{nullptr};
   IResearchInvertedIndex* _index;
   aql::Variable const* _variable;
   size_t _readerOffset{0};
