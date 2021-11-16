@@ -8804,6 +8804,9 @@ namespace {
         if (upper.has_value()) {
           return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc}, upper.value(), subqueryScopes);
         }
+        auto parent = scope.getExternalStartNode()->getFirstDependency();
+        TRI_ASSERT(parent);
+        addScatterBelow(plan, parent, scope.shardingDefinedByNode);
         return {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc};
       } 
     }

@@ -302,9 +302,42 @@ TEST_F(DistributeQueryRuleTest, distributed_remove) {
   LOG_DEVEL << nodeNames(planSlice);
   assertNodesMatch(planSlice,
                    {"SingletonNode", "CalculationNode", "EnumerateListNode",
-                    "CalculationNode", "CalculationNode", "DistributeNode",
-                    "RemoteNode", "RemoveNode", "RemoteNode", "GatherNode"});
+                    "CalculationNode", "CalculationNode", "RemoveNode",
+                    "RemoteNode", "GatherNode"});
 }
+
+TEST_F(DistributeQueryRuleTest, distributed_insert) {
+  auto queryString = R"aql(
+    FOR y IN 1..3
+    INSERT {value: CONCAT("test", y)} IN collection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "CalculationNode", "EnumerateListNode",
+                    "CalculationNode", "CalculationNode", "DistributeNode",
+                    "RemoteNode", "InsertNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, distributed_insert_using_shardkey) {
+  auto queryString = R"aql(
+    FOR y IN 1..3
+    INSERT {_key: CONCAT("test", y)} IN collection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "CalculationNode", "EnumerateListNode",
+                    "CalculationNode", "CalculationNode", "DistributeNode",
+                    "RemoteNode", "InsertNode", "RemoteNode", "GatherNode"});
+}
+
 
 TEST_F(DistributeQueryRuleTest, distributed_subquery_remove) {
   auto queryString = R"aql(
