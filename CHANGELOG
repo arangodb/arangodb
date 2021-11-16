@@ -1,6 +1,9 @@
 devel
 -----
 
+* Extend Windows minidumps with memory regions referenced from CPU registers or
+  the stack to provide more contextual information in case of crashes.
+
 * Add option to content-transfer encode gzip Foxx replies.
 
 * Simplify internal request compression/decompression handling code.
