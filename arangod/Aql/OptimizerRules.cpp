@@ -3660,15 +3660,6 @@ auto insertGatherNode(ExecutionPlan& plan, ExecutionNode* node,
     case ExecutionNode::REMOVE:
     case ExecutionNode::UPSERT: {
       auto collection = ExecutionNode::castTo<ModificationNode*>(node)->collection();
-
-      if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
-        // Note that in the REPLACE or UPSERT case we are not getting here,
-        // since the distributeInClusterRule fires and a DistributionNode is
-        // used.
-        auto* modNode = ExecutionNode::castTo<ModificationNode*>(node);
-        modNode->getOptions().ignoreDocumentNotFound = true;
-      }
-
       auto numberOfShards = collection->numberOfShards();
       auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
       auto parallelism = GatherNode::evaluateParallelism(*collection);
@@ -3737,6 +3728,14 @@ void arangodb::aql::insertScatterGatherSnippet(
       plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
   TRI_ASSERT(at);
   remoteNode->addDependency(at);
+  auto nodeType = at->getType();
+  if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
+    // Note that in the REPLACE or UPSERT case we are not getting here,
+    // since the distributeInClusterRule fires and a DistributionNode is
+    // used.
+    auto* modNode = ExecutionNode::castTo<ModificationNode*>(at);
+    modNode->getOptions().ignoreDocumentNotFound = true;
+  }
 
   // GATHER needs some setup, so this happens in a separate function
   auto gatherNode = insertGatherNode(plan, at, subqueries);
@@ -8743,6 +8742,14 @@ namespace {
           return createDistributeNodeFor(plan, targetNode);
         }
       }
+
+      if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
+        // Note that in the REPLACE or UPSERT case we are not getting here, they are always
+        // eligible for distribute
+        auto* modNode = ExecutionNode::castTo<ModificationNode*>(targetNode);
+        modNode->getOptions().ignoreDocumentNotFound = true;
+      }
+
       // Fallback to Scatter if we cannot identify the correct shard
       return plan.createNode<ScatterNode>(&plan, plan.nextId(),
                                           ScatterNode::ScatterType::SHARD);
@@ -9081,6 +9088,18 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
 
     previous = ::joinSnippets(*plan, previous, node, subqueryScopes);
   }
+  {
+    // If the last relevantNode is Remove or Update, we will have an implicit Scatter to this node.
+    // Therefore we need to make sure to ignoreDocumentNodeFound on the incorrect nodes.
+    // If the Modification is somewhere in between, the ignoreDocumentNotFound flag should be set before.
+    auto lastNode = relevantNodes.back();
+    auto nodeType = lastNode->getType();
+    if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
+      auto* modNode = ExecutionNode::castTo<ModificationNode*>(lastNode);
+      modNode->getOptions().ignoreDocumentNotFound = true;
+    }
+  }
+
   // We have handled all Subqueries
   TRI_ASSERT(subqueryScopes.size() < 2);
   if (!subqueryScopes.empty()) {
