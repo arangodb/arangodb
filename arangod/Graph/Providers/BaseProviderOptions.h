@@ -25,6 +25,7 @@
 #define ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H 1
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
@@ -42,25 +43,47 @@ namespace graph {
 
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
-                std::optional<size_t> memberToUpdate);
+                std::optional<size_t> memberToUpdate,
+                std::unique_ptr<arangodb::aql::Expression> expression, 
+                std::optional<aql::NonConstExpressionContainer> nonConstPart,
+                size_t cursorId);
+  IndexAccessor(IndexAccessor const&) = delete;
+  IndexAccessor(IndexAccessor&&) = default;
+  IndexAccessor& operator=(IndexAccessor const&) = delete;
 
+  aql::Expression* getExpression() const;
   aql::AstNode* getCondition() const;
   transaction::Methods::IndexHandle indexHandle() const;
   std::optional<size_t> getMemberToUpdate() const;
+  size_t cursorId() const;
+
+  bool hasNonConstParts() const;
+
+  aql::NonConstExpressionContainer const& nonConstPart() const;
 
  private:
   transaction::Methods::IndexHandle _idx;
   aql::AstNode* _indexCondition;
+  // Position of _from / _to in the index search condition
   std::optional<size_t> _memberToUpdate;
+  std::unique_ptr<arangodb::aql::Expression> _expression;
+  size_t _cursorId;
+  std::optional<aql::NonConstExpressionContainer> _nonConstContainer;
 };
 
 struct BaseProviderOptions {
  public:
   BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
+                      aql::FixedVarExpressionContext& expressionContext,
                       std::map<std::string, std::string> const& collectionToShardMap);
 
+  BaseProviderOptions(BaseProviderOptions const&) = delete;
+  BaseProviderOptions(BaseProviderOptions&&) = default;
+
   aql::Variable const* tmpVar() const;
-  std::vector<IndexAccessor> const& indexInformations() const;
+  std::vector<IndexAccessor>& indexInformations();
+
+  aql::FixedVarExpressionContext& expressionContext() const;
 
   std::map<std::string, std::string> const& collectionToShardMap() const;
 
@@ -70,6 +93,10 @@ struct BaseProviderOptions {
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
   std::vector<IndexAccessor> _indexInformation;
+
+  // The context of AQL variables. These variables are set from the outside.
+  // and the caller needs to make sure the reference stays valid
+  aql::FixedVarExpressionContext& _expressionContext;
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
   std::map<std::string, std::string> const& _collectionToShardMap;

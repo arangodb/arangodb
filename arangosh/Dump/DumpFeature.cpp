@@ -812,7 +812,22 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
-  
+
+  if (_options.allDatabases) {
+    std::string const dbId = body.get("properties").get("id").copyString();
+    // inject current database
+    LOG_TOPIC("4af42", INFO, Logger::DUMP)
+        << "Dumping database '" << dbName << "' (" << dbId << ")";
+    _directory = std::make_unique<ManagedDirectory>(
+        server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, dbName),
+        !_options.overwrite, true, _options.useGzip);
+
+    if (_directory->status().fail()) {
+      LOG_TOPIC("94201", ERR, Logger::DUMP) << _directory->status().errorMessage();
+      return _directory->status();
+    }
+  }
+
   // use tick provided by server if user did not specify one
   if (_options.tickEnd == 0 && !_options.clusterMode) {
     uint64_t tick = basics::VelocyPackHelper::stringUInt64(body, "tick");
@@ -1148,20 +1163,8 @@ void DumpFeature::start() {
   if (res.ok()) {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
-        // inject current database
-        LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << db << "'";
         client.setDatabaseName(db);
         httpClient = _clientManager.getConnectedClient(_options.force, false, true);
-
-        _directory = std::make_unique<ManagedDirectory>(
-            server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-            true, true, _options.useGzip);
-
-        if (_directory->status().fail()) {
-          res = _directory->status();
-          LOG_TOPIC("94201", ERR, Logger::DUMP) << _directory->status().errorMessage();
-          break;
-        }
       }
 
       try {

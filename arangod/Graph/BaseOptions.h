@@ -26,6 +26,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/NonConstExpressionContainer.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -40,8 +41,9 @@ namespace aql {
 struct AstNode;
 class ExecutionPlan;
 class Expression;
+class InputAqlItemRow;
 class QueryContext;
-
+struct VarInfo;
 }  // namespace aql
 
 namespace velocypack {
@@ -55,6 +57,21 @@ class EdgeCursor;
 class SingleServerEdgeCursor;
 class TraverserCache;
 
+/**
+ * @brief Base class for Graph Operation options in AQL
+ *        This holds implementations for the following:
+ *          - Global Helper Methods and informations
+ *            required by graph operations to produce data.
+ *            e.g. Index Accesses.
+ *          - Specific options/parameters to modify the behaviour
+ *            of traversals (e.g. Breadth- or DepthFirstSearch).
+ *
+ *        There are specialized classes for
+ *          - Traversals
+ *          - Shortest_Path
+ *          - K_Shortest_Path
+ *          - K_Paths
+ */
 struct BaseOptions {
  public:
   struct LookupInfo {
@@ -68,6 +85,8 @@ struct BaseOptions {
     // Position of _from / _to in the index search condition
     size_t conditionMemberToUpdate;
 
+    aql::NonConstExpressionContainer _nonConstContainer;
+
     LookupInfo();
     ~LookupInfo();
 
@@ -77,9 +96,15 @@ struct BaseOptions {
     LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
+    void initializeNonConstExpressions(aql::Ast* ast,
+                                       std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+                                       aql::Variable const* indexVariable);
+
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
     void buildEngineInfo(arangodb::velocypack::Builder&) const;
+
+    void calculateIndexExpressions(aql::Ast* ast, aql::ExpressionContext& ctx);
 
     double estimateCost(size_t& nrItems) const;
   };
@@ -179,7 +204,15 @@ struct BaseOptions {
   bool refactor() const { return _refactor; }
 
   aql::Variable const* tmpVar();  // TODO check public
+  arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
+
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
+
+  virtual void initializeIndexConditions(
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable);
+
+  virtual void calculateIndexExpressions(aql::Ast* ast);
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -202,29 +235,52 @@ struct BaseOptions {
  protected:
   mutable arangodb::transaction::Methods _trx;
 
-  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;  // needed for expression evaluation
+  // needed for expression evaluation.
+  // This entry is required by API, but not actively used here
+  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+
+  /// This context holds vaues for Variables/References in AqlNodes
+  /// it is read from whenever we need to do a calculation in this class.
+  /// e.g. edge.weight > a
+  /// Here "a" is read from the expression context.
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
+  /// This vector holds the information necessary for the Storage layer.
+  /// S.t. we can ask the storage for a list of edges. (e.g. holds index
+  /// identifiers and index conditions)
+  /// Invariant: For every edge collection we read, there will be exactly
+  /// one LookupInfo.
+  /// These list is consulted only if there is no overwrite for a specific depth
+  /// so this resambles "ALL ==" parts of filters.
   std::vector<LookupInfo> _baseLookupInfos;
 
+  /// Reference to the query we are running in. Necessary for internal API calls.
   aql::QueryContext& _query;
 
+  /// Mutable variable that is used to write the current object (vertex or edge) to
+  /// in order to test the condition.
   aql::Variable const* _tmpVar;
 
   /// @brief the traverser cache
+  /// This basically caches strings, and items we want to reference multiple times.
   std::unique_ptr<TraverserCache> _cache;
 
   // @brief - translations for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
 
+  /// Section for Options the user has given in the AQL query
+
   /// @brief a value of 1 (which is the default) means "no parallelism"
+  /// If we have more then 1 start vertex, we can start multiple traversals
+  /// in parallel. This value defines how many of those we start
+  /// Each traversal itself is single-threaded.
   size_t _parallelism;
 
-  /// @brief whether or not the traversal will produce vertices
+  /// @brief whether or not the vertex data is memorized for later use in the query.
   bool _produceVertices;
 
-  /// @brief whether or not the traversal will produce edges
+  /// @brief whether or not the edge data is memorized for later use in the query.
   bool _produceEdges{true};
 
   /// @brief whether or not we are running on a coordinator

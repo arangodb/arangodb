@@ -45,18 +45,6 @@ auto operator<<(std::ostream& out, SingleServerProvider::Step const& step) -> st
 }  // namespace graph
 }  // namespace arangodb
 
-IndexAccessor::IndexAccessor(transaction::Methods::IndexHandle idx,
-                             aql::AstNode* condition, std::optional<size_t> memberToUpdate)
-    : _idx(idx), _indexCondition(condition), _memberToUpdate(memberToUpdate) {}
-
-aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
-transaction::Methods::IndexHandle IndexAccessor::indexHandle() const {
-  return _idx;
-}
-std::optional<size_t> IndexAccessor::getMemberToUpdate() const {
-  return _memberToUpdate;
-}
-
 SingleServerProvider::Step::Step(VertexType v) : _vertex(v), _edge() {}
 
 SingleServerProvider::Step::Step(VertexType v, EdgeDocumentToken edge, size_t prev)
@@ -93,7 +81,7 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
              _opts.collectionToShardMap()),
       _stats{} {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
-  _cursor = buildCursor();
+  _cursor = buildCursor(opts.expressionContext());
 }
 
 void SingleServerProvider::activateCache(bool enableDocumentCache) {
@@ -168,12 +156,22 @@ void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
   _cache.insertEdgeIntoResult(edge, builder);
 }
 
-std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {
+void SingleServerProvider::prepareIndexExpressions(aql::Ast* ast) {
+  TRI_ASSERT(_cursor != nullptr);
+  _cursor->prepareIndexExpressions(ast);
+}
+
+std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor(
+    arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor>(trx(), _opts.tmpVar(),
-                                                            _opts.indexInformations());
+                                                            _opts.indexInformations(),
+                                                            expressionContext);
 }
 
 arangodb::transaction::Methods* SingleServerProvider::trx() {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->state() != nullptr);
+  TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
   return _trx.get();
 }
 

@@ -22,9 +22,12 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./RefactoredSingleServerEdgeCursor.h"
-#include <Aql/AstNode.h>
+#include "RefactoredSingleServerEdgeCursor.h"
 
+#include "Aql/AstNode.h"
+#include "Aql/Ast.h"
+#include "Aql/AqlValueMaterializer.h"
+#include "Aql/NonConstExpression.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -36,36 +39,39 @@
 #include "Graph/Providers/SingleServerProvider.h"
 
 using namespace arangodb;
+using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
 IndexIteratorOptions defaultIndexIteratorOptions;
 }
 
-RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(transaction::Methods::IndexHandle idx,
-                                                         aql::AstNode* condition,
-                                                         std::optional<size_t> memberToUpdate)
-    : _idxHandle(std::move(idx)),
-      _indexCondition(condition),
-      _cursor(nullptr),
-      _conditionMemberToUpdate(memberToUpdate) {}
+RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(IndexAccessor* accessor)
+    : _accessor(accessor),
+      _cursor(nullptr) {}
 
 RefactoredSingleServerEdgeCursor::LookupInfo::LookupInfo(LookupInfo&& other) noexcept
-    : _idxHandle(std::move(other._idxHandle)),
-      _expression(std::move(other._expression)),
-      _indexCondition(other._indexCondition),
+      : _accessor(other._accessor),
       _cursor(std::move(other._cursor)){};
 
 RefactoredSingleServerEdgeCursor::LookupInfo::~LookupInfo() = default;
 
+aql::Expression* RefactoredSingleServerEdgeCursor::LookupInfo::getExpression() {
+  return _accessor->getExpression();
+}
+
+size_t RefactoredSingleServerEdgeCursor::LookupInfo::getCursorID() const {
+  return _accessor->cursorId();
+}
+
 void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
     VertexType vertex, transaction::Methods* trx, arangodb::aql::Variable const* tmpVar) {
-  auto& node = _indexCondition;
+  auto* node = _accessor->getCondition();
   // We need to rewire the search condition for the new vertex
   TRI_ASSERT(node->numMembers() > 0);
-  if (_conditionMemberToUpdate.has_value()) {
+  if (_accessor->getMemberToUpdate().has_value()) {
     // We have to inject _from/_to iff the condition needs it
-    auto dirCmp = node->getMemberUnchecked(_conditionMemberToUpdate.value());
+    auto dirCmp = node->getMemberUnchecked(_accessor->getMemberToUpdate().value());
     TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
     TRI_ASSERT(dirCmp->numMembers() == 2);
 
@@ -74,6 +80,25 @@ void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     // must edit node in place; TODO replace node?
     // TODO i think there is now a mutable String node available
+    TEMPORARILY_UNLOCK_NODE(idNode);
+    idNode->setStringValue(vertex.data(), vertex.length());
+  } else {
+    // If we have to inject the vertex value it has to be within
+    // the last member of the condition.
+    // We only get into this case iff the index used does
+    // not cover _from resp. _to.
+    // inject _from/_to value
+    auto expressionNode = _accessor->getExpression()->nodeForModification();
+
+    TRI_ASSERT(expressionNode->numMembers() > 0);
+    auto dirCmp = expressionNode->getMemberUnchecked(expressionNode->numMembers() - 1);
+    TRI_ASSERT(dirCmp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
+    TRI_ASSERT(dirCmp->numMembers() == 2);
+
+    auto idNode = dirCmp->getMemberUnchecked(1);
+    TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
+    TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
+
     TEMPORARILY_UNLOCK_NODE(idNode);
     idNode->setStringValue(vertex.data(), vertex.length());
   }
@@ -89,7 +114,7 @@ void RefactoredSingleServerEdgeCursor::LookupInfo::rearmVertex(
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
-    _cursor = trx->indexScanForCondition(_idxHandle, node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no);
+    _cursor = trx->indexScanForCondition(_accessor->indexHandle(), node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no);
   }
 }
 
@@ -101,18 +126,56 @@ IndexIterator& RefactoredSingleServerEdgeCursor::LookupInfo::cursor() {
 
 RefactoredSingleServerEdgeCursor::RefactoredSingleServerEdgeCursor(
     arangodb::transaction::Methods* trx,
-    arangodb::aql::Variable const* tmpVar, std::vector<IndexAccessor> const& indexConditions)
-    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx) {
+    arangodb::aql::Variable const* tmpVar, std::vector<IndexAccessor>& indexConditions,
+    arangodb::aql::FixedVarExpressionContext& expressionContext)
+    : _tmpVar(tmpVar), _currentCursor(0), _trx(trx),
+      _expressionCtx(expressionContext) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!indexConditions.empty());
   _lookupInfo.reserve(indexConditions.size());
-  for (auto const& idxCond : indexConditions) {
-    _lookupInfo.emplace_back(idxCond.indexHandle(), idxCond.getCondition(),
-                             idxCond.getMemberToUpdate());
+  for (auto& idxCond : indexConditions) {
+    _lookupInfo.emplace_back(&idxCond);
   }
 }
 
 RefactoredSingleServerEdgeCursor::~RefactoredSingleServerEdgeCursor() {}
+
+void RefactoredSingleServerEdgeCursor::LookupInfo::calculateIndexExpressions(Ast* ast, ExpressionContext& ctx) {
+  if (!_accessor->hasNonConstParts()) {
+    return;
+  }
+
+  // The following are needed to evaluate expressions with local data from
+  // the current incoming item:
+  auto& nonConstPart = _accessor->nonConstPart();
+  for (auto& toReplace : nonConstPart._expressions) {
+    auto exp = toReplace->expression.get();
+    bool mustDestroy;
+    AqlValue a = exp->execute(&ctx, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
+
+    AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
+    VPackSlice slice = materializer.slice(a, false);
+    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
+
+    AstNode* tmp = _accessor->getCondition();
+    for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
+      size_t idx = toReplace->indexPath[x];
+      AstNode* old = tmp->getMember(idx);
+      // modify the node in place
+      TEMPORARILY_UNLOCK_NODE(tmp);
+      if (x + 1 < toReplace->indexPath.size()) {
+        AstNode* cpy = old;
+        tmp->changeMember(idx, cpy);
+        tmp = cpy;
+      } else {
+        // insert the actual expression value
+        tmp->changeMember(idx, evaluatedNode);
+      }
+    }
+  }
+}
+
 
 #ifdef USE_ENTERPRISE
 static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
@@ -175,4 +238,10 @@ void RefactoredSingleServerEdgeCursor::readAll(aql::TraversalStats& stats,
 
 arangodb::transaction::Methods* RefactoredSingleServerEdgeCursor::trx() const {
   return _trx;
+}
+
+void RefactoredSingleServerEdgeCursor::prepareIndexExpressions(aql::Ast* ast) {
+  for (auto& it : _lookupInfo) {
+    it.calculateIndexExpressions(ast, _expressionCtx);
+  }
 }

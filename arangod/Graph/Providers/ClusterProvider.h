@@ -163,6 +163,8 @@ class ClusterProvider {
 
   [[nodiscard]] transaction::Methods* trx();
 
+  void prepareIndexExpressions(aql::Ast* ast);
+
   aql::TraversalStats stealStats();
 
  private:
