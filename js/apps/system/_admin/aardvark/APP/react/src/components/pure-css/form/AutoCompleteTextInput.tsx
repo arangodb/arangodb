@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createRef, useEffect } from 'react';
 import TextInput from 'react-autocomplete-input';
 import { omit } from "lodash";
 
@@ -6,10 +6,8 @@ type AutoCompleteTextInputProps = {
   value: string | number;
   onSelect: (value: string | number) => void;
   maxOptions?: number;
-  onRequestOptions?: () => {};
+  onRequestOptions?: () => void;
   matchAny?: boolean;
-  offsetX?: number;
-  offsetY?: number;
   options?: string[] | number[];
   regex?: string;
   requestOnlyIfNoOptions?: boolean;
@@ -20,10 +18,24 @@ type AutoCompleteTextInputProps = {
 };
 
 const AutoCompleteTextInput = ({ onSelect, value, ...rest }: AutoCompleteTextInputProps) => {
-  rest = omit(rest, 'changeOnSelect', 'defaultValue', 'trigger', 'passThroughEnter', 'Component', 'type', 'value', 'onSelect');
+  const inputRef = createRef();
 
-  return <TextInput Component={'input'} type={'text'} trigger={''} passThroughEnter={false} value={value}
-                    onSelect={onSelect} {...rest}/>;
+  useEffect(() => {
+    const els = document.getElementsByClassName('react-autocomplete-input');
+
+    if (els.length) {
+      const el = els[0] as HTMLElement;
+
+      el.style.left = 'unset';
+      el.style.top = 'unset';
+    }
+  }, [value]);
+
+  rest = omit(rest, 'changeOnSelect', 'defaultValue', 'trigger', 'passThroughEnter',
+    'Component', 'type', 'value', 'onSelect', 'offsetX', 'offsetY');
+
+  return <TextInput ref={inputRef} Component={'input'} type={'text'} trigger={''} passThroughEnter={false}
+                    value={value} onSelect={onSelect} {...rest}/>;
 };
 
 export default AutoCompleteTextInput;

@@ -1,17 +1,15 @@
 import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { FormState, LinkProperties } from "../constants";
-import React, { ChangeEvent, Dispatch, useEffect } from "react";
+import React, { ChangeEvent, Dispatch, useEffect, useState } from "react";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
-import { isEmpty, map, negate, pickBy } from 'lodash';
+import { isEmpty, map, negate, pickBy, without } from 'lodash';
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 import LinkPropertiesInput from "./inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
 import { useLinkState } from "../helpers";
 import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
-
-// const getOptions = (str: string): string[] => {
-//   return [str];
-// };
+import useSWR from 'swr';
+import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
 type LinkPropertiesFormProps = FormProps<FormState> & {
   cache?: { [key: string]: any };
@@ -19,12 +17,20 @@ type LinkPropertiesFormProps = FormProps<FormState> & {
 
 const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkPropertiesFormProps) => {
   const [collection, setCollection, addDisabled, links] = useLinkState(formState, 'links');
+  const { data } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) => getApiRouteForCurrentDB().get(path, qs));
+  const [options, setOptions] = useState<string[]>([]);
 
   useEffect(() => {
     cache.links = cache.links || {};
 
     Object.assign(cache.links, pickBy(links, negate(isEmpty)));
   }, [cache, links]);
+
+  useEffect(() => {
+    if (data) {
+      setOptions(map(data.body.result, 'name'));
+    }
+  }, [data]);
 
   const updateCollection = (value: string | number) => {
     setCollection(value);
@@ -54,6 +60,7 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
     });
     setCollection('');
     cache.links[collection] = {};
+    setOptions(without(options, collection));
   };
 
   return disabled && isEmpty(links)
@@ -97,7 +104,8 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
           : <tr style={{ borderBottom: '1px  solid #DDD' }}>
             <ArangoTD seq={0} colSpan={2}>
               <AutoCompleteTextInput placeholder={'Collection'} value={collection} minChars={1} spacer={''}
-                                     onSelect={updateCollection} matchAny={true}/>
+                                     onSelect={updateCollection} matchAny={true} options={options}
+                                     onChange={updateCollection} offsetY={280} offsetX={-20}/>
               {/* <Textbox type={'text'} placeholder={'Collection'} onChange={updateCollection} value={collection}/>*/}
             </ArangoTD>
             <ArangoTD seq={1}>
