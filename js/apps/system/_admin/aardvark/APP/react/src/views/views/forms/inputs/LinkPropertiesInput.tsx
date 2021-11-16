@@ -1,9 +1,8 @@
 import { DispatchArgs, FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
-import React, { ChangeEvent, Dispatch } from "react";
-import { filter, isEmpty, map, negate } from "lodash";
+import React, { ChangeEvent, Dispatch, useEffect, useState } from "react";
+import { isEmpty, map, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
-import Textarea from "../../../../components/pure-css/form/Textarea";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/table";
 import Textbox from "../../../../components/pure-css/form/Textbox";
@@ -11,6 +10,9 @@ import { IconButton } from "../../../../components/arango/buttons";
 import { useLinkState } from "../../helpers";
 import Fieldset from "../../../../components/pure-css/form/Fieldset";
 import { getBooleanFieldSetter } from "../../../../utils/helpers";
+import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCompleteMultiSelect";
+import useSWR from "swr";
+import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -18,6 +20,14 @@ type LinkPropertiesInputProps = FormProps<LinkProperties> & {
 
 const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPropertiesInputProps) => {
   const [field, setField, addDisabled, fields] = useLinkState(formState, 'fields');
+  const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
+  const [options, setOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (data) {
+      setOptions(map(data.body.result, 'name').sort());
+    }
+  }, [data]);
 
   const updateField = (event: ChangeEvent<HTMLSelectElement>) => {
     setField(event.target.value);
@@ -49,31 +59,55 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
     setField('');
   };
 
-  const updateAnalyzers = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    const analyzers = event.target.value.split('\n');
+  // const updateAnalyzers = (event: ChangeEvent<HTMLTextAreaElement>) => {
+  //   const analyzers = event.target.value.split('\n');
+  //
+  //   if (filter(analyzers, negate(isEmpty)).length) {
+  //     dispatch({
+  //       type: 'setField',
+  //       field: {
+  //         path: 'analyzers',
+  //         value: analyzers
+  //       },
+  //       basePath
+  //     });
+  //   } else {
+  //     dispatch({
+  //       type: 'unsetField',
+  //       field: {
+  //         path: 'analyzers'
+  //       },
+  //       basePath
+  //     });
+  //   }
+  // };
 
-    if (filter(analyzers, negate(isEmpty)).length) {
-      dispatch({
-        type: 'setField',
-        field: {
-          path: 'analyzers',
-          value: analyzers
-        },
-        basePath
-      });
-    } else {
-      dispatch({
-        type: 'unsetField',
-        field: {
-          path: 'analyzers'
-        },
-        basePath
-      });
-    }
+  // const getAnalyzers = () => {
+  //   return (formState.analyzers || []).join('\n');
+  // };
+
+  const analyzers = formState.analyzers || [];
+
+  const addAnalyzer = (analyzer: string | number) => {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'analyzers',
+        value: analyzers.concat([analyzer as string])
+      },
+      basePath
+    });
   };
 
-  const getAnalyzers = () => {
-    return (formState.analyzers || []).join('\n');
+  const removeAnalyzer = (analyzer: string | number) => {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: 'analyzers',
+        value: without(analyzers, analyzer)
+      },
+      basePath
+    });
   };
 
   const updateStoreValues = (event: ChangeEvent<HTMLInputElement>) => {
@@ -93,8 +127,10 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
 
   return <Grid>
     <Cell size={'1-3'}>
-      <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled} rows={4}
-                label={'Analyzers (One per line)'}/>
+      {/* <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled} rows={4}*/}
+      {/*          label={'Analyzers (One per line)'}/>*/}
+      <AutoCompleteMultiSelect values={analyzers} onRemove={removeAnalyzer} onSelect={addAnalyzer}
+                               options={options} label={'Analyzers'}/>
     </Cell>
     <Cell size={'1-3'}>
       <Grid style={{ marginTop: 24 }}>

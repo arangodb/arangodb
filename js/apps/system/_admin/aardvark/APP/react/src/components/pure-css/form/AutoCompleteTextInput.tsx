@@ -1,9 +1,13 @@
-import React, { createRef, useEffect } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import TextInput from 'react-autocomplete-input';
-import { omit } from "lodash";
+import { defaultsDeep, omit, uniqueId } from "lodash";
+import PlainLabel from "./PlainLabel";
 
 type AutoCompleteTextInputProps = {
-  value: string | number;
+  id?: string;
+  label?: ReactNode;
+  disabled?: boolean;
+  value?: string | number;
   onSelect: (value: string | number) => void;
   maxOptions?: number;
   onRequestOptions?: () => void;
@@ -17,8 +21,21 @@ type AutoCompleteTextInputProps = {
   [key: string]: any;
 };
 
-const AutoCompleteTextInput = ({ onSelect, value, ...rest }: AutoCompleteTextInputProps) => {
-  const inputRef = createRef();
+const AutoCompleteTextInput = ({
+                                 id,
+                                 label,
+                                 disabled,
+                                 onSelect,
+                                 value,
+                                 ...rest
+                               }: AutoCompleteTextInputProps) => {
+  const [thisId, setThisId] = useState(id || uniqueId('textbox-'));
+
+  useEffect(() => {
+    if (id) {
+      setThisId(id);
+    }
+  }, [id]);
 
   useEffect(() => {
     const els = document.getElementsByClassName('react-autocomplete-input');
@@ -31,11 +48,16 @@ const AutoCompleteTextInput = ({ onSelect, value, ...rest }: AutoCompleteTextInp
     }
   }, [value]);
 
-  rest = omit(rest, 'changeOnSelect', 'defaultValue', 'trigger', 'passThroughEnter',
+  const style = defaultsDeep(rest.style, { width: '90%' });
+
+  rest = omit(rest, 'style', 'changeOnSelect', 'defaultValue', 'trigger', 'passThroughEnter',
     'Component', 'type', 'value', 'onSelect', 'offsetX', 'offsetY');
 
-  return <TextInput ref={inputRef} Component={'input'} type={'text'} trigger={''} passThroughEnter={false}
-                    value={value} onSelect={onSelect} {...rest}/>;
+  return <>
+    {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}
+    <TextInput Component={'input'} type={'text'} id={thisId} disabled={disabled} trigger={''}
+               passThroughEnter={false} value={value} onSelect={onSelect} style={style} {...rest}/>
+  </>;
 };
 
 export default AutoCompleteTextInput;

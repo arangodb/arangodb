@@ -28,7 +28,7 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
 
   useEffect(() => {
     if (data) {
-      setOptions(map(data.body.result, 'name'));
+      setOptions(map(data.body.result, 'name').sort());
     }
   }, [data]);
 
@@ -105,12 +105,11 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
             <ArangoTD seq={0} colSpan={2}>
               <AutoCompleteTextInput placeholder={'Collection'} value={collection} minChars={1} spacer={''}
                                      onSelect={updateCollection} matchAny={true} options={options}
-                                     onChange={updateCollection} offsetY={280} offsetX={-20}/>
-              {/* <Textbox type={'text'} placeholder={'Collection'} onChange={updateCollection} value={collection}/>*/}
+                                     onChange={updateCollection}/>
             </ArangoTD>
             <ArangoTD seq={1}>
               <IconButton icon={'plus'} type={'warning'} onClick={addLink}
-                          disabled={addDisabled}>Add</IconButton>
+                          disabled={addDisabled || !options.includes(collection)}>Add</IconButton>
             </ArangoTD>
           </tr>
       }
