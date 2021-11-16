@@ -129,21 +129,6 @@ exports.debugClearFailAt = function (endpoint) {
   }
 };
 
-
-exports.debugClearFailAt = function (endpoint) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE_RAW('/_admin/debug/failat');
-    if (res.code !== 200) {
-      throw "Error removing failure points";
-    }
-    return true;
-  } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
-  }
-};
-
 exports.getChecksum = function (endpoint, name) {
   const primaryEndpoint = arango.getEndpoint();
   try {
