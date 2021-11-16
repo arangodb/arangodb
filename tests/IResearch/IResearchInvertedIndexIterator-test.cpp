@@ -94,62 +94,75 @@ class IResearchInvertedIndexIteratorTest
     // now populate the docs
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{_collection->name()};
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
-                                       EMPTY, collections, EMPTY,
-                                       arangodb::transaction::Options());
-    trx.begin();
     {
-       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"2"})");
-       arangodb::LocalDocumentId docId{1};
-       // MSVC fails to compile if EXPECT_TRUE  is called directly
-       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
-                                 arangodb::iresearch::InvertedIndexFieldMeta>(
-                                    trx, docId,
-                                    doc->slice(), _index->_meta).ok();
-       EXPECT_TRUE(res);
+      arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
+                                         EMPTY, collections, EMPTY,
+                                         arangodb::transaction::Options());
+      trx.begin();
+      {
+         auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"2"})");
+         arangodb::LocalDocumentId docId{1};
+         // MSVC fails to compile if EXPECT_TRUE  is called directly
+         auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
+                                   arangodb::iresearch::InvertedIndexFieldMeta>(
+                                      trx, docId,
+                                      doc->slice(), _index->_meta).ok();
+         EXPECT_TRUE(res);
+      }
+      {
+         auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})");
+         arangodb::LocalDocumentId docId{2};
+         // MSVC fails to compile if EXPECT_TRUE  is called directly
+         auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
+                                   arangodb::iresearch::InvertedIndexFieldMeta>(
+                                      trx, docId,
+                                      doc->slice(), _index->_meta).ok();
+         EXPECT_TRUE(res);
+      }
+      {
+         auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})");
+         arangodb::LocalDocumentId docId{3};
+         // MSVC fails to compile if EXPECT_TRUE  is called directly
+         auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
+                                   arangodb::iresearch::InvertedIndexFieldMeta>(
+                                      trx, docId,
+                                      doc->slice(), _index->_meta).ok();
+         EXPECT_TRUE(res);
+      }
+      EXPECT_TRUE(trx.commitAsync().get().ok());
+      EXPECT_TRUE(_index->commit(true).ok());
     }
+    // second transaction to have more than one segment in the index
     {
-       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})");
-       arangodb::LocalDocumentId docId{2};
-       // MSVC fails to compile if EXPECT_TRUE  is called directly
-       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
-                                 arangodb::iresearch::InvertedIndexFieldMeta>(
-                                    trx, docId,
-                                    doc->slice(), _index->_meta).ok();
-       EXPECT_TRUE(res);
+      arangodb::transaction::Methods trx(
+          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
+          collections, EMPTY, arangodb::transaction::Options());
+      trx.begin();
+      {
+        auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})");
+        arangodb::LocalDocumentId docId{4};
+        // MSVC fails to compile if EXPECT_TRUE  is called directly
+        auto res =
+            _index
+                ->insert<arangodb::iresearch::InvertedIndexFieldIterator, arangodb::iresearch::InvertedIndexFieldMeta>(
+                    trx, docId, doc->slice(), _index->_meta)
+                .ok();
+        EXPECT_TRUE(res);
+      }
+      {
+        auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})");
+        arangodb::LocalDocumentId docId{5};
+        // MSVC fails to compile if EXPECT_TRUE  is called directly
+        auto res =
+            _index
+                ->insert<arangodb::iresearch::InvertedIndexFieldIterator, arangodb::iresearch::InvertedIndexFieldMeta>(
+                    trx, docId, doc->slice(), _index->_meta)
+                .ok();
+        EXPECT_TRUE(res);
+      }
+      EXPECT_TRUE(trx.commitAsync().get().ok());
+      EXPECT_TRUE(_index->commit(true).ok());
     }
-    {
-       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})");
-       arangodb::LocalDocumentId docId{3};
-       // MSVC fails to compile if EXPECT_TRUE  is called directly
-       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
-                                 arangodb::iresearch::InvertedIndexFieldMeta>(
-                                    trx, docId,
-                                    doc->slice(), _index->_meta).ok();
-       EXPECT_TRUE(res);
-    }
-    {
-       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})");
-       arangodb::LocalDocumentId docId{4};
-       // MSVC fails to compile if EXPECT_TRUE  is called directly
-       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
-                                 arangodb::iresearch::InvertedIndexFieldMeta>(
-                                    trx, docId,
-                                    doc->slice(), _index->_meta).ok();
-       EXPECT_TRUE(res);
-    }    
-    {
-       auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})");
-       arangodb::LocalDocumentId docId{5};
-       // MSVC fails to compile if EXPECT_TRUE  is called directly
-       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
-                                 arangodb::iresearch::InvertedIndexFieldMeta>(
-                                    trx, docId,
-                                    doc->slice(), _index->_meta).ok();
-       EXPECT_TRUE(res);
-    }
-    EXPECT_TRUE(trx.commitAsync().get().ok());
-    EXPECT_TRUE(_index->commit(true).ok());
   }
 
   VPackBuilder getPropertiesSlice(arangodb::IndexId iid,
