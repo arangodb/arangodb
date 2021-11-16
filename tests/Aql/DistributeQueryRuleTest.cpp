@@ -362,6 +362,21 @@ TEST_F(DistributeQueryRuleTest, enumerate_remove) {
                     "RemoteNode", "GatherNode"});
 }
 
+TEST_F(DistributeQueryRuleTest, enumerate_remove_key) {
+  auto queryString = R"aql(
+    FOR doc IN collection
+    REMOVE doc._key IN collection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  assertNodesMatch(planSlice,
+                   {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+                    "RemoveNode", "RemoteNode", "GatherNode"});
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
