@@ -62,7 +62,10 @@ const AutoCompleteMultiSelect = ({
   return <>
     {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}
     <div className={'select2-container select2-container-multi'} id={thisId} style={style}>
-      <ul className={'select2-choices'}>
+      <ul className={'select2-choices'} style={{
+        display: 'flex',
+        flexWrap: 'wrap'
+      }}>
         {
           values.map(value => <li className={'select2-search-choice'} key={value}>
             <div>{value}</div>
@@ -70,7 +73,10 @@ const AutoCompleteMultiSelect = ({
                onClick={getRemoveHandler(value)}/>
           </li>)
         }
-        <li className={'select2-search-field'} key={'_search'}>
+        <li className={'select2-search-field'} key={'_search'} style={{
+          flexGrow: 1,
+          float: 'none'
+        }}>
           <AutoCompleteTextInput key={1} minChars={1} spacer={''} onSelect={handleSelect} matchAny={true}
                                  value={value} onChange={setValue} options={options}
                                  disabled={disabled} {...rest}/>
