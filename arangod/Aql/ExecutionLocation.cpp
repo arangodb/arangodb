@@ -44,6 +44,9 @@ auto operator<<(std::ostream& out, ExecutionLocation const& location) -> std::os
     case ExecutionLocation::LocationType::SUBQUERY_END:
       out << "SubqueryEnd";
       break;
+    case ExecutionLocation::LocationType::REQUIRES_CONTEXT:
+      out << "RequiresContext";
+      break;
   }
   return out;
 }

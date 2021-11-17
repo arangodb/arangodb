@@ -8658,7 +8658,6 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
       setter->getType() == EN::ENUMERATE_COLLECTION || setter->getType() == EN::INDEX) {
     // If our input variable is set by a collection/index enumeration, it is guaranteed to be an object
     // with a _key attribute, so we don't need to do anything.
-    TRI_ASSERT(false);
     return nullptr;
   }
 
@@ -8807,7 +8806,7 @@ namespace {
     // =>
     // dependency <- remote <- gather <- node
     auto dependencyNode = node->getFirstDependency();
-    LOG_DEVEL << "Adding gather " << dependencyNode->getTypeString() << " <- " << node->getTypeString();
+    LOG_DEVEL << "Adding gather " << node->getTypeString() << " <- " << dependencyNode->getTypeString();
     node->removeDependencies();
     remoteNode->addDependency(dependencyNode);
     gatherNode->addDependency(remoteNode);
@@ -8880,7 +8879,7 @@ namespace {
     parent->removeDependencies();
     LOG_DEVEL << "Adding " << scatterNode->getTypeString() <<  ": " << node->getTypeString() << " <- " << parent->getTypeString();
     // TODO this is not nice, maybe we can refactor this a bit
-    if (scatterNode->getType() == ExecutionNode::DISTRIBUTE) {
+    if (false && scatterNode->getType() == ExecutionNode::DISTRIBUTE) {
       auto distInput = createDistributeInputNode(plan, scatterTo);
       TRI_ASSERT(distInput);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -9012,25 +9011,6 @@ namespace {
     TRI_ASSERT(lower.getNode() != upper.getNode());
     auto lowerLoc = lower.getAllowedLocation();
     auto upperLoc = upper.getAllowedLocation();
-    if (!upperLoc.isStrict()) {
-      // Special protection against moving past the DISTRIBUTE_INPUT with our distribute node
-      // TODO: This should be done in a nicer way, right now this is kind of hacki.
-      TRI_ASSERT(upper.getNode()->getType() == ExecutionNode::CALCULATION);
-      if (nodeEligibleForDistribute(lower.getShardByNode()->getType())) {
-        auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(lower.getShardByNode());
-
-        VarSet variablesToTest;
-        variablesToTest.insert(inputVariable);
-        if (upper.getNode()->setsVariable(variablesToTest)) {
-          LOG_DEVEL << "Trigger protection against crossing DISTRIBUTE producer: You shall not pass!";
-          upper.setAllowedLocation(ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR));
-          upperLoc = upper.getAllowedLocation();
-        }
-      } else {
-        // Just ignore the distribute input, we can keep it wherever it is located right now
-        return lower;
-      }
-    }
     TRI_ASSERT(lowerLoc.isStrict());
     TRI_ASSERT(upperLoc.isStrict());
     if (upperLoc.isSubqueryEnd()) {
@@ -9138,6 +9118,35 @@ namespace {
 
     return upper;
   }
+
+  // NOTE this is almost copy paste of insertDistributeInputCalculation rule.
+  // The difference is, that we do nost search for DISTRIBUTE, but for the target nodes
+  // directly. In combination with distributeQueryRule this rule replaces
+  // insertDistributeInputCalculation. For simplicity it is moved into it's own namespace.
+  void insertDistributeInputCalculationNextGen(ExecutionPlan& plan) {
+    ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+    ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+    plan.findNodesOfType(nodes, {
+        ExecutionNode::INSERT,
+        ExecutionNode::REMOVE,
+        ExecutionNode::UPDATE,
+        ExecutionNode::REPLACE,
+        ExecutionNode::UPSERT,
+        ExecutionNode::TRAVERSAL,
+        ExecutionNode::K_SHORTEST_PATHS,
+        ExecutionNode::SHORTEST_PATH
+    }, true);
+
+    for (auto const& targetNode : nodes) {
+      TRI_ASSERT(targetNode != nullptr);
+      auto calcNode = createDistributeInputNode(plan, targetNode);
+      if (calcNode != nullptr) {
+        plan.insertBefore(targetNode, calcNode);
+        plan.clearVarUsageComputed();
+        plan.findVarUsage();
+      }
+    }
+  }
 }  // namespace
 
 void arangodb::aql::insertDistributeCalculationsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
@@ -9162,23 +9171,8 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
   struct RelevantNodesFinder : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
     bool before(arangodb::aql::ExecutionNode* n) override {
       auto loc = n->getAllowedLocation();
-      if (loc.isStrict()) {
+      if (loc.isStrict() || loc.requiresContext()) {
         relevantNodes.emplace_back(n);
-      }
-      // Temporary protection to move data above the distribute producer
-      // TODO: This needs to be done in an easier way. There is some special handling required for this
-      // Node in some cases.
-      if (n->getType() == ExecutionNode::CALCULATION) {
-        auto calc = ExecutionNode::castTo<CalculationNode*>(n);
-        auto expr = calc->expression()->node();
-        TRI_ASSERT(expr != nullptr);
-        if (expr->type == NODE_TYPE_FCALL) {
-          auto func = static_cast<Function const*>(expr->getData());
-          if (func->name == "MAKE_DISTRIBUTE_INPUT" || func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT") {
-          //  relevantNodes.emplace_back(n);
-          }
-        }
-
       }
       // Always continue walking
       return false;
@@ -9204,7 +9198,7 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
   NodeInformation previous{relevantNodes.front()};
   {
     auto firstLocation = previous.getAllowedLocation();
-    if (firstLocation.canRunOnDBServer()) {
+    if (firstLocation.isStrict() && firstLocation.canRunOnDBServer()) {
       // Special case, the final node of the query is located on DBServer.
       // Need to gather it.
       SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
@@ -9228,14 +9222,21 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
   }
 
   std::stack<SubqueryScope, std::vector<SubqueryScope>> subqueryScopes;
+  // TODO: Maybe we need to retain those context nodes across subqueries and move them into the subquery scope.
+  std::vector<ExecutionNode*> additionalNodesWithContext{};
 
   // We start on purpose at i = 1, to guarantee that we have a previous node
   for (size_t i = 1; i < relevantNodes.size(); ++i) {
     auto* node = relevantNodes[i];
     TRI_ASSERT(previous.getNode());
     TRI_ASSERT(node);
-
-    previous = ::joinSnippets(*plan, previous, node, subqueryScopes);
+    if (node->getAllowedLocation().requiresContext()) {
+      LOG_DEVEL << "Need to handle context for " << node->getTypeString() << " After " << previous.getNode()->getTypeString();
+      additionalNodesWithContext.emplace_back(node);
+    } else {
+      previous = ::joinSnippets(*plan, previous, node, subqueryScopes);
+      additionalNodesWithContext.clear();
+    }
   }
   {
     // If the last relevantNode is Remove or Update, we will have an implicit Scatter to this node.

@@ -1875,6 +1875,17 @@ ExecutionLocation CalculationNode::getAllowedLocation() const {
     // some expression we cannot run on a DB server
     return ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR);
   }
+  // Those two functions are special, they sometimes need to be executed on Coordinator
+  // Sometimes they are fine to be executed on DBServer, it depends on the context
+  auto expr = _expression->node();
+  TRI_ASSERT(expr != nullptr);
+  if (expr->type == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function const*>(expr->getData());
+    if (func->name == "MAKE_DISTRIBUTE_INPUT" ||
+        func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT") {
+      return ExecutionLocation(ExecutionLocation::LocationType::REQUIRES_CONTEXT);
+    }
+  }
   return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
