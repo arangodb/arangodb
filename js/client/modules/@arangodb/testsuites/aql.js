@@ -67,7 +67,11 @@ function shellClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return tu.performTests(ensureServers(options, 3), testCases, 'shell_client', tu.runInLocalArangosh);
+  // increase timeouts after which servers count as BAD/FAILED.
+  // we want this to ensure that in an overload situation we do not
+  // get random failedLeader / failedFollower jobs during our tests.
+  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  return tu.performTests(ensureServers(options, 3), testCases, 'shell_client', tu.runInLocalArangosh, moreOptions);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
