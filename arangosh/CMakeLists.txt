@@ -27,10 +27,10 @@ target_link_libraries(arango_shell
   boost_system
   boost_boost
   fuerte
+  v8_interface
 )
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(arango_shell SYSTEM PRIVATE ${V8_INCLUDE_DIR})
 
 ################################################################################
 ## arangobench

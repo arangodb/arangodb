@@ -246,13 +246,13 @@ target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango PUBLIC ${BUILD_DIR})
 
-target_include_directories(arango SYSTEM PRIVATE ${V8_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/3rdParty/function2)
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango SYSTEM PRIVATE ${ZLIB_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 
 target_link_libraries(arango rocksdb_interface)
+target_link_libraries(arango zlib_interface)
+target_link_libraries(arango v8_interface)
 
 add_dependencies(arango v8_build)
 
@@ -376,11 +376,12 @@ target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${V8_INCLUDE_DIR})
 target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(arango_v8_deadline SYSTEM PUBLIC ${V8_INCLUDE_DIR})
 target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(arango_v8_no_deadline SYSTEM PUBLIC ${V8_INCLUDE_DIR})
+
+target_link_libraries(arango_v8 v8_interface)
+target_link_libraries(arango_v8_deadline v8_interface)
+target_link_libraries(arango_v8_no_deadline v8_interface)
 
 target_link_libraries(arango_v8_deadline velocypack)
 target_link_libraries(arango_v8_no_deadline velocypack)

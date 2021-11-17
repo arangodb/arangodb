@@ -25,7 +25,7 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/utf8_path.hpp"

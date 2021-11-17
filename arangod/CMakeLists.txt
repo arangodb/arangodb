@@ -981,6 +981,7 @@ target_include_directories(arango_cluster_engine
 
 target_link_libraries(arango_cluster_methods arango)
 target_link_libraries(arango_cluster_methods arango_network)
+target_link_libraries(arango_cluster_methods zlib_interface)
 
 target_link_libraries(arango_common_rest_handler arango_cluster_methods)
 target_link_libraries(arango_common_rest_handler arango_utils)
