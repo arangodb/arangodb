@@ -57,11 +57,19 @@ class IResearchInvertedIndexIteratorTest
   
 
  private:
+  std::map<arangodb::LocalDocumentId, std::shared_ptr<VPackBuilder>> _docs{
+      {arangodb::LocalDocumentId(1), arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"2"})")},
+      {arangodb::LocalDocumentId(2), arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})")},
+      {arangodb::LocalDocumentId(3), arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})")},
+      {arangodb::LocalDocumentId(4), arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})")},
+      {arangodb::LocalDocumentId(5), arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})")},
+  };
   arangodb::tests::mocks::MockAqlServer _server{false};
   std::shared_ptr<arangodb::LogicalCollection> _analyzers;
   std::shared_ptr<arangodb::LogicalCollection> _collection;
   std::shared_ptr<arangodb::iresearch::IResearchInvertedIndex> _index;
   TRI_vocbase_t* _vocbase{nullptr};
+
  protected:
   IResearchInvertedIndexIteratorTest() {
     arangodb::tests::init();
@@ -82,7 +90,7 @@ class IResearchInvertedIndexIteratorTest
     arangodb::IndexId id(1);
     arangodb::iresearch::InvertedIndexFieldMeta meta;
     std::string errorField;
-    std::vector<std::vector<std::string>> storedFields = {{"a", "b"}};
+    std::vector<std::vector<std::string>> storedFields = {{"a", "b"}, {"a"}, {"b"}};
     std::vector<std::string> fields = {"a", "b"};
     EXPECT_TRUE(meta.init(_server.server(),
                           getPropertiesSlice(id, fields, storedFields).slice(),
@@ -94,75 +102,39 @@ class IResearchInvertedIndexIteratorTest
     // now populate the docs
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{_collection->name()};
+    auto doc = _docs.begin();
     {
       arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                          EMPTY, collections, EMPTY,
                                          arangodb::transaction::Options());
       trx.begin();
-      {
-         auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"2"})");
-         arangodb::LocalDocumentId docId{1};
+      for(size_t i = 0; i < _docs.size() / 2; ++i){
          // MSVC fails to compile if EXPECT_TRUE  is called directly
          auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
                                    arangodb::iresearch::InvertedIndexFieldMeta>(
-                                      trx, docId,
-                                      doc->slice(), _index->_meta).ok();
+                                      trx, doc->first,
+                                      doc->second->slice(), _index->_meta).ok();
          EXPECT_TRUE(res);
-      }
-      {
-         auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})");
-         arangodb::LocalDocumentId docId{2};
-         // MSVC fails to compile if EXPECT_TRUE  is called directly
-         auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
-                                   arangodb::iresearch::InvertedIndexFieldMeta>(
-                                      trx, docId,
-                                      doc->slice(), _index->_meta).ok();
-         EXPECT_TRUE(res);
-      }
-      {
-         auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})");
-         arangodb::LocalDocumentId docId{3};
-         // MSVC fails to compile if EXPECT_TRUE  is called directly
-         auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
-                                   arangodb::iresearch::InvertedIndexFieldMeta>(
-                                      trx, docId,
-                                      doc->slice(), _index->_meta).ok();
-         EXPECT_TRUE(res);
+         ++doc;
       }
       EXPECT_TRUE(trx.commitAsync().get().ok());
       EXPECT_TRUE(_index->commit(true).ok());
     }
     // second transaction to have more than one segment in the index
-    {
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
-      trx.begin();
-      {
-        auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})");
-        arangodb::LocalDocumentId docId{4};
-        // MSVC fails to compile if EXPECT_TRUE  is called directly
-        auto res =
-            _index
-                ->insert<arangodb::iresearch::InvertedIndexFieldIterator, arangodb::iresearch::InvertedIndexFieldMeta>(
-                    trx, docId, doc->slice(), _index->_meta)
-                .ok();
-        EXPECT_TRUE(res);
-      }
-      {
-        auto doc = arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})");
-        arangodb::LocalDocumentId docId{5};
-        // MSVC fails to compile if EXPECT_TRUE  is called directly
-        auto res =
-            _index
-                ->insert<arangodb::iresearch::InvertedIndexFieldIterator, arangodb::iresearch::InvertedIndexFieldMeta>(
-                    trx, docId, doc->slice(), _index->_meta)
-                .ok();
-        EXPECT_TRUE(res);
-      }
-      EXPECT_TRUE(trx.commitAsync().get().ok());
-      EXPECT_TRUE(_index->commit(true).ok());
+    arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
+       collections, EMPTY, arangodb::transaction::Options());
+    trx.begin();
+    while(doc != _docs.end()) {
+      // MSVC fails to compile if EXPECT_TRUE  is called directly
+      auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator,
+                                arangodb::iresearch::InvertedIndexFieldMeta>(
+                    trx, doc->first, doc->second->slice(), _index->_meta).ok();
+      EXPECT_TRUE(res);
+      ++doc;
     }
+    EXPECT_TRUE(trx.commitAsync().get().ok());
+    EXPECT_TRUE(_index->commit(true).ok());
   }
 
   VPackBuilder getPropertiesSlice(arangodb::IndexId iid,
@@ -258,6 +230,7 @@ class IResearchInvertedIndexIteratorTest
   arangodb::LogicalCollection& collection() {return *_collection;}
   TRI_vocbase_t& vocbase() { return *_vocbase; }
   arangodb::iresearch::IResearchInvertedIndex& index() { return *_index.get(); }
+  auto const& data() const { return _docs; }
 };  // IResearchFilterSetup
 
 /// *IResearchInvertedIndexIteratorTest*:*IResearchInvertedIndex*:*LateMaterialization*:*NoMaterialization* --gtest_break_on_failure
@@ -290,6 +263,70 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next) {
       return true;
     };
     ASSERT_FALSE(iterator->next(docCallback, 1000));
+    ASSERT_EQ(docs.size(), 2);
+    // we can't assume order of the documents. Let's just check invalid ones are not returned
+    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());
+    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(5)), docs.end());
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test);
+}
+
+TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
+  std::string queryString{ R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
+  auto expectedDocs = data();
+  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    uint64_t skipped{0};
+    iterator->skip(1, skipped);
+    ASSERT_EQ(1, skipped);
+    ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasCovering());
+    std::vector<arangodb::LocalDocumentId> docs;
+    
+    auto docCallback = [&expectedDocs, &docs](arangodb::LocalDocumentId token,
+                                              arangodb::IndexIterator::CoveringData* data) {
+      docs.push_back(token);
+      EXPECT_NE(data, nullptr);
+      if (data) {
+        EXPECT_TRUE(data->isArray());
+        auto invalid = data->at(4);
+        EXPECT_TRUE(invalid.isNone());
+        {
+          auto slice0  = data->at(0);
+          EXPECT_TRUE(slice0.isString());
+          if (slice0.isString()) {
+            EXPECT_EQ(slice0.copyString(),
+                      expectedDocs[token]->slice().get("a").copyString());
+          }
+          auto slice1  = data->at(1);
+          EXPECT_TRUE(slice1.isString());
+          if (slice1.isString()) {
+            EXPECT_EQ(slice1.copyString(),
+                      expectedDocs[token]->slice().get("b").copyString());
+          }
+        }
+        {
+          auto slice2  = data->at(2);
+          EXPECT_TRUE(slice2.isString());
+          if (slice2.isString()) {
+            EXPECT_EQ(slice2.copyString(),
+                      expectedDocs[token]->slice().get("a").copyString());
+          }
+        }
+        {
+          auto slice3  = data->at(3);
+          EXPECT_TRUE(slice3.isString());
+          if (slice3.isString()) {
+            EXPECT_EQ(slice3.copyString(),
+                      expectedDocs[token]->slice().get("b").copyString());
+          }
+        }
+      }
+      return true;
+    };
+    ASSERT_FALSE(iterator->nextCovering(docCallback, 1000));
     ASSERT_EQ(docs.size(), 2);
     // we can't assume order of the documents. Let's just check invalid ones are not returned
     ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());

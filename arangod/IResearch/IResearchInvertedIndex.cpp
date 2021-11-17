@@ -400,10 +400,12 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       if (itr && doc == itr->seek(doc)) {
         size_t i = 0;
         auto const totalSize = value->value.size();
-        if (ADB_LIKELY(totalSize > 0)) {
-          size_t size = 0;
-          VPackSlice slice(value->value.c_str());
-          while (i < index) {
+        TRI_ASSERT(totalSize > 0);
+        size_t size = 0;
+        VPackSlice slice(value->value.c_str());
+        TRI_ASSERT(slice.byteSize() <= totalSize);
+        while (i < index) {
+          if (ADB_LIKELY(size < totalSize)) {
             size += slice.byteSize();
             TRI_ASSERT(size <= totalSize);
             if (ADB_UNLIKELY(size > totalSize)) {
@@ -412,10 +414,12 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
             }
             slice = VPackSlice{slice.end()};
             ++i;
+          } else {
+            slice = VPackSlice::noneSlice();
+            break;
           }
-          TRI_ASSERT(!slice.isNone());
-          return slice;
         }
+        return slice;
       }
       return VPackSlice::noneSlice();
     }
@@ -472,17 +476,16 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       size_t column{0};
       size_t prev{0};
       // FIXME: check for the performance bottleneck!
-      while (column < _coverage.size() && _coverage[column].first > i) {
+      while (column < _coverage.size() && _coverage[column].first <= i) {
         prev = _coverage[column].first;
         ++column;
       }
       if (column < _coverage.size()) {
-        TRI_ASSERT(i < prev);
+        TRI_ASSERT(i >= prev);
         return _coverage[column].second.get(_doc, i - prev);
       }
       return VPackSlice::noneSlice();
     }
-
     std::vector<std::pair<size_t, CoveringValue>> _coverage;
     irs::doc_id_t _doc{irs::doc_limits::invalid()};
     velocypack::ValueLength _length{0};
