@@ -277,8 +277,8 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_known) {
   // Special case here, we enumerate and update the same docs.
   // We could get away without network requests in between
   auto queryString = R"aql(
-    FOR x IN collection
-    UPDATE {_key: x._key, id: "123"} WITH {value: 1} INTO customKeysCollection)aql";
+    FOR x IN customKeysCollection
+    UPDATE {_key: x._key, id: x.id} WITH {value: 1} INTO customKeysCollection)aql";
   auto plan = prepareQuery(queryString);
 
   auto planSlice = plan->slice();
@@ -287,7 +287,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_known) {
   LOG_DEVEL << nodeNames(planSlice);
 
   assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", 
-                               "EnumerateCollectionNode",
+                               "EnumerateCollectionNode", "CalculationNode",
                                "UpdateNode", "RemoteNode", "GatherNode"});
 }
 
@@ -295,7 +295,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_unknown) {
   // Special case here, we enumerate and update the same docs.
   // We could get away without network requests in between
   auto queryString = R"aql(
-    FOR x IN collection
+    FOR x IN customKeysCollection
     UPDATE x WITH {value: 1} INTO customKeysCollection)aql";
   auto plan = prepareQuery(queryString);
 
@@ -303,10 +303,9 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_unknown) {
   ASSERT_TRUE(planSlice.hasKey("nodes"));
   planSlice = planSlice.get("nodes");
   LOG_DEVEL << nodeNames(planSlice);
-  
+ 
   assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
-                               "EnumerateCollectionNode", "RemoteNode",
-                               "GatherNode", "ScatterNode", "RemoteNode",
+                               "EnumerateCollectionNode", 
                                "UpdateNode", "RemoteNode", "GatherNode"});
 }
 
@@ -348,8 +347,8 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_known) {
   // Special case here, we enumerate and replace the same docs.
   // We could get away without network requests in between
   auto queryString = R"aql(
-    FOR x IN collection
-    REPLACE {_key: x._key, id: "fuxx"} WITH {value: 1} INTO customKeysCollection)aql";
+    FOR x IN customKeysCollection
+    REPLACE {_key: x._key, id: x.id} WITH {value: 1} INTO customKeysCollection)aql";
   auto plan = prepareQuery(queryString);
 
   auto planSlice = plan->slice();
@@ -358,16 +357,15 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_known) {
   LOG_DEVEL << nodeNames(planSlice);
 
   assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", 
-                               "EnumerateCollectionNode", "CalculationNode", "RemoteNode",
-                               "GatherNode", "CalculationNode", "DistributeNode",
-                               "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode"});
+                               "EnumerateCollectionNode", "CalculationNode", 
+                               "ReplaceNode", "RemoteNode", "GatherNode"});
 }
 
 TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_unknown) {
   // Special case here, we enumerate and replace the same docs.
   // We could get away without network requests in between
   auto queryString = R"aql(
-    FOR x IN collection
+    FOR x IN customKeysCollection
     REPLACE x WITH {value: 1} INTO customKeysCollection)aql";
   auto plan = prepareQuery(queryString);
 
@@ -385,7 +383,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_remove_custom_shardkey) {
   // Special case here, we enumerate and remove the same docs.
   // We could get away without network requests in between
   auto queryString = R"aql(
-    FOR x IN collection
+    FOR x IN customKeysCollection
     REMOVE x INTO customKeysCollection)aql";
   auto plan = prepareQuery(queryString);
 
@@ -394,8 +392,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_remove_custom_shardkey) {
   planSlice = planSlice.get("nodes");
   LOG_DEVEL << nodeNames(planSlice);
 
-  assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode", "RemoteNode",
-                               "GatherNode", "ScatterNode", "RemoteNode",
+  assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode",
                                "RemoveNode", "RemoteNode", "GatherNode"});
 }
 

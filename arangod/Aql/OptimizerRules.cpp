@@ -5013,25 +5013,21 @@ bool isInputForModificationNode(ExecutionPlan const& plan,
     // check the variable is the same as the modification node's input variable
     if (n->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       if (cn->outVariable() != inputVariable) {
-        LOG_DEVEL <<  __LINE__;
         return false;
       }
       // check that the modification node's collection is sharded over _key
       //std::vector<std::string> shardKeys = modificationNode->collection()->shardKeys(false);
       if (!collection->usesDefaultSharding()) {
-        LOG_DEVEL <<  __LINE__;
         return false;
       }
 
       // get parent node
       if (n->getMember(0)->type != NODE_TYPE_REFERENCE) {
-        LOG_DEVEL <<  __LINE__;
         return false;
       }
       // attribute name must be _key or _id
       if (n->getStringRef() != StaticStrings::KeyString &&
           n->getStringRef() != StaticStrings::IdString) {
-        LOG_DEVEL <<  __LINE__;
         return false;
       }
       inputVariable = static_cast<Variable const*>(n->getMember(0)->getData());
@@ -5045,7 +5041,7 @@ bool isInputForModificationNode(ExecutionPlan const& plan,
       }
       // we must also know the _key value, otherwise it will not work
       toFind.emplace(StaticStrings::KeyString);
-
+        
       // go through the input object attribute by attribute
       // and look for our shard keys
       Variable const* lastVariable = nullptr;
@@ -5073,7 +5069,6 @@ bool isInputForModificationNode(ExecutionPlan const& plan,
               auto accessedVariable = static_cast<Variable const*>(var->getData());
 
               if (lastVariable != nullptr && lastVariable != accessedVariable) {
-        LOG_DEVEL <<  __LINE__;
                 return false;
               }
 
@@ -5086,7 +5081,6 @@ bool isInputForModificationNode(ExecutionPlan const& plan,
 
       if (!toFind.empty()) {
         // not all shard keys covered
-        LOG_DEVEL <<  __LINE__;
         return false;
       }
 
@@ -5100,13 +5094,11 @@ bool isInputForModificationNode(ExecutionPlan const& plan,
   }
 
   if (setter->getType() != EN::ENUMERATE_COLLECTION && setter->getType() != EN::INDEX) {
-        LOG_DEVEL <<  __LINE__;
     return false;
   }
 
   if (::getCollection(setter) != collection) {
     // FOR loop and modification node use different collections
-        LOG_DEVEL <<  __LINE__;
     return false;
   }
 
@@ -9124,7 +9116,6 @@ namespace {
 
         if (lower.getShardByNode()->isModificationNode() && 
             isInputForModificationNode(plan, ExecutionNode::castTo<ModificationNode const*>(lower.getShardByNode()), up)) {
-          LOG_DEVEL << "Ooooohh...";
           return upper;
         }
 
