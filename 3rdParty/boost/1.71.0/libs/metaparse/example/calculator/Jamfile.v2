@@ -1,6 +1,0 @@
-project : requirements
-  <toolset>gcc:<cxxflags>-ftemplate-depth=512
-  <toolset>clang:<cxxflags>-ftemplate-depth=512
-;
-
-exe calculator : main.cpp ;
