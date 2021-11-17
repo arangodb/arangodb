@@ -295,7 +295,14 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        bool disabled = (_useNewDistribute && rule.isClusterOnly() && rule.name != "distribute-query" && rule.name != "insert-distribute-calculations");
+        
+        // TODO: this is here only temporarily while rebuild cluster query
+        // optimizer rules!
+        bool disabled = (_useNewDistribute && 
+                         rule.isClusterOnly() && 
+                         rule.name != "distribute-query" && 
+                         rule.name != "insert-distribute-calculations" && 
+                         rule.name != "optimize-cluster-single-document-operations");
         disabled |= p->isDisabledRule(rule.level);
         disabled |= (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled());
 
