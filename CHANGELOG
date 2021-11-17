@@ -1,8 +1,6 @@
 devel
 -----
 
-* Fixed wrong repo string in version for EE.
-
 * Removed the following deprecated arangobench testcases:
   * aqltrx
   * aqlv8
