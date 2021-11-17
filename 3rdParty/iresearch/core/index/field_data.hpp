@@ -184,6 +184,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   explicit fields_data(
     const field_features_t& field_features,
     const feature_column_info_provider_t& feature_columns,
+    std::deque<cached_column>& cached_features,
     const comparer* comparator);
 
   const comparer* comparator() const noexcept {
@@ -209,18 +210,13 @@ class IRESEARCH_API fields_data: util::noncopyable {
   void flush(field_writer& fw, flush_state& state);
   void reset() noexcept;
 
-  void flush_features(
-    columnstore_writer& writer,
-    const doc_map& docmap,
-    sorted_column::flush_buffer_t& buffer);
-
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
   const field_features_t* field_features_;
   const feature_column_info_provider_t* feature_columns_;
   std::deque<field_data> fields_; // pointers remain valid
-  std::deque<cached_column> cached_features_; // pointers remain valid
+  std::deque<cached_column>* cached_features_; // pointers remain valid
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
   std::vector<const field_data*> sorted_fields_;

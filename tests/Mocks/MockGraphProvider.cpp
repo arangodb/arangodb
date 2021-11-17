@@ -125,6 +125,8 @@ auto MockGraphProvider::expand(Step const& step, size_t previous,
   }
 }
 
+auto MockGraphProvider::clear() -> void {}
+
 auto MockGraphProvider::addVertexToBuilder(const Step::Vertex& vertex,
                                            arangodb::velocypack::Builder& builder) -> void {
   std::string id = vertex.getID().toString();

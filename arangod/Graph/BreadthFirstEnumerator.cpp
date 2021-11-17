@@ -346,7 +346,7 @@ bool BreadthFirstEnumerator::shouldPrune() {
 
 void BreadthFirstEnumerator::growStorage() {
   size_t capacity = arangodb::containers::Helpers::nextCapacity(_schreier, 8);
-  
+
   if (capacity > _schreier.capacity()) {
     arangodb::ResourceUsageScope guard(_opts->resourceMonitor(),
                                        (capacity - _schreier.capacity()) * pathStepSize());

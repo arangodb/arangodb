@@ -45,6 +45,9 @@ struct ServerDefaults;
 namespace graph {
 
 class EdgeDefinition {
+  /// @brief In-memory representation of a document that describes for a relation
+  /// the set of "verticesFrom" and the set "verticesTo" in a graph.
+  /// The description of a relation set in a graph.
  public:
   enum EdgeDefinitionType {
     DEFAULT,
@@ -56,7 +59,7 @@ class EdgeDefinition {
 
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_) 
+                 std::set<std::string>&& to_)
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
         _to(std::move(to_)) {}
@@ -90,16 +93,6 @@ class EdgeDefinition {
 
   bool renameCollection(std::string const& oldName, std::string const& newName);
 
-  /* @brief
-   * Set type of the EdgeDefinition. Only allowed to be called once and only if
-   * type is DEFAULT. If type has been set, it is not changeable anymore.
-   *
-   * @param type Type to be set
-   *
-   * @return True if type has been set, returns false in case type has not been set.
-   */
-  auto setType(EdgeDefinitionType type) -> bool;
-
  private:
   std::string _edgeCollection;
   std::set<std::string> _from;
@@ -109,9 +102,10 @@ class EdgeDefinition {
 class Graph {
  public:
   /**
-   * @brief Create graph from persistence.
+   * @brief Read the graph definition from persistence and create a graph object in memory.
    *
-   * @param document The stored document
+   * @param vocbase Access to the interface of the database we're currently at.
+   * @param document The stored document (graph definition which is stored in the system _graphs collection)
    *
    * @return A graph object corresponding to this document
    */
@@ -151,7 +145,7 @@ class Graph {
    * @brief Create graph from user input.
    *
    * @param graphName The name of the graph
-   * @param info Collection information, including relations and orphans
+   * @param info Collection information, including relations and orphans (set of collections)
    * @param options The options to be used for collections
    */
   Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
@@ -167,8 +161,16 @@ class Graph {
 
   [[nodiscard]] static Result validateOrphanCollection(velocypack::Slice const& orphanDefinition);
 
+  /*
+   * Creates a document in the builder containing all relevant options for the creation collection process
+   * (e.g. replicationFactor, numberOfShards, ...)
+   */
   virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
+  /*
+ * Creates a document in the builder containing all relevant options for the creation satellite collection process
+ * (e.g. replicationFactor, numberOfShards, ...)
+ */
   virtual void createSatelliteCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
  public:

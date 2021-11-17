@@ -610,8 +610,8 @@ using common_type_t = typename std::common_type<T...>::type;
 template <typename T>
 using underlying_type_t = typename std::underlying_type<T>::type;
 
-template <class F, class... Args>
-using result_of_t = typename std::invoke_result<F, Args...>::type;
+template <typename T>
+using result_of_t = typename std::result_of<T>::type;
 
 namespace type_traits_internal {
 // In MSVC we can't probe std::hash or stdext::hash because it triggers a
