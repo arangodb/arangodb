@@ -207,12 +207,15 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
                 _projections.seek(_doc->value);
                 auto extraSlice = _projections.at(_extraIndex);
                 if (!extraSlice.isNone()) {
-                  --limit;
-                  callback(documentId, extraSlice);
+                  if (callback(documentId, extraSlice)) {
+                    --limit;
+                  }
                 } 
               } else if constexpr (withCovering) {
                 _projections.seek(_doc->value);
-                callback(documentId, &_projections);
+                if (callback(documentId, &_projections)) {
+                  --limit;
+                }
               } else {
                 if (callback(documentId)) {
                   --limit; // count only existing documents
@@ -678,6 +681,7 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
   if (node) {
     std::string_view extraFieldName(nullptr, 0);
     if (mutableConditionIdx >= 0) {
+      // FIXME: move this logic somewhere outside?
       TRI_ASSERT(mutableConditionIdx < static_cast<int64_t>(node->numMembers()));
       // Check if we are in traversal. If so try to find extra. If we are searching for '_to' then
       // "next" step (and our extra) is '_from' and vice versa

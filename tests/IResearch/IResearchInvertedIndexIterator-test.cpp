@@ -62,7 +62,7 @@ class IResearchInvertedIndexIteratorTest
       {arangodb::LocalDocumentId(2), arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})")},
       {arangodb::LocalDocumentId(3), arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})")},
       {arangodb::LocalDocumentId(4), arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})")},
-      {arangodb::LocalDocumentId(5), arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})")},
+      {arangodb::LocalDocumentId(5), arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})")}
   };
   arangodb::tests::mocks::MockAqlServer _server{false};
   std::shared_ptr<arangodb::LogicalCollection> _analyzers;
@@ -170,13 +170,10 @@ class IResearchInvertedIndexIteratorTest
     return vpack;
   }
 
-  ~IResearchInvertedIndexIteratorTest() {
-    _collection.reset();
-  }
-
   void executeIteratorTest(std::string_view queryString,
                            std::function<void(arangodb::IndexIterator* it)> const& test,
                            std::string_view refName = "d",
+                           std::string_view extraName = "",
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
                            int mutableConditionIdx = -1) {
     SCOPED_TRACE(testing::Message("ExecuteIteratorTest failed for query ") << queryString); 
@@ -226,7 +223,6 @@ class IResearchInvertedIndexIteratorTest
     test(iterator.get());
   }
 
-
   arangodb::LogicalCollection& collection() {return *_collection;}
   TRI_vocbase_t& vocbase() { return *_vocbase; }
   arangodb::iresearch::IResearchInvertedIndex& index() { return *_index.get(); }
@@ -234,11 +230,13 @@ class IResearchInvertedIndexIteratorTest
 };  // IResearchFilterSetup
 
 /// *IResearchInvertedIndexIteratorTest*:*IResearchInvertedIndex*:*LateMaterialization*:*NoMaterialization* --gtest_break_on_failure
-TEST_F(IResearchInvertedIndexIteratorTest, test_skip) {
+TEST_F(IResearchInvertedIndexIteratorTest, test_skipAll) {
   std::string queryString{ R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
   auto test = [](arangodb::IndexIterator* iterator) {
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasCovering());
+    ASSERT_FALSE(iterator->hasExtra());
     uint64_t skipped{0};
     iterator->skipAll(skipped);
     ASSERT_EQ(3, skipped);
@@ -257,6 +255,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next) {
     ASSERT_EQ(1, skipped);
     ASSERT_TRUE(iterator->hasMore());
     ASSERT_TRUE(iterator->hasCovering());
+    ASSERT_FALSE(iterator->hasExtra());
     std::vector<arangodb::LocalDocumentId> docs;
     auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
       docs.push_back(token);
@@ -272,6 +271,35 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next) {
   executeIteratorTest(queryString, test);
 }
 
+TEST_F(IResearchInvertedIndexIteratorTest, test_skip_next_skip) {
+  std::string queryString{ R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
+  auto test = [](arangodb::IndexIterator* iterator) {
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    uint64_t skipped{0};
+    iterator->skip(1, skipped);
+    ASSERT_EQ(1, skipped);
+    ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasCovering());
+    ASSERT_FALSE(iterator->hasExtra());
+    std::vector<arangodb::LocalDocumentId> docs;
+    auto docCallback = [&docs](arangodb::LocalDocumentId const& token) {
+      docs.push_back(token);
+      return true;
+    };
+    ASSERT_TRUE(iterator->next(docCallback, 1));
+    ASSERT_EQ(docs.size(), 1);
+    // we can't assume order of the documents. Let's just check invalid ones are not returned
+    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());
+    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(5)), docs.end());
+    ASSERT_TRUE(iterator->hasMore());
+    uint64_t skipped2{0};
+    iterator->skip(1000, skipped2);
+    ASSERT_EQ(1, skipped2);
+  };
+  executeIteratorTest(queryString, test);
+}
+
 TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
   std::string queryString{ R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
   auto expectedDocs = data();
@@ -283,6 +311,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
     ASSERT_EQ(1, skipped);
     ASSERT_TRUE(iterator->hasMore());
     ASSERT_TRUE(iterator->hasCovering());
+    ASSERT_FALSE(iterator->hasExtra());
     std::vector<arangodb::LocalDocumentId> docs;
     
     auto docCallback = [&expectedDocs, &docs](arangodb::LocalDocumentId token,
@@ -331,6 +360,79 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
     // we can't assume order of the documents. Let's just check invalid ones are not returned
     ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());
     ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(5)), docs.end());
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test);
+}
+
+TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_skip) {
+  std::string queryString{ R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" OR d.b == "3" RETURN d)"};
+  auto expectedDocs = data();
+  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    uint64_t skipped{0};
+    iterator->skip(1, skipped);
+    ASSERT_EQ(1, skipped);
+    ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasCovering());
+    ASSERT_FALSE(iterator->hasExtra());
+    std::vector<arangodb::LocalDocumentId> docs;
+    
+    auto docCallback = [&expectedDocs, &docs](arangodb::LocalDocumentId token,
+                                              arangodb::IndexIterator::CoveringData* data) {
+      docs.push_back(token);
+      EXPECT_NE(data, nullptr);
+      if (data) {
+        EXPECT_TRUE(data->isArray());
+        auto invalid = data->at(4);
+        EXPECT_TRUE(invalid.isNone());
+        {
+          auto slice0  = data->at(0);
+          EXPECT_TRUE(slice0.isString());
+          if (slice0.isString()) {
+            EXPECT_EQ(slice0.copyString(),
+                      expectedDocs[token]->slice().get("a").copyString());
+          }
+          auto slice1  = data->at(1);
+          EXPECT_TRUE(slice1.isString());
+          if (slice1.isString()) {
+            EXPECT_EQ(slice1.copyString(),
+                      expectedDocs[token]->slice().get("b").copyString());
+          }
+        }
+        {
+          auto slice2  = data->at(2);
+          EXPECT_TRUE(slice2.isString());
+          if (slice2.isString()) {
+            EXPECT_EQ(slice2.copyString(),
+                      expectedDocs[token]->slice().get("a").copyString());
+          }
+        }
+        {
+          auto slice3  = data->at(3);
+          EXPECT_TRUE(slice3.isString());
+          if (slice3.isString()) {
+            EXPECT_EQ(slice3.copyString(),
+                      expectedDocs[token]->slice().get("b").copyString());
+          }
+        }
+      }
+      return true;
+    };
+    ASSERT_TRUE(iterator->nextCovering(docCallback, 1));
+    ASSERT_EQ(docs.size(), 1);
+    // we can't assume order of the documents. Let's just check invalid ones are not returned
+    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());
+    ASSERT_TRUE(iterator->hasMore());
+    docs.clear();
+    ASSERT_TRUE(iterator->nextCovering(docCallback, 1));
+    ASSERT_EQ(docs.size(), 1);
+    // we can't assume order of the documents. Let's just check invalid ones are not returned
+    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());
+    uint64_t skipped2{0};
+    iterator->skipAll(skipped2);
+    ASSERT_EQ(1, skipped2);
     ASSERT_FALSE(iterator->hasMore());
   };
   executeIteratorTest(queryString, test);
