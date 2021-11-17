@@ -827,14 +827,14 @@ bool CommTask::handleContentEncoding(GeneralRequest& req) {
     size_t len = raw.size();
     if (encoding == "gzip") {
       VPackBuffer<uint8_t> dst;
-      if (!arangodb::encoding::gzipUncompress(src, len, dst)) {
+      if (arangodb::encoding::gzipUncompress(src, len, dst) != TRI_ERROR_NO_ERROR) {
         return false;
       }
       req.setPayload(std::move(dst));
       return true;
     } else if (encoding == "deflate") {
       VPackBuffer<uint8_t> dst;
-      if (!arangodb::encoding::gzipDeflate(src, len, dst)) {
+      if (arangodb::encoding::gzipInflate(src, len, dst) != TRI_ERROR_NO_ERROR) {
         return false;
       }
       req.setPayload(std::move(dst));

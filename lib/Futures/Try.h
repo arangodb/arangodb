@@ -391,7 +391,7 @@ class Try<void> {
   std::exception_ptr _exception;
 };
 
-template <class F, typename R = typename std::result_of<F()>::type>
+template <class F, typename R = typename std::invoke_result<F>::type>
 typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type makeTryWith(F&& func) noexcept {
   try {
     return Try<R>(std::in_place, func());
@@ -400,7 +400,7 @@ typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type makeTryWith
   }
 }
 
-template <class F, typename R = typename std::result_of<F()>::type>
+template <class F, typename R = typename std::invoke_result<F>::type>
 typename std::enable_if<std::is_same<R, void>::value, Try<void>>::type makeTryWith(F&& func) noexcept {
   try {
     func();

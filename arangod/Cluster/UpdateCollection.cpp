@@ -104,7 +104,7 @@ bool UpdateCollection::first() {
       // to Current in due course.
       if (!followersToDrop.empty()) {
         TRI_IF_FAILURE("Maintenance::doNotRemoveUnPlannedFollowers") {
-          LOG_TOPIC("de342", ERR, Logger::MAINTENANCE)
+          LOG_TOPIC("de342", INFO, Logger::MAINTENANCE)
               << "Skipping check for followers not in Plan because of failure "
                  "point.";
           return false;
