@@ -115,6 +115,7 @@ void ClusterProvider::clear() {
     _resourceMonitor->decreaseMemoryUsage(
         costPerVertexOrEdgeType + (entry.second.size() * (costPerVertexOrEdgeType * 2)));
   }
+  _vertexConnectedEdges.clear();
 }
 
 auto ClusterProvider::startVertex(VertexType vertex, size_t depth, double weight) -> Step {
@@ -355,9 +356,13 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   // Note: This disables the ScopeGuard
   futures.clear();
 
-  _resourceMonitor->increaseMemoryUsage(
-      costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2)));
-  _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+  std::uint64_t memoryPerItem = costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
+  ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
+
+  auto [it, inserted] = _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+  if (inserted) {
+    guard.steal();
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
