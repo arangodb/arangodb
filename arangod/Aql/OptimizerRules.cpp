@@ -8811,6 +8811,10 @@ class NodeInformation {
     return _loc;
   }
 
+  void setAllowedLocation(ExecutionLocation loc) {
+    _loc = loc;
+  }
+
  private:
   ExecutionNode* _node;
   ExecutionNode* _shardBy;
@@ -8860,7 +8864,14 @@ namespace {
         // Use Distribute where possible
         auto const [isSmart, isDisjoint, collection] =
             extractSmartnessAndCollection(targetNode);
-        if (isModificationNode(nodeType) || (isGraphNode(nodeType) && isSmart && isDisjoint)) {
+        TRI_ASSERT(collection != nullptr);
+        bool defaultSharding = collection->usesDefaultSharding();
+        LOG_DEVEL << "sharding: " <<defaultSharding << " type: " << targetNode->getTypeString() << " " << isModificationNode(nodeType);
+        bool allowedModifications =
+            isModificationNode(nodeType) &&
+            (!(nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) ||
+             defaultSharding);
+        if (allowedModifications || (isGraphNode(nodeType) && isSmart && isDisjoint)) {
           return createDistributeNodeFor(plan, targetNode);
         }
       }
@@ -9012,6 +9023,25 @@ namespace {
     TRI_ASSERT(lower.getNode() != upper.getNode());
     auto lowerLoc = lower.getAllowedLocation();
     auto upperLoc = upper.getAllowedLocation();
+    if (!upperLoc.isStrict()) {
+      // Special protection against moving past the DISTRIBUTE_INPUT with our distribute node
+      // TODO: This should be done in a nicer way, right now this is kind of hacki.
+      TRI_ASSERT(upper.getNode()->getType() == ExecutionNode::CALCULATION);
+      if (nodeEligibleForDistribute(lower.getShardByNode()->getType())) {
+        auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(lower.getShardByNode());
+
+        VarSet variablesToTest;
+        variablesToTest.insert(inputVariable);
+        if (upper.getNode()->setsVariable(variablesToTest)) {
+          LOG_DEVEL << "Trigger protection against crossing DISTRIBUTE producer: You shall not pass!";
+          upper.setAllowedLocation(ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR));
+          upperLoc = upper.getAllowedLocation();
+        }
+      } else {
+        // Just ignore the distribute input, we can keep it wherever it is located right now
+        return lower;
+      }
+    }
     TRI_ASSERT(lowerLoc.isStrict());
     TRI_ASSERT(upperLoc.isStrict());
     if (upperLoc.isSubqueryEnd()) {
@@ -9159,6 +9189,21 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
       auto loc = n->getAllowedLocation();
       if (loc.isStrict()) {
         relevantNodes.emplace_back(n);
+      }
+      // Temporary protection to move data above the distribute producer
+      // TODO: This needs to be done in an easier way. There is some special handling required for this
+      // Node in some cases.
+      if (n->getType() == ExecutionNode::CALCULATION) {
+        auto calc = ExecutionNode::castTo<CalculationNode*>(n);
+        auto expr = calc->expression()->node();
+        TRI_ASSERT(expr != nullptr);
+        if (expr->type == NODE_TYPE_FCALL) {
+          auto func = static_cast<Function const*>(expr->getData());
+          if (func->name == "MAKE_DISTRIBUTE_INPUT" || func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT") {
+            relevantNodes.emplace_back(n);
+          }
+        }
+
       }
       // Always continue walking
       return false;
