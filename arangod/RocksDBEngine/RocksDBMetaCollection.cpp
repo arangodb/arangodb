@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -44,6 +45,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
@@ -276,6 +278,176 @@ void RocksDBMetaCollection::compact() {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
     index->compact();
   }
+}
+
+void RocksDBMetaCollection::checkConsistency(velocypack::Builder& builder) {
+  TRI_ASSERT(!builder.isOpenObject() && !builder.isOpenArray());
+  builder.openObject();
+
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
+    
+  RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
+   
+  std::shared_ptr<Index> primaryIndex;
+  {
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    if (_indexes.empty() || (*_indexes.begin())->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find primary index");
+    }
+    primaryIndex = *_indexes.begin();
+  }
+  TRI_ASSERT(primaryIndex != nullptr);
+  uint64_t primaryIndexId = static_cast<RocksDBPrimaryIndex*>(primaryIndex.get())->objectId();
+      
+  RocksDBKeyBounds documentBounds = this->bounds();
+  rocksdb::ColumnFamilyHandle* documentsCf = documentBounds.columnFamily();
+
+  RocksDBKeyBounds primaryBounds = RocksDBKeyBounds::PrimaryIndex(primaryIndexId);
+  rocksdb::ColumnFamilyHandle* primaryCf = primaryBounds.columnFamily();
+    
+  // acquire a snapshot
+  rocksdb::Snapshot const* snapshot = db->GetSnapshot();
+  
+  try {
+    // scan all documents in documents column family
+    {
+      rocksdb::Slice lower(documentBounds.start());
+      rocksdb::Slice upper(documentBounds.end());
+
+      rocksdb::ReadOptions readOptions;
+      readOptions.snapshot = snapshot;
+      readOptions.prefix_same_as_start = true;
+      readOptions.iterate_upper_bound = &upper;
+      readOptions.total_order_seek = false;
+      readOptions.verify_checksums = false;
+      readOptions.fill_cache = true;
+
+      rocksdb::Comparator const* cmp = documentsCf->GetComparator();
+      std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, documentsCf));
+    
+      uint64_t count = 0;
+      RocksDBKey primaryKeyBuilder;
+
+      builder.add("documents", VPackValue(VPackValueType::Object));
+      builder.add("errors", VPackValue(VPackValueType::Array));
+
+      it->Seek(lower);
+      while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
+        LocalDocumentId docId = RocksDBKey::documentId(it->key());
+        VPackSlice doc = velocypack::Slice(reinterpret_cast<uint8_t const*>(it->value().data()));
+
+        VPackSlice keySlice;
+        RevisionId revision;
+        transaction::helpers::extractKeyAndRevFromDocument(doc, keySlice, revision);
+
+        primaryKeyBuilder.constructPrimaryIndexValue(primaryIndexId, keySlice.stringRef());
+        
+        rocksdb::PinnableSlice val;
+        rocksdb::Status s = db->Get(readOptions, primaryCf, primaryKeyBuilder.string(), &val); 
+
+        if (s.IsNotFound()) {
+          builder.openObject();
+          builder.add("key", keySlice);
+          builder.add("documentIdInDocuments", VPackValue(docId.id()));
+          builder.add("documentIdInIndex", VPackValue(VPackValueType::Null));
+          builder.add("error", VPackValue("key found in documents cf but not in primary index"));
+          builder.close();
+        } else if (!s.ok()) {
+          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+        } else if (docId != RocksDBValue::documentId(val)) {
+          builder.openObject();
+          builder.add("key", keySlice);
+          builder.add("documentIdInDocuments", VPackValue(docId.id()));
+          builder.add("documentIdInIndex", VPackValue(RocksDBValue::documentId(val).id()));
+          builder.add("error", VPackValue("key has a different document id in documents and primary index"));
+          builder.close();
+        }
+        
+        ++count;
+        it->Next();
+      }
+      builder.close(); // errors
+      builder.add("count", VPackValue(count));
+      builder.close(); // documents
+    }
+    
+    // scan all documents in primary index
+    {
+      rocksdb::Slice lower(primaryBounds.start());
+      rocksdb::Slice upper(primaryBounds.end());
+
+      rocksdb::ReadOptions readOptions;
+      readOptions.snapshot = snapshot;
+      readOptions.prefix_same_as_start = true;
+      readOptions.iterate_upper_bound = &upper;
+      readOptions.total_order_seek = false;
+      readOptions.verify_checksums = false;
+      readOptions.fill_cache = true;
+
+      rocksdb::Comparator const* cmp = primaryCf->GetComparator();
+      std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, primaryCf));
+    
+      uint64_t count = 0;
+      RocksDBKey keyBuilder;
+      
+      builder.add("primary", VPackValue(VPackValueType::Object));
+      builder.add("errors", VPackValue(VPackValueType::Array));
+
+      it->Seek(lower);
+      while (it->Valid() && cmp->Compare(it->key(), upper) < 0) {
+        LocalDocumentId docId = RocksDBValue::documentId(it->value());
+        VPackStringRef key = RocksDBKey::primaryKey(it->key());
+
+        keyBuilder.constructDocument(objectId(), docId);
+        
+        rocksdb::PinnableSlice val;
+        rocksdb::Status s = db->Get(readOptions, documentsCf, keyBuilder.string(), &val); 
+
+        if (s.IsNotFound()) {
+          builder.openObject();
+          builder.add("key", VPackValuePair(key.data(), key.size(), VPackValueType::String));
+          builder.add("documentIdInIndex", VPackValue(docId.id()));
+          builder.add("documentIdInDocuments", VPackValue(VPackValueType::Null));
+          builder.add("error", VPackValue("key found in primary index cf but not in documents"));
+          builder.close();
+        } else if (!s.ok()) {
+          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+        } else {
+          VPackSlice doc = velocypack::Slice(reinterpret_cast<uint8_t const*>(val.data()));
+
+          VPackSlice keySlice;
+          RevisionId revision;
+          transaction::helpers::extractKeyAndRevFromDocument(doc, keySlice, revision);
+
+          if (keySlice.stringRef() != key) {
+            builder.openObject();
+            builder.add("key", VPackValuePair(key.data(), key.size(), VPackValueType::String));
+            builder.add("keyInIndex", VPackValuePair(key.data(), key.size(), VPackValueType::String));
+            builder.add("keyInDocuments", keySlice);
+            builder.add(VPackValue("key has a different document id in documents and primary index"));
+            builder.close();
+          }
+        }
+        
+        ++count;
+        it->Next();
+      }
+      builder.close(); // errors
+      builder.add("count", VPackValue(count));
+      builder.close(); // documents
+    }
+
+    db->ReleaseSnapshot(snapshot);
+  } catch (...) {
+    // always free the snapshot
+    db->ReleaseSnapshot(snapshot);
+    throw;
+  }
+  
+  builder.close();
 }
 
 void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {

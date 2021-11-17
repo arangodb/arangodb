@@ -167,6 +167,25 @@ static void JS_CompactCollection(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_CheckConsistency(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  auto* physical = toRocksDBCollection(*collection);
+  VPackBuilder builder;
+  physical->checkConsistency(builder);
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_EstimateCollectionSize(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -243,7 +262,7 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
     RocksDBEngine& engine = server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
     double ttl = 3600;
-    // the "17" is a magic number number. we just need any client id to proceed.
+    // the "17" is a magic number. we just need any client id to proceed.
     RocksDBReplicationContext* ctx 
       = manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
     if (ctx == nullptr) {
@@ -374,6 +393,9 @@ void RocksDBV8Functions::registerResources() {
                        TRI_V8_ASCII_STRING(isolate, "recalculateCount"),
                        JS_RecalculateCounts, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "compact"), JS_CompactCollection);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "checkConsistency"),
+                       JS_CheckConsistency, true);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
                        JS_EstimateCollectionSize);

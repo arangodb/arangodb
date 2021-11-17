@@ -70,6 +70,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// triggers rocksdb compaction for documentDB and indexes
   void compact() override final;
   
+  /// check consistency of documents and the primary index
+  void checkConsistency(velocypack::Builder& builder);
+  
   /// estimate size of collection and indexes
   void estimateSize(velocypack::Builder& builder);
 
