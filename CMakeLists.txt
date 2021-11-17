@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.13)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -677,20 +677,6 @@ if (APPLE)
 endif ()
 
 ################################################################################
-## INCLUDE DIRECTORIES
-################################################################################
-
-include_directories(${PROJECT_BINARY_DIR})
-include_directories(${PROJECT_BINARY_DIR}/lib)
-
-include_directories(${PROJECT_SOURCE_DIR}/arangod)
-include_directories(${PROJECT_SOURCE_DIR}/lib)
-
-if (CUSTOM_INCLUDES)
-  include_directories(${CUSTOM_INCLUDES})
-endif ()
-
-################################################################################
 ## TARGET ARCHITECTURE
 ################################################################################
 
@@ -1176,7 +1162,6 @@ endif ()
 
 message(${OPENSSL_INCLUDE_DIR})
 
-include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
 add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
 add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
@@ -1231,29 +1216,11 @@ add_subdirectory(3rdParty)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
-
-################################################################################
-## 3rd Party INCLUDE DIRECTORIES
-################################################################################
-
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/function2)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
-
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
 
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
-include_directories(${ROCKSDB_INCLUDE_DIR})
-
-set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
 add_dependencies(rocksdb snappy)
 
@@ -1271,16 +1238,9 @@ add_definitions("-DVELOCYPACK_XXHASH=1")
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 ################################################################################
-## ICU
-################################################################################
-
-include_directories(SYSTEM ${ICU_INCLUDE_DIR})
-
-################################################################################
 ## V8
 ################################################################################
 
-include_directories(SYSTEM ${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
@@ -1291,7 +1251,6 @@ endforeach()
 ## ZLIB
 ################################################################################
 
-include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
 

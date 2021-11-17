@@ -1,5 +1,3 @@
-include_directories(.)
-
 # ----------------------------------------
 # Greenspun tests
 # ----------------------------------------
@@ -404,7 +402,9 @@ if (USE_ENTERPRISE)
 endif ()
 
 target_include_directories(arangodbtests PRIVATE
-  ${INCLUDE_DIRECTORIES}
+  ${PROJECT_SOURCE_DIR}/arangod
+  ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
 

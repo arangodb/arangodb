@@ -119,7 +119,7 @@ TEST_F(VPackDeserializerBasicTest, test03) {
         map_deserializer<conditional_deserializer<condition_deserializer_pair<is_object_condition, unpack_proxy<recursive_deserializer, deserialized_type>>,
                                                   conditional_default<values::value_deserializer<std::string>>>,
                          my_map>;
-    using factory = utilities::constructor_factory<deserialized_type>;
+    using factory = deserializer::utilities::constructor_factory<deserialized_type>;
     using constructed_type = deserialized_type;
   };
 
@@ -143,8 +143,8 @@ TEST_F(VPackDeserializerBasicTest, test04) {
   };
 
   using deserial =
-      tuple_deserializer<utilities::constructing_deserializer<non_default_constructible_type, values::value_deserializer<double>>,
-                         utilities::constructing_deserializer<non_copyable_type, values::value_deserializer<double>>>;
+      tuple_deserializer<deserializer::utilities::constructing_deserializer<non_default_constructible_type, values::value_deserializer<double>>,
+                         deserializer::utilities::constructing_deserializer<non_copyable_type, values::value_deserializer<double>>>;
 
   auto buffer = R"=([12, 11])="_vpack;
   auto slice = recording_slice::from_buffer(buffer);
@@ -197,7 +197,7 @@ struct graph_options_validator {
 
 /* clang-format off */
 
-using graph_options_deserializer = utilities::constructing_deserializer<graph_options, parameter_list<
+using graph_options_deserializer = deserializer::utilities::constructing_deserializer<graph_options, parameter_list<
     factory_optional_value_parameter<str_smart_graph_attribute, std::string_view>,
     factory_simple_parameter<str_number_of_shards, uint32_t, false, values::numeric_value<uint32_t, 1>>,
     factory_simple_parameter<str_replication_factor, uint32_t, false, values::numeric_value<uint32_t, 1>>,
@@ -219,7 +219,7 @@ constexpr const char str_to[] = "to";
 template<typename D, template <typename> typename C>
 using non_empty_array_deserializer = validate<
     array_deserializer<D, C>,
-    utilities::not_empty_validator>;
+    deserializer::utilities::not_empty_validator>;
 
 using non_empty_string_view_array_deserializer = non_empty_array_deserializer<
     values::value_deserializer<std::string_view>, my_vector>;
@@ -227,11 +227,11 @@ using non_empty_string_view_array_deserializer = non_empty_array_deserializer<
 template<typename S>
 using non_empty_string_container = validate<
     values::value_deserializer<S>,
-    utilities::not_empty_validator>;
+    deserializer::utilities::not_empty_validator>;
 
 using non_empty_string_view = non_empty_string_container<std::string_view>;
 
-using graph_edge_definition_deserializer = utilities::constructing_deserializer<graph_edge_definition, parameter_list<
+using graph_edge_definition_deserializer = deserializer::utilities::constructing_deserializer<graph_edge_definition, parameter_list<
     factory_deserialized_parameter<str_collection, non_empty_string_view, true>,
     factory_deserialized_parameter<str_from, non_empty_string_view_array_deserializer, true>,
     factory_deserialized_parameter<str_to, non_empty_string_view_array_deserializer, true>
@@ -252,7 +252,7 @@ constexpr const char str_is_smart[] = "isSmart";
 constexpr const char str_edge_definitions[] = "edgeDefinitions";
 constexpr const char str_options[] = "options";
 
-using graph_definition_deserializer = utilities::constructing_deserializer<graph_definition, parameter_list<
+using graph_definition_deserializer = deserializer::utilities::constructing_deserializer<graph_definition, parameter_list<
     factory_deserialized_parameter<str_name, non_empty_string_view, true>,
     factory_simple_parameter<str_is_smart, bool, false, values::numeric_value<bool, false>>,
     factory_deserialized_parameter<str_edge_definitions, graph_edge_definition_list_deserializer, true>,
@@ -302,7 +302,7 @@ TEST_F(VPackDeserializerBasicTest, test_ignore_unknown_hint) {
       int field1;
       int field2;
     };
-    using TestDeserializer = utilities::constructing_deserializer<
+    using TestDeserializer = deserializer::utilities::constructing_deserializer<
         TestStruct, parameter_list<factory_simple_parameter<field1_name, int, true, values::numeric_value<int, 0>>,
                                    factory_simple_parameter<field2_name, int, false, values::numeric_value<int, 0>>>>;
 

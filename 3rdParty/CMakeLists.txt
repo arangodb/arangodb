@@ -40,7 +40,7 @@ function (add_snappy)
     set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
     set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
     set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)
-    set(SNAPPY_LIB "snappy" PARENT_SCOPE)
+    set(SNAPPY_LIB "snappy")
     set(SNAPPY_FUZZING_BUILD OFF CACHE BOOL "build Snappy for fuzzing")
     set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests" FORCE)
     set(SNAPPY_BUILD_BENCHMARKS OFF CACHE BOOL "disable Snappy benchmarks" FORCE)
@@ -52,7 +52,6 @@ endfunction ()
 add_snappy()
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
 set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
-set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
 
 ################################################################################
 ## LIBUNWIND
@@ -186,8 +185,10 @@ unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
-include_directories(${ROCKSDB_INCLUDE_DIR})
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
+add_library(rocksdb_interface INTERFACE)
+target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
+target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
 
 ################################################################################
 # llhttp
@@ -217,6 +218,25 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 
 set(IMMER_VERSION "0.6.2")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
+
+################################################################################
+## DATE
+################################################################################
+
+add_library(date_interface INTERFACE)
+target_include_directories(date_interface SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/date/include)
+
+################################################################################
+## Linenoise
+################################################################################
+
+add_library(linenoise-ng STATIC
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp)
+
+target_include_directories(linenoise-ng SYSTEM PUBLIC
+  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 
 ################################################################################
 ## LINK_DIRECTORIES
@@ -270,7 +290,10 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
   )
 
-target_link_libraries(fuerte llhttp nghttp2)
+target_link_libraries(fuerte PUBLIC nghttp2)
+target_link_libraries(fuerte PUBLIC llhttp)
+target_link_libraries(fuerte PUBLIC boost_system)
+target_link_libraries(fuerte PUBLIC velocypack)
 
 include(CheckTypeSize)
 check_type_size("ssize_t" SIZEOF_SSIZE_T)
@@ -280,10 +303,8 @@ if(SIZEOF_SSIZE_T STREQUAL "")
   target_compile_definitions(fuerte PRIVATE ssize_t=int)
 endif()
 
-target_include_directories(fuerte SYSTEM PRIVATE
-  "${Boost_INCLUDE_DIRS}/"
-  "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
-  "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
+target_include_directories(fuerte SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
+target_include_directories(fuerte SYSTEM PUBLIC "${OPENSSL_INCLUDE_DIR}")
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 

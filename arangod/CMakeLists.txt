@@ -1,7 +1,5 @@
 #- * - mode : CMAKE; - * -
 
-include_directories(.)
-
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 ################################################################################
@@ -833,6 +831,8 @@ include(RocksDBEngine/CMakeLists.txt)
 
 add_library(arango_zkd STATIC Zkd/ZkdHelper.cpp)
 
+target_link_libraries(arango_zkd arango)
+
 add_library(arango_restart_action STATIC
   RestServer/RestartAction.cpp
 )
@@ -917,8 +917,9 @@ add_library(arango_rocksdb STATIC
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
 target_link_libraries(arango_rocksdb arango_zkd)
-
-add_dependencies(arango_rocksdb snappy)
+target_link_libraries(arango_rocksdb snappy)
+target_link_libraries(arango_rocksdb rocksdb)
+target_link_libraries(arango_rocksdb rocksdb_interface)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
@@ -966,12 +967,13 @@ target_link_libraries(arango_aql arango_network)
 target_link_libraries(arango_aql immer)
 
 target_link_libraries(arango_cache arango)
-target_link_libraries(arango_cache boost_system)
 target_link_libraries(arango_cache arango::validation)
+target_link_libraries(arango_cache boost_system)
 
 target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
+target_link_libraries(arango_cluster_engine arango_v8)
 
 target_include_directories(arango_cluster_engine
     PUBLIC ${IRESEARCH_INCLUDE}
@@ -984,17 +986,22 @@ target_link_libraries(arango_common_rest_handler arango_cluster_methods)
 target_link_libraries(arango_common_rest_handler arango_utils)
 target_link_libraries(arango_common_rest_handler arango_iresearch)
 
+target_link_libraries(arango_geo s2)
+
 target_link_libraries(arango_graph arango)
 target_link_libraries(arango_graph arango_aql)
 target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
 target_link_libraries(arango_graph boost_boost)
 
+target_link_libraries(arango_health arango)
+
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
 target_link_libraries(arango_indexes arango::validation)
 target_link_libraries(arango_indexes arango_replication2)
 target_link_libraries(arango_indexes immer)
+target_link_libraries(arango_indexes date_interface)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
@@ -1003,6 +1010,7 @@ target_link_libraries(arango_metrics arango)
 target_link_libraries(arango_metrics arango::validation)
 target_link_libraries(arango_metrics arango_replication2)
 target_link_libraries(arango_metrics immer)
+target_link_libraries(arango_metrics rocksdb_interface)
 
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
@@ -1026,7 +1034,7 @@ target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
 target_link_libraries(arango_replication2 arango_network)
 
-target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
+target_link_libraries(arango_rocksdb rocksdb)
 target_link_libraries(arango_rocksdb arango_cache)
 target_link_libraries(arango_rocksdb arango_common_rest_handler)
 target_link_libraries(arango_rocksdb arango_geo)
@@ -1095,7 +1103,6 @@ target_link_libraries(arangoserver arango_vocbase)
 target_link_libraries(arangoserver boost_boost)
 
 target_link_libraries(arangoserver
-  ${LINENOISE_LIBS} # Is this ever anything but empty?
   ${MSVC_LIBS}
 )
 
@@ -1168,7 +1175,9 @@ foreach(TARGET
   arango_graph
   arango_health
   arango_indexes
+  arango_iresearch
   arango_metrics
+  arango_network
   arango_pregel
   arango_replication
   arango_replication2
@@ -1181,7 +1190,8 @@ foreach(TARGET
   arangod
   arangoserver
 )
-  target_include_directories(${TARGET} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  target_include_directories(${TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
   if (USE_FAIL_ON_WARNINGS)
     if (MSVC)
