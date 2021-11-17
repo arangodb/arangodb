@@ -150,7 +150,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SkipResultTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
-  Aql/SortLimit-test.cpp
+  Aql/SortLimitTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
@@ -169,18 +169,19 @@ set(ARANGODB_TESTS_SOURCES
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Auth/UserManagerClusterTest.cpp
-  Basics/conversions-test.cpp
-  Basics/csv-test.cpp
+  Basics/ConversionsTest.cpp
+  Basics/CsvTest.cpp
   Basics/datetime.cpp
-  Basics/files-test.cpp
-  Basics/fpconv-test.cpp
-  Basics/hashes-test.cpp
-  Basics/overload-test.cpp
-  Basics/priorityqueue-test.cpp
-  Basics/string-buffer-test.cpp
-  Basics/string-test.cpp
-  Basics/string-utf8-normalize-test.cpp
-  Basics/string-utf8-test.cpp
+  Basics/FilesTest.cpp
+  Basics/FpConvTest.cpp
+  Basics/HashesTest.cpp
+  Basics/OverloadTest.cpp
+  Basics/PriorityQueueTest.cpp
+  Basics/StringBufferTest.cpp
+  Basics/StringBufferInternalTest.cpp
+  Basics/StringTest.cpp
+  Basics/StringUtf8NormalizeTest.cpp
+  Basics/StringUtf8Test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/CpuUsageSnapshotTest.cpp
@@ -200,7 +201,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/UnshackledMutexTest.cpp
-  Basics/VelocyPackHelper-test.cpp
+  Basics/VelocyPackHelperTest.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
@@ -220,14 +221,14 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
   Cluster/RebootTrackerTest.cpp
-  Cluster/QueryAnalyzerRevisions-test.cpp
+  Cluster/QueryAnalyzerRevisionsTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
-  Futures/Future-test.cpp
-  Futures/Promise-test.cpp
-  Futures/Try-test.cpp
+  Futures/FutureTest.cpp
+  Futures/PromiseTest.cpp
+  Futures/TryTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp
@@ -264,12 +265,12 @@ set(ARANGODB_TESTS_SOURCES
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
-  RestHandler/RestAnalyzerHandler-test.cpp
-  RestHandler/RestDocumentHandler-test.cpp
-  RestHandler/RestUsersHandler-test.cpp
-  RestHandler/RestViewHandler-test.cpp
-  RestHandler/VstResponse-test.cpp
-  RestServer/FlushFeature-test.cpp
+  RestHandler/RestAnalyzerHandlerTest.cpp
+  RestHandler/RestDocumentHandlerTest.cpp
+  RestHandler/RestUsersHandlerTest.cpp
+  RestHandler/RestViewHandlerTest.cpp
+  RestHandler/VstResponseTest.cpp
+  RestServer/FlushFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
@@ -282,20 +283,20 @@ set(ARANGODB_TESTS_SOURCES
   SimpleHttpClient/HttpResponseCheckerTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
-  Transaction/Context-test.cpp
+  Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp
-  Transaction/Manager-test.cpp
-  Transaction/RestTransactionHandler-test.cpp
-  Utils/CollectionNameResolver-test.cpp
+  Transaction/ManagerTest.cpp
+  Transaction/RestTransactionHandlerTest.cpp
+  Utils/CollectionNameResolverTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
-  V8Server/v8-analyzers-test.cpp
-  V8Server/v8-users-test.cpp
-  V8Server/v8-views-test.cpp
-  VocBase/vocbase-test.cpp
-  VocBase/KeyGenerator-test.cpp
-  VocBase/LogicalDataSource-test.cpp
-  VocBase/LogicalView-test.cpp
+  V8Server/V8AnalyzersTest.cpp
+  V8Server/V8UsersTest.cpp
+  V8Server/V8ViewsTest.cpp
+  VocBase/VocbaseTest.cpp
+  VocBase/KeyGeneratorTest.cpp
+  VocBase/LogicalDataSourceTest.cpp
+  VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
