@@ -28,7 +28,7 @@ namespace arangodb {
 namespace aql {
 class ExecutionLocation {
  public:
-  enum LocationType { ANYWHERE, DBSERVER, COORDINATOR, SUBQUERY_START, SUBQUERY_END };
+  enum LocationType { ANYWHERE, DBSERVER, COORDINATOR, SUBQUERY_START, SUBQUERY_END, REQUIRES_CONTEXT };
 
  public:
   ExecutionLocation(LocationType location) : _location(location) {}
@@ -54,7 +54,17 @@ class ExecutionLocation {
    * Node in the location planning.
    */
   bool isStrict() const {
-    return _location != LocationType::ANYWHERE;
+    return _location != LocationType::ANYWHERE && _location != LocationType::REQUIRES_CONTEXT;
+  }
+
+  /**
+   * @brief a requiresContext ExecutionLocation can
+   * in theory be executed everywhere, but has sideeffects
+   * on it's surrounding. It may also be restricted to a location
+   * if the surrounding does not match.
+   */
+  bool requiresContext() const {
+    return _location == LocationType::REQUIRES_CONTEXT;
   }
 
   friend auto operator<<(std::ostream& out, ExecutionLocation const& location) -> std::ostream&;
