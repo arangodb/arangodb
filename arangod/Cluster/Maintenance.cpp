@@ -1254,7 +1254,7 @@ static void reportCurrentLocalReplicatedLog(VPackBuilder& report,
   if (requireUpdateLocal) {
     // Check Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId>/currentTerm != currentTerm
     // if so, update Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId> with
-    //  {"currentTerm": currentTerm, "spearHead": {"index": last-index, "term": last-term}}
+    //  {"term": currentTerm, "spearHead": {"index": last-index, "term": last-term}}
     // and precondition
     //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
 
