@@ -332,6 +332,9 @@ void OptimizerRulesFeature::addRules() {
   registerRule("insert-distribute-calculations",
                insertDistributeCalculationsRule,
                OptimizerRule::insertDistributeCalculationsRule,
+               // TODO: the following flags must be fixed when activating the
+               // new distribution mechanism: the rule must be enabled by default
+               // and cannot be disabled, and must be cluster-only.
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
                                        // OptimizerRule::Flags::ClusterOnly));
@@ -463,6 +466,9 @@ void OptimizerRulesFeature::addRules() {
   // to determine where (coord, db server) to carry out the individual parts
   // of the query and the shards that are required.
   registerRule("distribute-query", distributeQueryRule, OptimizerRule::distributeQueryRule,
+               // TODO: the following flags must be fixed when activating the
+               // new distribution mechanism: the rule must be enabled by default
+               // and cannot be disabled, and must be cluster-only.
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
                                         // OptimizerRule::Flags::ClusterOnly;

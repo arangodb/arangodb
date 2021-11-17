@@ -9235,6 +9235,17 @@ void arangodb::aql::insertDistributeCalculationsRule(Optimizer* opt, std::unique
 
 void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
+  // goal: make all other cluster distribution optimizer rules, including "cluster-one-shard"
+  // obsolete. The only extra cluster rules that should run are:
+  // - optimize-cluster-single-document-operations
+  // - insert-distribute-calculations
+  // the first rule will, when applied turn off all other cluster specific rules,
+  // because the query can be answered with a single request to a DB server.
+  // the second rule is necessary to insert the calculations for the inputs required
+  // by DistributeNodes.
+  // "cluster-one-shard" will be covered by the transformations below, and should not
+  // require any special treatment
+
   /*
    * The RelevantNodesFinder will build a list of "relevant" nodes for making decisions 
    * about ExecutionNode positioning (coordinator or DB server). For that, it collects 
