@@ -48,22 +48,40 @@
 
 namespace {
 std::vector<std::vector<std::string>> EMPTY_STORED_FIELDS{};
-}
 
-class IResearchInvertedIndexIteratorTest
-    : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
- protected:
-  
+using DocsMap = std::map<arangodb::LocalDocumentId, std::shared_ptr<VPackBuilder>>;
+using StoredFields = std::vector<std::vector<std::string>>;
+using Fields = std::vector<std::string>;
 
- private:
-  std::map<arangodb::LocalDocumentId, std::shared_ptr<VPackBuilder>> _docs{
+class SimpleDataSetProvider {
+ public:
+   static DocsMap docs() {
+     return {
       {arangodb::LocalDocumentId(1), arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"2"})")},
       {arangodb::LocalDocumentId(2), arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})")},
       {arangodb::LocalDocumentId(3), arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})")},
       {arangodb::LocalDocumentId(4), arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})")},
       {arangodb::LocalDocumentId(5), arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})")}
-  };
+     };
+   }
+
+   static StoredFields storedFields() {
+     return {{"a", "b"}, {"a"}, {"b"}};
+   }
+
+   static Fields indexFields() {
+     return {"a", "b"};
+   }
+};
+
+} // namespace
+
+template<typename Provider>
+class IResearchInvertedIndexIteratorTestBase
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+ private:
+  DocsMap _docs;
   arangodb::tests::mocks::MockAqlServer _server{false};
   std::shared_ptr<arangodb::LogicalCollection> _analyzers;
   std::shared_ptr<arangodb::LogicalCollection> _collection;
@@ -71,8 +89,9 @@ class IResearchInvertedIndexIteratorTest
   TRI_vocbase_t* _vocbase{nullptr};
 
  protected:
-  IResearchInvertedIndexIteratorTest() {
+  IResearchInvertedIndexIteratorTestBase() {
     arangodb::tests::init();
+    _docs = Provider::docs();
     _server.addFeature<arangodb::FlushFeature>(false);
     _server.startFeatures();
     auto& dbFeature = _server.getFeature<arangodb::DatabaseFeature>();
@@ -90,10 +109,8 @@ class IResearchInvertedIndexIteratorTest
     arangodb::IndexId id(1);
     arangodb::iresearch::InvertedIndexFieldMeta meta;
     std::string errorField;
-    std::vector<std::vector<std::string>> storedFields = {{"a", "b"}, {"a"}, {"b"}};
-    std::vector<std::string> fields = {"a", "b"};
     EXPECT_TRUE(meta.init(_server.server(),
-                          getPropertiesSlice(id, fields, storedFields).slice(),
+                          getPropertiesSlice(id, Provider::indexFields(), Provider::storedFields()).slice(),
                           false, errorField, _vocbase->name()));
     _index = std::make_shared<arangodb::iresearch::IResearchInvertedIndex>(id, *_collection, std::move(meta));
     EXPECT_TRUE(_index);
@@ -228,6 +245,8 @@ class IResearchInvertedIndexIteratorTest
   arangodb::iresearch::IResearchInvertedIndex& index() { return *_index.get(); }
   auto const& data() const { return _docs; }
 };  // IResearchFilterSetup
+
+using IResearchInvertedIndexIteratorTest = IResearchInvertedIndexIteratorTestBase<SimpleDataSetProvider>;
 
 /// *IResearchInvertedIndexIteratorTest*:*IResearchInvertedIndex*:*LateMaterialization*:*NoMaterialization* --gtest_break_on_failure
 TEST_F(IResearchInvertedIndexIteratorTest, test_skipAll) {
