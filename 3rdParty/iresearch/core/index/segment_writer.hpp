@@ -272,12 +272,12 @@ class IRESEARCH_API segment_writer : util::noncopyable {
       const hashed_string_ref& name,
       columnstore_writer& columnstore,
       const column_info_provider_t& column_info,
+      std::deque<cached_column>& cached_columns,
       bool cache);
 
     std::string name;
     size_t name_hash;
     columnstore_writer::values_writer_f writer;
-    mutable irs::sorted_column stream;
     mutable field_id id{ field_limits::invalid() };
   }; // stored_column
 
@@ -439,6 +439,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   void flush_fields(const doc_map& docmap); // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  std::deque<cached_column> cached_columns_; // pointers remain valid
   sorted_column sort_;
   update_contexts docs_context_;
   bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)

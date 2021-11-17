@@ -297,14 +297,12 @@ void RocksDBThrottle::ThreadLoop() {
 void RocksDBThrottle::RecalculateThrottle() {
   unsigned loop;
   std::chrono::microseconds tot_micros;
-  uint64_t tot_bytes, tot_keys, tot_compact, adjustment_bytes;
+  uint64_t tot_bytes, adjustment_bytes;
   int64_t new_throttle, compaction_backlog, temp_rate;
   bool no_data;
 
   tot_micros *= 0;
-  tot_keys = 0;
   tot_bytes = 0;
-  tot_compact = 0;
   temp_rate = 0;
 
   compaction_backlog = ComputeBacklog();
@@ -321,9 +319,7 @@ void RocksDBThrottle::RecalculateThrottle() {
     //  time for testing.
     for (loop = 2; loop < THROTTLE_INTERVALS; ++loop) {
       tot_micros += _throttleData[loop]._micros;
-      tot_keys += _throttleData[loop]._keys;
       tot_bytes += _throttleData[loop]._bytes;
-      tot_compact += _throttleData[loop]._compactions;
     }  // for
 
     // flag to skip throttle changes if zero data available

@@ -31,7 +31,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/overload.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Indexes/Index.h"
@@ -647,7 +646,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         VPackSlice pdb = pb.get(
           std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
         if (pdb.isNone() || pdb.isEmptyObject()) {
-          LOG_TOPIC("12274", INFO, Logger::MAINTENANCE)
+          LOG_TOPIC("12274", DEBUG, Logger::MAINTENANCE)
             << "Dropping databases: pdb is "
             << std::string(pdb.isNone() ? "non Slice" : pdb.toJson());
           needDrop = true;
@@ -949,7 +948,7 @@ arangodb::Result arangodb::maintenance::executePlan(
         }
       } catch (std::exception const& exc) {
         feature.unlockShard(shardName);
-        LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
+        LOG_TOPIC("86762", WARN, Logger::MAINTENANCE)
             << "Exception caught when adding action, unlocking shard "
             << shardName << " again: " << exc.what();
       }
@@ -1778,7 +1777,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  std::unordered_set<std::string>& makeDirty) {
+  std::unordered_set<std::string>& makeDirty,
+  std::unordered_set<std::string> const& failedServers) {
 
   for (auto const& dbname : dirty) {
 
@@ -1881,6 +1881,15 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         }
        
         std::string leader = pservers[0].copyString();
+
+        // If the leader is failed, we need not try to get in sync:
+        if (failedServers.find(leader) != failedServers.end()) {
+          LOG_TOPIC("fe341", DEBUG, Logger::MAINTENANCE)
+            << "Not scheduling SynchronizeShard job for shard " << shname
+            << " since leader " << leader << " is in FailedServers list";
+          continue;
+        }
+
         std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
             {NAME, SYNCHRONIZE_SHARD},
@@ -1900,7 +1909,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
           }
         } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
-          LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
+          LOG_TOPIC("86763", WARN, Logger::MAINTENANCE)
             << "Exception caught when adding synchronize shard action, unlocking shard "
             << shardName << " again: " << exc.what();
         }
@@ -1917,7 +1926,8 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogStatusMapByDatabase const& localLogs) {
+  ReplicatedLogStatusMapByDatabase const& localLogs,
+  std::unordered_set<std::string> const& failedServers) {
 
   auto start = std::chrono::steady_clock::now();
 
@@ -1951,7 +1961,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       VPackObjectBuilder agency(&report);
       try {
         std::unordered_set<std::string> makeDirty;
-        syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId, feature, shardActionMap, makeDirty);
+        syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId, feature, shardActionMap, makeDirty, failedServers);
         feature.addDirty(makeDirty, false);
       } catch (std::exception const& e) {
         LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)

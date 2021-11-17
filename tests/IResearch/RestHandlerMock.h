@@ -66,7 +66,7 @@ struct GeneralResponseMock: public arangodb::GeneralResponse {
   virtual void addRawPayload(arangodb::velocypack::StringRef payload) override;
   virtual void reset(arangodb::ResponseCode code) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
-  ErrorCode deflate(size_t size = 16384) override { return TRI_ERROR_NO_ERROR; }
+  ErrorCode deflate() override;
   bool isCompressionAllowed() override { return false; }
 };
 
