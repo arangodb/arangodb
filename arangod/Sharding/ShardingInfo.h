@@ -71,6 +71,7 @@ class ShardingInfo {
 
   void setWriteConcernAndReplicationFactor(size_t writeConcern, size_t replicationFactor);
 
+  std::pair<bool, bool> makeSatellite(); // Return note booleans: (isError, isASatellite)
   bool isSatellite() const;
 
   size_t numberOfShards() const;
@@ -78,7 +79,7 @@ class ShardingInfo {
   /// @brief update the number of shards. note that this method
   /// should never be called after a collection was properly initialized
   /// at the moment it is necessary to have it because of the collection
-  /// class hierarchy. VirtualSmartEdgeCollection calls this function
+  /// class hierarchy. VirtualClusterSmartEdgeCollection calls this function
   /// in its constructor, after the shardingInfo has been set up already
   void numberOfShards(size_t numberOfShards);
 
