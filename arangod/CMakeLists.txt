@@ -973,7 +973,7 @@ target_link_libraries(arango_cache boost_system)
 target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
-target_link_libraries(arango_cluster_engine arango_v8)
+target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
 
 target_include_directories(arango_cluster_engine
     PUBLIC ${IRESEARCH_INCLUDE}
