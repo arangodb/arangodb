@@ -69,7 +69,7 @@ class DistributeQueryRuleTest : public ::testing::Test {
     auto const bindParamVPack = VPackParser::fromJson("{}");
 #if useOptimize
     auto const optionsVPack =
-        VPackParser::fromJson(R"json({"optimizer": {"rules": ["insert-distribute-calculations", "distribute-query"]}})json");
+        VPackParser::fromJson(R"json({"optimizer": {"rules": ["distribute-query"]}})json");
 #else
     auto const optionsVPack = VPackParser::fromJson(R"json({})json");
 #endif

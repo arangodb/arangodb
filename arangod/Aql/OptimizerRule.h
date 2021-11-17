@@ -229,7 +229,6 @@ struct OptimizerRule {
     fuseFiltersRule,
 
     /// "Pass 10": final transformations for the cluster
-    insertDistributeCalculationsRule,
 
     // optimize queries in the cluster so that the entire query
     // gets pushed to a single server

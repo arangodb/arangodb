@@ -9152,13 +9152,6 @@ namespace {
   }
 }  // namespace
 
-void arangodb::aql::insertDistributeCalculationsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                                                     OptimizerRule const& rule) {
-  ::insertDistributeInputCalculationNextGen(*plan);
-  bool modified = true;
-  opt->addPlan(std::move(plan), rule, modified);
-}
-
 void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   // TODO: handle special case for OneShard:
