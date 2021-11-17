@@ -492,7 +492,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
         << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: "
         << (r.errorMessage().empty() ? "all good" : r.errorMessage());
 
-    if (_onSuccess) {
+    if (r.ok() && _onSuccess) {
       r = _onSuccess(*this);
     }
 
