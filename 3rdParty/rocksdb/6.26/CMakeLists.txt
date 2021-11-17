@@ -1042,7 +1042,7 @@ CMAKE_DEPENDENT_OPTION(WITH_TESTS "build with tests" ON
 option(WITH_BENCHMARK_TOOLS "build with benchmarks" ON)
 option(WITH_CORE_TOOLS "build with ldb and sst_dump" ON)
 option(WITH_TOOLS "build with tools" ON)
-  
+
 # intentional deviation from RocksDB CMake
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/gtest-1.8.1/fused-src)
 add_subdirectory(third-party/gtest-1.8.1/fused-src/gtest)
@@ -1129,7 +1129,9 @@ endif()
 option(WITH_ALL_TESTS "Build all test, rather than a small subset" ON)
 
 if(WITH_TESTS OR WITH_BENCHMARK_TOOLS)
-  add_subdirectory(third-party/gtest-1.8.1/fused-src/gtest)
+  # intentional deviation from RocksDB CMake (it's already added unconditionally above)
+  #add_subdirectory(third-party/gtest-1.8.1/fused-src/gtest)
+  # intentional deviation end
   add_library(testharness STATIC
   test_util/mock_time_env.cc
   test_util/testharness.cc)
