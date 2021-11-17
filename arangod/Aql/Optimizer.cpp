@@ -301,6 +301,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         bool disabled = (_useNewDistribute && 
                          rule.isClusterOnly() && 
                          rule.name != "distribute-query" && 
+                         rule.name != "insert-distribute-calculations" && 
                          rule.name != "optimize-cluster-single-document-operations");
         disabled |= p->isDisabledRule(rule.level);
         disabled |= (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled());

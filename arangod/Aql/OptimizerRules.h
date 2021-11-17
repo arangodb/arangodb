@@ -331,6 +331,10 @@ auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNod
 auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, SubqueryNode* snode)
     -> DistributeNode*;
 
+//// @brief insert distribute calculations where required
+void insertDistributeCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                      OptimizerRule const&);
+
 //// @brief distribute a query in the cluster
 void distributeQueryRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                          OptimizerRule const&);
