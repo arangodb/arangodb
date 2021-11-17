@@ -26,7 +26,8 @@
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-
+#include "Benchmark/BenchmarkThread.h"
+#include "Benchmark/BenchmarkStats.h"
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -74,15 +75,19 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t replicationFactor() const { return _replicationFactor; }
   uint64_t numberOfShards() const { return _numberOfShards; }
   bool waitForSync() const { return _waitForSync; }
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+
   
   std::string const& customQuery() const { return _customQuery; }
   std::string const& customQueryFile() const { return _customQueryFile; }
 
  private:
   void status(std::string const& value);
-  bool report(ClientFeature&, std::vector<BenchRunResult>, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
+  void report(ClientFeature& client, std::vector<BenchRunResult> const& results, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
   void printResult(BenchRunResult const& result, VPackBuilder& builder);
   bool writeJunitReport(BenchRunResult const& result);
+  void setupHistogram(std::stringstream& pp);
+  void updateStatsValues(std::stringstream& pp, VPackBuilder& builder, std::vector<std::unique_ptr<arangodb::arangobench::BenchmarkThread>> const&  threads, arangodb::arangobench::BenchmarkStats& totalStats);
 
   uint64_t _concurrency;
   uint64_t _operations;
@@ -100,6 +105,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _verbose;
   bool _quiet;
   bool _waitForSync;
+  bool _generateHistogram; // don't generate histogram by default
   uint64_t _runs;
   std::string _junitReportFile;
   std::string _jsonReportFile;
