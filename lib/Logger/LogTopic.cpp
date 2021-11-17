@@ -35,7 +35,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Ldap/LdapProvAuth.h"
 #endif
 
 using namespace arangodb;

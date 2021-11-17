@@ -23,6 +23,16 @@
 
 #include "LoginFeature.h"
 
+// clang-format off
+#if _WIN32
+#include <winldap.h>
+#include <winber.h>
+#else
+#include <ldap.h>
+#include <lber.h>
+#endif
+// clang-format on
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
@@ -45,8 +55,8 @@
 #include "../arangod/GeneralServer/AuthenticationFeature.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
-#include "Enterprise/Ldap/LdapSimpleAuthenticationHandler.h"
-#include "Enterprise/Ldap/LdapSearchAuthenticationHandler.h"
+#include "Enterprise/Ldap/LdapHndSimpleAuthentication.h"
+#include "Enterprise/Ldap/LdapHndSearchAuthentication.h"
 #endif
 
 using namespace arangodb;

@@ -44,8 +44,8 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
-#include "Enterprise/Ldap/LdapAuthSearchProvider.h"
-#include "Enterprise/Ldap/LdapAuthSimpleProvider.h"
+#include "Enterprise/Ldap/LdapProvAuthSearch.h"
+#include "Enterprise/Ldap/LdapProvAuthSimple.h"
 
 #endif
 
