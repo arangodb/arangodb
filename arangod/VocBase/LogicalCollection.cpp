@@ -270,7 +270,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
   }
 
   TRI_ASSERT(_physical != nullptr);
-  // This has to be called AFTER _phyiscal and _logical are properly linked
+  // This has to be called AFTER _physical and _logical are properly linked
   // together.
 
   prepareIndexes(info.get("indexes"));
@@ -933,7 +933,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
       }
 
-      if (ServerState::instance()->isCoordinator() &&
+      if ((ServerState::instance()->isCoordinator() ||
+           (ServerState::instance()->isSingleServer() && (isSatellite() || isSmart()))) &&
           writeConcern != _sharding->writeConcern()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,

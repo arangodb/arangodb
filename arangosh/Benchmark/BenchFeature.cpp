@@ -107,7 +107,6 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
   // the following is not awesome, as all test classes need to be repeated here.
   // however, it works portably across different compilers.
   AqlInsertTest::registerTestcase();
-  AqlV8Test::registerTestcase();
   CollectionCreationTest::registerTestcase();
   CustomQueryTest::registerTestcase();
   DocumentCreationTest::registerTestcase();
@@ -116,17 +115,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
   DocumentCrudWriteReadTest::registerTestcase();
   DocumentImportTest::registerTestcase();
   EdgeCrudTest::registerTestcase();
-  HashTest::registerTestcase();
-  RandomShapesTest::registerTestcase();
-  ShapesAppendTest::registerTestcase();
-  ShapesTest::registerTestcase();
-  SkiplistTest::registerTestcase();
-  StreamCursorTest::registerTestcase();
-  TransactionAqlTest::registerTestcase();
-  TransactionCountTest::registerTestcase();
-  TransactionDeadlockTest::registerTestcase();
-  TransactionMultiCollectionTest::registerTestcase();
-  TransactionMultiTest::registerTestcase();
+  PersistentIndexTest::registerTestcase();
   VersionTest::registerTestcase();
 }
 
