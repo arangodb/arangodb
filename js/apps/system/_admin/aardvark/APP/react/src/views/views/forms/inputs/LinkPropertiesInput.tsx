@@ -126,6 +126,7 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
   };
 
   const storeIdValues = formState.storeValues === 'id';
+  const hideInBackgroundField = disabled || basePath.includes('.fields');
 
   return <Grid>
     <Cell size={'1-3'}>
@@ -134,32 +135,32 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
       <AutoCompleteMultiSelect values={analyzers} onRemove={removeAnalyzer} onSelect={addAnalyzer}
                                options={options} label={'Analyzers'} disabled={disabled}/>
     </Cell>
-    <Cell size={'1-3'}>
+    <Cell size={'2-3'}>
       <Grid style={{ marginTop: 24 }}>
-        <Cell size={'1'}>
+        <Cell size={hideInBackgroundField ? '1-3' : '1-4'}>
           <Checkbox onChange={getBooleanFieldSetter('includeAllFields', dispatch, basePath)} inline={true}
                     label={"Include All Fields"} disabled={disabled} checked={formState.includeAllFields}/>
         </Cell>
-        <Cell size={'1'}>
+        <Cell size={hideInBackgroundField ? '1-3' : '1-4'}>
           <Checkbox onChange={getBooleanFieldSetter('trackListPositions', dispatch, basePath)}
                     label={'Track List Positions'} disabled={disabled} inline={true}
                     checked={formState.trackListPositions}/>
         </Cell>
-        <Cell size={'1'}>
+        <Cell size={hideInBackgroundField ? '1-3' : '1-4'}>
           <Checkbox onChange={updateStoreValues} label={'Store ID Values'} disabled={disabled} inline={true}
                     checked={storeIdValues}/>
         </Cell>
+        {
+          hideInBackgroundField
+            ? null
+            : <Cell size={'1-4'}>
+              <Checkbox onChange={getBooleanFieldSetter('inBackground', dispatch, basePath)}
+                        label={'In Background'} inline={true}
+                        disabled={disabled} checked={formState.inBackground}/>
+            </Cell>
+        }
       </Grid>
     </Cell>
-    {
-      disabled
-        ? null
-        : <Cell size={'1-3'} style={{ marginTop: 24 }}>
-          <Checkbox onChange={getBooleanFieldSetter('inBackground', dispatch, basePath)}
-                    label={'In Background'} inline={true}
-                    disabled={disabled} checked={formState.inBackground}/>
-        </Cell>
-    }
     {
       disabled && isEmpty(fields)
         ? null
