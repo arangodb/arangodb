@@ -36,6 +36,7 @@ const leaderEndpoint = arango.getEndpoint();
 const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 const errors = require("internal").errors;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const _ = require('lodash');
 
 const cn = 'UnitTestsReplication';
 
@@ -69,11 +70,12 @@ function BaseTestConfig () {
       let c = db[cn];
       let figures = c.figures(true).engine;
 
-      assertEqual(expected, c.count());
-      assertEqual(expected, c.toArray().length);
-      assertEqual(expected, figures.documents);
+      assertEqual(expected, c.count(), figures);
+      assertEqual(expected, c.toArray().length, figures);
+      assertEqual(expected, figures.documents, figures);
+      assertEqual("primary", figures.indexes[0].type, figures);
       figures.indexes.forEach((idx) => {
-        assertEqual(expected, idx.count);
+        assertEqual(expected, idx.count, figures);
       });
     };
 
@@ -148,8 +150,258 @@ function BaseTestConfig () {
       db._drop(cn);
     },
     
+    testIndexConflicts: function () {
+      let c = db._create(cn);
+      c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
+
+      // create connection on follower too
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+
+      let docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ _key: "test" + i, value: 9999 - i });
+      }
+      c.insert(docs);
+
+      connectToLeader();
+      docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ _key: "test" + i, value: i });
+      }
+      c.insert(docs);
+      
+      connectToFollower();
+
+      // sync all documents
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      checkCountConsistency(cn, 10000);
+    },
+    
+    testMoreOnLeader: function () {
+      let c = db._create(cn);
+
+      // create connection on follower too
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+
+      let docs = [];
+      for (let i = 19; i < 10000; i += 111) {
+        docs.push({ _key: "test" + i, value: "follower-" + i });
+      }
+      c.insert(docs);
+
+      connectToLeader();
+      docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ _key: "test" + i, value: "leader-" + i });
+      }
+      c.insert(docs);
+      
+      connectToFollower();
+
+      // sync all documents
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      checkCountConsistency(cn, 10000);
+    },
+    
+    testMoreOnFollower: function () {
+      let c = db._create(cn);
+
+      // create connection on follower too
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+
+      let docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ _key: "test" + i, value: "follower-" + i });
+      }
+      c.insert(docs);
+
+      connectToLeader();
+      docs = [];
+      for (let i = 19; i < 10000; i += 111) {
+        docs.push({ _key: "test" + i, value: "leader-" + i });
+      }
+      c.insert(docs);
+      
+      connectToFollower();
+
+      // sync all documents
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      checkCountConsistency(cn, 90);
+    },
+    
+    testDifferentDocuments: function () {
+      let c = db._create(cn);
+
+      // create connection on follower too
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+
+      let docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ _key: "test" + i, value: "follower-" + i });
+      }
+      c.insert(docs);
+
+      connectToLeader();
+      docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ _key: "test" + i, value: "leader-" + i });
+      }
+      c.insert(docs);
+      
+      connectToFollower();
+
+      // sync all documents
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      checkCountConsistency(cn, 10000);
+    },
+    
+    testLargeDocuments: function () {
+      let c = db._create(cn);
+
+      // create connection on follower too
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+      // insert 1 document, so that the incremental sync gets triggered
+      c.insert({ _key: "testi" });
+      assertEqual(1, c.count());
+
+      connectToLeader();
+      let payload = Array(512).join("x");
+      let doc = {};
+      for (let i = 0; i < 100; ++i) {
+        doc["test" + i] = payload;
+      }
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push(doc);
+      }
+      for (let i = 0; i < 10000; ++i) {
+        c.insert(docs);
+        i += docs.length;
+      }
+      assertEqual(10000, c.count());
+      
+      connectToFollower();
+
+      // sync all documents
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      checkCountConsistency(cn, 10000);
+    },
+    
+    testLargeDocumentsWithEvilKeys: function () {
+      let c = db._create(cn);
+
+      // create connection on follower too
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+      // insert documents with evil keys
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "testi$!%20%44+abc=" + i });
+      }
+      c.insert(docs);
+      assertEqual(100, c.count());
+
+      connectToLeader();
+      let payload = Array(512).join("x");
+      let doc = {};
+      for (let i = 0; i < 100; ++i) {
+        doc["test" + i] = payload;
+      }
+      docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        doc._key = "testi$!%20%44+abc=" + i;
+        docs.push(_.clone(doc));
+        if (docs.length === 100) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      assertEqual(10000, c.count());
+      
+      connectToFollower();
+
+      // sync all documents
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      checkCountConsistency(cn, 10000);
+    },
+    
     testInsertRemoveInsertRemove: function () {
       let c = db._create(cn);
+      // create connection on follower too
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+
+      connectToLeader();
+      db._flushCache();
       let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
       c.remove("a");
       let rev2 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
@@ -160,7 +412,6 @@ function BaseTestConfig () {
 
       connectToFollower();
       db._flushCache();
-      c = db._create(cn);
       
       assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev);
       assertEqual("_b5TF-Oy---", c.document("a")._rev);
@@ -181,6 +432,15 @@ function BaseTestConfig () {
     
     testInsertRemoveInsertRemoveInsert: function () {
       let c = db._create(cn);
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+
+      connectToLeader();
+      db._flushCache();
       let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
       c.remove("a");
       let rev2 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
@@ -193,7 +453,6 @@ function BaseTestConfig () {
 
       connectToFollower();
       db._flushCache();
-      c = db._create(cn);
       
       assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev);
       assertEqual("_b5TF-Oy---", c.document("a")._rev);
@@ -213,10 +472,20 @@ function BaseTestConfig () {
      
       checkCountConsistency(cn, 1);
     },
-
-    testSecondaryIndexConflicts: function () {
+    
+    testSecondaryIndexConflictsRevisions: function () {
       let c = db._create(cn);
       c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+
+      connectToLeader();
+      db._flushCache();
 
       let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a", value: 1 }, { isRestore: true })._rev;
       let rev2 = c.insert({ _rev: "_b5TGvDC---", _key: "b", value: 2 }, { isRestore: true })._rev;
@@ -226,11 +495,13 @@ function BaseTestConfig () {
       assertEqual("_b5TGvDC---", rev2);
       assertEqual("_b5TGwvm---", rev3);
 
+      assertEqual(rev1, c.document("a")._rev);
+      assertEqual(rev2, c.document("b")._rev);
+      assertEqual(rev3, c.document("c")._rev);
+
       connectToFollower();
-      db._flushCache();
-      c = db._create(cn);
-      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
-      
+     
+      assertEqual(2, c.indexes().length);
       assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "b", value: 3 }, { isRestore: true })._rev);
       assertEqual("_b5TGwvm---", c.insert({ _rev: "_b5TGwvm---", _key: "c", value: 2 }, { isRestore: true })._rev);
 
@@ -242,14 +513,57 @@ function BaseTestConfig () {
 
       db._flushCache();
       c = db._collection(cn);
-      
+    
+      // only 2 documents on follower because we forged the _rev values
+      assertEqual(2, c.count());
       assertEqual(rev1, c.document("a")._rev);
       assertEqual(rev2, c.document("b")._rev);
-      assertEqual(rev3, c.document("c")._rev);
+    },
+    
+    testSecondaryIndexConflictsDocuments: function () {
+      let c = db._create(cn);
+      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+
+      connectToFollower();
+      db._flushCache();
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+      });
+
+      connectToLeader();
+      db._flushCache();
+
+      c.insert({ _key: "a", value: 1 });
+      c.insert({ _key: "b", value: 2 });
+      c.insert({ _key: "c", value: 3 });
+      
+      assertEqual(1, c.document("a").value);
+      assertEqual(2, c.document("b").value);
+      assertEqual(3, c.document("c").value);
+
+      connectToFollower();
+     
+      assertEqual(2, c.indexes().length);
+      c.insert({ _key: "b", value: 3 });
+      c.insert({ _key: "c", value: 2 });
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+     
+      assertEqual(1, c.document("a").value);
+      assertEqual(2, c.document("b").value);
+      assertEqual(3, c.document("c").value);
      
       checkCountConsistency(cn, 3);
     },
-
+    
     // create different state on follower
     testDowngradeManyRevisions: function () {
       let c = db._create(cn);
@@ -996,7 +1310,6 @@ function BaseTestConfig () {
 
       checkCountConsistency(cn, 10001);
     },
-
   };
 }
 
@@ -1025,13 +1338,13 @@ function ReplicationIncrementalMalarkeyIntermediateCommits() {
       connectToFollower();
       // clear all failure points
       clearFailurePoints();
-      setFailurePoint("TransactionState::intermediateCommitCount10000");
+      setFailurePoint("TransactionState::intermediateCommitCount1000");
       db._drop(cn);
 
       connectToLeader();
       // clear all failure points
       clearFailurePoints();
-      setFailurePoint("TransactionState::intermediateCommitCount10000");
+      setFailurePoint("TransactionState::intermediateCommitCount1000");
       db._drop(cn);
     },
   };

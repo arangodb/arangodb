@@ -153,10 +153,10 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
       console.topic('replication=debug', 'waiting for slave to catch up');
       printed = true;
     }
-    internal.wait(0.5, false);
+    internal.wait(0.25, false);
   }
 
-  internal.wait(1.0, false);
+  internal.wait(0.1, false);
   db._flushCache();
   slaveFuncFinal(state);
 };

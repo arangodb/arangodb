@@ -238,6 +238,33 @@ rocksdb::Status RocksDBTrxMethods::RollbackToSavePoint() {
   return _state->_rocksTransaction->RollbackToSavePoint();
 }
 
+rocksdb::Status RocksDBTrxMethods::RollbackToWriteBatchSavePoint() {
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->_rocksTransaction);
+  // this deserves some further explanation:
+  // we are first trying to get rid of the last changes in the write batch,
+  // but we don't want to pay the price for rebuilding the WBWI from scratch
+  // with all that remains in the WB.
+  // so what we do is the following:
+  // we first revert the changes in the WB only. this will truncate the WB
+  // to the position of the last SavePoint, and is cheap
+  rocksdb::Status s =
+      _state->_rocksTransaction->GetWriteBatch()->GetWriteBatch()->RollbackToSavePoint();
+  if (s.ok()) {
+    // if this succeeds we now add a new SavePoint to the WB. this does nothing,
+    // but we need it to have the same number of SavePoints in the WB and the
+    // WBWI.
+    _state->_rocksTransaction->GetWriteBatch()->GetWriteBatch()->SetSavePoint();
+
+    // finally, we pop off the SavePoint from the WBWI, which will remove the
+    // latest changes from the WBWI and the WB (our dummy SavePoint), but it
+    // will _not_ rebuild the entire WBWI from the WB
+    this->PopSavePoint();
+  }
+  TRI_ASSERT(s.ok());
+  return s;
+}
+
 void RocksDBTrxMethods::PopSavePoint() {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->_rocksTransaction);
