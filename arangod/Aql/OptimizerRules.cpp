@@ -8819,6 +8819,11 @@ namespace {
     remoteNode->addDependency(dependencyNode);
     gatherNode->addDependency(remoteNode);
     node->replaceDependency(dependencyNode, gatherNode);
+
+    // TODO Performance, i think this is not necessary here, as the above injected nodes
+    // do not convey new variable information
+    plan.clearVarUsageComputed();
+    plan.findVarUsage();
   }
 
   void addScatterBelow(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* scatterTo) {
@@ -8900,6 +8905,11 @@ namespace {
     }
     remoteNode->addDependency(scatterNode);
     parent->replaceDependency(node, remoteNode);
+
+    // TODO Performance, i think this is not necessary here, as the above injected nodes
+    // do not convey new variable information, unless we inserted a distribute
+    plan.clearVarUsageComputed();
+    plan.findVarUsage();
   }
 
   // Forward Declare method. The below methods need to call each other.
