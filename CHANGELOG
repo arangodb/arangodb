@@ -1,6 +1,11 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Make the `--version` and `--version-json` commands usable in arangobackup
+  when no positional argument (operation type) was specified. Previously,
+  arangobackup insisted on specifying the operation type alongside the
+  `--version` or `--version-json` commands.
+
 * Fixed an issue in old incremental sync protocol with document keys that
   contained special characters (`%`). These keys could be send unencoded in the
   incremental sync protocol, leading to wrong key ranges being transfered
