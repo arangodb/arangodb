@@ -1,6 +1,16 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Improvements for getting-in-sync: 
+  Reuse the same DatabaseTailingSyncer instance for both the catchup 
+  (soft lock) and the exclusive (hard lock) phase.
+  This allows the syncer to use the same syncer id with which it
+  registers on the leader.
+  Also make the leader return its current sequence number in "lastLogTick"
+  attribute when the exclusive lock is acquired. This allows the follower 
+  to limit its WAL tailing efforts to only up to the sequence number that
+  was returned by the leader.
+
 * Fix issues during rolling upgrades from 3.8.0 to 3.8.x (x >= 1) and from 3.7.x
   (x <= 12) to 3.8.3. The problem was that older versions did not handle
   following term ids that are sent from newer versions during synchronous

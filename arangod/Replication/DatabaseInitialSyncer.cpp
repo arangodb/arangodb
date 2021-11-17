@@ -156,6 +156,11 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
   }
 }
 
+/// @brief return information about the leader
+replutils::MasterInfo DatabaseInitialSyncer::leaderInfo() const {
+  return _config.master;
+}
+
 /// @brief run method, performs a full synchronization
 Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory,
                                                char const* context) {
@@ -266,6 +271,10 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
         << "initial synchronization with master took: "
         << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: "
         << (r.errorMessage().empty() ? "all good" : r.errorMessage());
+
+    if (r.ok() && _onSuccess) {
+      r = _onSuccess(*this);
+    }
 
     return r;
   } catch (arangodb::basics::Exception const& ex) {
@@ -548,7 +557,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       url += "&flush=false";
     } else {
       // only flush WAL once
-      url += "&flush=true&flushWait=180";
+      url += "&flush=true";
       _config.flushed = true;
     }
 

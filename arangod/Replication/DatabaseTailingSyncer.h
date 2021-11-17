@@ -28,7 +28,12 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "TailingSyncer.h"
 
+#include <string>
+
+struct TRI_vocbase_t;
+
 namespace arangodb {
+class DatabaseInitialSyncer;
 class DatabaseReplicationApplier;
 
 class DatabaseTailingSyncer final : public TailingSyncer {
@@ -48,13 +53,10 @@ class DatabaseTailingSyncer final : public TailingSyncer {
 
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
-  Result syncCollectionFinalize(std::string const& collectionName, char const* context) {
-    TRI_voc_tick_t dummy = 0;
-    bool dummyDidTimeout = false;
-    double dummyTimeout = 300.0;
-    return syncCollectionCatchupInternal(collectionName, dummyTimeout, true,
-                                         dummy, dummyDidTimeout, context);
-  }
+  Result syncCollectionFinalize(std::string const& collectionName, 
+                                TRI_voc_tick_t fromTick,
+                                TRI_voc_tick_t toTick, 
+                                std::string const& context);
 
   /// @brief catch up with changes in a leader shard by doing the same
   /// as in syncCollectionFinalize, but potentially stopping earlier.
@@ -66,15 +68,20 @@ class DatabaseTailingSyncer final : public TailingSyncer {
   /// by getting an exclusive lock on the leader and use
   /// `syncCollectionFinalize` to finish off the rest.
   /// Internally, both use `syncCollectionCatchupInternal`.
-  Result syncCollectionCatchup(std::string const& collectionName, double timeout,
-                               TRI_voc_tick_t& until, bool& didTimeout, char const* context) {
-    return syncCollectionCatchupInternal(collectionName, timeout, false, until, didTimeout, context);
-  }
+  Result syncCollectionCatchup(std::string const& collectionName, TRI_voc_tick_t fromTick,
+                               double timeout, TRI_voc_tick_t& until, bool& didTimeout, 
+                               std::string const& context);
+  
+  Result inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer);
+  Result registerOnLeader();
+  void unregisterFromLeader();
 
  protected:
   Result syncCollectionCatchupInternal(std::string const& collectionName,
                                        double timeout, bool hard,
-                                       TRI_voc_tick_t& until, bool& didTimeout, char const* context);
+                                       TRI_voc_tick_t& until, bool& didTimeout, 
+                                       std::string const& context);
+  
   /// @brief save the current applier state
   Result saveApplierState() override;
 
@@ -93,7 +100,12 @@ class DatabaseTailingSyncer final : public TailingSyncer {
   /// @brief translation between globallyUniqueId and collection name
   std::unordered_map<std::string, std::string> _translations;
 
+  /// @brief upper bound tick used for tailing. "0" means "no restriction"
+  uint64_t _toTick;
+
   bool _queriedTranslations;
+
+  bool _unregisteredFromLeader;
 };
 }  // namespace arangodb
 
