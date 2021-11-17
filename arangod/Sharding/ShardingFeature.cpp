@@ -168,7 +168,6 @@ std::string ShardingFeature::getDefaultShardingStrategy(ShardingInfo const* shar
 }
 
 std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(VPackSlice const& properties) const {
-  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
 
   // from 3.4 onwards, the default sharding strategy for new collections is
   // "hash"
