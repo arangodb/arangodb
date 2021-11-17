@@ -38,6 +38,16 @@ namespace aql {
 #define useOptimize 1
 
 namespace {
+std::string nodeNames(std::vector<std::string> const& nodes) {
+  std::string result;
+  for (auto const& n : nodes) {
+    if (!result.empty()) {
+      result += ", ";
+    }
+    result += n;
+  }
+  return result;
+}
 std::string nodeNames(VPackSlice nodes) {
   std::string result;
   for (auto n : VPackArrayIterator(nodes)) {
@@ -76,18 +86,16 @@ class DistributeQueryRuleTest : public ::testing::Test {
 
   void assertNodesMatch(VPackSlice actualNodes, std::vector<std::string> const& expectedNodes) {
     ASSERT_TRUE(actualNodes.isArray());
+    ASSERT_EQ(actualNodes.length(), expectedNodes.size()) 
+        << "Unequal number of nodes.\n"
+        << "Actual:   " << actualNodes.length() << ": " << nodeNames(actualNodes) << "\n"
+        << "Expected: " << expectedNodes.size() << ": " << nodeNames(expectedNodes) << "\n";
     for (size_t i = 0; i < expectedNodes.size(); ++i) {
-      if (actualNodes.length() > i) {
-        auto node = actualNodes.at(i);
-        EXPECT_TRUE(node.get("type").isEqualString(expectedNodes.at(i)))
-            << node.get("type").toString() << " != " << expectedNodes.at(i);
-      } else {
-        EXPECT_TRUE(false) << "Too few nodes. expected: " << expectedNodes.size()
-                           << ", got: " << actualNodes.length();
-      }
+      ASSERT_EQ(actualNodes.at(i).get("type").copyString(), expectedNodes[i])
+          << "Unequal node at position #" << i << "\n"
+          << "Actual:   " << nodeNames(actualNodes) << "\n"
+          << "Expected: " << nodeNames(expectedNodes) << "\n";
     }
-    EXPECT_EQ(actualNodes.length(), expectedNodes.size())
-        << "Non matching amount of nodes.";
   }
 
   DistributeQueryRuleTest() {
@@ -96,8 +104,26 @@ class DistributeQueryRuleTest : public ::testing::Test {
     // okay :shrug: server.registerFakedDBServer("DB1");
     // server.registerFakedDBServer("DB2");
     server.createCollection(server.getSystemDatabase().name(), "collection",
-                            {{"s123", "DB1"}, {"s234", "DB2"}},
+                            {{"s100", "DB1"}, {"s101", "DB2"}},
                             TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
+   
+    // this collection has the same number of shards as "collection", but it is
+    // not necessarily sharded in the same way
+    server.createCollection(server.getSystemDatabase().name(), "otherCollection",
+                            {{"s110", "DB1"}, {"s111", "DB2"}},
+                            TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
+    
+    // this collection is sharded like "collection"
+    auto optionsVPack = VPackParser::fromJson(R"json({"distributeShardsLike": "collection"})json");
+    server.createCollection(server.getSystemDatabase().name(), "followerCollection",
+                            {{"s120", "DB1"}, {"s121", "DB2"}},
+                            TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, optionsVPack->slice());
+    
+    // this collection has custom shard keys
+    optionsVPack = VPackParser::fromJson(R"json({"shardKeys": ["id"]})json");
+    server.createCollection(server.getSystemDatabase().name(), "customKeysCollection",
+                            {{"s123", "DB1"}, {"s234", "DB2"}},
+                            TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, optionsVPack->slice());
   }
 };
 
@@ -196,7 +222,7 @@ TEST_F(DistributeQueryRuleTest, multiple_inserts) {
                     "RemoteNode", "InsertNode", "RemoteNode", "GatherNode"});
 }
 
-TEST_F(DistributeQueryRuleTest, enumerate_before_insert) {
+TEST_F(DistributeQueryRuleTest, enumerate_insert) {
   auto queryString = R"aql(
     FOR x IN collection
     INSERT {} INTO collection)aql";
@@ -213,8 +239,8 @@ TEST_F(DistributeQueryRuleTest, enumerate_before_insert) {
                     "InsertNode", "RemoteNode", "GatherNode"});
 }
 
-TEST_F(DistributeQueryRuleTest, enumerate_before_update) {
-  // Special case here, we enumerate and Update the same docs.
+TEST_F(DistributeQueryRuleTest, enumerate_update) {
+  // Special case here, we enumerate and update the same docs.
   // We could get away without network requests in between
   auto queryString = R"aql(
     FOR x IN collection
@@ -228,6 +254,151 @@ TEST_F(DistributeQueryRuleTest, enumerate_before_update) {
   assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
                                "EnumerateCollectionNode", "UpdateNode",
                                "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, enumerate_update_key) {
+  // Special case here, we enumerate and update the same docs.
+  // We could get away without network requests in between
+  auto queryString = R"aql(
+    FOR x IN collection
+    UPDATE x._key WITH {value: 1} INTO collection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
+                               "EnumerateCollectionNode", "CalculationNode",
+                               "UpdateNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_known) {
+  // Special case here, we enumerate and update the same docs.
+  // We could get away without network requests in between
+  auto queryString = R"aql(
+    FOR x IN collection
+    UPDATE {id: 123} WITH {value: 1} INTO customKeysCollection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", "CalculationNode",
+                               "EnumerateCollectionNode", "RemoteNode",
+                               "GatherNode", "ScatterNode", "RemoteNode",
+                               "UpdateNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_unknown) {
+  // Special case here, we enumerate and update the same docs.
+  // We could get away without network requests in between
+  auto queryString = R"aql(
+    FOR x IN collection
+    UPDATE x WITH {value: 1} INTO customKeysCollection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
+                               "EnumerateCollectionNode", "RemoteNode",
+                               "GatherNode", "ScatterNode", "RemoteNode",
+                               "UpdateNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, enumerate_replace) {
+  // Special case here, we enumerate and replace the same docs.
+  // We could get away without network requests in between
+  auto queryString = R"aql(
+    FOR x IN collection
+    REPLACE x WITH {value: 1} INTO collection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
+                               "EnumerateCollectionNode", "ReplaceNode",
+                               "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, enumerate_replace_key) {
+  // Special case here, we enumerate and replace the same docs.
+  // We could get away without network requests in between
+  auto queryString = R"aql(
+    FOR x IN collection
+    REPLACE x._key WITH {value: 1} INTO collection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
+                               "EnumerateCollectionNode", "CalculationNode",
+                               "ReplaceNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_known) {
+  // Special case here, we enumerate and replace the same docs.
+  // We could get away without network requests in between
+  auto queryString = R"aql(
+    FOR x IN collection
+    REPLACE {id: "fuxx"} WITH {value: 1} INTO customKeysCollection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", "CalculationNode",
+                               "EnumerateCollectionNode", "RemoteNode",
+                               "GatherNode", "CalculationNode", "DistributeNode",
+                               "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_unknown) {
+  // Special case here, we enumerate and replace the same docs.
+  // We could get away without network requests in between
+  auto queryString = R"aql(
+    FOR x IN collection
+    REPLACE x WITH {value: 1} INTO customKeysCollection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
+                               "EnumerateCollectionNode", "RemoteNode",
+                               "GatherNode", "DistributeNode",
+                               "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, enumerate_remove_custom_shardkey) {
+  // Special case here, we enumerate and remove the same docs.
+  // We could get away without network requests in between
+  auto queryString = R"aql(
+    FOR x IN collection
+    REMOVE x INTO customKeysCollection)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+
+  assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode", "RemoteNode",
+                               "GatherNode", "ScatterNode", "RemoteNode",
+                               "RemoveNode", "RemoteNode", "GatherNode"});
 }
 
 TEST_F(DistributeQueryRuleTest, distributed_sort) {
@@ -246,13 +417,13 @@ TEST_F(DistributeQueryRuleTest, distributed_sort) {
                                "GatherNode", "ReturnNode"});
   auto gatherNode = planSlice.at(5);
   ASSERT_TRUE(gatherNode.isObject());
-  EXPECT_TRUE(gatherNode.get("sortmode").isEqualString("minelement"));
+  EXPECT_EQ(gatherNode.get("sortmode").copyString(), "minelement");
   auto sortBy = gatherNode.get("elements");
   ASSERT_TRUE(sortBy.isArray());
   ASSERT_EQ(sortBy.length() , 1);
   auto sortVar = sortBy.at(0);
   // We sort by a temp variable named 1
-  EXPECT_TRUE(sortVar.get("inVariable").get("name").isEqualString("1"));
+  EXPECT_EQ(sortVar.get("inVariable").get("name").copyString(), "1");
   // We need to keep DESC sort
   EXPECT_FALSE(sortVar.get("ascending").getBool());
 }
