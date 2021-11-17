@@ -159,9 +159,9 @@ void InternalRestTraverserHandler::queryEngine() {
   auto& registry = _registry;  // For the guard
   auto cleanup = scopeGuard([registry, &engineId]() noexcept {
     try {
-        registry->closeEngine(engineId);
-    } catch(std::exception const& ex) {
-        LOG_TOPIC("dfc7a", ERR, Logger::AQL) << "Failed to close engine: " << ex.what();
+      registry->closeEngine(engineId);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("dfc7a", ERR, Logger::AQL) << "Failed to close engine: " << ex.what();
     }
   });
 

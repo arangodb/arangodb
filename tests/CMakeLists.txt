@@ -104,6 +104,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/FixedOutputExecutionBlockMock.cpp
   Aql/InRangeFunctionTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
@@ -181,6 +182,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/CpuUsageSnapshotTest.cpp
+  Basics/EncodingUtilsTest.cpp
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/GuardedTest.cpp
@@ -220,6 +222,7 @@ set(ARANGODB_TESTS_SOURCES
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
+  Containers/SmallVectorTest.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp
@@ -332,7 +335,9 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/FakeFollower.h
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp)
+  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
+  Replication2/Serialization/LogStatusTest.cpp
+)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

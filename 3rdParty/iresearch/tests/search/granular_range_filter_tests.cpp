@@ -62,7 +62,7 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
     const std::string& name,
     const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
-      doc.insert(std::make_shared<tests::templates::string_field>(name, data.str));
+      doc.insert(std::make_shared<tests::string_field>(name, data.str));
     } else if (data.is_null()) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
@@ -1887,7 +1887,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
     ASSERT_NE(nullptr, writer);
 
     // add segment
-    index().emplace_back();
+    index().emplace_back(writer->field_features());
     auto& segment = index().back();
 
     {
@@ -1952,7 +1952,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
       const tests::json_doc_generator::json_value& data
     ) {
       if (data.is_string()) {
-        doc.insert(std::make_shared<tests::templates::string_field>(
+        doc.insert(std::make_shared<tests::string_field>(
           name,
           data.str
         ));
@@ -2005,7 +2005,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
         ASSERT_NE(nullptr, numeric_field);
 
         if (numeric_field->value() < 30.) {
-          auto* key_field = dynamic_cast<tests::templates::string_field*>(doc->indexed.get("_key"));
+          auto* key_field = dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
           ASSERT_NE(nullptr, key_field);
 
           expected.emplace(std::string(key_field->value()));
@@ -2056,7 +2056,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
         ASSERT_NE(nullptr, numeric_field);
 
         if (numeric_field->value() < 30.) {
-          auto* key_field = dynamic_cast<tests::templates::string_field*>(doc->indexed.get("_key"));
+          auto* key_field = dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
           ASSERT_NE(nullptr, key_field);
 
           expected.emplace(std::string(key_field->value()));
@@ -2105,7 +2105,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
         ASSERT_NE(nullptr, numeric_field);
 
         if (numeric_field->value() > 30.) {
-          auto* key_field = dynamic_cast<tests::templates::string_field*>(doc->indexed.get("_key"));
+          auto* key_field = dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
           ASSERT_NE(nullptr, key_field);
 
           expected.emplace(std::string(key_field->value()));
@@ -2155,7 +2155,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
         ASSERT_NE(nullptr, numeric_field);
 
         if (numeric_field->value() > 30.) {
-          auto* key_field = dynamic_cast<tests::templates::string_field*>(doc->indexed.get("_key"));
+          auto* key_field = dynamic_cast<tests::string_field*>(doc->indexed.get("_key"));
           ASSERT_NE(nullptr, key_field);
 
           expected.emplace(std::string(key_field->value()));

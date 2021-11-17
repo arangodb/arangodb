@@ -29,6 +29,9 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
 
+#include <memory>
+#include <string>
+
 namespace arangodb {
 class RestBatchHandler;
 
@@ -99,8 +102,8 @@ class HttpResponse : public GeneralResponse {
   
  private:
   // the body must already be set. deflate is then run on the existing body
-  ErrorCode deflate(size_t size = 16384) override {
-    return _body->deflate(size);
+  ErrorCode deflate() override {
+    return _body->deflate();
   }
 
   void addPayloadInternal(uint8_t const* data, size_t length, 

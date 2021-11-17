@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGODB_REST_COMMON_DEFINES_H
-#define ARANGODB_REST_COMMON_DEFINES_H 1
 
 #include <ostream>
 #include <string>
@@ -253,4 +251,3 @@ inline std::ostream& operator<<(std::ostream& ostream, ResponseCode responseCode
 }
 }  // namespace rest
 }  // namespace arangodb
-#endif

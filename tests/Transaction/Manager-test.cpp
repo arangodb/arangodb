@@ -76,7 +76,7 @@ class TransactionManagerTest : public ::testing::Test {
   TransactionManagerTest()
       : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())),
         mgr(transaction::ManagerFeature::manager()),
-        tid(TRI_NewTickServer()) {}
+        tid(TransactionId::createLeader()) {}
 
   ~TransactionManagerTest() { mgr->garbageCollect(true); }
 };
@@ -230,6 +230,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
+  tid = TransactionId::createFollower();
   auto beforeRole = arangodb::ServerState::instance()->getRole();
   auto roleGuard = scopeGuard([&]() noexcept {
     arangodb::ServerState::instance()->setRole(beforeRole);

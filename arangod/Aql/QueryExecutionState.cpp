@@ -50,12 +50,6 @@ static_assert(sizeof(StateNames) / sizeof(std::string) ==
                   static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE) + 1,
               "invalid number of ExecutionState values");
 
-QueryExecutionState::ValueType QueryExecutionState::fromNumber(size_t value) {
-  TRI_ASSERT(value < static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE));
-
-  return static_cast<QueryExecutionState::ValueType>(value);
-}
-
 size_t QueryExecutionState::toNumber(QueryExecutionState::ValueType value) {
   return static_cast<size_t>(value);
 }

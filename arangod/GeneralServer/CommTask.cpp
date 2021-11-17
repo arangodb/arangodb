@@ -206,6 +206,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
           !(path == "/_admin/compact") &&
+          !::startsWith(path, "/_admin/license") &&
           !::startsWith(path, "/_admin/log") &&
           !::startsWith(path, "/_admin/metrics") &&
           !::startsWith(path, "/_admin/server/") &&
@@ -826,14 +827,14 @@ bool CommTask::handleContentEncoding(GeneralRequest& req) {
     size_t len = raw.size();
     if (encoding == "gzip") {
       VPackBuffer<uint8_t> dst;
-      if (!arangodb::encoding::gzipUncompress(src, len, dst)) {
+      if (arangodb::encoding::gzipUncompress(src, len, dst) != TRI_ERROR_NO_ERROR) {
         return false;
       }
       req.setPayload(std::move(dst));
       return true;
     } else if (encoding == "deflate") {
       VPackBuffer<uint8_t> dst;
-      if (!arangodb::encoding::gzipDeflate(src, len, dst)) {
+      if (arangodb::encoding::gzipInflate(src, len, dst) != TRI_ERROR_NO_ERROR) {
         return false;
       }
       req.setPayload(std::move(dst));

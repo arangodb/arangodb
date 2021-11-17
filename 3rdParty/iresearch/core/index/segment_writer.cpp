@@ -60,17 +60,20 @@ segment_writer::stored_column::stored_column(
     const hashed_string_ref& name,
     columnstore_writer& columnstore,
     const column_info_provider_t& column_info,
+    std::deque<cached_column>& cached_columns,
     bool cache)
   : name(name.c_str(), name.size()),
-    name_hash(name.hash()),
-    stream(column_info(name)) {
+    name_hash(name.hash()) {
+  auto info = column_info(name);
+
   if (!cache) {
-    auto& info = stream.info();
     std::tie(id, writer) = columnstore.push_column(info);
   } else {
-    writer = [this](irs::doc_id_t doc)-> column_output& {
-      this->stream.prepare(doc);
-      return this->stream;
+    auto& cached = cached_columns.emplace_back(&id, info);
+
+    writer = [stream = &cached.stream](irs::doc_id_t doc)-> column_output& {
+      stream->prepare(doc);
+      return *stream;
     };
   }
 }
@@ -112,9 +115,17 @@ size_t segment_writer::memory_active() const noexcept {
   const auto docs_mask_extra = (0 != (docs_mask_.size() % sizeof(bitvector::word_t)))
      ? sizeof(bitvector::word_t) : 0;
 
-  const auto column_cache_active = std::accumulate(
+  auto column_cache_active = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
     [](size_t lhs, const stored_column& rhs) noexcept {
+      return lhs + rhs.name.size() + sizeof(rhs);
+  });
+
+  column_cache_active += std::accumulate(
+    std::begin(cached_columns_),
+    std::end(cached_columns_),
+    column_cache_active,
+    [](const auto lhs, const auto& rhs) {
       return lhs + rhs.stream.memory_active();
   });
 
@@ -129,9 +140,14 @@ size_t segment_writer::memory_reserved() const noexcept {
   const auto docs_mask_extra = (0 != (docs_mask_.size() % sizeof(bitvector::word_t)))
     ? sizeof(bitvector::word_t) : 0;
 
-  const auto column_cache_reserved = std::accumulate(
-    columns_.begin(), columns_.end(), size_t(0),
-    [](size_t lhs, const stored_column& rhs) noexcept {
+  auto column_cache_reserved
+    = columns_.capacity()*sizeof(decltype(columns_)::value_type);
+
+  column_cache_reserved += std::accumulate(
+    std::begin(cached_columns_),
+    std::end(cached_columns_),
+    column_cache_reserved,
+    [](const auto lhs, const auto& rhs) {
       return lhs + rhs.stream.memory_reserved();
   });
 
@@ -162,7 +178,7 @@ segment_writer::segment_writer(
     const feature_column_info_provider_t& feature_column_info,
     const comparer* comparator) noexcept
   : sort_(column_info),
-    fields_(field_features, feature_column_info, comparator),
+    fields_(field_features, feature_column_info, cached_columns_, comparator),
     column_info_(&column_info),
     field_features_(&field_features),
     dir_(dir),
@@ -206,7 +222,7 @@ column_output& segment_writer::stream(
     name,
     [this, &name](const auto& ctor){
       ctor(name, *col_writer_, *column_info_,
-           nullptr != fields_.comparator());
+           cached_columns_, nullptr != fields_.comparator());
   })->writer(doc_id);
 }
 
@@ -287,17 +303,13 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
   if (fields_.comparator()) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
-      *col_writer_,
-      doc_id_t(docs_cached()),
-      *fields_.comparator()
-    );
+        *col_writer_, doc_id_t(docs_cached()), *fields_.comparator());
 
+    // flush all cached columns
     irs::sorted_column::flush_buffer_t buffer;
-    for (auto& column : columns_) {
-
-      if (!field_limits::valid(column.id)) {
-        // cached column
-        column.id = column.stream.flush(*col_writer_, docmap, buffer);
+    for (auto& column : cached_columns_) {
+      if (IRS_LIKELY(!field_limits::valid(*column.id))) {
+        *column.id = column.stream.flush(*col_writer_, docmap, buffer);
       }
     }
 
@@ -347,6 +359,7 @@ void segment_writer::reset() noexcept {
   docs_mask_.clear();
   fields_.reset();
   columns_.clear();
+  cached_columns_.clear(); // FIXME(@gnusi): we loose all per-column buffers
   sort_.stream.clear();
 
   if (col_writer_) {

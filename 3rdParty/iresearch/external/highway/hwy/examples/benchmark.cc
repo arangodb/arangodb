@@ -19,7 +19,6 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include <cmath>
 #include <memory>
 #include <numeric>  // iota
 
@@ -37,15 +36,15 @@ using hwy::HWY_NAMESPACE::CombineShiftRightBytes;
 
 class TwoArray {
  public:
-  // Passed to ctor as a value NOT known to the compiler. Must be a multiple of
-  // the vector lane count * 8.
+  // Must be a multiple of the vector lane count * 8.
   static size_t NumItems() { return 3456; }
 
-  explicit TwoArray(const size_t num_items)
-      : a_(AllocateAligned<float>(num_items * 2)), b_(a_.get() + num_items) {
-    const float init = num_items / NumItems();  // 1, but compiler doesn't know
-    std::iota(a_.get(), a_.get() + num_items, init);
-    std::iota(b_, b_ + num_items, init);
+  TwoArray()
+      : a_(AllocateAligned<float>(NumItems() * 2)), b_(a_.get() + NumItems()) {
+    // = 1, but compiler doesn't know
+    const float init = static_cast<float>(Unpredictable1());
+    std::iota(a_.get(), a_.get() + NumItems(), init);
+    std::iota(b_, b_ + NumItems(), init);
   }
 
  protected:
@@ -58,11 +57,11 @@ template <class Benchmark>
 void RunBenchmark(const char* caption) {
   printf("%10s: ", caption);
   const size_t kNumInputs = 1;
-  const size_t num_items = Benchmark::NumItems() * Unpredictable1();
+  const size_t num_items = Benchmark::NumItems() * size_t(Unpredictable1());
   const FuncInput inputs[kNumInputs] = {num_items};
   Result results[kNumInputs];
 
-  Benchmark benchmark(num_items);
+  Benchmark benchmark;
 
   Params p;
   p.verbose = false;
@@ -78,7 +77,7 @@ void RunBenchmark(const char* caption) {
   benchmark.Verify(num_items);
 
   for (size_t i = 0; i < num_results; ++i) {
-    const double cycles_per_item = results[i].ticks / results[i].input;
+    const double cycles_per_item = results[i].ticks / double(results[i].input);
     const double mad = results[i].variability * cycles_per_item;
     printf("%6zu: %6.3f (+/- %5.3f)\n", results[i].input, cycles_per_item, mad);
   }
@@ -101,25 +100,25 @@ void Intro() {
 // 0.4 cyc/float = bronze, 0.25 = silver, 0.15 = gold!
 class BenchmarkDot : public TwoArray {
  public:
-  explicit BenchmarkDot(size_t num_items) : TwoArray(num_items), dot_{-1.0f} {}
+  BenchmarkDot() : dot_{-1.0f} {}
 
   FuncOutput operator()(const size_t num_items) {
     HWY_FULL(float) d;
     const size_t N = Lanes(d);
     using V = decltype(Zero(d));
-    constexpr int unroll = 8;
+    constexpr size_t unroll = 8;
     // Compiler doesn't make independent sum* accumulators, so unroll manually.
     // Some older compilers might not be able to fit the 8 arrays in registers,
     // so manual unrolling can be helpfull if you run into this issue.
     // 2 FMA ports * 4 cycle latency = 8x unrolled.
     V sum[unroll];
-    for (int i = 0; i < unroll; ++i) {
+    for (size_t i = 0; i < unroll; ++i) {
       sum[i] = Zero(d);
     }
     const float* const HWY_RESTRICT pa = &a_[0];
     const float* const HWY_RESTRICT pb = b_;
     for (size_t i = 0; i < num_items; i += unroll * N) {
-      for (int j = 0; j < unroll; ++j) {
+      for (size_t j = 0; j < unroll; ++j) {
         const auto a = Load(d, pa + i + j * N);
         const auto b = Load(d, pb + i + j * N);
         sum[j] = MulAdd(a, b, sum[j]);
@@ -127,12 +126,13 @@ class BenchmarkDot : public TwoArray {
     }
     // Reduction tree: sum of all accumulators by pairs into sum[0], then the
     // lanes.
-    for (int power = 1; power < unroll; power *= 2) {
-      for (int i = 0; i < unroll; i += 2 * power) {
+    for (size_t power = 1; power < unroll; power *= 2) {
+      for (size_t i = 0; i < unroll; i += 2 * power) {
         sum[i] += sum[i + power];
       }
     }
-    return dot_ = GetLane(SumOfLanes(sum[0]));
+    dot_ = GetLane(SumOfLanes(d, sum[0]));
+    return static_cast<FuncOutput>(dot_);
   }
   void Verify(size_t num_items) {
     if (dot_ == -1.0f) {
@@ -157,8 +157,6 @@ class BenchmarkDot : public TwoArray {
 // INTERMEDIATE: delta coding
 // 1.0 cycles/float = bronze, 0.7 = silver, 0.4 = gold!
 struct BenchmarkDelta : public TwoArray {
-  explicit BenchmarkDelta(size_t num_items) : TwoArray(num_items) {}
-
   FuncOutput operator()(const size_t num_items) const {
 #if HWY_TARGET == HWY_SCALAR
     b_[0] = a_[0];
@@ -197,7 +195,7 @@ struct BenchmarkDelta : public TwoArray {
       Store(a - shifted, df, &b_[i]);
     }
 #endif
-    return b_[num_items - 1];
+    return static_cast<FuncOutput>(b_[num_items - 1]);
   }
 
   void Verify(size_t num_items) {

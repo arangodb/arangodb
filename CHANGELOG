@@ -1,6 +1,105 @@
 devel
 -----
 
+* APM-209: Histogram displaying is now switched off by default. For displaying
+  it, the new flag `histogram.generate` must be set to true. Its default value
+  is false for compatibility with other versions and also for complying with the
+  histogram not being displayed by default. If this flag is not set to true, but
+  other histogram flags are addressed, e.g. `--histogram.interval-size 500`,
+  everything will still run normally, but a warning message will be displayed
+  saying that the histogram is switched off and setting this flag would not be
+  of use. When the flag is set to true, the histogram is displayed before the
+  summary in the output.
+
+* Extend Windows minidumps with memory regions referenced from CPU registers or
+  the stack to provide more contextual information in case of crashes.
+
+* Add option to content-transfer encode gzip Foxx replies.
+
+* Simplify internal request compression/decompression handling code.
+
+* In the shards overview the list of servers to move the leader shard to, now
+  also contains the current followers. This means that from now on also active
+  follower servers can be nominated as the leading server for that specific
+  shard.
+  
+* Fix issues during rolling upgrades from 3.8.0 to 3.8.x (x >= 1) and from
+  3.7.x (x <= 12) to 3.8.3. The problem was that older versions did not handle
+  following term ids that are sent from newer versions during synchronous
+  replication operations.
+
+* Close a potential gap during shard synchronization when moving from the
+  initial sync step to the WAL tailing step. In this small gap the leader 
+  could purge some of the WAL files that would be required by the following
+  WAL tailing step. This was possible because at the end of the initial sync
+  step, the snapshot on the leader is released, and there is a small window
+  of time before the follower will issue its first WAL tailing request.
+
+* Improve Shards overview in web UI: the number of currently syncing shards is
+  now displayed per collection. Additionally, shards on failed servers are now
+  displayed in a different color.
+
+* Increase default stack size on Windows from 1MB to 4MB. This should allow
+  execution of larger queries without overflowing the stack.
+
+* Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could
+  block quick SynchronizeShard jobs which have the data and only need to
+  resync.
+
+* When enabling the cluster supervision maintenance mode via the web UI, there
+  is now the possibility to select a duration for the maintenance mode.
+  Previous versions of ArangoDB always enabled the maintenance mode for one
+  hour, without allowing any choice here.
+
+* Remove unsupported `--server.default-api-compatibility` startup option.
+
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be
+  used by concurrently running edge lookups.
+
+* DEVSUP-899: Fixed Subquery execution
+  in a very rare case a subquery, nested in another subquery, was not
+  executed, which is fixed now. Technical details:
+  If we have two subqueries: `Outer` and `Nested` the Outer will define
+  the input for Nested. And Outer has the pattern: 1 input, subqueryDone, 1
+  input, subqueryDone [...] and our internal batching did cut a batch like
+  this: [<...>, input (A)] | [subqueryDone, input (B), subqueryDone, <...>]
+  than Nested on input (B) was not executed. As soon as we have more than 1
+  input per Outer, or a different cutting position, all was good.
+
+* Fixed SEARCH-261: Fix possible race between file creation and directory
+  cleaner (ArangoSearch).
+
+* Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of
+  primary sort (ArangoSearch).
+
+* APM-187: The "Rebalance Shards" button now is displayed in a new tab, and it
+  is displayed for any database in cluster mode. There is also a new flag for
+  arangod, `--cluster.max-number-of-move-shards` (default = 10), which limits
+  the amount of move shards operations each time the button is clicked to 
+  rebalance shards. When the button is clicked, the number of move shards 
+  operations scheduled is shown, or that no operation was scheduled if the flag 
+  `--cluster.max-number-of-move-shards` has a value of 0.
+  
+* BTS-623: The audit log messages, when written, were not showing the log level
+  of the message, as in the example:
+    `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |
+     127.0.0.1:52490 | n/a | credentials missing | /_admin/aardvark/favicon.ico`
+  With the new flag `--audit.display-log-level`, the level of the audit log
+  message can be displayed in the log text.  When set to true, this behavior is
+  expected, as in the example:
+    `2021-10-21T02:28:42Z | DEBUG | hostname | audit-authentication | n/a |
+     _system | 127.0.0.1:52490 | n/a | credentials missing |
+     /_admin/aardvark/favicon.ico`
+  The default value for the flag is false for compatibility with former
+  versions. When this flag is not used, it is considered to have the default
+  behavior (that is, set to false).
+
+* Upgrade bundled version of RocksDB to 6.26.
+
+* Change error message for queries that use too much memory from "resource
+  limit exceeded" to "query would use more memory than allowed".
+
 * Single server license output checking fixed.
 
 * Added enterprise license feature visibility for arangosh.

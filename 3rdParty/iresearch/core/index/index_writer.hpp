@@ -706,6 +706,13 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     cached_readers_.clear();
   }
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// @returns field features
+  ////////////////////////////////////////////////////////////////////////////
+  const field_features_t& field_features() const noexcept {
+    return field_features_;
+  }
+
  private:
   typedef std::vector<index_file_refs::ref_t> file_refs_t;
 
