@@ -924,7 +924,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
       break;
     }  // else found
 
-    res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
+    res = lookupDocumentVPack<false>(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
     if (res.ok()) {
       cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
     }
@@ -959,7 +959,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   if (documentId.isSet()) {
     std::string* buffer = result.setManaged();
     rocksdb::PinnableSlice ps(buffer);
-    Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
+    Result res = lookupDocumentVPack<false>(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
     if (res.ok()) {
       if (ps.IsPinned()) {
         buffer->assign(ps.data(), ps.size());
@@ -1085,8 +1085,8 @@ Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
   // modifications always need to observe all changes in order to validate uniqueness constraints
-  res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
-    /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+  res = lookupDocumentVPack<true>(trx, oldDocumentId, previousPS,
+    /*readCache*/ false, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {
     return res;
   }
@@ -1237,8 +1237,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
   // modifications always need to observe all changes in order to validate uniqueness constraints
-  res = lookupDocumentVPack(&trx, documentId, previousPS,
-  /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+  res = lookupDocumentVPack<true>(&trx, documentId, previousPS,
+    /*readCache*/ false, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {
     return res;
   }
@@ -1764,6 +1764,7 @@ Result RocksDBCollection::modifyDocument(transaction::Methods* trx,
 /// @brief lookup document in cache and / or rocksdb
 /// @param readCache attempt to read from cache
 /// @param fillCache fill cache with found document
+template <bool Update>
 arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
                                                         LocalDocumentId const& documentId,
                                                         rocksdb::PinnableSlice& ps,
@@ -1782,6 +1783,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
     // check cache first for fast path
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
+    // in case of an update a cache hit is not enough since we also need to look the key
     if (f.found()) {  // copy finding into buffer
       ps.PinSelf(rocksdb::Slice(reinterpret_cast<char const*>(f.value()->value()),
                                 f.value()->valueSize()));
@@ -1796,10 +1798,15 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
   }
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
-  rocksdb::Status s =
-      mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
-                key->string(), &ps, readOwnWrites);
-
+  rocksdb::Status s = std::invoke([&]() {
+      if constexpr (Update) {
+        return mthd->GetForUpdate(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+                  key->string(), &ps);
+      } else {
+        return mthd->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
+                  key->string(), &ps, readOwnWrites);
+      }
+    });
   if (!s.ok()) {
     LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
         << "NOT FOUND rev: " << documentId.id()

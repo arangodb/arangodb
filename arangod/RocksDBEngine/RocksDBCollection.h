@@ -182,6 +182,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief lookup document in cache and / or rocksdb
   /// @param readCache attempt to read from cache
   /// @param fillCache fill cache with found document
+  template <bool Update>
   arangodb::Result lookupDocumentVPack(transaction::Methods* trx,
                                        LocalDocumentId const& documentId,
                                        rocksdb::PinnableSlice& ps,

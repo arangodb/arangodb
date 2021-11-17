@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix BTS-601
+
 * Removed the following deprecated arangobench testcases:
   * aqltrx
   * aqlv8
