@@ -821,7 +821,7 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
   return (0.25 * N * lgM + M * lgM) < (N * lgN);
 }
 
-std::tuple<Collection const*, Variable const*, bool> extractDistributeInfo(ExecutionNode* node) {
+std::tuple<Collection const*, Variable const*, bool> extractDistributeInfo(ExecutionNode const* node) {
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes
   //       are currently assumed to be disjoint, and hence smart, so all
@@ -4993,6 +4993,128 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
+bool isInputForModificationNode(ExecutionPlan const& plan,
+                                ModificationNode const* modificationNode,
+                                ExecutionNode const* otherNode) {
+  // extract the input variable for the modification node
+  auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(modificationNode);
+
+  // find the setter of the input variable
+  TRI_ASSERT(inputVariable != nullptr);
+  ExecutionNode const* setter = plan.getVarSetBy(inputVariable->id);
+  TRI_ASSERT(setter != nullptr);
+
+  if (setter->getType() == EN::CALCULATION) {
+    // this should be an attribute access for _key
+    auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
+    auto expr = cn->expression();
+    AstNode const* n = expr->node();
+
+    // check the variable is the same as the modification node's input variable
+    if (n->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      if (cn->outVariable() != inputVariable) {
+        LOG_DEVEL <<  __LINE__;
+        return false;
+      }
+      // check that the modification node's collection is sharded over _key
+      //std::vector<std::string> shardKeys = modificationNode->collection()->shardKeys(false);
+      if (!collection->usesDefaultSharding()) {
+        LOG_DEVEL <<  __LINE__;
+        return false;
+      }
+
+      // get parent node
+      n = n->getMember(0);
+      if (n->type != NODE_TYPE_REFERENCE) {
+        LOG_DEVEL <<  __LINE__;
+        return false;
+      }
+      // attribute name must be _key or _id
+      if (n->getStringRef() != StaticStrings::KeyString &&
+          n->getStringRef() != StaticStrings::IdString) {
+        LOG_DEVEL <<  __LINE__;
+        return false;
+      }
+      inputVariable = static_cast<Variable const*>(n->getData());
+      setter = plan.getVarSetBy(inputVariable->id);
+    } else if (n->isObject()) {
+      // note for which shard keys we need to look for
+      auto shardKeys = collection->shardKeys(false);
+      std::unordered_set<std::string> toFind;
+      for (auto const& it : shardKeys) {
+        toFind.emplace(it);
+      }
+      // we must also know the _key value, otherwise it will not work
+      toFind.emplace(StaticStrings::KeyString);
+
+      // go through the input object attribute by attribute
+      // and look for our shard keys
+      Variable const* lastVariable = nullptr;
+
+      for (size_t i = 0; i < n->numMembers(); ++i) {
+        auto sub = n->getMember(i);
+
+        if (sub->type != NODE_TYPE_OBJECT_ELEMENT) {
+          continue;
+        }
+
+        // look up attribute name
+        auto it = toFind.find(sub->getString());
+
+        if (it != toFind.end()) {
+          // we found one of the shard keys!
+          // remove the attribute from our to-do list
+          auto value = sub->getMember(0);
+
+          if (value->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            // check if all values for the shard keys are referring to
+            // the same FOR loop variable
+            auto var = value->getMember(0);
+            if (var->type == NODE_TYPE_REFERENCE) {
+              auto accessedVariable = static_cast<Variable const*>(var->getData());
+
+              if (lastVariable != nullptr && lastVariable != accessedVariable) {
+        LOG_DEVEL <<  __LINE__;
+                return false;
+              }
+
+              lastVariable = accessedVariable;
+              toFind.erase(it);
+            }
+          }
+        }
+      }
+
+      if (!toFind.empty()) {
+        // not all shard keys covered
+        LOG_DEVEL <<  __LINE__;
+        return false;
+      }
+
+      TRI_ASSERT(lastVariable != nullptr);
+      inputVariable = lastVariable;
+      setter = plan.getVarSetBy(inputVariable->id);
+    } else {
+      // cannot optimize this type of input
+      return false;
+    }
+  }
+
+  if (setter->getType() != EN::ENUMERATE_COLLECTION && setter->getType() != EN::INDEX) {
+        LOG_DEVEL <<  __LINE__;
+    return false;
+  }
+
+  if (::getCollection(setter) != collection) {
+    // FOR loop and modification node use different collections
+        LOG_DEVEL <<  __LINE__;
+    return false;
+  }
+
+  return true;
+}
+
+
 /// WalkerWorker for undistributeRemoveAfterEnumColl
 class RemoveToEnumCollFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
@@ -8972,6 +9094,13 @@ namespace {
       if (nodeEligibleForDistribute(lower.getShardByNode()->getType())) {
         auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(lower.getShardByNode());
         auto up = upper.getShardByNode();
+
+        if (lower.getShardByNode()->isModificationNode() && 
+            isInputForModificationNode(plan, ExecutionNode::castTo<ModificationNode const*>(lower.getShardByNode()), up)) {
+          LOG_DEVEL << "Ooooohh...";
+          return upper;
+        }
+
         VarSet variablesToTest;
         variablesToTest.insert(inputVariable);
         if (up->setsVariable(variablesToTest)) {
