@@ -1,0 +1,388 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Migrating fibers between threads</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Fiber">
+<link rel="up" href="../index.html" title="Chapter 1. Fiber">
+<link rel="prev" href="fls.html" title="Fiber local storage">
+<link rel="next" href="callbacks.html" title="Integrating Fibers with Asynchronous Callbacks">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fls.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="callbacks.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="fiber.migration"></a><a name="migration"></a><a class="link" href="migration.html" title="Migrating fibers between threads">Migrating fibers
+    between threads</a>
+</h2></div></div></div>
+<h4>
+<a name="fiber.migration.h0"></a>
+      <span class="phrase"><a name="fiber.migration.overview"></a></span><a class="link" href="migration.html#fiber.migration.overview">Overview</a>
+    </h4>
+<p>
+      Each fiber owns a stack and manages its execution state, including all registers
+      and CPU flags, the instruction pointer and the stack pointer. That means, in
+      general, a fiber is not bound to a specific thread.<a href="#ftn.fiber.migration.f0" class="footnote" name="fiber.migration.f0"><sup class="footnote">[3]</sup></a><sup>,</sup><a href="#ftn.fiber.migration.f1" class="footnote" name="fiber.migration.f1"><sup class="footnote">[4]</sup></a>
+    </p>
+<p>
+      Migrating a fiber from a logical CPU with heavy workload to another logical
+      CPU with a lighter workload might speed up the overall execution. Note that
+      in the case of NUMA-architectures, it is not always advisable to migrate data
+      between threads. Suppose fiber <span class="emphasis"><em>f</em></span> is running on logical
+      CPU <span class="emphasis"><em>cpu0</em></span> which belongs to NUMA node <span class="emphasis"><em>node0</em></span>.
+      The data of <span class="emphasis"><em>f</em></span> are allocated on the physical memory located
+      at <span class="emphasis"><em>node0</em></span>. Migrating the fiber from <span class="emphasis"><em>cpu0</em></span>
+      to another logical CPU <span class="emphasis"><em>cpuX</em></span> which is part of a different
+      NUMA node <span class="emphasis"><em>nodeX</em></span> might reduce the performance of the application
+      due to increased latency of memory access.
+    </p>
+<p>
+      Only fibers that are contained in <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a>’s ready queue can
+      migrate between threads. You cannot migrate a running fiber, nor one that is
+      <a class="link" href="overview.html#blocking"><span class="emphasis"><em>blocked</em></span></a>. You cannot migrate
+      a fiber if its <a class="link" href="scheduling.html#context_is_context"><code class="computeroutput">context::is_context()</code></a> method returns <code class="computeroutput"><span class="keyword">true</span></code> for <code class="computeroutput"><span class="identifier">pinned_context</span></code>.
+    </p>
+<p>
+      In <span class="bold"><strong>Boost.Fiber</strong></span> a fiber is migrated by invoking
+      <a class="link" href="scheduling.html#context_detach"><code class="computeroutput">context::detach()</code></a> on the thread from which the fiber migrates
+      and <a class="link" href="scheduling.html#context_attach"><code class="computeroutput">context::attach()</code></a> on the thread to which the fiber migrates.
+    </p>
+<p>
+      Thus, fiber migration is accomplished by sharing state between instances of
+      a user-coded <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a> implementation running on different threads.
+      The fiber’s original thread calls <a class="link" href="scheduling.html#algorithm_awakened"><code class="computeroutput">algorithm::awakened()</code></a>, passing
+      the fiber’s <a class="link" href="scheduling.html#class_context"><code class="computeroutput">context</code></a><code class="literal">*</code>. The <code class="computeroutput"><span class="identifier">awakened</span><span class="special">()</span></code> implementation calls <a class="link" href="scheduling.html#context_detach"><code class="computeroutput">context::detach()</code></a>.
+    </p>
+<p>
+      At some later point, when the same or a different thread calls <a class="link" href="scheduling.html#algorithm_pick_next"><code class="computeroutput">algorithm::pick_next()</code></a>,
+      the <code class="computeroutput"><span class="identifier">pick_next</span><span class="special">()</span></code>
+      implementation selects a ready fiber and calls <a class="link" href="scheduling.html#context_attach"><code class="computeroutput">context::attach()</code></a> on
+      it before returning it.
+    </p>
+<p>
+      As stated above, a <code class="computeroutput"><span class="identifier">context</span></code>
+      for which <code class="computeroutput"><span class="identifier">is_context</span><span class="special">(</span><span class="identifier">pinned_context</span><span class="special">)</span>
+      <span class="special">==</span> <span class="keyword">true</span></code>
+      must never be passed to either <a class="link" href="scheduling.html#context_detach"><code class="computeroutput">context::detach()</code></a> or <a class="link" href="scheduling.html#context_attach"><code class="computeroutput">context::attach()</code></a>.
+      It may only be returned from <code class="computeroutput"><span class="identifier">pick_next</span><span class="special">()</span></code> called by the <span class="emphasis"><em>same</em></span> thread
+      that passed that context to <code class="computeroutput"><span class="identifier">awakened</span><span class="special">()</span></code>.
+    </p>
+<h4>
+<a name="fiber.migration.h1"></a>
+      <span class="phrase"><a name="fiber.migration.example_of_work_sharing"></a></span><a class="link" href="migration.html#fiber.migration.example_of_work_sharing">Example
+      of work sharing</a>
+    </h4>
+<p>
+      In the example <a href="../../../examples/work_sharing.cpp" target="_top">work_sharing.cpp</a>
+      multiple worker fibers are created on the main thread. Each fiber gets a character
+      as parameter at construction. This character is printed out ten times. Between
+      each iteration the fiber calls <a class="link" href="fiber_mgmt/this_fiber.html#this_fiber_yield"><code class="computeroutput">this_fiber::yield()</code></a>. That puts
+      the fiber in the ready queue of the fiber-scheduler <span class="emphasis"><em>shared_ready_queue</em></span>,
+      running in the current thread. The next fiber ready to be executed is dequeued
+      from the shared ready queue and resumed by <span class="emphasis"><em>shared_ready_queue</em></span>
+      running on <span class="emphasis"><em>any participating thread</em></span>.
+    </p>
+<p>
+      All instances of <span class="emphasis"><em>shared_ready_queue</em></span> share one global concurrent
+      queue, used as ready queue. This mechanism shares all worker fibers between
+      all instances of <span class="emphasis"><em>shared_ready_queue</em></span>, thus between all
+      participating threads.
+    </p>
+<h4>
+<a name="fiber.migration.h2"></a>
+      <span class="phrase"><a name="fiber.migration.setup_of_threads_and_fibers"></a></span><a class="link" href="migration.html#fiber.migration.setup_of_threads_and_fibers">Setup
+      of threads and fibers</a>
+    </h4>
+<p>
+      In <code class="computeroutput"><span class="identifier">main</span><span class="special">()</span></code>
+      the fiber-scheduler is installed and the worker fibers and the threads are
+      launched.
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">use_scheduling_algorithm</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">algo</span><span class="special">::</span><span class="identifier">shared_work</span> <span class="special">&gt;();</span> <a class="co" name="fiber.migration.c0" href="migration.html#fiber.migration.c1"><img src="../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a>
+
+<span class="keyword">for</span> <span class="special">(</span> <span class="keyword">char</span> <span class="identifier">c</span> <span class="special">:</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"abcdefghijklmnopqrstuvwxyz"</span><span class="special">))</span> <span class="special">{</span> <a class="co" name="fiber.migration.c2" href="migration.html#fiber.migration.c3"><img src="../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">fiber</span><span class="special">([</span><span class="identifier">c</span><span class="special">](){</span> <span class="identifier">whatevah</span><span class="special">(</span> <span class="identifier">c</span><span class="special">);</span> <span class="special">}).</span><span class="identifier">detach</span><span class="special">();</span>
+    <span class="special">++</span><span class="identifier">fiber_count</span><span class="special">;</span> <a class="co" name="fiber.migration.c4" href="migration.html#fiber.migration.c5"><img src="../../../../../doc/src/images/callouts/3.png" alt="3" border="0"></a>
+<span class="special">}</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">detail</span><span class="special">::</span><span class="identifier">thread_barrier</span> <span class="identifier">b</span><span class="special">(</span> <span class="number">4</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span> <span class="identifier">threads</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span> <a class="co" name="fiber.migration.c6" href="migration.html#fiber.migration.c7"><img src="../../../../../doc/src/images/callouts/4.png" alt="4" border="0"></a>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span><span class="special">(</span> <span class="identifier">thread</span><span class="special">,</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">),</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span><span class="special">(</span> <span class="identifier">thread</span><span class="special">,</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">),</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span><span class="special">(</span> <span class="identifier">thread</span><span class="special">,</span> <span class="special">&amp;</span> <span class="identifier">b</span><span class="special">)</span>
+<span class="special">};</span>
+<span class="identifier">b</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span> <a class="co" name="fiber.migration.c8" href="migration.html#fiber.migration.c9"><img src="../../../../../doc/src/images/callouts/5.png" alt="5" border="0"></a>
+<span class="special">{</span>
+    <span class="identifier">lock_type</span><a class="co" name="fiber.migration.c10" href="migration.html#fiber.migration.c11"><img src="../../../../../doc/src/images/callouts/6.png" alt="6" border="0"></a> <span class="identifier">lk</span><span class="special">(</span> <span class="identifier">mtx_count</span><span class="special">);</span>
+    <span class="identifier">cnd_count</span><span class="special">.</span><span class="identifier">wait</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">,</span> <span class="special">[](){</span> <span class="keyword">return</span> <span class="number">0</span> <span class="special">==</span> <span class="identifier">fiber_count</span><span class="special">;</span> <span class="special">}</span> <span class="special">);</span> <a class="co" name="fiber.migration.c12" href="migration.html#fiber.migration.c13"><img src="../../../../../doc/src/images/callouts/7.png" alt="7" border="0"></a>
+<span class="special">}</span> <a class="co" name="fiber.migration.c14" href="migration.html#fiber.migration.c15"><img src="../../../../../doc/src/images/callouts/8.png" alt="8" border="0"></a>
+<span class="identifier">BOOST_ASSERT</span><span class="special">(</span> <span class="number">0</span> <span class="special">==</span> <span class="identifier">fiber_count</span><span class="special">);</span>
+<span class="keyword">for</span> <span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span> <span class="special">&amp;</span> <span class="identifier">t</span> <span class="special">:</span> <span class="identifier">threads</span><span class="special">)</span> <span class="special">{</span> <a class="co" name="fiber.migration.c16" href="migration.html#fiber.migration.c17"><img src="../../../../../doc/src/images/callouts/9.png" alt="9" border="0"></a>
+    <span class="identifier">t</span><span class="special">.</span><span class="identifier">join</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<div class="calloutlist"><table border="0" summary="Callout list">
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c1"></a><a href="#fiber.migration.c0"><img src="../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Install the scheduling algorithm <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">algo</span><span class="special">::</span><span class="identifier">shared_work</span></code>
+          in the main thread too, so each new fiber gets launched into the shared
+          pool.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c3"></a><a href="#fiber.migration.c2"><img src="../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Launch a number of worker fibers; each worker fiber picks up a character
+          that is passed as parameter to fiber-function <code class="computeroutput"><span class="identifier">whatevah</span></code>.
+          Each worker fiber gets detached.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c5"></a><a href="#fiber.migration.c4"><img src="../../../../../doc/src/images/callouts/3.png" alt="3" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Increment fiber counter for each new fiber.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c7"></a><a href="#fiber.migration.c6"><img src="../../../../../doc/src/images/callouts/4.png" alt="4" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Launch a couple of threads that join the work sharing.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c9"></a><a href="#fiber.migration.c8"><img src="../../../../../doc/src/images/callouts/5.png" alt="5" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          sync with other threads: allow them to start processing
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c11"></a><a href="#fiber.migration.c10"><img src="../../../../../doc/src/images/callouts/6.png" alt="6" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          <code class="computeroutput"><span class="identifier">lock_type</span></code> is typedef'ed
+          as <a href="http://en.cppreference.com/w/cpp/thread/unique_lock" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span></code></a>&lt; <a href="http://en.cppreference.com/w/cpp/thread/mutex" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">mutex</span></code></a> &gt;
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c13"></a><a href="#fiber.migration.c12"><img src="../../../../../doc/src/images/callouts/7.png" alt="7" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Suspend main fiber and resume worker fibers in the meanwhile. Main fiber
+          gets resumed (e.g returns from <code class="computeroutput"><span class="identifier">condition_variable_any</span><span class="special">::</span><span class="identifier">wait</span><span class="special">()</span></code>) if all worker fibers are complete.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c15"></a><a href="#fiber.migration.c14"><img src="../../../../../doc/src/images/callouts/8.png" alt="8" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Releasing lock of mtx_count is required before joining the threads, otherwise
+          the other threads would be blocked inside condition_variable::wait() and
+          would never return (deadlock).
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c17"></a><a href="#fiber.migration.c16"><img src="../../../../../doc/src/images/callouts/9.png" alt="9" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          wait for threads to terminate
+        </p></td>
+</tr>
+</table></div>
+<p>
+      The start of the threads is synchronized with a barrier. The main fiber of
+      each thread (including main thread) is suspended until all worker fibers are
+      complete. When the main fiber returns from <a class="link" href="synchronization/conditions.html#condition_variable_wait"><code class="computeroutput">condition_variable::wait()</code></a>,
+      the thread terminates: the main thread joins all other threads.
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">thread</span><span class="special">(</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">detail</span><span class="special">::</span><span class="identifier">thread_barrier</span> <span class="special">*</span> <span class="identifier">b</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">buffer</span><span class="special">;</span>
+    <span class="identifier">buffer</span> <span class="special">&lt;&lt;</span> <span class="string">"thread started "</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">get_id</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">buffer</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">flush</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">use_scheduling_algorithm</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">algo</span><span class="special">::</span><span class="identifier">shared_work</span> <span class="special">&gt;();</span> <a class="co" name="fiber.migration.c18" href="migration.html#fiber.migration.c19"><img src="../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a>
+    <span class="identifier">b</span><span class="special">-&gt;</span><span class="identifier">wait</span><span class="special">();</span> <a class="co" name="fiber.migration.c20" href="migration.html#fiber.migration.c21"><img src="../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a>
+    <span class="identifier">lock_type</span> <span class="identifier">lk</span><span class="special">(</span> <span class="identifier">mtx_count</span><span class="special">);</span>
+    <span class="identifier">cnd_count</span><span class="special">.</span><span class="identifier">wait</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">,</span> <span class="special">[](){</span> <span class="keyword">return</span> <span class="number">0</span> <span class="special">==</span> <span class="identifier">fiber_count</span><span class="special">;</span> <span class="special">}</span> <span class="special">);</span> <a class="co" name="fiber.migration.c22" href="migration.html#fiber.migration.c23"><img src="../../../../../doc/src/images/callouts/3.png" alt="3" border="0"></a>
+    <span class="identifier">BOOST_ASSERT</span><span class="special">(</span> <span class="number">0</span> <span class="special">==</span> <span class="identifier">fiber_count</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<div class="calloutlist"><table border="0" summary="Callout list">
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c19"></a><a href="#fiber.migration.c18"><img src="../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Install the scheduling algorithm <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">algo</span><span class="special">::</span><span class="identifier">shared_work</span></code>
+          in order to join the work sharing.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c21"></a><a href="#fiber.migration.c20"><img src="../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          sync with other threads: allow them to start processing
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c23"></a><a href="#fiber.migration.c22"><img src="../../../../../doc/src/images/callouts/3.png" alt="3" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Suspend main fiber and resume worker fibers in the meanwhile. Main fiber
+          gets resumed (e.g returns from <code class="computeroutput"><span class="identifier">condition_variable_any</span><span class="special">::</span><span class="identifier">wait</span><span class="special">()</span></code>) if all worker fibers are complete.
+        </p></td>
+</tr>
+</table></div>
+<p>
+      Each worker fiber executes function <code class="computeroutput"><span class="identifier">whatevah</span><span class="special">()</span></code> with character <code class="computeroutput"><span class="identifier">me</span></code>
+      as parameter. The fiber yields in a loop and prints out a message if it was
+      migrated to another thread.
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">whatevah</span><span class="special">(</span> <span class="keyword">char</span> <span class="identifier">me</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span><span class="special">::</span><span class="identifier">id</span> <span class="identifier">my_thread</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">get_id</span><span class="special">();</span> <a class="co" name="fiber.migration.c24" href="migration.html#fiber.migration.c25"><img src="../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a>
+        <span class="special">{</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">buffer</span><span class="special">;</span>
+            <span class="identifier">buffer</span> <span class="special">&lt;&lt;</span> <span class="string">"fiber "</span> <span class="special">&lt;&lt;</span> <span class="identifier">me</span> <span class="special">&lt;&lt;</span> <span class="string">" started on thread "</span> <span class="special">&lt;&lt;</span> <span class="identifier">my_thread</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">buffer</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">flush</span><span class="special">;</span>
+        <span class="special">}</span>
+        <span class="keyword">for</span> <span class="special">(</span> <span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">10</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span> <a class="co" name="fiber.migration.c26" href="migration.html#fiber.migration.c27"><img src="../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">this_fiber</span><span class="special">::</span><span class="identifier">yield</span><span class="special">();</span> <a class="co" name="fiber.migration.c28" href="migration.html#fiber.migration.c29"><img src="../../../../../doc/src/images/callouts/3.png" alt="3" border="0"></a>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span><span class="special">::</span><span class="identifier">id</span> <span class="identifier">new_thread</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">get_id</span><span class="special">();</span> <a class="co" name="fiber.migration.c30" href="migration.html#fiber.migration.c31"><img src="../../../../../doc/src/images/callouts/4.png" alt="4" border="0"></a>
+            <span class="keyword">if</span> <span class="special">(</span> <span class="identifier">new_thread</span> <span class="special">!=</span> <span class="identifier">my_thread</span><span class="special">)</span> <span class="special">{</span> <a class="co" name="fiber.migration.c32" href="migration.html#fiber.migration.c33"><img src="../../../../../doc/src/images/callouts/5.png" alt="5" border="0"></a>
+                <span class="identifier">my_thread</span> <span class="special">=</span> <span class="identifier">new_thread</span><span class="special">;</span>
+                <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">buffer</span><span class="special">;</span>
+                <span class="identifier">buffer</span> <span class="special">&lt;&lt;</span> <span class="string">"fiber "</span> <span class="special">&lt;&lt;</span> <span class="identifier">me</span> <span class="special">&lt;&lt;</span> <span class="string">" switched to thread "</span> <span class="special">&lt;&lt;</span> <span class="identifier">my_thread</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+                <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">buffer</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">flush</span><span class="special">;</span>
+            <span class="special">}</span>
+        <span class="special">}</span>
+    <span class="special">}</span> <span class="keyword">catch</span> <span class="special">(</span> <span class="special">...</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="special">}</span>
+    <span class="identifier">lock_type</span> <span class="identifier">lk</span><span class="special">(</span> <span class="identifier">mtx_count</span><span class="special">);</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="number">0</span> <span class="special">==</span> <span class="special">--</span><span class="identifier">fiber_count</span><span class="special">)</span> <span class="special">{</span> <a class="co" name="fiber.migration.c34" href="migration.html#fiber.migration.c35"><img src="../../../../../doc/src/images/callouts/6.png" alt="6" border="0"></a>
+        <span class="identifier">lk</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">();</span>
+        <span class="identifier">cnd_count</span><span class="special">.</span><span class="identifier">notify_all</span><span class="special">();</span> <a class="co" name="fiber.migration.c36" href="migration.html#fiber.migration.c37"><img src="../../../../../doc/src/images/callouts/7.png" alt="7" border="0"></a>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<div class="calloutlist"><table border="0" summary="Callout list">
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c25"></a><a href="#fiber.migration.c24"><img src="../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          get ID of initial thread
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c27"></a><a href="#fiber.migration.c26"><img src="../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          loop ten times
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c29"></a><a href="#fiber.migration.c28"><img src="../../../../../doc/src/images/callouts/3.png" alt="3" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          yield to other fibers
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c31"></a><a href="#fiber.migration.c30"><img src="../../../../../doc/src/images/callouts/4.png" alt="4" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          get ID of current thread
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c33"></a><a href="#fiber.migration.c32"><img src="../../../../../doc/src/images/callouts/5.png" alt="5" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          test if fiber was migrated to another thread
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c35"></a><a href="#fiber.migration.c34"><img src="../../../../../doc/src/images/callouts/6.png" alt="6" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Decrement fiber counter for each completed fiber.
+        </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="fiber.migration.c37"></a><a href="#fiber.migration.c36"><img src="../../../../../doc/src/images/callouts/7.png" alt="7" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+          Notify all fibers waiting on <code class="computeroutput"><span class="identifier">cnd_count</span></code>.
+        </p></td>
+</tr>
+</table></div>
+<h4>
+<a name="fiber.migration.h3"></a>
+      <span class="phrase"><a name="fiber.migration.scheduling_fibers"></a></span><a class="link" href="migration.html#fiber.migration.scheduling_fibers">Scheduling
+      fibers</a>
+    </h4>
+<p>
+      The fiber scheduler <code class="computeroutput"><span class="identifier">shared_ready_queue</span></code>
+      is like <code class="computeroutput"><span class="identifier">round_robin</span></code>, except
+      that it shares a common ready queue among all participating threads. A thread
+      participates in this pool by executing <a class="link" href="fiber_mgmt/fiber.html#use_scheduling_algorithm"><code class="computeroutput">use_scheduling_algorithm()</code></a>
+before
+      any other <span class="bold"><strong>Boost.Fiber</strong></span> operation.
+    </p>
+<p>
+      The important point about the ready queue is that it’s a class static, common
+      to all instances of shared_ready_queue. Fibers that are enqueued via <a class="link" href="scheduling.html#algorithm_awakened"><code class="computeroutput">algorithm::awakened()</code></a> (fibers
+      that are ready to be resumed) are thus available to all threads. It is required
+      to reserve a separate, scheduler-specific queue for the thread’s main fiber
+      and dispatcher fibers: these may <span class="emphasis"><em>not</em></span> be shared between
+      threads! When we’re passed either of these fibers, push it there instead of
+      in the shared queue: it would be Bad News for thread B to retrieve and attempt
+      to execute thread A’s main fiber.
+    </p>
+<p>
+      [awakened_ws]
+    </p>
+<p>
+      When <a class="link" href="scheduling.html#algorithm_pick_next"><code class="computeroutput">algorithm::pick_next()</code></a> gets called inside one thread,
+      a fiber is dequeued from <span class="emphasis"><em>rqueue_</em></span> and will be resumed in
+      that thread.
+    </p>
+<p>
+      [pick_next_ws]
+    </p>
+<p>
+      The source code above is found in <a href="../../../examples/work_sharing.cpp" target="_top">work_sharing.cpp</a>.
+    </p>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.fiber.migration.f0" class="footnote"><p><a href="#fiber.migration.f0" class="para"><sup class="para">[3] </sup></a>
+        The <span class="quote">“<span class="quote">main</span>”</span> fiber on each thread, that is, the fiber on which
+        the thread is launched, cannot migrate to any other thread. Also <span class="bold"><strong>Boost.Fiber</strong></span> implicitly creates a dispatcher fiber
+        for each thread — this cannot migrate either.
+      </p></div>
+<div id="ftn.fiber.migration.f1" class="footnote"><p><a href="#fiber.migration.f1" class="para"><sup class="para">[4] </sup></a>
+        Of course it would be problematic to migrate a fiber that relies on <a class="link" href="overview.html#thread_local_storage">thread-local storage</a>.
+      </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fls.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="callbacks.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

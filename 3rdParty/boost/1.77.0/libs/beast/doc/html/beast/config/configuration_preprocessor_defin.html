@@ -1,0 +1,117 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Configuration Preprocessor Definitions</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../config.html" title="Configuration">
+<link rel="prev" href="../config.html" title="Configuration">
+<link rel="next" href="../using_http.html" title="HTTP">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../config.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../config.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../using_http.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.config.configuration_preprocessor_defin"></a><a class="link" href="configuration_preprocessor_defin.html" title="Configuration Preprocessor Definitions">Configuration
+      Preprocessor Definitions</a>
+</h3></div></div></div>
+<p>
+        A number of configuration preprocessor definitions can be used to change
+        the behavior of Beast. The user should assume that they introduce significant
+        changes to the public part of this library's API and make sure that all translation
+        units (usually files) compiled and linked into a program use the same combination
+        of configuration macros, failure to do so may result in violations of ODR
+        (One Definition Rule).
+      </p>
+<div class="table">
+<a name="beast.config.configuration_preprocessor_defin.special_fields"></a><p class="title"><b>Table 1.13. Special Fields</b></p>
+<div class="table-contents"><table class="table" summary="Special Fields">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Definition
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  BOOST_BEAST_USE_STD_STRING_VIEW
+                </p>
+              </td>
+<td>
+                <p>
+                  Causes Beast to use std::string_view instead of boost::string_view.
+                  Requires C++17.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_BEAST_SEPARATE_COMPILATION
+                </p>
+              </td>
+<td>
+                <p>
+                  Enables the split compilation mode, which allows the user to compile
+                  definitions of non-template entities in a single translation unit,
+                  thus improving compilation speed. That translation unit has to
+                  include boost/beast/src.hpp in order to compile the definitions.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  BOOST_BEAST_ALLOW_DEPRECATED
+                </p>
+              </td>
+<td>
+                <p>
+                  Enables the use of deprecated APIs within Beast.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../config.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../config.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../using_http.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,181 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Image - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Dynamic images and image views" href="dynamic_image.html" />
+    <link rel="prev" title="Image View" href="image_view.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Image View" href="image_view.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Dynamic images and image views" href="dynamic_image.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="image">
+<h1>Image</h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#overview" id="id1">Overview</a></li>
+<li><a class="reference internal" href="#models" id="id2">Models</a></li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id1">Overview</a></h2>
+<p>An image is a container that owns the pixels of a given image view
+It allocates them in its constructor and deletes them in the destructor.
+It has a deep assignment operator and copy constructor. Images are used
+rarely, just when data ownership is important. Most STL algorithms operate on
+ranges, not containers. Similarly most GIL algorithms operate on image views
+(which images provide).</p>
+<p>In the most general form images are N-dimensional and satisfy the following
+concept:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">concept</span> <span class="n">RandomAccessNDImageConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">Img</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">Regular</span><span class="o">&lt;</span><span class="n">Img</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="k">typename</span> <span class="n">view_t</span><span class="p">;</span> <span class="n">where</span> <span class="n">MutableRandomAccessNDImageViewConcept</span><span class="o">&lt;</span><span class="n">view_t</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">const_view_t</span> <span class="o">=</span> <span class="n">view_t</span><span class="o">::</span><span class="n">const_t</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">point_t</span>      <span class="o">=</span> <span class="n">view_t</span><span class="o">::</span><span class="n">point_t</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">value_type</span>   <span class="o">=</span> <span class="n">view_t</span><span class="o">::</span><span class="n">value_type</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">allocator_type</span><span class="p">;</span>
+
+  <span class="n">Img</span><span class="o">::</span><span class="n">Img</span><span class="p">(</span><span class="n">point_t</span> <span class="n">dims</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">alignment</span><span class="o">=</span><span class="mi">0</span><span class="p">);</span>
+  <span class="n">Img</span><span class="o">::</span><span class="n">Img</span><span class="p">(</span><span class="n">point_t</span> <span class="n">dims</span><span class="p">,</span> <span class="n">value_type</span> <span class="n">fill_value</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">alignment</span><span class="p">);</span>
+
+  <span class="kt">void</span> <span class="n">Img</span><span class="o">::</span><span class="n">recreate</span><span class="p">(</span><span class="n">point_t</span> <span class="n">new_dims</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">alignment</span><span class="o">=</span><span class="mi">0</span><span class="p">);</span>
+  <span class="kt">void</span> <span class="n">Img</span><span class="o">::</span><span class="n">recreate</span><span class="p">(</span><span class="n">point_t</span> <span class="n">new_dims</span><span class="p">,</span> <span class="n">value_type</span> <span class="n">fill_value</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">alignment</span><span class="p">);</span>
+
+  <span class="k">const</span> <span class="n">point_t</span><span class="o">&amp;</span>        <span class="n">Img</span><span class="o">::</span><span class="n">dimensions</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+  <span class="k">const</span> <span class="n">const_view_t</span><span class="o">&amp;</span>   <span class="n">const_view</span><span class="p">(</span><span class="k">const</span> <span class="n">Img</span><span class="o">&amp;</span><span class="p">);</span>
+  <span class="k">const</span> <span class="n">view_t</span><span class="o">&amp;</span>         <span class="n">view</span><span class="p">(</span><span class="n">Img</span><span class="o">&amp;</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Two-dimensional images have additional requirements:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">concept</span> <span class="n">RandomAccess2DImageConcept</span><span class="o">&lt;</span><span class="n">RandomAccessNDImageConcept</span> <span class="n">Img</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="k">typename</span> <span class="n">x_coord_t</span> <span class="o">=</span> <span class="n">const_view_t</span><span class="o">::</span><span class="n">x_coord_t</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">y_coord_t</span> <span class="o">=</span> <span class="n">const_view_t</span><span class="o">::</span><span class="n">y_coord_t</span><span class="p">;</span>
+
+  <span class="n">Img</span><span class="o">::</span><span class="n">Img</span><span class="p">(</span><span class="n">x_coord_t</span> <span class="n">width</span><span class="p">,</span> <span class="n">y_coord_t</span> <span class="n">height</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">alignment</span><span class="o">=</span><span class="mi">0</span><span class="p">);</span>
+  <span class="n">Img</span><span class="o">::</span><span class="n">Img</span><span class="p">(</span><span class="n">x_coord_t</span> <span class="n">width</span><span class="p">,</span> <span class="n">y_coord_t</span> <span class="n">height</span><span class="p">,</span> <span class="n">value_type</span> <span class="n">fill_value</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">alignment</span><span class="p">);</span>
+
+  <span class="n">x_coord_t</span> <span class="n">Img</span><span class="o">::</span><span class="n">width</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+  <span class="n">y_coord_t</span> <span class="n">Img</span><span class="o">::</span><span class="n">height</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="kt">void</span> <span class="n">Img</span><span class="o">::</span><span class="n">recreate</span><span class="p">(</span><span class="n">x_coord_t</span> <span class="n">width</span><span class="p">,</span> <span class="n">y_coord_t</span> <span class="n">height</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">alignment</span><span class="o">=</span><span class="mi">1</span><span class="p">);</span>
+  <span class="kt">void</span> <span class="n">Img</span><span class="o">::</span><span class="n">recreate</span><span class="p">(</span><span class="n">x_coord_t</span> <span class="n">width</span><span class="p">,</span> <span class="n">y_coord_t</span> <span class="n">height</span><span class="p">,</span> <span class="n">value_type</span> <span class="n">fill_value</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">alignment</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>GIL images have views that model <code class="docutils literal"><span class="pre">ImageViewConcept</span></code> and operate on pixels.</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">concept</span> <span class="n">ImageConcept</span><span class="o">&lt;</span><span class="n">RandomAccess2DImageConcept</span> <span class="n">Img</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">where</span> <span class="n">MutableImageViewConcept</span><span class="o">&lt;</span><span class="n">view_t</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">coord_t</span>  <span class="o">=</span> <span class="n">view_t</span><span class="o">::</span><span class="n">coord_t</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Images, unlike locators and image views, don&#8217;t have &#8216;mutable&#8217; set of concepts
+because immutable images are not very useful.</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<ul class="last simple">
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_random_access_n_d_image_concept.html">RandomAccessNDImageConcept&lt;Image&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_random_access2_d_image_concept.html">RandomAccess2DImageConcept&lt;Image&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_image_concept.html">ImageConcept&lt;Image&gt;</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="models">
+<h2><a class="toc-backref" href="#id2">Models</a></h2>
+<p>GIL provides a class, <code class="docutils literal"><span class="pre">image</span></code>, which is templated over the value type
+(the pixel) and models <code class="docutils literal"><span class="pre">ImageConcept</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre> <span class="k">template</span>
+ <span class="o">&lt;</span>
+     <span class="k">typename</span> <span class="n">Pixel</span><span class="p">,</span> <span class="c1">// Models PixelValueConcept</span>
+     <span class="kt">bool</span> <span class="n">IsPlanar</span><span class="p">,</span>  <span class="c1">// planar or interleaved image</span>
+     <span class="k">typename</span> <span class="n">A</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span>
+ <span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">image</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>The image constructor takes an alignment parameter which allows for
+constructing images that are word-aligned or 8-byte aligned. The alignment is
+specified in bytes. The default value for alignment is 0, which means there is
+no padding at the end of rows. Many operations are faster using such
+1D-traversable images, because <code class="docutils literal"><span class="pre">image_view::x_iterator</span></code> can be used to
+traverse the pixels, instead of the more complicated <code class="docutils literal"><span class="pre">image_view::iterator</span></code>.
+Note that when alignment is 0, packed images are aligned to the bit - i.e.
+there are no padding bits at the end of rows of packed images.</p>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Image View" href="image_view.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Dynamic images and image views" href="dynamic_image.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

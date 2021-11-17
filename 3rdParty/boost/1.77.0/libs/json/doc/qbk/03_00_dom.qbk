@@ -1,0 +1,60 @@
+[/
+    Copyright (c) 2019 Vinnie Falco (vinnie.falco@gmail.com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/cppalliance/json
+]
+
+[section:dom Document Model]
+
+In this library the following types implement containers
+used to represent JSON data in memory:
+
+[table Container Types
+    [ [Type] [Description] ]
+    [ [__array__] [
+        A sequence container of JSON values supporting dynamic
+        size and fast, random access. The interface and performance
+        characteristics are similar to __std_vector__.
+    ] ]
+    [ [__object__] [
+        An associative container of key-value pairs with unique
+        keys, where the key is a string and the mapped type is
+        a JSON value. Search, insertion, and removal have average
+        contant-time complexity. In addition, elements are stored
+        contiguously in memory allowing cache-friendly iteration.
+    ] ]
+    [ [__string__] [
+        A contiguous range of characters. The library assumes that
+        the contents of the string holds only valid UTF-8.
+    ] ]
+    [ [__value__] [
+        A special variant which can hold one of any of the six
+        standard JSON data types.
+    ] ]
+]
+
+These containers are explored in-depth in the sections that follow.
+
+[note
+    Sample code and identifiers used throughout are written as if
+    the following declarations are in effect:
+    ```
+    #include <boost/json.hpp>
+    using namespace boost::json;
+    ```
+]
+
+[/-----------------------------------------------------------------------------]
+
+[include 03_01_value.qbk]
+[include 03_02_string.qbk]
+[include 03_03_array.qbk]
+[include 03_04_object.qbk]
+[include 03_05_numbers.qbk]
+[include 03_06_conversion.qbk]
+[include 03_07_init_lists.qbk]
+
+[endsect]

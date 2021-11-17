@@ -1,0 +1,68 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Using variadic macros</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="up" href="../index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="prev" href="vmd_whyhow.html" title="Why and how to use">
+<link rel="next" href="vmd_vc.html" title="Visual C++ define">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_whyhow.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_vc.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="variadic_macro_data.vmd_vmacros"></a><a class="link" href="vmd_vmacros.html" title="Using variadic macros">Using variadic macros</a>
+</h2></div></div></div>
+<p>
+      Variadic macros, as specified by C++11, is a feature taken from the C99 specification.
+      They are macros which take a final parameter denoted as '...' which represents
+      one or more final arguments to the macro as a series of comma-separated tokens.
+      In the macro expansion a special keyword of <code class="computeroutput"><span class="identifier">__VA_ARGS__</span></code>
+      represents the comma-separated tokens. This information when passed to a variadic
+      macro I call 'variadic macro data', which gives its name to this library. The
+      more general term 'variadic data' is used in this documentation to specify
+      data passed to a macro which can contain any number of macro tokens as a single
+      macro parameter, such as is found in Boost PP data types.
+    </p>
+<p>
+      The library assumes variadic macro support. If a compiler does not support
+      variadic macros the macros in the library will fail with preprocessor errors.
+      In previous versions of this library variadic macro support was determined
+      by the value of the BOOST_PP_VARIADICS object-like macro from the Boost Preprocessor
+      library, so that if this macro returned 0, none of the macros in the library
+      would be defined. This is no longer the case since the Boost preprocessor library
+      now also requires variadic macro support and BOOST_PP_VARIADICS always returns
+      1.
+    </p>
+<p>
+      What this means for the end-user is that the compiler must be used in C++11
+      or higher mode, or that a compiler in C++98/C++03 mode supports variadic macros.
+      A number of major compilers, including Visual C++, gcc, and clang. do support
+      variadic macros in C++98/C++03 mode, as long as strict compliance to the C++98/C++03
+      standard is not turned on through that compiler's compiler flags.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_whyhow.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_vc.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

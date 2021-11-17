@@ -1,0 +1,39 @@
+# (C) Copyright 2010: Tim Blechmann
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+import path ;
+import regex ;
+
+rule test_all
+{
+    local all_rules ;
+    local file ;
+    local headers_path = [ path.make $(BOOST_ROOT)/libs/heap/include/boost/heap ] ;
+    for file in [ path.glob-tree $(headers_path) : *.hpp : detail ]
+    {
+        local rel_file = [ path.relative-to $(headers_path) $(file) ] ;
+        # Note: The test name starts with '~' in order to group these tests in the test report table, preferably at the end.
+        #       All '/' are replaced with '-' because apparently test scripts have a problem with test names containing slashes.
+        local test_name = [ regex.replace ~hdr/$(rel_file) "/" "-" ] ;
+        #ECHO $(rel_file) ;
+        all_rules += [ compile self_contained_header.cpp : <define>"BOOST_HEAP_TEST_HEADER=$(rel_file)" <dependency>$(file) : $(test_name) ] ;
+    }
+
+   for file in [ glob *.cpp ]
+   {
+        if [ path.basename $(file) ] != "self_contained_header.cpp"
+        {
+            all_rules += [ run $(file)
+                :  # additional args
+                :  # test-files
+                : <library>/boost/test//boost_unit_test_framework # requirements
+            ] ;
+        }
+   }
+
+    return $(all_rules) ;
+}
+
+test-suite heap : [ test_all ] : <threading>multi ;

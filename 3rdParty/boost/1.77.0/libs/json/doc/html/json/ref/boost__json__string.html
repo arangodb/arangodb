@@ -1,0 +1,1016 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>string</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__json__stream_parser/release.html" title="stream_parser::release">
+<link rel="next" href="boost__json__string/allocator_type.html" title="string::allocator_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__stream_parser/release.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__string/allocator_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="json.ref.boost__json__string"></a><a class="link" href="boost__json__string.html" title="string">string</a>
+</h4></div></div></div>
+<p>
+        The native type of string values.
+      </p>
+<h5>
+<a name="json.ref.boost__json__string.h0"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.synopsis"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json/string.hpp" target="_top">boost/json/string.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">string</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__string.h1"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.types"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/allocator_type.html" title="string::allocator_type">allocator_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of <span class="emphasis"><em>Allocator</em></span> returned by <a class="link" href="boost__json__string/get_allocator.html" title="string::get_allocator"><code class="computeroutput"><span class="identifier">get_allocator</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/const_iterator.html" title="string::const_iterator">const_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A random access const iterator to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/const_pointer.html" title="string::const_pointer">const_pointer</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A const pointer to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/const_reference.html" title="string::const_reference">const_reference</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A const reference to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/const_reverse_iterator.html" title="string::const_reverse_iterator">const_reverse_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A reverse random access const iterator to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/difference_type.html" title="string::difference_type">difference_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to represent signed integers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/iterator.html" title="string::iterator">iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A random access iterator to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/pointer.html" title="string::pointer">pointer</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A pointer to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/reference.html" title="string::reference">reference</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A reference to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/reverse_iterator.html" title="string::reverse_iterator">reverse_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A reverse random access iterator to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/size_type.html" title="string::size_type">size_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to represent unsigned integers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/value_type.html" title="string::value_type">value_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of a character.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__string.h2"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.member_functions"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/append.html" title="string::append">append</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Append characters to the string. <br> <span class="silver">—</span><br>
+                  Append a string to the string. <br> <span class="silver">—</span><br>
+                  Append a range of characters.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/assign.html" title="string::assign">assign</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Assign characters to a string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/at.html" title="string::at">at</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a character with bounds checking.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/back.html" title="string::back">back</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the last character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/begin.html" title="string::begin">begin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/c_str.html" title="string::c_str">c_str</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the underlying character array directly.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/capacity.html" title="string::capacity">capacity</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of characters that can be held without a reallocation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/cbegin.html" title="string::cbegin">cbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/cend.html" title="string::cend">cend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/clear.html" title="string::clear">clear</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Clear the contents.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/compare.html" title="string::compare">compare</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Compare a string with the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/copy.html" title="string::copy">copy</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy a substring to another string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/crbegin.html" title="string::crbegin">crbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the first character of the reversed
+                  container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/crend.html" title="string::crend">crend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the character following the last character
+                  of the reversed container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/data.html" title="string::data">data</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the underlying character array directly.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/empty.html" title="string::empty">empty</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Check if the string has no characters.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/end.html" title="string::end">end</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/ends_with.html" title="string::ends_with">ends_with</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return whether the string end with a string. <br> <span class="silver">—</span><br>
+                  Return whether the string ends with a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/erase.html" title="string::erase">erase</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Erase characters from the string. <br> <span class="silver">—</span><br>
+                  Erase a character from the string. <br> <span class="silver">—</span><br>
+                  Erase a range from the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/find.html" title="string::find">find</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the first occurrence of a string within the string. <br>
+                  <span class="silver">—</span><br> Find the first occurrence
+                  of a character within the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/find_first_not_of.html" title="string::find_first_not_of">find_first_not_of</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the first occurrence of any of the characters not within the
+                  string. <br> <span class="silver">—</span><br> Find the
+                  first occurrence of a character not equal to <code class="computeroutput"><span class="identifier">ch</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/find_first_of.html" title="string::find_first_of">find_first_of</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the first occurrence of any of the characters within the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/find_last_not_of.html" title="string::find_last_not_of">find_last_not_of</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the last occurrence of a character not within the string.
+                  <br> <span class="silver">—</span><br> Find the last occurrence
+                  of a character not equal to <code class="computeroutput"><span class="identifier">ch</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/find_last_of.html" title="string::find_last_of">find_last_of</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the last occurrence of any of the characters within the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/front.html" title="string::front">front</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the first character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/get_allocator.html" title="string::get_allocator">get_allocator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the associated <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/grow.html" title="string::grow">grow</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Increase size without changing capacity.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/insert.html" title="string::insert">insert</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Insert a string. <br> <span class="silver">—</span><br>
+                  Insert a character. <br> <span class="silver">—</span><br>
+                  Insert a range of characters.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/operator_std__string_view.html" title="string::operator std::string_view">operator
+                  std::string_view</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Convert to a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string_view</span></code>
+                  referring to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/operator_string_view.html" title="string::operator string_view">operator
+                  string_view</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Convert to a <code class="computeroutput"><span class="identifier">string_view</span></code>
+                  referring to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/operator_plus__eq_.html" title="string::operator+=">operator+=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Append characters from a string. <br> <span class="silver">—</span><br>
+                  Append a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/operator_eq_.html" title="string::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy assignment. <br> <span class="silver">—</span><br>
+                  Move assignment. <br> <span class="silver">—</span><br>
+                  Assign a value to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/operator_lb__rb_.html" title="string::operator[]">operator[]</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a character without bounds checking.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/pop_back.html" title="string::pop_back">pop_back</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Remove the last character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/push_back.html" title="string::push_back">push_back</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Append a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/rbegin.html" title="string::rbegin">rbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the first character of the reversed
+                  container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/rend.html" title="string::rend">rend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the character following the last character
+                  of the reversed container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/replace.html" title="string::replace">replace</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Replace a substring with a string. <br> <span class="silver">—</span><br>
+                  Replace a range with a string. <br> <span class="silver">—</span><br>
+                  Replace a range with a range. <br> <span class="silver">—</span><br>
+                  Replace a substring with copies of a character. <br> <span class="silver">—</span><br> Replace a range with copies of
+                  a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/reserve.html" title="string::reserve">reserve</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Increase the capacity to at least a certain amount.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/resize.html" title="string::resize">resize</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Change the size of the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/rfind.html" title="string::rfind">rfind</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the last occurrence of a string within the string. <br>
+                  <span class="silver">—</span><br> Find the last occurrence
+                  of a character within the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/shrink_to_fit.html" title="string::shrink_to_fit">shrink_to_fit</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Request the removal of unused capacity.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/size.html" title="string::size">size</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of characters in the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/starts_with.html" title="string::starts_with">starts_with</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return whether the string begins with a string. <br> <span class="silver">—</span><br> Return whether the string begins
+                  with a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/storage.html" title="string::storage">storage</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the associated <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/string.html" title="string::string">string</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Default constructor. <br> <span class="silver">—</span><br>
+                  Pilfer constructor. <br> <span class="silver">—</span><br>
+                  Constructor. <br> <span class="silver">—</span><br> Copy
+                  constructor. <br> <span class="silver">—</span><br> Move
+                  constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/subview.html" title="string::subview">subview</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a substring.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/swap.html" title="string::swap">swap</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Swap the contents.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/_string.html" title="string::~string">~string</a> <span class="silver">[destructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__string.h3"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.static_members"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.static_members">Static
+        Members</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/max_size.html" title="string::max_size">max_size</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the maximum number of characters any string can hold.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__string.h4"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.static_members0"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.static_members0">Static
+        Members</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/npos.html" title="string::npos">npos</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A special index.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__string.h5"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.friends"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.friends">Friends</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__string/swap.html" title="string::swap">swap</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Exchange the given values.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__string.h6"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.description"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.description">Description</a>
+      </h5>
+<p>
+        Instances of string store and manipulate sequences of <code class="computeroutput"><span class="keyword">char</span></code>
+        using the UTF-8 encoding. The elements of a string are stored contiguously.
+        A pointer to any character in a string may be passed to functions that expect
+        a pointer to the first element of a null-terminated <code class="computeroutput"><span class="keyword">char</span></code>
+        array. String iterators are regular <code class="computeroutput"><span class="keyword">char</span></code>
+        pointers.
+      </p>
+<h5>
+<a name="json.ref.boost__json__string.h7"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.remarks"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.remarks">Remarks</a>
+      </h5>
+<p>
+        <code class="computeroutput"><span class="identifier">string</span></code> member functions do
+        not validate any UTF-8 byte sequences passed to them.
+      </p>
+<h5>
+<a name="json.ref.boost__json__string.h8"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.thread_safety"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        Non-const member functions may not be called concurrently with any other
+        member functions.
+      </p>
+<h5>
+<a name="json.ref.boost__json__string.h9"></a>
+        <span class="phrase"><a name="json.ref.boost__json__string.satisfies"></a></span><a class="link" href="boost__json__string.html#json.ref.boost__json__string.satisfies">Satisfies</a>
+      </h5>
+<p>
+        <a href="https://en.cppreference.com/w/cpp/named_req/ContiguousContainer" target="_top"><span class="emphasis"><em>ContiguousContainer</em></span></a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/ReversibleContainer" target="_top"><span class="emphasis"><em>ReversibleContainer</em></span></a>,
+        and <a href="https://en.cppreference.com/w/cpp/named_req/SequenceContainer" target="_top"><span class="emphasis"><em>SequenceContainer</em></span></a>.
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json.hpp" target="_top">boost/json.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__stream_parser/release.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__string/allocator_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

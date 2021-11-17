@@ -1,0 +1,101 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Tying it all together - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../experimental/worked-example/implicit_conversion.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../experimental.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/c-api.html"><img src="../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Tying it all together</h1></div></div></div>
+  
+
+<p>Firstly let&rsquo;s alias a more convenient form of <code>status_result</code>:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="p">,</span> <span class="k">class</span><span class="err"> </span><span class="nc">E</span> <span class="o">=</span> <span class="n">outcome_e</span><span class="o">::</span><span class="n">error</span><span class="o">&gt;</span>
+<span class="k">using</span> <span class="n">result</span> <span class="o">=</span>  <span class="c1">//
+</span><span class="c1"></span><span class="n">outcome_e</span><span class="o">::</span><span class="n">status_result</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">outcome_e</span><span class="o">::</span><span class="n">policy</span><span class="o">::</span><span class="n">default_status_result_policy</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/experimental_status_code.cpp#L196" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>(The defaulting of <code>default_result_policy</code> is superfluous, it&rsquo;s already the default)</p>
+
+<p>What follows now is very standard Outcome code. Indeed, it would compile
+just fine under standard Outcome with only a few typedefs.</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="n">result</span><span class="o">&lt;</span><span class="n">file_handle</span><span class="p">,</span> <span class="n">file_io_error</span><span class="o">&gt;</span> <span class="n">open_file</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">path</span><span class="p">)</span>  <span class="c1">// models throws(file_io_error)
+</span><span class="c1"></span><span class="p">{</span>
+  <span class="n">file_handle</span> <span class="n">ret</span><span class="p">(</span><span class="o">::</span><span class="n">fopen</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&#34;r&#34;</span><span class="p">));</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+  <span class="k">return</span> <span class="nf">file_io_error</span><span class="p">({</span><span class="n">errno</span><span class="p">,</span> <span class="n">__LINE__</span><span class="p">,</span> <span class="n">__FILE__</span><span class="p">});</span>
+<span class="p">}</span>
+
+<span class="n">result</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">open_resource</span><span class="p">()</span>  <span class="c1">// models throws(std::error)
+</span><span class="c1"></span><span class="p">{</span>
+  <span class="k">for</span><span class="p">(;;)</span>
+  <span class="p">{</span>
+    <span class="n">result</span><span class="o">&lt;</span><span class="n">file_handle</span><span class="p">,</span> <span class="n">file_io_error</span><span class="o">&gt;</span> <span class="n">r</span> <span class="o">=</span> <span class="n">open_file</span><span class="p">(</span><span class="s">&#34;some file&#34;</span><span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+      <span class="k">break</span><span class="p">;</span>
+    <span class="n">file_io_error</span> <span class="n">e</span> <span class="o">=</span> <span class="n">r</span><span class="p">.</span><span class="n">error</span><span class="p">();</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">e</span> <span class="o">!=</span> <span class="n">outcome_e</span><span class="o">::</span><span class="n">errc</span><span class="o">::</span><span class="n">resource_unavailable_try_again</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="c1">// NOTE this implicitly converts from `file_io_error` to `error` via the
+</span><span class="c1"></span>      <span class="c1">// `make_status_code()` free function customisation point defined above.
+</span><span class="c1"></span>      <span class="k">return</span> <span class="n">e</span><span class="p">;</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="c1">// success continues here ...
+</span><span class="c1"></span>  <span class="k">return</span> <span class="n">outcome_e</span><span class="o">::</span><span class="n">success</span><span class="p">();</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">result</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">r</span> <span class="o">=</span> <span class="n">open_resource</span><span class="p">();</span>
+  <span class="k">if</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Success!</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+  <span class="k">else</span>
+  <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">e</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">r</span><span class="p">).</span><span class="n">error</span><span class="p">();</span>
+    <span class="c1">// A quick demonstration that the indirection works as indicated
+</span><span class="c1"></span>    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Returned error has a code domain of &#39;%s&#39;, a message of &#39;%s&#39;</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">e</span><span class="p">.</span><span class="n">domain</span><span class="p">().</span><span class="n">name</span><span class="p">().</span><span class="n">c_str</span><span class="p">(),</span> <span class="n">e</span><span class="p">.</span><span class="n">message</span><span class="p">().</span><span class="n">c_str</span><span class="p">());</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;</span><span class="se">\n</span><span class="s">And semantically comparing it to &#39;errc::no_such_file_or_directory&#39; = %d</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">e</span> <span class="o">==</span> <span class="n">outcome_e</span><span class="o">::</span><span class="n">errc</span><span class="o">::</span><span class="n">no_such_file_or_directory</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/experimental_status_code.cpp#L201" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>And running this program yields:</p>
+
+<pre><code>Returned error has a code domain of 'file i/o error domain', a message of 'No such file or directory (c:\users\ned\documents\boostish\outcome\doc\src\snippets\experimental_status_code.cpp:195)'
+
+And semantically comparing it to 'errc::no_such_file_or_directory' = 1
+</code></pre>
+
+<h3 id="conclusion">Conclusion</h3>
+
+<p>Once you get used to <code>&lt;system_error2&gt;</code> and the fact that any <code>result</code> with
+<code>E = error</code> is always move-only, using experimental Outcome is just like
+using normal Outcome. Except that codegen will be better, custom domains
+are safe to use in headers, semantic comparisons have guaranteed complexity
+bounds, and build times are much reduced.</p>
+
+<p>What&rsquo;s not to like? :)</p>
+
+<p>Finally, if you have feedback on using experimental Outcome which you think
+would be of use to the standards committee when evaluating possible
+implementations of <a href="http://wg21.link/P0709">P0709 <em>Zero overhead exceptions: Throwing values</em></a>,
+please do get in touch! This <strong>especially</strong> includes successful experiences!!!</p>
+
+
+        </div><p><small>Last revised: February 05, 2019 at 17:14:18 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../experimental/worked-example/implicit_conversion.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../experimental.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/c-api.html"><img src="../images/next.png" alt="Next"></a></div></body>
+</html>

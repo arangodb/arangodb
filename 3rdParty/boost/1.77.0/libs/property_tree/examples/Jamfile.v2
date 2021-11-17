@@ -1,0 +1,12 @@
+# Boost PropertyTree Library Example Jamfile
+# Copyright (c) 2013 Sebastian Redl
+# Distributed under the Boost Software License, Version 1.0.
+# See http://www.boost.org/LICENSE_1_0.txt
+
+project
+    : requirements
+      <include>../../../
+    :
+		;
+
+exe debug_settings : debug_settings.cpp ;

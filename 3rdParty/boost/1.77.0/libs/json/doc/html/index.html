@@ -1,0 +1,95 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chapter 1. Boost.JSON</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.JSON">
+<link rel="next" href="json/overview.html" title="Overview">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="json/overview.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="json"></a>Chapter 1. Boost.JSON</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Vinnie</span> <span class="surname">Falco</span>
+</h3></div></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Krystian</span> <span class="surname">Stasiowski</span>
+</h3></div></div>
+<div><p class="copyright">Copyright © 2019, 2020 Vinnie Falco</p></div>
+<div><p class="copyright">Copyright © 2020 Krystian Stasiowski</p></div>
+<div><div class="legalnotice">
+<a name="json.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="json/overview.html">Overview</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="json/overview.html#json.overview.requirements">Requirements</a></span></dt>
+<dt><span class="section"><a href="json/overview.html#json.overview.supported_compilers">Supported Compilers</a></span></dt>
+<dt><span class="section"><a href="json/overview.html#json.overview.security_review_bishop_fox">Security Review
+      (Bishop Fox)</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="json/quick_look.html">Quick Look</a></span></dt>
+<dt><span class="section"><a href="json/dom.html">Document Model</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="json/dom/value.html">value</a></span></dt>
+<dt><span class="section"><a href="json/dom/string.html">string</a></span></dt>
+<dt><span class="section"><a href="json/dom/array.html">array</a></span></dt>
+<dt><span class="section"><a href="json/dom/object.html">object</a></span></dt>
+<dt><span class="section"><a href="json/dom/numbers.html">Numbers</a></span></dt>
+<dt><span class="section"><a href="json/dom/conversion.html">Value Conversion</a></span></dt>
+<dt><span class="section"><a href="json/dom/initializer_lists.html">Initializer Lists</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="json/allocators.html">Allocators</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="json/allocators/background.html">Background</a></span></dt>
+<dt><span class="section"><a href="json/allocators/storage_ptr.html">storage_ptr</a></span></dt>
+<dt><span class="section"><a href="json/allocators/uses_allocator.html">Uses-allocator construction</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="json/input_output.html">Input/Output</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="json/input_output.html#json.input_output.parsing">Parsing</a></span></dt>
+<dd><dl><dt><span class="section"><a href="json/input_output.html#json.input_output.parsing.avoiding_dynamic_allocations">Avoiding
+        Dynamic Allocations</a></span></dt></dl></dd>
+<dt><span class="section"><a href="json/input_output.html#json.input_output.serializing">Serializing</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="json/examples.html">Examples</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="json/examples.html#json.examples.pretty">Pretty</a></span></dt>
+<dt><span class="section"><a href="json/examples.html#json.examples.validate">Validate</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="json/frequently_asked_questions.html">Frequently Asked Questions</a></span></dt>
+<dt><span class="section"><a href="json/benchmarks.html">Benchmarks</a></span></dt>
+<dt><span class="section"><a href="json/comparison.html">Comparison to Other Libraries</a></span></dt>
+<dt><span class="section"><a href="json/quickref.html">Reference</a></span></dt>
+<dt><span class="section"><a href="json/release_notes.html">Release Notes</a></span></dt>
+<dt><span class="section"><a href="json/index.html">Index</a></span></dt>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: August 05, 2021 at 09:47:49 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="json/overview.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

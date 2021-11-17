@@ -1,0 +1,945 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>basic_static_string</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.StaticString">
+<link rel="up" href="../ref.html" title="Reference">
+<link rel="prev" href="../ref.html" title="Reference">
+<link rel="next" href="boost__static_strings__basic_static_string/traits_type.html" title="basic_static_string::traits_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../ref.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__static_strings__basic_static_string/traits_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="static_string.ref.boost__static_strings__basic_static_string"></a><a class="link" href="boost__static_strings__basic_static_string.html" title="basic_static_string">basic_static_string</a>
+</h3></div></div></div>
+<p>
+        A fixed-capacity string.
+      </p>
+<h5>
+<a name="static_string.ref.boost__static_strings__basic_static_string.h0"></a>
+        <span class="phrase"><a name="static_string.ref.boost__static_strings__basic_static_string.synopsis"></a></span><a class="link" href="boost__static_strings__basic_static_string.html#static_string.ref.boost__static_strings__basic_static_string.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/static_string/static_string.hpp" target="_top">boost/static_string/static_string.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">,</span>
+    <span class="keyword">typename</span> <span class="identifier">CharT</span><span class="special">,</span>
+    <span class="keyword">typename</span> <span class="identifier">Traits</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;&gt;</span>
+<span class="keyword">class</span> <span class="identifier">basic_static_string</span>
+</pre>
+<h5>
+<a name="static_string.ref.boost__static_strings__basic_static_string.h1"></a>
+        <span class="phrase"><a name="static_string.ref.boost__static_strings__basic_static_string.types"></a></span><a class="link" href="boost__static_strings__basic_static_string.html#static_string.ref.boost__static_strings__basic_static_string.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/const_iterator.html" title="basic_static_string::const_iterator">const_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The constant iterator type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/const_pointer.html" title="basic_static_string::const_pointer">const_pointer</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The constant pointer type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/const_reference.html" title="basic_static_string::const_reference">const_reference</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The constant reference type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/const_reverse_iterator.html" title="basic_static_string::const_reverse_iterator">const_reverse_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The constant reverse iterator type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/difference_type.html" title="basic_static_string::difference_type">difference_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The difference type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/iterator.html" title="basic_static_string::iterator">iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The iterator type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/pointer.html" title="basic_static_string::pointer">pointer</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The pointer type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/reference.html" title="basic_static_string::reference">reference</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The reference type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/reverse_iterator.html" title="basic_static_string::reverse_iterator">reverse_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The reverse iterator type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/size_type.html" title="basic_static_string::size_type">size_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The size type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/string_view_type.html" title="basic_static_string::string_view_type">string_view_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The string view type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/traits_type.html" title="basic_static_string::traits_type">traits_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The traits type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/value_type.html" title="basic_static_string::value_type">value_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The character type.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="static_string.ref.boost__static_strings__basic_static_string.h2"></a>
+        <span class="phrase"><a name="static_string.ref.boost__static_strings__basic_static_string.member_functions"></a></span><a class="link" href="boost__static_strings__basic_static_string.html#static_string.ref.boost__static_strings__basic_static_string.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/append.html" title="basic_static_string::append">append</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Append to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/assign.html" title="basic_static_string::assign">assign</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Assign to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/at.html" title="basic_static_string::at">at</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Access a character with bounds checking.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/back.html" title="basic_static_string::back">back</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the last character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/basic_static_string.html" title="basic_static_string::basic_static_string">basic_static_string</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/begin.html" title="basic_static_string::begin">begin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/c_str.html" title="basic_static_string::c_str">c_str</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a pointer to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/capacity.html" title="basic_static_string::capacity">capacity</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of characters that can be stored.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/cbegin.html" title="basic_static_string::cbegin">cbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/cend.html" title="basic_static_string::cend">cend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/clear.html" title="basic_static_string::clear">clear</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Clear the contents.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/compare.html" title="basic_static_string::compare">compare</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Compare a string with the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/copy.html" title="basic_static_string::copy">copy</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy a substring to another string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/crbegin.html" title="basic_static_string::crbegin">crbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/crend.html" title="basic_static_string::crend">crend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/data.html" title="basic_static_string::data">data</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a pointer to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/empty.html" title="basic_static_string::empty">empty</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return if the string is empty.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/end.html" title="basic_static_string::end">end</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/ends_with.html" title="basic_static_string::ends_with">ends_with</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return whether the string ends with a string. <br> <span class="silver">—</span><br>
+                  Return whether the string ends with a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/erase.html" title="basic_static_string::erase">erase</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Erase from the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/find.html" title="basic_static_string::find">find</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the first occurrence of a string within the string. <br>
+                  <span class="silver">—</span><br> Find the first occurrence
+                  of a character within the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/find_first_not_of.html" title="basic_static_string::find_first_not_of">find_first_not_of</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the first occurrence of a character not within the string.
+                  <br> <span class="silver">—</span><br> Find the first
+                  occurrence of any of the characters not within the string. <br>
+                  <span class="silver">—</span><br> Find the first occurrence
+                  of a character not equal to <code class="computeroutput"><span class="identifier">c</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/find_first_of.html" title="basic_static_string::find_first_of">find_first_of</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the first occurrence of any of the characters within the string.
+                  <br> <span class="silver">—</span><br> Find the first
+                  occurrence of a character within the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/find_last_not_of.html" title="basic_static_string::find_last_not_of">find_last_not_of</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the last occurrence of a character not within the string.
+                  <br> <span class="silver">—</span><br> Find the last occurrence
+                  of a character not equal to <code class="computeroutput"><span class="identifier">c</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/find_last_of.html" title="basic_static_string::find_last_of">find_last_of</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the last occurrence of any of the characters within the string.
+                  <br> <span class="silver">—</span><br> Find the last occurrence
+                  of a character within the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/front.html" title="basic_static_string::front">front</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the first character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/insert.html" title="basic_static_string::insert">insert</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Insert into the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/length.html" title="basic_static_string::length">length</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the size of the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/max_size.html" title="basic_static_string::max_size">max_size</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of characters that can be stored.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/operator_string_view_type.html" title="basic_static_string::operator string_view_type">operator
+                  string_view_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Convert to a string view referring to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/operator_plus__eq_.html" title="basic_static_string::operator+=">operator+=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Append to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/operator_eq_.html" title="basic_static_string::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Assign to the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/operator_lb__rb_.html" title="basic_static_string::operator[]">operator[]</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Access a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/pop_back.html" title="basic_static_string::pop_back">pop_back</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Remove the last character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/push_back.html" title="basic_static_string::push_back">push_back</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Append a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/rbegin.html" title="basic_static_string::rbegin">rbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/rend.html" title="basic_static_string::rend">rend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/replace.html" title="basic_static_string::replace">replace</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Replace a part of the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/reserve.html" title="basic_static_string::reserve">reserve</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Increase the capacity.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/resize.html" title="basic_static_string::resize">resize</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Change the size of the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/rfind.html" title="basic_static_string::rfind">rfind</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find the last occurrence of a string within the string. <br>
+                  <span class="silver">—</span><br> Find the last occurrence
+                  of a character within the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/shrink_to_fit.html" title="basic_static_string::shrink_to_fit">shrink_to_fit</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Request the removal of unused capacity.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/size.html" title="basic_static_string::size">size</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the size of the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/starts_with.html" title="basic_static_string::starts_with">starts_with</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return whether the string begins with a string. <br> <span class="silver">—</span><br> Return whether the string begins
+                  with a character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/substr.html" title="basic_static_string::substr">substr</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a substring.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/subview.html" title="basic_static_string::subview">subview</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a string view of a substring.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/swap.html" title="basic_static_string::swap">swap</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Swap two strings.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="static_string.ref.boost__static_strings__basic_static_string.h3"></a>
+        <span class="phrase"><a name="static_string.ref.boost__static_strings__basic_static_string.static_members"></a></span><a class="link" href="boost__static_strings__basic_static_string.html#static_string.ref.boost__static_strings__basic_static_string.static_members">Static
+        Members</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/npos.html" title="basic_static_string::npos">npos</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A special index.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__static_strings__basic_static_string/static_capacity.html" title="basic_static_string::static_capacity">static_capacity</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Maximum size of the string excluding any null terminator.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="static_string.ref.boost__static_strings__basic_static_string.h4"></a>
+        <span class="phrase"><a name="static_string.ref.boost__static_strings__basic_static_string.description"></a></span><a class="link" href="boost__static_strings__basic_static_string.html#static_string.ref.boost__static_strings__basic_static_string.description">Description</a>
+      </h5>
+<p>
+        These objects behave like <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+        except that the storage is not dynamically allocated but rather fixed in
+        size, and stored in the object itself. These strings offer performance advantages
+        when an algorithm can execute with a reasonable upper limit on the size of
+        a value.
+      </p>
+<h5>
+<a name="static_string.ref.boost__static_strings__basic_static_string.h5"></a>
+        <span class="phrase"><a name="static_string.ref.boost__static_strings__basic_static_string.aliases"></a></span><a class="link" href="boost__static_strings__basic_static_string.html#static_string.ref.boost__static_strings__basic_static_string.aliases">Aliases</a>
+      </h5>
+<p>
+        The following alias templates are provided for convenience:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">static_string</span> <span class="special">=</span>
+  <span class="identifier">basic_static_string</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span> <span class="keyword">char</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;&gt;;</span>
+</pre>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">static_wstring</span> <span class="special">=</span>
+  <span class="identifier">basic_static_string</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span> <span class="keyword">wchar_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="keyword">wchar_t</span><span class="special">&gt;&gt;;</span>
+</pre>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">static_u16string</span> <span class="special">=</span>
+  <span class="identifier">basic_static_string</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span> <span class="keyword">char16_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="keyword">char16_t</span><span class="special">&gt;&gt;;</span>
+</pre>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">static_u32string</span> <span class="special">=</span>
+  <span class="identifier">basic_static_string</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span> <span class="keyword">char32_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="keyword">char32_t</span><span class="special">&gt;&gt;;</span>
+</pre>
+<p>
+        Addtionally, the alias template <code class="computeroutput"><span class="identifier">static_u8string</span></code>
+        is provided in C++20
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">static_u8string</span> <span class="special">=</span>
+  <span class="identifier">basic_static_string</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span> <span class="identifier">char8_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">char8_t</span><span class="special">&gt;&gt;;</span>
+</pre>
+<h5>
+<a name="static_string.ref.boost__static_strings__basic_static_string.h6"></a>
+        <span class="phrase"><a name="static_string.ref.boost__static_strings__basic_static_string.see_also"></a></span><a class="link" href="boost__static_strings__basic_static_string.html#static_string.ref.boost__static_strings__basic_static_string.see_also">See
+        Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__static_strings__to_static_string.html" title="to_static_string"><code class="computeroutput"><span class="identifier">to_static_string</span></code></a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Krystian Stasiowski<br>Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../ref.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__static_strings__basic_static_string/traits_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

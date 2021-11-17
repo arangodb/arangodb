@@ -1,0 +1,431 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>storage_ptr</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../allocators.html" title="Allocators">
+<link rel="prev" href="background.html" title="Background">
+<link rel="next" href="uses_allocator.html" title="Uses-allocator construction">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="background.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../allocators.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="uses_allocator.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="json.allocators.storage_ptr"></a><a class="link" href="storage_ptr.html" title="storage_ptr">storage_ptr</a>
+</h3></div></div></div>
+<p>
+        Variable-length containers in this library all use dynamically allocated
+        memory to store their contents. Callers can gain control over the strategy
+        used for allocation by specifying a <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a> in select constructors
+        and function parameter lists. A <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a> has these properties:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            A storage pointer always points to a valid, type-erased <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>.
+          </li>
+<li class="listitem">
+            Default-constructed storage pointers reference the <span class="emphasis"><em>default
+            resource</em></span>, an implementation-defined instance which always
+            uses the equivalent of global operator new and delete.
+          </li>
+<li class="listitem">
+            Storage pointers constructed from a <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span><span class="special">*</span></code></a>
+            or <a class="link" href="../ref/boost__json__polymorphic_allocator.html" title="polymorphic_allocator"><code class="computeroutput"><span class="identifier">polymorphic_allocator</span></code></a> do not
+            acquire ownership; the caller is responsible for ensuring that the lifetime
+            of the resource extends until it is no longer referenced.
+          </li>
+<li class="listitem">
+            A storage pointer obtained from <a class="link" href="../ref/boost__json__make_shared_resource.html" title="make_shared_resource"><code class="computeroutput"><span class="identifier">make_shared_resource</span></code></a> acquires
+            shared ownership of the memory resource; the lifetime of the resource
+            is extended until all copies of the storage pointer are destroyed.
+          </li>
+<li class="listitem">
+            The storage pointer remembers the value of <a class="link" href="../ref/boost__json__is_deallocate_trivial.html" title="is_deallocate_trivial"><code class="computeroutput"><span class="identifier">is_deallocate_trivial</span></code></a> before
+            type-erasing the resource, allowing the value to be queried at run-time.
+          </li>
+</ul></div>
+<p>
+        This lists all of the allocation-related types and functions available when
+        using the library:
+      </p>
+<div class="table">
+<a name="json.allocators.storage_ptr.functions_and_types"></a><p class="title"><b>Table 1.7. Functions and Types</b></p>
+<div class="table-contents"><table class="table" summary="Functions and Types">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__get_null_resource.html" title="get_null_resource"><code class="computeroutput"><span class="identifier">get_null_resource</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a pointer to a memory resource instance which always throws
+                  an exception upon allocation. This is used to to achieve the invariant
+                  that no parsing or container operation will dynamically allocate
+                  memory.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__is_deallocate_trivial.html" title="is_deallocate_trivial"><code class="computeroutput"><span class="identifier">is_deallocate_trivial</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A customization point allowing a memory resource type to indicate
+                  that calls to deallocate are trivial.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__make_shared_resource.html" title="make_shared_resource"><code class="computeroutput"><span class="identifier">make_shared_resource</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A function returning a smart pointer with shared ownership of a
+                  newly allocated memory resource.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The abstract base class representing an allocator.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__monotonic_resource.html" title="monotonic_resource"><code class="computeroutput"><span class="identifier">monotonic_resource</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A memory resource which allocates large blocks of memory and has
+                  a trivial deallocate function. Allocated memory is not freed until
+                  the resource is destroyed, making it fast for parsing but not suited
+                  for performing modifications.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__polymorphic_allocator.html" title="polymorphic_allocator"><code class="computeroutput"><span class="identifier">polymorphic_allocator</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  An <a href="https://en.cppreference.com/w/cpp/named_req/Allocator" target="_top"><span class="emphasis"><em>Allocator</em></span></a>
+                  which uses a reference to a <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a> to perform
+                  allocations.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__static_resource.html" title="static_resource"><code class="computeroutput"><span class="identifier">static_resource</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A memory resource that uses a single caller provided buffer. No
+                  dynamic allocations are used. This is fast for parsing but not
+                  suited for performing modifications.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A smart pointer through which a <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a> is managed
+                  and accessed.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="json.allocators.storage_ptr.h0"></a>
+        <span class="phrase"><a name="json.allocators.storage_ptr.default_memory_resource"></a></span><a class="link" href="storage_ptr.html#json.allocators.storage_ptr.default_memory_resource">Default
+        Memory Resource</a>
+      </h5>
+<p>
+        The <span class="emphasis"><em>default memory resource</em></span> wraps calls to the global
+        heap allocation functions. This resource is not reference counted and has
+        a non-trivial deallocate function. All default-constructed <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a> reference the same default
+        memory resource:
+      </p>
+<pre class="programlisting"><span class="identifier">storage_ptr</span> <span class="identifier">sp1</span><span class="special">;</span>
+<span class="identifier">storage_ptr</span> <span class="identifier">sp2</span><span class="special">;</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">sp1</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">!=</span> <span class="keyword">nullptr</span> <span class="special">);</span>                         <span class="comment">// always points to a valid resource</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">sp1</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">sp2</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">);</span>                       <span class="comment">// both point to the default resource</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="special">*</span><span class="identifier">sp1</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">==</span> <span class="special">*</span><span class="identifier">sp2</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">);</span>                     <span class="comment">// the default resource compares equal</span>
+</pre>
+<p>
+        Default-constructed library containers use the default memory resource:
+      </p>
+<pre class="programlisting"><span class="identifier">array</span> <span class="identifier">arr</span><span class="special">;</span>                                              <span class="comment">// default construction</span>
+<span class="identifier">object</span> <span class="identifier">obj</span><span class="special">;</span>
+<span class="identifier">string</span> <span class="identifier">str</span><span class="special">;</span>
+<span class="identifier">value</span> <span class="identifier">jv</span><span class="special">;</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">storage</span><span class="special">().</span><span class="identifier">get</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">storage_ptr</span><span class="special">().</span><span class="identifier">get</span><span class="special">()</span> <span class="special">);</span>    <span class="comment">// uses the default memory resource</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">storage</span><span class="special">().</span><span class="identifier">get</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">storage</span><span class="special">().</span><span class="identifier">get</span><span class="special">()</span> <span class="special">);</span>    <span class="comment">// both point to the default resource</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="special">*</span><span class="identifier">arr</span><span class="special">.</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">==</span> <span class="special">*</span><span class="identifier">obj</span><span class="special">.</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">);</span>             <span class="comment">// containers use equivalent resources</span>
+</pre>
+<p>
+        The default memory resource is well suited for general usage. It offers reasonable
+        performance for parsing, and conservative memory usage for modification of
+        the contents of containers.
+      </p>
+<h5>
+<a name="json.allocators.storage_ptr.h1"></a>
+        <span class="phrase"><a name="json.allocators.storage_ptr.monotonic_resource"></a></span><a class="link" href="storage_ptr.html#json.allocators.storage_ptr.monotonic_resource">Monotonic
+        Resource</a>
+      </h5>
+<p>
+        Consider the pattern of memory allocation during parsing: when an array,
+        object, or string is encountered the parser accumulates elements in its temporary
+        storage area. When all of the elements are known, a single memory allocation
+        is requested from the resource when constructing the value. Thus, parsing
+        only allocates and constructs containers at their final size. Memory is not
+        reallocated; that is, a memory buffer never needs to grow by allocating a
+        new larger buffer and deallocating the previous buffer.
+      </p>
+<p>
+        The <a class="link" href="../ref/boost__json__monotonic_resource.html" title="monotonic_resource"><code class="computeroutput"><span class="identifier">monotonic_resource</span></code></a> optimizes this
+        memory allocation pattern by allocating increasingly large blocks of global
+        memory internally and parceling those blocks out in smaller pieces to fulfill
+        allocation requests. It has a trivial deallocate function. The monotonic
+        resource does not actually deallocate memory until the resource is destroyed.
+        Thus, it is ideally suited for the use-case where JSON is parsed, and the
+        resulting value is then inspected but not modified.
+      </p>
+<p>
+        The resource to use when constructing values may be specified in calls to
+        <a class="link" href="../ref/boost__json__parse.html" title="parse"><code class="computeroutput"><span class="identifier">parse</span></code></a>
+        as shown here:
+      </p>
+<pre class="programlisting"><span class="identifier">monotonic_resource</span> <span class="identifier">mr</span><span class="special">;</span>
+
+<span class="identifier">value</span> <span class="keyword">const</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">parse</span><span class="special">(</span> <span class="string">"[1,2,3]"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>
+</pre>
+<p>
+        Or, to parse into a value with shared ownership of the memory resource:
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">parse_value</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">parse</span><span class="special">(</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">make_shared_resource</span><span class="special">&lt;</span> <span class="identifier">monotonic_resource</span> <span class="special">&gt;()</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        A monotonic resource may be optionally constructed with an initial buffer
+        to use first, before going to the heap. This allows the caller to use stack
+        space and avoid dynamic allocations for most parsed JSON, falling back to
+        dynamic allocation from the heap if the input JSON is larger than average,
+        as shown here:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">Handler</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">do_rpc</span><span class="special">(</span> <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">Handler</span><span class="special">&amp;&amp;</span> <span class="identifier">h</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">unsigned</span> <span class="keyword">char</span> <span class="identifier">buffer</span><span class="special">[</span> <span class="number">8192</span> <span class="special">];</span>                       <span class="comment">// Small stack buffer to avoid most allocations during parse</span>
+    <span class="identifier">monotonic_resource</span> <span class="identifier">mr</span><span class="special">(</span> <span class="identifier">buffer</span> <span class="special">);</span>                    <span class="comment">// This resource will use our local buffer first</span>
+    <span class="identifier">value</span> <span class="keyword">const</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">parse</span><span class="special">(</span> <span class="identifier">s</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>                   <span class="comment">// Parse the input string into a value that uses our resource</span>
+    <span class="identifier">h</span><span class="special">(</span> <span class="identifier">jv</span> <span class="special">);</span>                                            <span class="comment">// Call the handler to perform the RPC command</span>
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="json.allocators.storage_ptr.h2"></a>
+        <span class="phrase"><a name="json.allocators.storage_ptr.static_resource"></a></span><a class="link" href="storage_ptr.html#json.allocators.storage_ptr.static_resource">Static
+        Resource</a>
+      </h5>
+<p>
+        A <a class="link" href="../ref/boost__json__static_resource.html" title="static_resource"><code class="computeroutput"><span class="identifier">static_resource</span></code></a>
+        constructs from a caller-provided buffer, and satisfies all memory allocation
+        requests from the buffer. Once the buffer is exhausted, subsequent calls
+        to allocate throw the exception <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bad_alloc</span></code>.
+        The resource offers a simple invariant: dynamic heap allocations are never
+        performed.
+      </p>
+<p>
+        To use the resource, construct it with a local buffer:
+      </p>
+<pre class="programlisting"><span class="keyword">unsigned</span> <span class="keyword">char</span> <span class="identifier">buffer</span><span class="special">[</span> <span class="number">8192</span> <span class="special">];</span>
+<span class="identifier">static_resource</span> <span class="identifier">mr</span><span class="special">(</span> <span class="identifier">buffer</span> <span class="special">);</span>                           <span class="comment">// The resource will use our local buffer</span>
+</pre>
+<h5>
+<a name="json.allocators.storage_ptr.h3"></a>
+        <span class="phrase"><a name="json.allocators.storage_ptr.null_resource"></a></span><a class="link" href="storage_ptr.html#json.allocators.storage_ptr.null_resource">Null
+        Resource</a>
+      </h5>
+<p>
+        The function <a class="link" href="../ref/boost__json__get_null_resource.html" title="get_null_resource"><code class="computeroutput"><span class="identifier">get_null_resource</span></code></a> returns a global
+        instance of the null resource. This resource offers a simple invariant: all
+        calls to allocate will throw the exception <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bad_alloc</span></code>.
+        An instance of the null resource can be used to make parsing guarantee that
+        allocations from the heap are never made. This is explored in more detail
+        in a later section.
+      </p>
+<h5>
+<a name="json.allocators.storage_ptr.h4"></a>
+        <span class="phrase"><a name="json.allocators.storage_ptr.allocator_propagation"></a></span><a class="link" href="storage_ptr.html#json.allocators.storage_ptr.allocator_propagation">Allocator
+        Propagation</a>
+      </h5>
+<p>
+        The containers <a class="link" href="../ref/boost__json__array.html" title="array"><code class="computeroutput"><span class="identifier">array</span></code></a>, <a class="link" href="../ref/boost__json__object.html" title="object"><code class="computeroutput"><span class="identifier">object</span></code></a>, and <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> all propagate the memory resource
+        they were constructed with to child elements:
+      </p>
+<pre class="programlisting"><span class="identifier">monotonic_resource</span> <span class="identifier">mr</span><span class="special">;</span>
+<span class="identifier">array</span> <span class="identifier">arr</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>                                       <span class="comment">// construct an array using our resource</span>
+<span class="identifier">arr</span><span class="special">.</span><span class="identifier">emplace_back</span><span class="special">(</span> <span class="string">"boost"</span> <span class="special">);</span>                            <span class="comment">// insert a string</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="special">*</span><span class="identifier">arr</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">as_string</span><span class="special">().</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">mr</span> <span class="special">);</span>          <span class="comment">// the resource is propagated to the string</span>
+</pre>
+<p>
+        This propagation acts recursively, containers within containers will all
+        have the resource propagated. Once a container is constructed, its memory
+        resource can never be changed.
+      </p>
+<h5>
+<a name="json.allocators.storage_ptr.h5"></a>
+        <span class="phrase"><a name="json.allocators.storage_ptr.resource_lifetime"></a></span><a class="link" href="storage_ptr.html#json.allocators.storage_ptr.resource_lifetime">Resource
+        Lifetime</a>
+      </h5>
+<p>
+        It is important to note that <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a> supports both shared-ownership
+        and reference lifetime models. Construction from a memory resource pointer
+        does not transfer ownership:
+      </p>
+<pre class="programlisting"><span class="special">{</span>
+    <span class="identifier">monotonic_resource</span> <span class="identifier">mr</span><span class="special">;</span>
+
+    <span class="identifier">array</span> <span class="identifier">arr</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>                                   <span class="comment">// construct an array using our resource</span>
+
+    <span class="identifier">assert</span><span class="special">(</span> <span class="special">!</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">storage</span><span class="special">().</span><span class="identifier">is_shared</span><span class="special">()</span> <span class="special">);</span>              <span class="comment">// no shared ownership</span>
+<span class="special">}</span>
+</pre>
+<p>
+        When using a memory resource in this fashion, including the case where a
+        storage pointer or container is constructed from a <a class="link" href="../ref/boost__json__polymorphic_allocator.html" title="polymorphic_allocator"><code class="computeroutput"><span class="identifier">polymorphic_allocator</span></code></a>, the caller
+        must ensure that the lifetime of the resource is extended until it is no
+        longer referenced by any variables; otherwise, undefined behavior is possible.
+      </p>
+<p>
+        Shared ownership is achieved using the function <a class="link" href="../ref/boost__json__make_shared_resource.html" title="make_shared_resource"><code class="computeroutput"><span class="identifier">make_shared_resource</span></code></a>, which creates
+        a new, reference-counted memory resource using a dynamic memory allocation
+        and returns it as a <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a>:
+      </p>
+<pre class="programlisting"><span class="identifier">storage_ptr</span> <span class="identifier">sp</span> <span class="special">=</span> <span class="identifier">make_shared_resource</span><span class="special">&lt;</span> <span class="identifier">monotonic_resource</span> <span class="special">&gt;();</span>
+
+<span class="identifier">string</span> <span class="identifier">str</span><span class="special">(</span> <span class="identifier">sp</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">sp</span><span class="special">.</span><span class="identifier">is_shared</span><span class="special">()</span> <span class="special">);</span>                               <span class="comment">// shared ownership</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">str</span><span class="special">.</span><span class="identifier">storage</span><span class="special">().</span><span class="identifier">is_shared</span><span class="special">()</span> <span class="special">);</span>                    <span class="comment">// shared ownership</span>
+</pre>
+<p>
+        When a storage pointer is constructed this way, the lifetime of the referenced
+        memory resource is extended until all variables which reference it are destroyed.
+      </p>
+<h5>
+<a name="json.allocators.storage_ptr.h6"></a>
+        <span class="phrase"><a name="json.allocators.storage_ptr.user_defined_resource"></a></span><a class="link" href="storage_ptr.html#json.allocators.storage_ptr.user_defined_resource">User-Defined
+        Resource</a>
+      </h5>
+<p>
+        To implement custom memory allocation strategies, derive your class from
+        <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>
+        and implement the functions <code class="computeroutput"><span class="identifier">do_allocate</span></code>,
+        <code class="computeroutput"><span class="identifier">do_deallocate</span></code>, and <code class="computeroutput"><span class="identifier">do_is_equal</span></code> as seen in this example below,
+        which logs each operation it performs to the console:
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">logging_resource</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">memory_resource</span>
+<span class="special">{</span>
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="keyword">void</span><span class="special">*</span> <span class="identifier">do_allocate</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">align</span> <span class="special">)</span> <span class="identifier">override</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Allocating "</span> <span class="special">&lt;&lt;</span> <span class="identifier">bytes</span> <span class="special">&lt;&lt;</span> <span class="string">" bytes with alignment "</span> <span class="special">&lt;&lt;</span> <span class="identifier">align</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+
+        <span class="keyword">return</span> <span class="special">::</span><span class="keyword">operator</span> <span class="keyword">new</span><span class="special">(</span> <span class="identifier">bytes</span> <span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="keyword">void</span> <span class="identifier">do_deallocate</span><span class="special">(</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">ptr</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">align</span> <span class="special">)</span> <span class="identifier">override</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Deallocating "</span> <span class="special">&lt;&lt;</span> <span class="identifier">bytes</span> <span class="special">&lt;&lt;</span> <span class="string">" bytes with alignment "</span> <span class="special">&lt;&lt;</span> <span class="identifier">align</span> <span class="special">&lt;&lt;</span> <span class="string">" @ address "</span> <span class="special">&lt;&lt;</span> <span class="identifier">ptr</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+
+        <span class="keyword">return</span> <span class="special">::</span><span class="keyword">operator</span> <span class="keyword">delete</span><span class="special">(</span> <span class="identifier">ptr</span> <span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="keyword">bool</span> <span class="identifier">do_is_equal</span><span class="special">(</span> <span class="identifier">memory_resource</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span> <span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span> <span class="identifier">override</span>
+    <span class="special">{</span>
+        <span class="comment">// since the global allocation and deallocation functions are used,</span>
+        <span class="comment">// any instance of a logging_resource can deallocate memory allocated</span>
+        <span class="comment">// by another instance of a logging_resource</span>
+
+        <span class="keyword">return</span> <span class="keyword">dynamic_cast</span><span class="special">&lt;</span> <span class="identifier">logging_resource</span> <span class="keyword">const</span><span class="special">*</span> <span class="special">&gt;(</span> <span class="special">&amp;</span><span class="identifier">other</span> <span class="special">)</span> <span class="special">!=</span> <span class="keyword">nullptr</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="background.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../allocators.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="uses_allocator.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

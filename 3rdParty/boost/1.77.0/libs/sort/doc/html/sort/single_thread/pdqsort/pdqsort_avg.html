@@ -1,0 +1,70 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>The Average Case</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Sort">
+<link rel="up" href="../pdqsort.html" title="2.2.- pdqsort">
+<link rel="prev" href="pdqsort_best.html" title="The Best Case">
+<link rel="next" href="pdqsort_worst.html" title="The Worst Case">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="pdqsort_best.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../pdqsort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="pdqsort_worst.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.single_thread.pdqsort.pdqsort_avg"></a><a class="link" href="pdqsort_avg.html" title="The Average Case">The Average
+        Case</a>
+</h4></div></div></div>
+<p>
+          On average case data where no patterns are detected <code class="literal"><code class="computeroutput">pdqsort</code></code> is effectively
+          a quicksort that uses median-of-3 pivot selection, switching to insertion
+          sort if the number of elements to be (recursively) sorted is small. The
+          overhead associated with detecting the patterns for the best case is so
+          small it lies within the error of measurement.
+        </p>
+<p>
+          <code class="literal"><code class="computeroutput">pdqsort</code></code>
+          gets a great speedup over the traditional way of implementing quicksort
+          when sorting large arrays (1000+ elements). This is due to a new technique
+          described in "BlockQuicksort: How Branch Mispredictions don't affect
+          Quicksort" by Stefan Edelkamp and Armin Weiss. In short, we bypass
+          the branch predictor by using small buffers (entirely in L1 cache) of the
+          indices of elements that need to be swapped. We fill these buffers in a
+          branch-free way that's quite elegant (in pseudocode):
+        </p>
+<pre class="programlisting">buffer_num = 0; buffer_max_size = 64;
+for (int i = 0; i &lt; buffer_max_size; ++i) {
+    // With branch:
+    if (elements[i] &lt; pivot) { buffer[buffer_num] = i; buffer_num++; }
+    // Without:
+    buffer[buffer_num] = i; buffer_num += (elements[i] &lt; pivot);
+}
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="pdqsort_best.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../pdqsort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="pdqsort_worst.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

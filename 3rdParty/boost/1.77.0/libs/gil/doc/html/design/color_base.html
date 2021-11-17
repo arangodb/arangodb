@@ -1,0 +1,316 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Color Base - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Pixel" href="pixel.html" />
+    <link rel="prev" title="Color Space and Layout" href="color_space.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Color Space and Layout" href="color_space.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Pixel" href="pixel.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="color-base">
+<h1>Color Base</h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#overview" id="id1">Overview</a></li>
+<li><a class="reference internal" href="#models" id="id2">Models</a></li>
+<li><a class="reference internal" href="#algorithms" id="id3">Algorithms</a></li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id1">Overview</a></h2>
+<p>A color base is a container of color elements. The most common use of color
+base is in the implementation of a pixel, in which case the color elements are
+channel values. The color base concept, however, can be used in other
+scenarios. For example, a planar pixel has channels that are not contiguous in
+memory. Its reference is a proxy class that uses a color base whose elements
+are channel references. Its iterator uses a color base whose elements are
+channel iterators.</p>
+<p>Color base models must satisfy the following concepts:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">concept</span> <span class="n">ColorBaseConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+    <span class="o">:</span> <span class="n">CopyConstructible</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">EqualityComparable</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="c1">// a GIL layout (the color space and element permutation)</span>
+  <span class="k">typename</span> <span class="n">layout_t</span><span class="p">;</span>
+
+  <span class="c1">// The type of K-th element</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">kth_element_type</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="n">kth_element_type</span><span class="o">&gt;</span><span class="p">;</span>
+
+  <span class="c1">// The result of at_c</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">kth_element_const_reference_type</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="n">kth_element_const_reference_type</span><span class="o">&gt;</span><span class="p">;</span>
+
+  <span class="k">template</span> <span class="o">&lt;</span><span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span> <span class="n">kth_element_const_reference_type</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="n">K</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">at_c</span><span class="p">(</span><span class="n">T</span><span class="p">);</span>
+
+  <span class="k">template</span> <span class="o">&lt;</span><span class="n">ColorBaseConcept</span> <span class="n">T2</span><span class="o">&gt;</span> <span class="n">where</span> <span class="p">{</span> <span class="n">ColorBasesCompatibleConcept</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="n">T2</span><span class="o">&gt;</span> <span class="p">}</span>
+      <span class="n">T</span><span class="o">::</span><span class="n">T</span><span class="p">(</span><span class="n">T2</span><span class="p">);</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="n">ColorBaseConcept</span> <span class="n">T2</span><span class="o">&gt;</span> <span class="n">where</span> <span class="p">{</span> <span class="n">ColorBasesCompatibleConcept</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="n">T2</span><span class="o">&gt;</span> <span class="p">}</span>
+      <span class="kt">bool</span> <span class="k">operator</span><span class="o">==</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">T2</span><span class="o">&amp;</span><span class="p">);</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="n">ColorBaseConcept</span> <span class="n">T2</span><span class="o">&gt;</span> <span class="n">where</span> <span class="p">{</span> <span class="n">ColorBasesCompatibleConcept</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="n">T2</span><span class="o">&gt;</span> <span class="p">}</span>
+      <span class="kt">bool</span> <span class="k">operator</span><span class="o">!=</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">T2</span><span class="o">&amp;</span><span class="p">);</span>
+
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">MutableColorBaseConcept</span><span class="o">&lt;</span><span class="n">ColorBaseConcept</span> <span class="n">T</span><span class="o">&gt;</span>
+    <span class="o">:</span> <span class="n">Assignable</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Swappable</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">kth_element_reference_type</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="n">kth_element_reference_type</span><span class="o">&gt;</span><span class="p">;</span>
+
+  <span class="k">template</span> <span class="o">&lt;</span><span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span> <span class="n">kth_element_reference_type</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="n">K</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">at_c</span><span class="p">(</span><span class="n">T</span><span class="p">);</span>
+
+  <span class="k">template</span> <span class="o">&lt;</span><span class="n">ColorBaseConcept</span> <span class="n">T2</span><span class="o">&gt;</span> <span class="n">where</span> <span class="p">{</span> <span class="n">ColorBasesCompatibleConcept</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span><span class="n">T2</span><span class="o">&gt;</span> <span class="p">}</span>
+      <span class="n">T</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">T2</span><span class="o">&amp;</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">ColorBaseValueConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">MutableColorBaseConcept</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Regular</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">HomogeneousColorBaseConcept</span><span class="o">&lt;</span><span class="n">ColorBaseConcept</span> <span class="n">CB</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="c1">// For all K in [0 ... size&lt;C1&gt;::value-1):</span>
+  <span class="c1">//     where SameType&lt;kth_element_type&lt;K&gt;::type, kth_element_type&lt;K+1&gt;::type&gt;;</span>
+  <span class="n">kth_element_const_reference_type</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">dynamic_at_c</span><span class="p">(</span><span class="k">const</span> <span class="n">CB</span><span class="o">&amp;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">n</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">MutableHomogeneousColorBaseConcept</span><span class="o">&lt;</span><span class="n">MutableColorBaseConcept</span> <span class="n">CB</span><span class="o">&gt;</span>
+    <span class="o">:</span> <span class="n">HomogeneousColorBaseConcept</span><span class="o">&lt;</span><span class="n">CB</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">kth_element_reference_type</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">dynamic_at_c</span><span class="p">(</span><span class="k">const</span> <span class="n">CB</span><span class="o">&amp;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">n</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">HomogeneousColorBaseValueConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+    <span class="o">:</span> <span class="n">MutableHomogeneousColorBaseConcept</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Regular</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">ColorBasesCompatibleConcept</span><span class="o">&lt;</span><span class="n">ColorBaseConcept</span> <span class="n">C1</span><span class="p">,</span> <span class="n">ColorBaseConcept</span> <span class="n">C2</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">where</span> <span class="n">SameType</span><span class="o">&lt;</span><span class="n">C1</span><span class="o">::</span><span class="n">layout_t</span><span class="o">::</span><span class="n">color_space_t</span><span class="p">,</span> <span class="n">C2</span><span class="o">::</span><span class="n">layout_t</span><span class="o">::</span><span class="n">color_space_t</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="c1">// also, for all K in [0 ... size&lt;C1&gt;::value):</span>
+  <span class="c1">//     where Convertible&lt;kth_semantic_element_type&lt;C1,K&gt;::type, kth_semantic_element_type&lt;C2,K&gt;::type&gt;;</span>
+  <span class="c1">//     where Convertible&lt;kth_semantic_element_type&lt;C2,K&gt;::type, kth_semantic_element_type&lt;C1,K&gt;::type&gt;;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>A color base must have an associated layout (which consists of a color space,
+as well as an ordering of the channels). There are two ways to index the
+elements of a color base: A physical index corresponds to the way they are
+ordered in memory, and a semantic index corresponds to the way the elements
+are ordered in their color space. For example, in the RGB color space the
+elements are ordered as <code class="docutils literal"><span class="pre">{red_t,</span> <span class="pre">green_t,</span> <span class="pre">blue_t}</span></code>. For a color base with
+a BGR layout, the first element in physical ordering is the blue element,
+whereas the first semantic element is the red one.  Models of
+<code class="docutils literal"><span class="pre">ColorBaseConcept</span></code> are required to provide the <code class="docutils literal"><span class="pre">at_c&lt;K&gt;(ColorBase)</span></code>
+function, which allows for accessing the elements based on their physical
+order. GIL provides a <code class="docutils literal"><span class="pre">semantic_at_c&lt;K&gt;(ColorBase)</span></code> function (described
+later) which can operate on any model of ColorBaseConcept and returns the
+corresponding semantic element.</p>
+<p>Two color bases are <em>compatible</em> if they have the same color space and their
+elements (paired semantically) are convertible to each other.</p>
+</div>
+<div class="section" id="models">
+<h2><a class="toc-backref" href="#id2">Models</a></h2>
+<p>GIL provides a model for a homogeneous color base (a color base whose elements
+all have the same type).</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">namespace</span> <span class="n">detail</span>
+<span class="p">{</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Element</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span>
+  <span class="k">struct</span> <span class="n">homogeneous_color_base</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>It is used in the implementation of GIL&#8217;s pixel, planar pixel reference and
+planar pixel iterator. Another model of <code class="docutils literal"><span class="pre">ColorBaseConcept</span></code> is
+<code class="docutils literal"><span class="pre">packed_pixel</span></code> - it is a pixel whose channels are bit ranges.</p>
+<p>See the <a class="reference internal" href="pixel.html"><span class="doc">Pixel</span></a> section for more.</p>
+</div>
+<div class="section" id="algorithms">
+<h2><a class="toc-backref" href="#id3">Algorithms</a></h2>
+<p>GIL provides the following functions and metafunctions operating on color
+bases:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="c1">// Metafunction returning an mpl::int_ equal to the number of elements in the color base</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">ColorBase</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">size</span><span class="p">;</span>
+
+<span class="c1">// Returns the type of the return value of semantic_at_c&lt;K&gt;(color_base)</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">ColorBase</span><span class="p">,</span> <span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">kth_semantic_element_reference_type</span><span class="p">;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">ColorBase</span><span class="p">,</span> <span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">kth_semantic_element_const_reference_type</span><span class="p">;</span>
+
+<span class="c1">// Returns a reference to the element with K-th semantic index.</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">ColorBase</span><span class="p">,</span> <span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span>
+<span class="k">typename</span> <span class="n">kth_semantic_element_reference_type</span><span class="o">&lt;</span><span class="n">ColorBase</span><span class="p">,</span><span class="n">K</span><span class="o">&gt;::</span><span class="n">type</span>       <span class="n">semantic_at_c</span><span class="p">(</span><span class="n">ColorBase</span><span class="o">&amp;</span> <span class="n">p</span><span class="p">)</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">ColorBase</span><span class="p">,</span> <span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span>
+<span class="k">typename</span> <span class="n">kth_semantic_element_const_reference_type</span><span class="o">&lt;</span><span class="n">ColorBase</span><span class="p">,</span><span class="n">K</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">semantic_at_c</span><span class="p">(</span><span class="k">const</span> <span class="n">ColorBase</span><span class="o">&amp;</span> <span class="n">p</span><span class="p">)</span>
+
+<span class="c1">// Returns the type of the return value of get_color&lt;Color&gt;(color_base)</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Color</span><span class="p">,</span> <span class="k">typename</span> <span class="n">ColorBase</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">color_reference_t</span><span class="p">;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Color</span><span class="p">,</span> <span class="k">typename</span> <span class="n">ColorBase</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">color_const_reference_t</span><span class="p">;</span>
+
+<span class="c1">// Returns a reference to the element corresponding to the given color</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ColorBase</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Color</span><span class="o">&gt;</span>
+<span class="k">typename</span> <span class="n">color_reference_t</span><span class="o">&lt;</span><span class="n">Color</span><span class="p">,</span><span class="n">ColorBase</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">get_color</span><span class="p">(</span><span class="n">ColorBase</span><span class="o">&amp;</span> <span class="n">cb</span><span class="p">,</span> <span class="n">Color</span><span class="o">=</span><span class="n">Color</span><span class="p">());</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ColorBase</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Color</span><span class="o">&gt;</span>
+<span class="k">typename</span> <span class="n">color_const_reference_t</span><span class="o">&lt;</span><span class="n">Color</span><span class="p">,</span><span class="n">ColorBase</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">get_color</span><span class="p">(</span><span class="k">const</span> <span class="n">ColorBase</span><span class="o">&amp;</span> <span class="n">cb</span><span class="p">,</span> <span class="n">Color</span><span class="o">=</span><span class="n">Color</span><span class="p">());</span>
+
+<span class="c1">// Returns the element type of the color base. Defined for homogeneous color bases only</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ColorBase</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">element_type</span><span class="p">;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ColorBase</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">element_reference_type</span><span class="p">;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ColorBase</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">element_const_reference_type</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>GIL also provides the following algorithms which operate on color bases.
+Note that they all pair the elements semantically:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="c1">// Equivalents to std::equal, std::copy, std::fill, std::generate</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="o">&gt;</span>   <span class="kt">bool</span> <span class="n">static_equal</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span> <span class="n">p1</span><span class="p">,</span> <span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span> <span class="n">p2</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Src</span><span class="p">,</span><span class="k">typename</span> <span class="n">Dst</span><span class="o">&gt;</span>   <span class="kt">void</span> <span class="n">static_copy</span><span class="p">(</span><span class="k">const</span> <span class="n">Src</span><span class="o">&amp;</span> <span class="n">src</span><span class="p">,</span> <span class="n">Dst</span><span class="o">&amp;</span> <span class="n">dst</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span>    <span class="kt">void</span> <span class="n">static_generate</span><span class="p">(</span><span class="n">CB</span><span class="o">&amp;</span> <span class="n">dst</span><span class="p">,</span><span class="n">Op</span> <span class="n">op</span><span class="p">);</span>
+
+<span class="c1">// Equivalents to std::transform</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB</span> <span class="p">,</span>             <span class="k">typename</span> <span class="n">Dst</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_transform</span><span class="p">(</span>      <span class="n">CB</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Dst</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB</span> <span class="p">,</span>             <span class="k">typename</span> <span class="n">Dst</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_transform</span><span class="p">(</span><span class="k">const</span> <span class="n">CB</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Dst</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">Dst</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_transform</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Dst</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">Dst</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_transform</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Dst</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">Dst</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_transform</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Dst</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">Dst</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_transform</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Dst</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+
+<span class="c1">// Equivalents to std::for_each</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span>                          <span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span>                          <span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span>             <span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span>             <span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span>             <span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span>             <span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB3</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB3</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB3</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB3</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB3</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB3</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB3</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span>      <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB3</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB3</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB3</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB3</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB3</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB3</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span>      <span class="n">CB3</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">CB1</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB2</span><span class="p">,</span><span class="k">typename</span> <span class="n">CB3</span><span class="p">,</span><span class="k">typename</span> <span class="n">Op</span><span class="o">&gt;</span> <span class="n">Op</span> <span class="n">static_for_each</span><span class="p">(</span><span class="k">const</span> <span class="n">CB1</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB2</span><span class="o">&amp;</span><span class="p">,</span><span class="k">const</span> <span class="n">CB3</span><span class="o">&amp;</span><span class="p">,</span><span class="n">Op</span><span class="p">);</span>
+
+<span class="c1">// The following algorithms are only defined for homogeneous color bases:</span>
+<span class="c1">// Equivalent to std::fill</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">HCB</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Element</span><span class="o">&gt;</span> <span class="kt">void</span> <span class="n">static_fill</span><span class="p">(</span><span class="n">HCB</span><span class="o">&amp;</span> <span class="n">p</span><span class="p">,</span> <span class="k">const</span> <span class="n">Element</span><span class="o">&amp;</span> <span class="n">v</span><span class="p">);</span>
+
+<span class="c1">// Equivalents to std::min_element and std::max_element</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">HCB</span><span class="o">&gt;</span> <span class="k">typename</span> <span class="n">element_const_reference_type</span><span class="o">&lt;</span><span class="n">HCB</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">static_min</span><span class="p">(</span><span class="k">const</span> <span class="n">HCB</span><span class="o">&amp;</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">HCB</span><span class="o">&gt;</span> <span class="k">typename</span> <span class="n">element_reference_type</span><span class="o">&lt;</span><span class="n">HCB</span><span class="o">&gt;::</span><span class="n">type</span>       <span class="n">static_min</span><span class="p">(</span>      <span class="n">HCB</span><span class="o">&amp;</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">HCB</span><span class="o">&gt;</span> <span class="k">typename</span> <span class="n">element_const_reference_type</span><span class="o">&lt;</span><span class="n">HCB</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">static_max</span><span class="p">(</span><span class="k">const</span> <span class="n">HCB</span><span class="o">&amp;</span><span class="p">);</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">HCB</span><span class="o">&gt;</span> <span class="k">typename</span> <span class="n">element_reference_type</span><span class="o">&lt;</span><span class="n">HCB</span><span class="o">&gt;::</span><span class="n">type</span>       <span class="n">static_max</span><span class="p">(</span>      <span class="n">HCB</span><span class="o">&amp;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>These algorithms are designed after the corresponding STL algorithms, except
+that instead of ranges they take color bases and operate on their elements.
+In addition, they are implemented with a compile-time recursion (thus the
+prefix &#8220;static_&#8221;). Finally, they pair the elements semantically instead of
+based on their physical order in memory.</p>
+<p>For example, here is the implementation of <code class="docutils literal"><span class="pre">static_equal</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">namespace</span> <span class="n">detail</span>
+<span class="p">{</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="kt">int</span> <span class="n">K</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">element_recursion</span>
+  <span class="p">{</span>
+    <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">P1</span><span class="p">,</span><span class="k">typename</span> <span class="n">P2</span><span class="o">&gt;</span>
+    <span class="k">static</span> <span class="kt">bool</span> <span class="n">static_equal</span><span class="p">(</span><span class="k">const</span> <span class="n">P1</span><span class="o">&amp;</span> <span class="n">p1</span><span class="p">,</span> <span class="k">const</span> <span class="n">P2</span><span class="o">&amp;</span> <span class="n">p2</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="k">return</span> <span class="n">element_recursion</span><span class="o">&lt;</span><span class="n">K</span><span class="o">-</span><span class="mi">1</span><span class="o">&gt;::</span><span class="n">static_equal</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
+             <span class="n">semantic_at_c</span><span class="o">&lt;</span><span class="n">K</span><span class="o">-</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">p1</span><span class="p">)</span><span class="o">==</span><span class="n">semantic_at_c</span><span class="o">&lt;</span><span class="n">N</span><span class="o">-</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">p2</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">};</span>
+  <span class="k">template</span> <span class="o">&lt;&gt;</span> <span class="k">struct</span> <span class="n">element_recursion</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span>
+  <span class="p">{</span>
+    <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">P1</span><span class="p">,</span><span class="k">typename</span> <span class="n">P2</span><span class="o">&gt;</span>
+    <span class="k">static</span> <span class="kt">bool</span> <span class="n">static_equal</span><span class="p">(</span><span class="k">const</span> <span class="n">P1</span><span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">P2</span><span class="o">&amp;</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="nb">true</span><span class="p">;</span> <span class="p">}</span>
+  <span class="p">};</span>
+<span class="p">}</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">P1</span><span class="p">,</span><span class="k">typename</span> <span class="n">P2</span><span class="o">&gt;</span>
+<span class="kt">bool</span> <span class="n">static_equal</span><span class="p">(</span><span class="k">const</span> <span class="n">P1</span><span class="o">&amp;</span> <span class="n">p1</span><span class="p">,</span> <span class="k">const</span> <span class="n">P2</span><span class="o">&amp;</span> <span class="n">p2</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">gil_function_requires</span><span class="o">&lt;</span><span class="n">ColorSpacesCompatibleConcept</span><span class="o">&lt;</span><span class="n">P1</span><span class="o">::</span><span class="n">layout_t</span><span class="o">::</span><span class="n">color_space_t</span><span class="p">,</span><span class="n">P2</span><span class="o">::</span><span class="n">layout_t</span><span class="o">::</span><span class="n">color_space_t</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">();</span>
+  <span class="k">return</span> <span class="n">detail</span><span class="o">::</span><span class="n">element_recursion</span><span class="o">&lt;</span><span class="n">size</span><span class="o">&lt;</span><span class="n">P1</span><span class="o">&gt;::</span><span class="n">value</span><span class="o">&gt;::</span><span class="n">static_equal</span><span class="p">(</span><span class="n">p1</span><span class="p">,</span><span class="n">p2</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>This algorithm is used when invoking <code class="docutils literal"><span class="pre">operator==</span></code> on two pixels, for
+example. By using semantic accessors we are properly comparing an RGB pixel to
+a BGR pixel. Notice also that all of the above algorithms taking more than one
+color base require that they all have the same color space.</p>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Color Space and Layout" href="color_space.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Pixel" href="pixel.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,120 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Basics - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Concepts" href="concepts.html" />
+    <link rel="prev" title="Design Guide" href="index.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Design Guide" href="index.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Concepts" href="concepts.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="basics">
+<h1>Basics</h1>
+<p>Images are essential in any image processing, vision and video project, and
+yet the variability in image representations makes it difficult to write
+imaging algorithms that are both generic and efficient. In this section we
+will describe some of the challenges that we would like to address.</p>
+<p>In the following discussion an <em>image</em> is a 2D array of pixels. A <em>pixel</em> is a
+set of color channels that represents the color at a given point in an image.
+Each <em>channel</em> represents the value of a color component. There are two common
+memory structures for an image. <em>Interleaved</em> images are represented by
+grouping the pixels together in memory and interleaving all channels together,
+whereas <em>planar</em> images keep the channels in separate color planes. Here is a
+4x3 RGB image in which the second pixel of the first row is marked in red,
+in interleaved form:</p>
+<img alt="../_images/interleaved.jpg" src="../_images/interleaved.jpg" />
+<p>and in planar form:</p>
+<img alt="../_images/planar.jpg" src="../_images/planar.jpg" />
+<p>Note also that rows may optionally be aligned resulting in a potential padding
+at the end of rows.</p>
+<p>The Generic Image Library (GIL) provides models for images that vary in:</p>
+<ul class="simple">
+<li>Structure (planar vs. interleaved)</li>
+<li>Color space and presence of alpha (RGB, RGBA, CMYK, etc.)</li>
+<li>Channel depth (8-bit, 16-bit, etc.)</li>
+<li>Order of channels (RGB vs. BGR, etc.)</li>
+<li>Row alignment policy (no alignment, word-alignment, etc.)</li>
+</ul>
+<p>It also supports user-defined models of images, and images whose parameters
+are specified at run-time. GIL abstracts image representation from algorithms
+applied on images and allows us to write the algorithm once and have it work
+on any of the above image variations while generating code that is comparable
+in speed to that of hand-writing the algorithm for a specific image type.</p>
+<p>This document follows bottom-up design. Each section defines concepts that
+build on top of concepts defined in previous sections. It is recommended to
+read the sections in order.</p>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Design Guide" href="index.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Concepts" href="concepts.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

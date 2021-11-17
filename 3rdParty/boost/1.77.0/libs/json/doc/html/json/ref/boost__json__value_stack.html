@@ -1,0 +1,363 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>value_stack</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__json__value_ref/value_ref/overload19.html" title="value_ref::value_ref (19 of 19 overloads)">
+<link rel="next" href="boost__json__value_stack/value_stack.html" title="value_stack::value_stack">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__value_ref/value_ref/overload19.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__value_stack/value_stack.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="json.ref.boost__json__value_stack"></a><a class="link" href="boost__json__value_stack.html" title="value_stack">value_stack</a>
+</h4></div></div></div>
+<p>
+        A stack of <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        elements, for building a document.
+      </p>
+<h5>
+<a name="json.ref.boost__json__value_stack.h0"></a>
+        <span class="phrase"><a name="json.ref.boost__json__value_stack.synopsis"></a></span><a class="link" href="boost__json__value_stack.html#json.ref.boost__json__value_stack.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json/value_stack.hpp" target="_top">boost/json/value_stack.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">value_stack</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__value_stack.h1"></a>
+        <span class="phrase"><a name="json.ref.boost__json__value_stack.member_functions"></a></span><a class="link" href="boost__json__value_stack.html#json.ref.boost__json__value_stack.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/operator_eq_.html" title="value_stack::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy assignment (deleted)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_array.html" title="value_stack::push_array">push_array</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push an array formed by popping <code class="computeroutput"><span class="identifier">n</span></code>
+                  values from the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_bool.html" title="value_stack::push_bool">push_bool</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push a <code class="computeroutput"><span class="keyword">bool</span></code> onto the
+                  stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_chars.html" title="value_stack::push_chars">push_chars</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push part of a key or string onto the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_double.html" title="value_stack::push_double">push_double</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push a number onto the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_int64.html" title="value_stack::push_int64">push_int64</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push a number onto the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_key.html" title="value_stack::push_key">push_key</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push a key onto the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_null.html" title="value_stack::push_null">push_null</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push a null onto the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_object.html" title="value_stack::push_object">push_object</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push an object formed by popping <code class="computeroutput"><span class="identifier">n</span></code>
+                  key/value pairs from the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_string.html" title="value_stack::push_string">push_string</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Place a string value onto the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/push_uint64.html" title="value_stack::push_uint64">push_uint64</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Push a number onto the stack.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/release.html" title="value_stack::release">release</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the top-level <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/reset.html" title="value_stack::reset">reset</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Prepare to build a new document.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/value_stack.html" title="value_stack::value_stack">value_stack</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy constructor (deleted) <br> <span class="silver">—</span><br>
+                  Constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__value_stack/_value_stack.html" title="value_stack::~value_stack">~value_stack</a> <span class="silver">[destructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__value_stack.h2"></a>
+        <span class="phrase"><a name="json.ref.boost__json__value_stack.description"></a></span><a class="link" href="boost__json__value_stack.html#json.ref.boost__json__value_stack.description">Description</a>
+      </h5>
+<p>
+        This stack of <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        allows iterative construction of a JSON document in memory. The implementation
+        uses temporary internal storage to buffer elements so that arrays, objects,
+        and strings in the document are constructed using a single memory allocation.
+        This improves performance and makes efficient use of the <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a> used to create the
+        resulting <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>.
+        Temporary storage used by the implementation initially comes from an optional
+        memory buffer owned by the caller. If that storage is exhausted, then memory
+        is obtained dynamically from the <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a> provided on construction.
+      </p>
+<h5>
+<a name="json.ref.boost__json__value_stack.h3"></a>
+        <span class="phrase"><a name="json.ref.boost__json__value_stack.usage"></a></span><a class="link" href="boost__json__value_stack.html#json.ref.boost__json__value_stack.usage">Usage</a>
+      </h5>
+<p>
+        Construct the stack with an optional initial temporary buffer, and a <a class="link" href="boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a>
+        to use for more storage when the initial buffer is exhausted. Then to build
+        a <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>,
+        first call <a class="link" href="boost__json__value_stack/reset.html" title="value_stack::reset"><code class="computeroutput"><span class="identifier">reset</span></code></a> and optionally specify the
+        <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>
+        which will be used for the value. Then push elements onto the stack by calling
+        the corresponding functions. After the document has been fully created, call
+        <a class="link" href="boost__json__value_stack/release.html" title="value_stack::release"><code class="computeroutput"><span class="identifier">release</span></code></a>
+        to acquire ownership of the top-level <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>.
+      </p>
+<h5>
+<a name="json.ref.boost__json__value_stack.h4"></a>
+        <span class="phrase"><a name="json.ref.boost__json__value_stack.performance"></a></span><a class="link" href="boost__json__value_stack.html#json.ref.boost__json__value_stack.performance">Performance</a>
+      </h5>
+<p>
+        The initial buffer and any dynamically allocated temporary buffers are retained
+        until the stack is destroyed. This improves performance when using a single
+        stack instance to produce multiple values.
+      </p>
+<h5>
+<a name="json.ref.boost__json__value_stack.h5"></a>
+        <span class="phrase"><a name="json.ref.boost__json__value_stack.example"></a></span><a class="link" href="boost__json__value_stack.html#json.ref.boost__json__value_stack.example">Example</a>
+      </h5>
+<p>
+        The following code constructs a <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> which when serialized produces
+        a JSON object with three elements. It uses a local buffer for the temporary
+        storage, and a separate local buffer for the storage of the resulting value.
+        No memory is dynamically allocated; this shows how to construct a value without
+        using the heap.
+      </p>
+<pre class="programlisting"><span class="comment">// This example builds a json::value without any dynamic memory allocations:</span>
+
+<span class="comment">// Construct the value stack using a local buffer</span>
+<span class="keyword">unsigned</span> <span class="keyword">char</span> <span class="identifier">temp</span><span class="special">[</span><span class="number">4096</span><span class="special">];</span>
+<span class="identifier">value_stack</span> <span class="identifier">st</span><span class="special">(</span> <span class="identifier">storage_ptr</span><span class="special">(),</span> <span class="identifier">temp</span><span class="special">,</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">temp</span><span class="special">)</span> <span class="special">);</span>
+
+<span class="comment">// Create a static resource with a local initial buffer</span>
+<span class="keyword">unsigned</span> <span class="keyword">char</span> <span class="identifier">buf</span><span class="special">[</span><span class="number">4096</span><span class="special">];</span>
+<span class="identifier">static_resource</span> <span class="identifier">mr</span><span class="special">(</span> <span class="identifier">buf</span><span class="special">,</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">buf</span><span class="special">)</span> <span class="special">);</span>
+
+<span class="comment">// All values on the stack will use `mr`</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(&amp;</span><span class="identifier">mr</span><span class="special">);</span>
+
+<span class="comment">// Push the key/value pair "a":1.</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_key</span><span class="special">(</span><span class="string">"a"</span><span class="special">);</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_int64</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>
+
+<span class="comment">// Push "b":null</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_key</span><span class="special">(</span><span class="string">"b"</span><span class="special">);</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_null</span><span class="special">();</span>
+
+<span class="comment">// Push "c":"hello"</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_key</span><span class="special">(</span><span class="string">"c"</span><span class="special">);</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_string</span><span class="special">(</span><span class="string">"hello"</span><span class="special">);</span>
+
+<span class="comment">// Pop the three key/value pairs and push an object with those three values.</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_object</span><span class="special">(</span><span class="number">3</span><span class="special">);</span>
+
+<span class="comment">// Pop the object from the stack and take ownership.</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">st</span><span class="special">.</span><span class="identifier">release</span><span class="special">();</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">serialize</span><span class="special">(</span><span class="identifier">jv</span><span class="special">)</span> <span class="special">==</span> <span class="string">"{\"a\":1,\"b\":null,\"c\":\"hello\"}"</span> <span class="special">);</span>
+
+<span class="comment">// At this point we could re-use the stack by calling reset</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__value_stack.h6"></a>
+        <span class="phrase"><a name="json.ref.boost__json__value_stack.thread_safety"></a></span><a class="link" href="boost__json__value_stack.html#json.ref.boost__json__value_stack.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        Distinct instances may be accessed concurrently. Non-const member functions
+        of a shared instance may not be called concurrently with any other member
+        functions of that instance.
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json.hpp" target="_top">boost/json.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__value_ref/value_ref/overload19.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__value_stack/value_stack.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

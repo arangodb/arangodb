@@ -1,0 +1,49 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:test_naming Tests naming]
+
+[h2 Acceptable characters for names]
+The __UTF__ is flexible on the naming the test units (test cases/suites) and
+it is possible to use a wide variety of characters. However there are scenarios
+where the name of a test unit may collide with other features
+of the __UTF__. For instance:
+
+* a character may collide with specific command line filters for selecting a
+  subset of the test tree. Among those characters: `'@'`, `'+'` or `'/'`
+  (see [link boost_test.runtime_config.test_unit_filtering this section] for
+  more details)
+* a name containing a character that is reserved for the shell/terminal, such as
+  '!', '\*' ..., may prevent the test name to be passed on the command line *as is*.
+
+To prevent any conflicting declaration, the __UTF__ *sanitizes* the name given to
+a test unit (case or suite), prior to adding the test to the test tree. Any
+conflicting character is replaced by an underscore `'_'`.
+
+[note [*Spaces] are not considered as /special chars/ and are preserved, except for the
+ leading and trailing spaces which are removed.]
+
+[note The sanitization of the test unit names has been introduced in [link ref_CHANGE_LOG_3_7 Boost 1.67].
+ ]
+
+[h2 Constraints on test names]
+The __UTF__ considers an error if two sibling test cases have the same name. This consistency check is performed
+at runtime and is not sensitive to test filtering.
+
+For test-cases registered automatically, and within the same compilation unit, a compilation error should be raised by
+the compiler in case of name conflict.
+For manual registration of test cases and in case of conflicts, the too __BOOST_TEST_CASE_NAME__ may be used.
+
+The data driven tests are automatically created in an isolated test-suite and with a name that is indexed on the
+sample.
+
+
+[note This constraints does not apply to test-suites: Opening/closing a test-suite declaration
+ adds the test-cases to an existing or newly created test-suite of that name.]
+
+[endsect] [/ test test_naming]

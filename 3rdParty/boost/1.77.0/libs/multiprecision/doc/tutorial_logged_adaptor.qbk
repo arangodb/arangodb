@@ -1,0 +1,66 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:logged_adaptor logged_adaptor]
+
+`#include <boost/multiprecision/logged_adaptor.hpp>`
+
+   namespace boost{ namespace multiprecision{
+
+   template <class Backend>
+   void log_postfix_event(const Backend& result, const char* event_description);
+   template <class Backend, class T>
+   void log_postfix_event(const Backend& result1, const T& result2, const char* event_description);
+
+   template <class Backend>
+   void log_prefix_event(const Backend& arg1, const char* event_description);
+   template <class Backend, class T>
+   void log_prefix_event(const Backend& arg1, const T& arg2, const char* event_description);
+   template <class Backend, class T, class U>
+   void log_prefix_event(const Backend& arg1, const T& arg2, const U& arg3, const char* event_description);
+   template <class Backend, class T, class U, class V>
+   void log_prefix_event(const Backend& arg1, const T& arg2, const U& arg3, const V& arg4, const char* event_description);
+
+   template <Backend>
+   class logged_adaptor;
+
+   template <class Number>
+   using logged_adaptor_t = number<logged_adaptor<typename Number::backend_type>, Number::et>;
+
+   }} // namespaces
+
+The `logged_adaptor` type is used in conjunction with `number` and some other backend type: it acts as a thin wrapper around
+some other backend to class `number` and logs all the events that take place on that object.  Before any number operation takes
+place, it calls `log_prefix_event` with the arguments to the operation (up to 4), plus a string describing the operation.
+Then after the operation it calls `log_postfix_event` with the result of the operation, plus a string describing the operation.
+Optionally, `log_postfix_event` takes a second result argument: this occurs when the result of the operation is not a `number`,
+for example when `fpclassify` is called, `log_postfix_event` will be called with `result1` being the argument to the function, and
+`result2` being the integer result of `fpclassify`.
+
+The default versions of `log_prefix_event` and `log_postfix_event` do nothing, it is therefore up to the user to overload these
+for the particular backend being observed.
+
+This type provides `numeric_limits` support whenever the template argument Backend does so.
+
+Template alias `logged_adaptor_t` can be used as a shortcut for converting some instantiation of `number<>` to it's logged euqivalent.
+
+This type is particularly useful when combined with an interval number type - in this case we can use `log_postfix_event`
+to monitor the error accumulated after each operation.  We could either set some kind of trap whenever the accumulated error
+exceeds some threshold, or simply print out diagnostic information.  Using this technique we can quickly locate the cause of
+numerical instability in a particular routine.  The following example demonstrates this technique in a trivial algorithm
+that deliberately introduces cancellation error:
+
+[logged_adaptor]
+
+When we examine program output we can clearly see that the diameter of the interval increases after each subtraction:
+
+[logged_adaptor_output]
+
+[endsect] [/section:logged_adaptor logged_adaptor]

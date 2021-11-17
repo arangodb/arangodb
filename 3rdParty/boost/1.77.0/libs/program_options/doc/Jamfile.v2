@@ -1,0 +1,23 @@
+
+import toolset ;
+toolset.using doxygen ;
+
+boostbook program_option 
+    : program_options.xml 
+    : <implicit-dependency>autodoc 
+      <xsl:param>boost.root=../../../..
+      <format>pdf:<xsl:param>boost.url.prefix=http://www.boost.org/doc/libs/release/doc/html
+    ;
+
+doxygen autodoc 
+    : [ glob ../../../boost/program_options/*.hpp ] ;
+
+###############################################################################
+alias boostdoc
+    : program_options.xml
+    :
+    : <dependency>autodoc
+    : ;
+explicit boostdoc ;
+alias boostrelease ;
+explicit boostrelease ;

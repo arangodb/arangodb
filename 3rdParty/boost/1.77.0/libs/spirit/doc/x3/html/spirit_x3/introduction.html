@@ -1,0 +1,153 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Introduction</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Spirit X3 3.0.9">
+<link rel="up" href="../index.html" title="Spirit X3 3.0.9">
+<link rel="prev" href="preface.html" title="Preface">
+<link rel="next" href="include.html" title="Include">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="preface.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="include.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="spirit_x3.introduction"></a><a class="link" href="introduction.html" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<p>
+      Boost Spirit X3 is an object-oriented, recursive-descent parser for C++. It
+      allows you to write grammars using a format similar to Extended Backus Naur
+      Form (EBNF)<a href="#ftn.spirit_x3.introduction.f0" class="footnote" name="spirit_x3.introduction.f0"><sup class="footnote">[1]</sup></a> directly in C++. These inline grammar specifications can mix freely
+      with other C++ code and, thanks to the generative power of C++ templates, are
+      immediately executable. Conventional compiler-compilers or parser-generators
+      have to perform an additional translation step from the source EBNF code to
+      C or C++ code.
+    </p>
+<p>
+      Since the target input grammars are written entirely in C++ we do not need
+      any separate tools to compile, preprocess or integrate those into the build
+      process. <a href="http://boost-spirit.com" target="_top">Spirit</a> allows seamless
+      integration of the parsing process with other C++ code. This often allows for
+      simpler and more efficient code.
+    </p>
+<p>
+      The created parsers are fully attributed, which allows you to easily build
+      and handle hierarchical data structures in memory. These data structures resemble
+      the structure of the input data and can directly be used to generate arbitrarily-formatted
+      output.
+    </p>
+<p>
+      A simple EBNF grammar snippet:
+    </p>
+<pre class="programlisting"><span class="identifier">group</span>       <span class="special">::=</span> <span class="char">'('</span> <span class="identifier">expression</span> <span class="char">')'</span>
+<span class="identifier">factor</span>      <span class="special">::=</span> <span class="identifier">integer</span> <span class="special">|</span> <span class="identifier">group</span>
+<span class="identifier">term</span>        <span class="special">::=</span> <span class="identifier">factor</span> <span class="special">((</span><span class="char">'*'</span> <span class="identifier">factor</span><span class="special">)</span> <span class="special">|</span> <span class="special">(</span><span class="char">'/'</span> <span class="identifier">factor</span><span class="special">))*</span>
+<span class="identifier">expression</span>  <span class="special">::=</span> <span class="identifier">term</span> <span class="special">((</span><span class="char">'+'</span> <span class="identifier">term</span><span class="special">)</span> <span class="special">|</span> <span class="special">(</span><span class="char">'-'</span> <span class="identifier">term</span><span class="special">))*</span>
+</pre>
+<p>
+      is approximated using facilities of Spirit's <span class="emphasis"><em>X3</em></span> as seen
+      in this code snippet:
+    </p>
+<pre class="programlisting"><span class="identifier">group</span>       <span class="special">=</span> <span class="char">'('</span> <span class="special">&gt;&gt;</span> <span class="identifier">expression</span> <span class="special">&gt;&gt;</span> <span class="char">')'</span><span class="special">;</span>
+<span class="identifier">factor</span>      <span class="special">=</span> <span class="identifier">integer</span> <span class="special">|</span> <span class="identifier">group</span><span class="special">;</span>
+<span class="identifier">term</span>        <span class="special">=</span> <span class="identifier">factor</span> <span class="special">&gt;&gt;</span> <span class="special">*((</span><span class="char">'*'</span> <span class="special">&gt;&gt;</span> <span class="identifier">factor</span><span class="special">)</span> <span class="special">|</span> <span class="special">(</span><span class="char">'/'</span> <span class="special">&gt;&gt;</span> <span class="identifier">factor</span><span class="special">));</span>
+<span class="identifier">expression</span>  <span class="special">=</span> <span class="identifier">term</span> <span class="special">&gt;&gt;</span> <span class="special">*((</span><span class="char">'+'</span> <span class="special">&gt;&gt;</span> <span class="identifier">term</span><span class="special">)</span> <span class="special">|</span> <span class="special">(</span><span class="char">'-'</span> <span class="special">&gt;&gt;</span> <span class="identifier">term</span><span class="special">));</span>
+</pre>
+<p>
+      Through the magic of expression templates, this is perfectly valid and executable
+      C++ code. The production rule <code class="computeroutput"><span class="identifier">expression</span></code>
+      is, in fact, an object that has a member function <code class="computeroutput"><span class="identifier">parse</span></code>
+      that does the work given a source code written in the grammar that we have
+      just declared. Yes, it's a calculator. We shall simplify for now by skipping
+      the type declarations and the definition of the rule <code class="computeroutput"><span class="identifier">integer</span></code>
+      invoked by <code class="computeroutput"><span class="identifier">factor</span></code>. Now, the
+      production rule <code class="computeroutput"><span class="identifier">expression</span></code>
+      in our grammar specification, traditionally called the <code class="computeroutput"><span class="identifier">start</span></code>
+      symbol, can recognize inputs such as:
+    </p>
+<pre class="programlisting"><span class="number">12345</span>
+<span class="special">-</span><span class="number">12345</span>
+<span class="special">+</span><span class="number">12345</span>
+<span class="number">1</span> <span class="special">+</span> <span class="number">2</span>
+<span class="number">1</span> <span class="special">*</span> <span class="number">2</span>
+<span class="number">1</span><span class="special">/</span><span class="number">2</span> <span class="special">+</span> <span class="number">3</span><span class="special">/</span><span class="number">4</span>
+<span class="number">1</span> <span class="special">+</span> <span class="number">2</span> <span class="special">+</span> <span class="number">3</span> <span class="special">+</span> <span class="number">4</span>
+<span class="number">1</span> <span class="special">*</span> <span class="number">2</span> <span class="special">*</span> <span class="number">3</span> <span class="special">*</span> <span class="number">4</span>
+<span class="special">(</span><span class="number">1</span> <span class="special">+</span> <span class="number">2</span><span class="special">)</span> <span class="special">*</span> <span class="special">(</span><span class="number">3</span> <span class="special">+</span> <span class="number">4</span><span class="special">)</span>
+<span class="special">(-</span><span class="number">1</span> <span class="special">+</span> <span class="number">2</span><span class="special">)</span> <span class="special">*</span> <span class="special">(</span><span class="number">3</span> <span class="special">+</span> <span class="special">-</span><span class="number">4</span><span class="special">)</span>
+<span class="number">1</span> <span class="special">+</span> <span class="special">((</span><span class="number">6</span> <span class="special">*</span> <span class="number">200</span><span class="special">)</span> <span class="special">-</span> <span class="number">20</span><span class="special">)</span> <span class="special">/</span> <span class="number">6</span>
+<span class="special">(</span><span class="number">1</span> <span class="special">+</span> <span class="special">(</span><span class="number">2</span> <span class="special">+</span> <span class="special">(</span><span class="number">3</span> <span class="special">+</span> <span class="special">(</span><span class="number">4</span> <span class="special">+</span> <span class="number">5</span><span class="special">))))</span>
+</pre>
+<p>
+      Certainly we have modified the original EBNF syntax. This is done to conform
+      to C++ syntax rules. Most notably we see the abundance of shift &gt;&gt; operators.
+      Since there are no juxtaposition operators in C++, it is simply not possible
+      to write something like:
+    </p>
+<pre class="programlisting"><span class="identifier">a</span> <span class="identifier">b</span>
+</pre>
+<p>
+      as seen in math syntax, for example, to mean multiplication or, in our case,
+      as seen in EBNF syntax to mean sequencing (b should follow a). <span class="emphasis"><em>Spirit.X3</em></span>
+      uses the shift <code class="computeroutput"><span class="special">&gt;&gt;</span></code> operator
+      instead for this purpose. We take the <code class="computeroutput"><span class="special">&gt;&gt;</span></code>
+      operator, with arrows pointing to the right, to mean "is followed by".
+      Thus we write:
+    </p>
+<pre class="programlisting"><span class="identifier">a</span> <span class="special">&gt;&gt;</span> <span class="identifier">b</span>
+</pre>
+<p>
+      The alternative operator <code class="computeroutput"><span class="special">|</span></code> and
+      the parentheses <code class="computeroutput"><span class="special">()</span></code> remain as is.
+      The assignment operator <code class="computeroutput"><span class="special">=</span></code> is used
+      in place of EBNF's <code class="computeroutput"><span class="special">::=</span></code>. Last but
+      not least, the Kleene star <code class="computeroutput"><span class="special">*</span></code>,
+      which in this case is a postfix operator in EBNF becomes a prefix. Instead
+      of:
+    </p>
+<pre class="programlisting"><span class="identifier">a</span><span class="special">*</span> <span class="comment">//... in EBNF syntax,</span>
+</pre>
+<p>
+      we write:
+    </p>
+<pre class="programlisting"><span class="special">*</span><span class="identifier">a</span> <span class="comment">//... in Spirit.</span>
+</pre>
+<p>
+      since there are no postfix stars, <code class="computeroutput"><span class="special">*</span></code>,
+      in C/C++. Finally, we terminate each rule with the ubiquitous semi-colon,
+      <code class="computeroutput"><span class="special">;</span></code>.
+    </p>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.spirit_x3.introduction.f0" class="footnote"><p><a href="#spirit_x3.introduction.f0" class="para"><sup class="para">[1] </sup></a>
+        <a href="http://www.cl.cam.ac.uk/%7Emgk25/iso-14977.pdf" target="_top">ISO-EBNF</a>
+      </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2018 Joel de Guzman,
+      Hartmut Kaiser<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="preface.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="include.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>stream_parser</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__json__storage_ptr/make_shared_resource.html" title="storage_ptr::make_shared_resource">
+<link rel="next" href="boost__json__stream_parser/stream_parser.html" title="stream_parser::stream_parser">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__storage_ptr/make_shared_resource.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__stream_parser/stream_parser.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="json.ref.boost__json__stream_parser"></a><a class="link" href="boost__json__stream_parser.html" title="stream_parser">stream_parser</a>
+</h4></div></div></div>
+<p>
+        A DOM parser for JSON contained in multiple buffers.
+      </p>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h0"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.synopsis"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json/stream_parser.hpp" target="_top">boost/json/stream_parser.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">stream_parser</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h1"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.member_functions"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.member_functions">Member Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/done.html" title="stream_parser::done">done</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return true if a complete JSON has been parsed.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/finish.html" title="stream_parser::finish">finish</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Indicate the end of JSON input.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/operator_eq_.html" title="stream_parser::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy assignment (deleted)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/release.html" title="stream_parser::release">release</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the parsed JSON as a <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/reset.html" title="stream_parser::reset">reset</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reset the parser for a new JSON.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/stream_parser.html" title="stream_parser::stream_parser">stream_parser</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy constructor (deleted) <br> <span class="silver">—</span><br>
+                  Constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/write.html" title="stream_parser::write">write</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Parse a buffer containing all or part of a complete JSON.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/write_some.html" title="stream_parser::write_some">write_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Parse a buffer containing all or part of a complete JSON.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__stream_parser/_stream_parser.html" title="stream_parser::~stream_parser">~stream_parser</a> <span class="silver">[destructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h2"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.description"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.description">Description</a>
+      </h5>
+<p>
+        This class is used to parse a JSON contained in a series of one or more character
+        buffers, into a <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> container. It implements a
+        <a href="https://en.wikipedia.org/wiki/Streaming_algorithm" target="_top"><span class="emphasis"><em>streaming
+        algorithm</em></span></a>, allowing these parsing strategies:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Parse a JSON file a piece at a time.
+          </li>
+<li class="listitem">
+            Parse incoming JSON as it arrives, one buffer at a time.
+          </li>
+<li class="listitem">
+            Parse with bounded resource consumption per cycle.
+          </li>
+</ul></div>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h3"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.usage"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.usage">Usage</a>
+      </h5>
+<p>
+        To use the parser first construct it, then optionally call <a class="link" href="boost__json__stream_parser/reset.html" title="stream_parser::reset"><code class="computeroutput"><span class="identifier">reset</span></code></a> to specify a <a class="link" href="boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a> to use for the resulting
+        <a class="link" href="boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>.
+        Then call <a class="link" href="boost__json__stream_parser/write.html" title="stream_parser::write"><code class="computeroutput"><span class="identifier">write</span></code></a> one or more times to parse
+        a single, complete JSON. Call <a class="link" href="boost__json__stream_parser/done.html" title="stream_parser::done"><code class="computeroutput"><span class="identifier">done</span></code></a> to determine if the parse has
+        completed. To indicate there are no more buffers, call <a class="link" href="boost__json__stream_parser/finish.html" title="stream_parser::finish"><code class="computeroutput"><span class="identifier">finish</span></code></a>. If the parse is successful,
+        call <a class="link" href="boost__json__stream_parser/release.html" title="stream_parser::release"><code class="computeroutput"><span class="identifier">release</span></code></a> to take ownership of the
+        value:
+      </p>
+<pre class="programlisting"><span class="identifier">stream_parser</span> <span class="identifier">p</span><span class="special">;</span>                                <span class="comment">// construct a parser</span>
+<span class="identifier">p</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span> <span class="string">"[1,2"</span> <span class="special">);</span>                              <span class="comment">// parse some of a JSON</span>
+<span class="identifier">p</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span> <span class="string">",3,4]"</span> <span class="special">);</span>                             <span class="comment">// parse the rest of the JSON</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">done</span><span class="special">()</span> <span class="special">);</span>                             <span class="comment">// we have a complete JSON</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">release</span><span class="special">();</span>                         <span class="comment">// take ownership of the value</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h4"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.extra_data"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.extra_data">Extra
+        Data</a>
+      </h5>
+<p>
+        When the character buffer provided as input contains additional data that
+        is not part of the complete JSON, an error is returned. The <a class="link" href="boost__json__stream_parser/write_some.html" title="stream_parser::write_some"><code class="computeroutput"><span class="identifier">write_some</span></code></a> function is an alternative
+        which allows the parse to finish early, without consuming all the characters
+        in the buffer. This allows parsing of a buffer containing multiple individual
+        JSONs or containing different protocol data:
+      </p>
+<pre class="programlisting"><span class="identifier">stream_parser</span> <span class="identifier">p</span><span class="special">;</span>                                <span class="comment">// construct a parser</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">;</span>                                  <span class="comment">// number of characters used</span>
+<span class="identifier">n</span> <span class="special">=</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">write_some</span><span class="special">(</span> <span class="string">"[1,2"</span> <span class="special">);</span>                     <span class="comment">// parse some of a JSON</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">n</span> <span class="special">==</span> <span class="number">4</span> <span class="special">);</span>                               <span class="comment">// all characters consumed</span>
+<span class="identifier">n</span> <span class="special">=</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">write_some</span><span class="special">(</span> <span class="string">",3,4] null"</span> <span class="special">);</span>               <span class="comment">// parse the remainder of the JSON</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">n</span> <span class="special">==</span> <span class="number">6</span> <span class="special">);</span>                               <span class="comment">// only some characters consumed</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">done</span><span class="special">()</span> <span class="special">);</span>                             <span class="comment">// we have a complete JSON</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">release</span><span class="special">();</span>                         <span class="comment">// take ownership of the value</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h5"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.temporary_storage"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.temporary_storage">Temporary
+        Storage</a>
+      </h5>
+<p>
+        The parser may dynamically allocate temporary storage as needed to accommodate
+        the nesting level of the JSON being parsed. Temporary storage is first obtained
+        from an optional, caller-owned buffer specified upon construction. When that
+        is exhausted, the next allocation uses the <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a> passed to the constructor;
+        if no such argument is specified, the default memory resource is used. Temporary
+        storage is freed only when the parser is destroyed; The performance of parsing
+        multiple JSONs may be improved by reusing the same parser instance.
+      </p>
+<p>
+        It is important to note that the <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a> supplied upon construction
+        is used for temporary storage only, and not for allocating the elements which
+        make up the parsed value. That other memory resource is optionally supplied
+        in each call to <a class="link" href="boost__json__stream_parser/reset.html" title="stream_parser::reset"><code class="computeroutput"><span class="identifier">reset</span></code></a>.
+      </p>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h6"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.duplicate_keys"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.duplicate_keys">Duplicate
+        Keys</a>
+      </h5>
+<p>
+        If there are object elements with duplicate keys; that is, if multiple elements
+        in an object have keys that compare equal, only the last equivalent element
+        will be inserted.
+      </p>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h7"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.non_standard_json"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.non_standard_json">Non-Standard
+        JSON</a>
+      </h5>
+<p>
+        The <a class="link" href="boost__json__parse_options.html" title="parse_options"><code class="computeroutput"><span class="identifier">parse_options</span></code></a>
+        structure optionally provided upon construction is used to customize some
+        parameters of the parser, including which non-standard JSON extensions should
+        be allowed. A default-constructed parse options allows only standard JSON.
+      </p>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h8"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.thread_safety"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        Distinct instances may be accessed concurrently. Non-const member functions
+        of a shared instance may not be called concurrently with any other member
+        functions of that instance.
+      </p>
+<h5>
+<a name="json.ref.boost__json__stream_parser.h9"></a>
+        <span class="phrase"><a name="json.ref.boost__json__stream_parser.see_also"></a></span><a class="link" href="boost__json__stream_parser.html#json.ref.boost__json__stream_parser.see_also">See
+        Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__json__parse.html" title="parse"><code class="computeroutput"><span class="identifier">parse</span></code></a>,
+        <a class="link" href="boost__json__parser.html" title="parser"><code class="computeroutput"><span class="identifier">parser</span></code></a>,
+        <a class="link" href="boost__json__parse_options.html" title="parse_options"><code class="computeroutput"><span class="identifier">parse_options</span></code></a>,
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json.hpp" target="_top">boost/json.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__storage_ptr/make_shared_resource.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__stream_parser/stream_parser.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

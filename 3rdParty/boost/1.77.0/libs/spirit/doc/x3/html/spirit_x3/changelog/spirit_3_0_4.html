@@ -1,0 +1,118 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Spirit V3.0.4 (Boost V1.70.0)</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Spirit X3 3.0.9">
+<link rel="up" href="../changelog.html" title="Changelog">
+<link rel="prev" href="spirit_3_0_4_boost_1_71.html" title="Spirit V3.0.4 (Boost V1.71.0)">
+<link rel="next" href="spirit_3_0_3.html" title="Spirit V3.0.3 (Boost V1.69.0)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="spirit_3_0_4_boost_1_71.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../changelog.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="spirit_3_0_3.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="spirit_x3.changelog.spirit_3_0_4"></a><a class="link" href="spirit_3_0_4.html" title="Spirit V3.0.4 (Boost V1.70.0)">Spirit V3.0.4 (Boost
+      V1.70.0)</a>
+</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Integer parsers should now handle user defined types. <a href="https://github.com/boostorg/spirit/pull/429" target="_top">GH#429</a>
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Note:</strong></span> The <code class="computeroutput"><span class="identifier">check_overflow</span></code>
+            trait default implementation now relies on <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_bounded</span></code>
+            instead of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">integer_traits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_integral</span></code>.
+          </li>
+<li class="listitem">
+            Removed use of deprecated <code class="computeroutput"><span class="identifier">boost</span><span class="special">/</span><span class="identifier">detail</span><span class="special">/</span><span class="identifier">iterator</span><span class="special">.</span><span class="identifier">hpp</span></code>
+            header. <a href="https://github.com/boostorg/spirit/pull/432" target="_top">GH#432</a>
+          </li>
+<li class="listitem">
+            Removed sequence into plain parsing. Now it triggers a compile time error
+            instead of silently parsing the the sequence and taking the last value
+            as a result. <a href="https://github.com/boostorg/spirit/pull/439" target="_top">GH#439</a>
+          </li>
+<li class="listitem">
+            Fixed <code class="computeroutput"><span class="identifier">parse_rule</span></code> instantiation
+            with <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_INSTANTIATE</span></code>
+            when:
+            <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                  A rule has no attribute. <a href="https://github.com/boostorg/spirit/pull/455" target="_top">GH#455</a>
+                </li>
+<li class="listitem">
+                  An actual attribute is not of type a rule was declared with. <a href="https://github.com/boostorg/spirit/pull/456" target="_top">GH#456</a> <a href="https://github.com/boostorg/spirit/issues/457" target="_top">GH#457</a>
+                </li>
+</ul></div>
+          </li>
+<li class="listitem">
+            A <span class="bold"><strong>huge</strong></span> thanks goes out to <a href="https://github.com/Xeverous" target="_top">Xeverous</a>
+            for reporting a regression in <a href="https://github.com/boostorg/spirit/issues/453" target="_top">GH#453</a>.
+          </li>
+<li class="listitem">
+            Fixed unneeded attribute synthesization and no-transformation attribute
+            reference pass-through in rules. <a href="https://github.com/boostorg/spirit/issues/444" target="_top">GH#444</a> <a href="https://github.com/boostorg/spirit/pull/449" target="_top">GH#449</a> <a href="https://github.com/boostorg/spirit/pull/452" target="_top">GH#452</a>
+          </li>
+<li class="listitem">
+            Removed broken 1.0#INF parser. It was poorly documented and never worked.
+            <a href="https://github.com/boostorg/spirit/issues/415" target="_top">GH#415</a> <a href="https://github.com/boostorg/spirit/pull/458" target="_top">GH#458</a> <a href="https://svn.boost.org/trac/boost/ticket/8699" target="_top">TRAC#8699</a>
+          </li>
+<li class="listitem">
+            The undocumented <code class="computeroutput"><span class="identifier">make_attribute</span></code>
+            trait was removed due to bugs <a href="https://github.com/boostorg/spirit/pull/449" target="_top">GH#449</a>
+  and to simplify attribute transformation.
+            <a href="https://github.com/boostorg/spirit/pull/460" target="_top">GH#460</a>
+          </li>
+<li class="listitem">
+            If you were using it to workaround bugs in attribute transformation -
+            they should not be needed anymore as of this release.
+          </li>
+<li class="listitem">
+            The integer value parser now respects <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">digits10</span></code>
+            value. <a href="https://github.com/boostorg/spirit/pull/469" target="_top">GH#469</a>
+          </li>
+<li class="listitem">
+            Fixed underflow check for a <code class="computeroutput"><span class="special">(</span><span class="identifier">Min</span> <span class="special">%</span> <span class="identifier">Base</span><span class="special">)</span> <span class="special">==</span> <span class="number">0</span></code> corner
+            case. <a href="https://github.com/boostorg/spirit/pull/469" target="_top">GH#469</a>
+          </li>
+<li class="listitem">
+            Fixed an output value on overflow of <code class="computeroutput"><span class="identifier">IgnoreOverflowDigits</span><span class="special">=</span><span class="keyword">true</span></code>
+            integer parser. <a href="https://github.com/boostorg/spirit/pull/470" target="_top">GH#470</a>
+          </li>
+<li class="listitem">
+            Container attribute elements were copyied, but not moved. <a href="https://github.com/boostorg/spirit/pull/472" target="_top">GH#472</a>
+          </li>
+<li class="listitem">
+            Special handling of references in <code class="computeroutput"><span class="identifier">transform_attribute</span></code>
+            was removed. <a href="https://github.com/boostorg/spirit/pull/480" target="_top">GH#480</a>
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2018 Joel de Guzman,
+      Hartmut Kaiser<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="spirit_3_0_4_boost_1_71.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../changelog.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="spirit_3_0_3.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

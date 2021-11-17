@@ -1,0 +1,14 @@
+{
+    "key": "accumulators",
+    "name": "Accumulators",
+    "authors": [
+        "Eric Niebler"
+    ],
+    "description": "Framework for incremental calculation, and collection of statistical accumulators.",
+    "category": [
+        "Math"
+    ],
+    "maintainers": [
+        "Eric Niebler <eric -at- boostpro.com>"
+    ]
+}

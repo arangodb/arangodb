@@ -1,0 +1,297 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>boost/python/slice.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../object_wrappers.html" title="Chapter 3. Object Wrappers">
+<link rel="prev" href="boost_python_str_hpp.html" title="boost/python/str.hpp">
+<link rel="next" href="boost_python_tuple_hpp.html" title="boost/python/tuple.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_str_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../object_wrappers.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_tuple_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="object_wrappers.boost_python_slice_hpp"></a><a class="link" href="boost_python_slice_hpp.html" title="boost/python/slice.hpp">boost/python/slice.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice_constructors">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code> constructors</a></span></dt>
+<dt><span class="section"><a href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice_observer_functions">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code> observer functions</a></span></dt>
+<dt><span class="section"><a href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_slice_hpp.introduction"></a><a class="link" href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Exposes a <a class="link" href="../concepts/objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements" title="TypeWrapper Concept Requirements">TypeWrapper</a>
+          for the Python <a href="http://www.python.org/doc/2.3.3/api/slice-objects.html" target="_top"><code class="computeroutput"><span class="identifier">slice</span></code></a> type.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_slice_hpp.class_slice"></a><a class="link" href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice" title="Class slice">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code></a>
+</h3></div></div></div>
+<p>
+          Exposes the extended slicing protocol by wrapping the built-in slice type.
+          The semantics of the constructors and member functions defined below can
+          be fully understood by reading the <a class="link" href="../concepts/objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements" title="TypeWrapper Concept Requirements">TypeWrapper</a>
+          concept definition. Since <code class="computeroutput"><span class="identifier">slice</span></code>
+          is publicly derived from <a class="link" href="boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object"><code class="computeroutput"><span class="identifier">object</span></code></a>, the public <code class="computeroutput"><span class="identifier">object</span></code> interface applies to <code class="computeroutput"><span class="identifier">slice</span></code> instances as well.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">class</span> <span class="identifier">slice</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">object</span>
+  <span class="special">{</span>
+   <span class="keyword">public</span><span class="special">:</span>
+      <span class="identifier">slice</span><span class="special">();</span> <span class="comment">// create an empty slice, equivalent to [::]</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Int1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Int2</span><span class="special">&gt;</span>
+      <span class="identifier">slice</span><span class="special">(</span><span class="identifier">Int1</span> <span class="identifier">start</span><span class="special">,</span> <span class="identifier">Int2</span> <span class="identifier">stop</span><span class="special">);</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Int1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Int2</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Int3</span><span class="special">&gt;</span>
+      <span class="identifier">slice</span><span class="special">(</span><span class="identifier">Int1</span> <span class="identifier">start</span><span class="special">,</span> <span class="identifier">Int2</span> <span class="identifier">stop</span><span class="special">,</span> <span class="identifier">Int3</span> <span class="identifier">step</span><span class="special">);</span>
+
+      <span class="comment">// Access the parameters this slice was created with.</span>
+      <span class="identifier">object</span> <span class="identifier">start</span><span class="special">();</span>
+      <span class="identifier">object</span> <span class="identifier">stop</span><span class="special">();</span>
+      <span class="identifier">object</span> <span class="identifier">step</span><span class="special">();</span>
+
+      <span class="comment">// The return type of slice::get_indices()</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">RandomAccessIterator</span><span class="special">&gt;</span>
+      <span class="keyword">struct</span> <span class="identifier">range</span>
+      <span class="special">{</span>
+          <span class="identifier">RandomAccessIterator</span> <span class="identifier">start</span><span class="special">;</span>
+          <span class="identifier">RandomAccessIterator</span> <span class="identifier">stop</span><span class="special">;</span>
+          <span class="keyword">int</span> <span class="identifier">step</span><span class="special">;</span>
+      <span class="special">};</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">RandomAccessIterator</span><span class="special">&gt;</span>
+      <span class="identifier">range</span><span class="special">&lt;</span><span class="identifier">RandomAccessIterator</span><span class="special">&gt;</span>
+      <span class="identifier">get_indices</span><span class="special">(</span>
+          <span class="identifier">RandomAccessIterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">begin</span><span class="special">,</span>
+          <span class="identifier">RandomAccessIterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">end</span><span class="special">);</span>
+  <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_slice_hpp.class_slice_constructors"></a><a class="link" href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice_constructors" title="Class slice constructors">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code> constructors</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">slice</span><span class="special">();</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                constructs a slice with default stop, start, and step values. Equivalent
+                to the slice object created as part of the Python expression <code class="computeroutput"><span class="identifier">base</span><span class="special">[::]</span></code>.
+              </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                nothing
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Int1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Int2</span><span class="special">&gt;</span>
+<span class="identifier">slice</span><span class="special">(</span><span class="identifier">Int1</span> <span class="identifier">start</span><span class="special">,</span> <span class="identifier">Int2</span> <span class="identifier">stop</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">start</span></code>, <code class="computeroutput"><span class="identifier">stop</span></code>, and <code class="computeroutput"><span class="identifier">step</span></code>
+                are of type <code class="computeroutput"><span class="identifier">slice_nil</span></code>
+                or convertible to type <code class="computeroutput"><span class="identifier">object</span></code>.
+              </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                constructs a new slice with default step value and the provided start
+                and stop values. Equivalent to the slice object created by the built-in
+                Python function <code class="computeroutput"><span class="identifier">slice</span><span class="special">(</span><span class="identifier">start</span><span class="special">,</span><span class="identifier">stop</span><span class="special">)</span></code>, or as part of the Python expression
+                <code class="computeroutput"><span class="identifier">base</span><span class="special">[</span><span class="identifier">start</span><span class="special">:</span><span class="identifier">stop</span><span class="special">]</span></code>.
+              </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">error_already_set</span></code>
+                and sets a Python TypeError exception if no conversion is possible
+                from the arguments to type object.
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Int1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Int2</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Int3</span><span class="special">&gt;</span>
+<span class="identifier">slice</span><span class="special">(</span><span class="identifier">Int1</span> <span class="identifier">start</span><span class="special">,</span> <span class="identifier">Int2</span> <span class="identifier">stop</span><span class="special">,</span> <span class="identifier">Int3</span> <span class="identifier">step</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">start</span></code>, <code class="computeroutput"><span class="identifier">stop</span></code>, and <code class="computeroutput"><span class="identifier">step</span></code>
+                are <code class="computeroutput"><span class="identifier">slice_nil</span></code> or
+                convertible to type <code class="computeroutput"><span class="identifier">object</span></code>.
+              </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                constructs a new slice with start stop and step values. Equivalent
+                to the slice object created by the built-in Python function <code class="computeroutput"><span class="identifier">slice</span><span class="special">(</span><span class="identifier">start</span><span class="special">,</span><span class="identifier">stop</span><span class="special">,</span><span class="identifier">step</span><span class="special">)</span></code>,
+                or as part of the Python expression <code class="computeroutput"><span class="identifier">base</span><span class="special">[</span><span class="identifier">start</span><span class="special">:</span><span class="identifier">stop</span><span class="special">:</span><span class="identifier">step</span><span class="special">]</span></code>.
+              </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">error_already_set</span></code>
+                and sets a Python TypeError exception if no conversion is possible
+                from the arguments to type object.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_slice_hpp.class_slice_observer_functions"></a><a class="link" href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice_observer_functions" title="Class slice observer functions">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code> observer functions</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">object</span> <span class="identifier">slice</span><span class="special">::</span><span class="identifier">start</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="identifier">object</span> <span class="identifier">slice</span><span class="special">::</span><span class="identifier">stop</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="identifier">object</span> <span class="identifier">slice</span><span class="special">::</span><span class="identifier">step</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                None
+              </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                nothing
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                the parameter that the slice was created with. If the parameter was
+                omitted or <code class="computeroutput"><span class="identifier">slice_nil</span></code>
+                was used when the slice was created, than that parameter will be
+                a reference to <code class="computeroutput"><span class="identifier">PyNone</span></code>
+                and compare equal to a default-constructed object. In principal,
+                any object may be used when creating a slice object, but in practice
+                they are usually integers.
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">RandomAccessIterator</span><span class="special">&gt;</span>
+<span class="identifier">slice</span><span class="special">::</span><span class="identifier">range</span><span class="special">&lt;</span><span class="identifier">RandomAccessIterator</span><span class="special">&gt;</span>
+<span class="identifier">slice</span><span class="special">::</span><span class="identifier">get_indices</span><span class="special">(</span>
+    <span class="identifier">RandomAccessIterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">begin</span><span class="special">,</span>
+    <span class="identifier">RandomAccessIterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">end</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Arguments</span></dt>
+<dd><p>
+                A pair of STL-conforming Random Access Iterators that form a half-open
+                range.
+              </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Create a RandomAccessIterator pair that defines a fully-closed range
+                within the <code class="computeroutput"><span class="special">[</span><span class="identifier">begin</span><span class="special">,</span><span class="identifier">end</span><span class="special">)</span></code> range of its arguments. This function
+                translates this slice's indices while accounting for the effects
+                of any PyNone or negative indices, and non-singular step sizes.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                a <code class="computeroutput"><span class="identifier">slice</span><span class="special">::</span><span class="identifier">range</span></code> that has been initialized
+                with a non-zero value of step and a pair of RandomAccessIterators
+                that point within the range of this functions arguments and define
+                a closed interval.
+              </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                Raises a Python TypeError exception if any of this slice's arguments
+                are neither references to PyNone nor convertible to int. Throws
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">invalid_argument</span></code> if the resulting
+                range would be empty. You should always wrap calls to <code class="computeroutput"><span class="identifier">slice</span><span class="special">::</span><span class="identifier">get_indices</span><span class="special">()</span></code>
+                within <code class="computeroutput"><span class="keyword">try</span> <span class="special">{</span>
+                <span class="special">...;</span> <span class="special">}</span>
+                <span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">invalid_argument</span><span class="special">)</span>
+                <span class="special">{}</span></code> to handle this case and
+                take appropriate action.
+              </p></dd>
+<dt><span class="term">Rationale</span></dt>
+<dd><p>
+                closed-interval: If an open interval were used, then for step size
+                other than 1, the required state for the end iterator would point
+                beyond the one-past-the-end position or before the beginning of the
+                specified range. exceptions on empty slice: It is impossible to define
+                a closed interval over an empty range, so some other form of error
+                checking would have to be used to prevent undefined behavior. In
+                the case where the exception is not caught, it will simply be translated
+                to Python by the default exception handling mechanisms.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_slice_hpp.example"></a><a class="link" href="boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+
+<span class="comment">// Perform an extended slice of a Python list.</span>
+<span class="comment">// Warning: extended slicing was not supported for built-in types prior </span>
+<span class="comment">// to Python 2.3</span>
+<span class="identifier">list</span> <span class="identifier">odd_elements</span><span class="special">(</span><span class="identifier">list</span> <span class="identifier">l</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">l</span><span class="special">[</span><span class="identifier">slice</span><span class="special">(</span><span class="identifier">_</span><span class="special">,</span><span class="identifier">_</span><span class="special">,</span><span class="number">2</span><span class="special">)];</span>
+<span class="special">}</span>
+
+<span class="comment">// Perform a summation over a slice of a std::vector.</span>
+<span class="keyword">double</span> <span class="identifier">partial_sum</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">Foo</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">slice</span> <span class="identifier">index</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">slice</span><span class="special">::</span><span class="identifier">range</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;::</span><span class="identifier">const_iterator</span><span class="special">&gt;</span> <span class="identifier">bounds</span><span class="special">;</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="identifier">bounds</span> <span class="special">=</span> <span class="identifier">index</span><span class="special">.</span><span class="identifier">get_indices</span><span class="special">&lt;&gt;(</span><span class="identifier">Foo</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">Foo</span><span class="special">.</span><span class="identifier">end</span><span class="special">());</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">invalid_argument</span><span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="number">0.0</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">double</span> <span class="identifier">sum</span> <span class="special">=</span> <span class="number">0.0</span><span class="special">;</span>
+    <span class="keyword">while</span> <span class="special">(</span><span class="identifier">bounds</span><span class="special">.</span><span class="identifier">start</span> <span class="special">!=</span> <span class="identifier">bounds</span><span class="special">.</span><span class="identifier">stop</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">sum</span> <span class="special">+=</span> <span class="special">*</span><span class="identifier">bounds</span><span class="special">.</span><span class="identifier">start</span><span class="special">;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">advance</span><span class="special">(</span> <span class="identifier">bounds</span><span class="special">.</span><span class="identifier">start</span><span class="special">,</span> <span class="identifier">bounds</span><span class="special">.</span><span class="identifier">step</span><span class="special">);</span>
+    <span class="special">}</span>
+    <span class="identifier">sum</span> <span class="special">+=</span> <span class="special">*</span><span class="identifier">bounds</span><span class="special">.</span><span class="identifier">start</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="identifier">sum</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_str_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../object_wrappers.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_tuple_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

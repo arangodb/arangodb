@@ -1,0 +1,200 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Boost.StaticString</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.StaticString">
+<link rel="next" href="static_string/ref.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="static_string/ref.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="static_string"></a>Boost.StaticString</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Krystian</span> <span class="surname">Stasiowski</span>
+</h3></div></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Vinnie</span> <span class="surname">Falco</span>
+</h3></div></div>
+<div><p class="copyright">Copyright © 2019, 2020 Krystian Stasiowski</p></div>
+<div><p class="copyright">Copyright © 2016-2019 Vinnie
+      Falco</p></div>
+<div><div class="legalnotice">
+<a name="static_string.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<h3>
+<a name="static_string.h0"></a>
+    <span class="phrase"><a name="static_string.introduction"></a></span><a class="link" href="index.html#static_string.introduction">Introduction</a>
+  </h3>
+<p>
+    This library provides a dynamically resizable string of characters with compile-time
+    fixed capacity and contiguous embedded storage in which the characters are placed
+    within the string object itself. Its API closely resembles that of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>.
+  </p>
+<h3>
+<a name="static_string.h1"></a>
+    <span class="phrase"><a name="static_string.motivation"></a></span><a class="link" href="index.html#static_string.motivation">Motivation</a>
+  </h3>
+<p>
+    A fixed capacity string is useful when:
+  </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+        Memory allocation is not possible, e.g., embedded environments without a
+        free store, where only a stack and the static memory segment are available.
+      </li>
+<li class="listitem">
+        Memory allocation imposes an unacceptable performance penalty. e.g., with
+        respect to latency.
+      </li>
+<li class="listitem">
+        Allocation of objects with complex lifetimes in the static-memory segment
+        is required.
+      </li>
+<li class="listitem">
+        A dynamically-resizable string is required within <code class="computeroutput"><span class="keyword">constexpr</span></code>
+        functions.
+      </li>
+<li class="listitem">
+        The storage location of the static_vector elements is required to be within
+        the string object itself (e.g. to support <code class="computeroutput"><span class="identifier">memcpy</span></code>
+        for serialization purposes).
+      </li>
+</ul></div>
+<h3>
+<a name="static_string.h2"></a>
+    <span class="phrase"><a name="static_string.requirements"></a></span><a class="link" href="index.html#static_string.requirements">Requirements</a>
+  </h3>
+<p>
+    The library is usable in two different modes: standalone and Boost dependent.
+    This library defaults to Boost dependent mode; standalone mode is opt-in through
+    the use of a configuration macro.
+  </p>
+<p>
+    When in Boost dependent mode, the library requires the use of at least C++11,
+    in addition to Boost.Core, Boost.Utility, and Boost.ContainerHash. In standalone
+    mode, C++17 is required but no libraries except for the standard library are
+    needed.
+  </p>
+<h3>
+<a name="static_string.h3"></a>
+    <span class="phrase"><a name="static_string.design"></a></span><a class="link" href="index.html#static_string.design">Design</a>
+  </h3>
+<p>
+    The over-arching design goal is to resemble the interface and behavior of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+    as much as possible. When any operation would exceed the maximum allowed size
+    of the string, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">length_error</span></code> is thrown if exceptions are enabled.
+    All algorithms which throw exceptions provide the strong exception safety guarantee.
+    This is intended to be a drop in replacement for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>.
+  </p>
+<p>
+    The API of <code class="computeroutput"><span class="identifier">static_string</span></code> only
+    diverges from <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code> in few places, one of which is the addition
+    of the <code class="computeroutput"><span class="identifier">subview</span></code> function, for
+    which this implementation returns a string view instead of <code class="computeroutput"><span class="identifier">static_string</span></code>,
+    and certain functions that will never throw are marked as <code class="computeroutput"><span class="keyword">noexcept</span></code>,
+    which diverges from those of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>. The
+    available overloads for <code class="computeroutput"><span class="identifier">static_string</span></code>
+    are identical to those of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>.
+  </p>
+<h3>
+<a name="static_string.h4"></a>
+    <span class="phrase"><a name="static_string.iterators"></a></span><a class="link" href="index.html#static_string.iterators">Iterators</a>
+  </h3>
+<p>
+    The iterator invalidation rules differ from those of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>:
+  </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+        Moving a <code class="computeroutput"><span class="identifier">static_string</span></code> invalidates
+        all iterators
+      </li>
+<li class="listitem">
+        Swapping two <code class="computeroutput"><span class="identifier">static_string</span></code>s
+        invalidates all iterators
+      </li>
+</ul></div>
+<h3>
+<a name="static_string.h5"></a>
+    <span class="phrase"><a name="static_string.optimizations"></a></span><a class="link" href="index.html#static_string.optimizations">Optimizations</a>
+  </h3>
+<p>
+    Depending on the character type and size used for a specialization of <code class="computeroutput"><span class="identifier">static_string</span></code>, certain optimizations are used
+    to reduce the size of the class type. Given the name of a specialization of the
+    form <code class="computeroutput"><span class="identifier">basic_static_string</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">,</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span><span class="special">&gt;</span></code>:
+  </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+        If <code class="computeroutput"><span class="identifier">N</span></code> is 0, then the class
+        has no non-static data members. Given two objects <code class="computeroutput"><span class="identifier">a</span></code>
+        and <code class="computeroutput"><span class="identifier">b</span></code> of type <code class="computeroutput"><span class="identifier">basic_static_string</span><span class="special">&lt;</span><span class="number">0</span><span class="special">,</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">Traits</span><span class="special">&gt;</span></code> and <code class="computeroutput"><span class="identifier">static_string</span><span class="special">&lt;</span><span class="number">0</span><span class="special">,</span>
+        <span class="identifier">U</span><span class="special">,</span> <span class="identifier">Traits</span><span class="special">&gt;</span></code>
+        respectively, the pointer value returned by <code class="computeroutput"><span class="identifier">data</span><span class="special">()</span></code> will be the same if <code class="computeroutput"><span class="identifier">T</span></code>
+        and <code class="computeroutput"><span class="identifier">U</span></code> are the same.
+      </li>
+<li class="listitem">
+        Otherwise, the type of the member used to store the size of the <code class="computeroutput"><span class="identifier">static_string</span></code> will be the smallest standard
+        unsigned integer type that can represent the value <code class="computeroutput"><span class="identifier">N</span></code>.
+      </li>
+</ul></div>
+<h3>
+<a name="static_string.h6"></a>
+    <span class="phrase"><a name="static_string.configuration"></a></span><a class="link" href="index.html#static_string.configuration">Configuration</a>
+  </h3>
+<p>
+    Certain features can be enabled and disabled though defining configuration macros.
+    The macros and the associated feature they control are:
+  </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+        <code class="computeroutput"><span class="identifier">BOOST_STATIC_STRING_STANDALONE</span></code>:
+        When defined, the library is put into standalone mode.
+      </li></ul></div>
+<h3>
+<a name="static_string.h7"></a>
+    <span class="phrase"><a name="static_string.acknowledgments"></a></span><a class="link" href="index.html#static_string.acknowledgments">Acknowledgments</a>
+  </h3>
+<p>
+    Thanks to <a href="https://github.com/K-ballo" target="_top">Agustín Bergé</a>, <a href="https://github.com/pdimov" target="_top">Peter Dimov</a>, <a href="https://github.com/glenfe" target="_top">Glen
+    Fernandes</a>, and <a href="https://github.com/LeonineKing1199" target="_top">Christian
+    Mazakas</a> for their constant feedback and guidance during the development
+    of this library.
+  </p>
+<p>
+    The development of this library is sponsored by <a href="https://cppalliance.org" target="_top">The
+    C++ Alliance</a>.
+  </p>
+<h3>
+<a name="static_string.h8"></a>
+    <span class="phrase"><a name="static_string.reference"></a></span><a class="link" href="index.html#static_string.reference">Reference</a>
+  </h3>
+<p>
+    Defined in namespace <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">static_strings</span></code>:
+  </p>
+<p>
+    <a class="link" href="static_string/ref/boost__static_strings__basic_static_string.html" title="basic_static_string"><code class="computeroutput"><span class="identifier">basic_static_string</span></code></a>
+  </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: August 05, 2021 at 09:45:42 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="static_string/ref.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

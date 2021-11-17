@@ -1,0 +1,111 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Expect 100-continue (Server) 💡</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../more_examples.html" title="HTTP Examples">
+<link rel="prev" href="expect_100_continue_client.html" title="Expect 100-continue (Client) 💡">
+<link rel="next" href="head_request_client.html" title="HEAD request (Client) 💡">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="expect_100_continue_client.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../more_examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="head_request_client.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.more_examples.expect_100_continue_server"></a><a class="link" href="expect_100_continue_server.html" title="Expect 100-continue (Server) 💡">Expect
+      100-continue (Server) 💡</a>
+</h3></div></div></div>
+<p>
+        The Expect field with the value "100-continue" in a request is
+        special. It indicates that the after sending the message header, a client
+        desires an immediate informational response before sending the message body,
+        which presumably may be expensive to compute or large. This behavior is described
+        in <a href="https://tools.ietf.org/html/rfc7231#section-5.1.1" target="_top">rfc7231
+        section 5.1.1</a>. Handling the Expect field can be implemented easily
+        in a server by constructing a <a class="link" href="../ref/boost__beast__http__parser.html" title="http::parser"><code class="computeroutput"><span class="identifier">parser</span></code></a> to read the header first,
+        then send an informational HTTP response, and finally read the body using
+        the same parser instance. A synchronous version of this server action looks
+        like this:
+      </p>
+<pre class="programlisting"><span class="comment">/** Receive a request, handling Expect: 100-continue if present.
+
+    This function will read a request from the specified stream.
+    If the request contains the Expect: 100-continue field, a
+    status response will be delivered.
+
+    @param stream The remote HTTP client stream.
+
+    @param buffer The buffer used for reading.
+
+    @param ec Set to the error, if any occurred.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">SyncStream</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">DynamicBuffer</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">receive_expect_100_continue</span><span class="special">(</span>
+    <span class="identifier">SyncStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+    <span class="identifier">DynamicBuffer</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">is_sync_stream</span><span class="special">&lt;</span><span class="identifier">SyncStream</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span>
+        <span class="string">"SyncStream requirements not met"</span><span class="special">);</span>
+
+    <span class="keyword">static_assert</span><span class="special">(</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">is_dynamic_buffer</span><span class="special">&lt;</span><span class="identifier">DynamicBuffer</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span>
+        <span class="string">"DynamicBuffer requirements not met"</span><span class="special">);</span>
+
+    <span class="comment">// Declare a parser for a request with a string body</span>
+    <span class="identifier">request_parser</span><span class="special">&lt;</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">parser</span><span class="special">;</span>
+
+    <span class="comment">// Read the header</span>
+    <span class="identifier">read_header</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">parser</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+        <span class="keyword">return</span><span class="special">;</span>
+
+    <span class="comment">// Check for the Expect field value</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">parser</span><span class="special">.</span><span class="identifier">get</span><span class="special">()[</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">expect</span><span class="special">]</span> <span class="special">==</span> <span class="string">"100-continue"</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// send 100 response</span>
+        <span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">;</span>
+        <span class="identifier">res</span><span class="special">.</span><span class="identifier">version</span><span class="special">(</span><span class="number">11</span><span class="special">);</span>
+        <span class="identifier">res</span><span class="special">.</span><span class="identifier">result</span><span class="special">(</span><span class="identifier">status</span><span class="special">::</span><span class="identifier">continue_</span><span class="special">);</span>
+        <span class="identifier">res</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">server</span><span class="special">,</span> <span class="string">"test"</span><span class="special">);</span>
+        <span class="identifier">write</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">res</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+            <span class="keyword">return</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Read the rest of the message.</span>
+    <span class="comment">//</span>
+    <span class="identifier">read</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">parser</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="expect_100_continue_client.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../more_examples.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="head_request_client.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

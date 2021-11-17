@@ -1,0 +1,120 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Naming Conventions - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    './',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="index.html" />
+    <link rel="next" title="Design Guide" href="design/index.html" />
+    <link rel="prev" title="Tutorial: Image Gradient" href="tutorial/gradient.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="index.html"><img
+          alt="C++ Boost" src="_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Tutorial: Image Gradient" href="tutorial/gradient.html"><img src="_static/prev.png" alt="prev"/></a>
+      <a class="next" title="Design Guide" href="design/index.html"><img src="_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="naming-conventions">
+<h1>Naming Conventions</h1>
+<p>Description of established naming conventions used in source code of GIL,
+tests and examples.</p>
+<div class="section" id="concrete-types">
+<h2>Concrete Types</h2>
+<p>Concrete (non-generic) GIL types follow this naming convention:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">ColorSpace</span> <span class="o">+</span> <span class="n">BitDepth</span> <span class="o">+</span> <span class="p">[</span><span class="n">f</span> <span class="o">|</span> <span class="n">s</span><span class="p">]</span><span class="o">+</span> <span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">_planar</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="n">_step</span><span class="p">]</span> <span class="o">+</span> <span class="n">ClassType</span> <span class="o">+</span> <span class="n">_t</span>
+</pre></div>
+</div>
+<p>where:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">ColorSpace</span></code> indicates layout and ordering of components.
+For example, <code class="docutils literal"><span class="pre">rgb</span></code>, <code class="docutils literal"><span class="pre">bgr</span></code>, <code class="docutils literal"><span class="pre">cmyk</span></code>, <code class="docutils literal"><span class="pre">rgba</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">BitDepth</span></code> indicates the bit depth of the color channel.
+For example, <code class="docutils literal"><span class="pre">8</span></code>,``16``,``32``.</li>
+<li>By default, type of channel is unsigned integral.
+The <code class="docutils literal"><span class="pre">s</span></code> tag indicates signed integral.
+The <code class="docutils literal"><span class="pre">f</span></code> tag indicates a floating point type, which is always signed.</li>
+<li>By default, objects operate on mutable pixels.
+The <code class="docutils literal"><span class="pre">c</span></code> tag indicates object operating over immutable pixels.</li>
+<li><code class="docutils literal"><span class="pre">_planar</span></code> indicates planar organization (as opposed to interleaved).</li>
+<li><code class="docutils literal"><span class="pre">_step</span></code> indicates special image views, locators and iterators which
+traverse the data in non-trivial way. For example, backwards or every other
+pixel.</li>
+<li><code class="docutils literal"><span class="pre">ClassType</span></code> is <code class="docutils literal"><span class="pre">_image</span></code> (image), <code class="docutils literal"><span class="pre">_view</span></code> (image view), <code class="docutils literal"><span class="pre">_loc</span></code> (pixel
+2D locator) <code class="docutils literal"><span class="pre">_ptr</span></code> (pixel iterator), <code class="docutils literal"><span class="pre">_ref</span></code> (pixel reference),
+<code class="docutils literal"><span class="pre">_pixel</span></code> (pixel value).</li>
+<li><code class="docutils literal"><span class="pre">_t</span></code> suffix indicaes it is a name of a type.</li>
+</ul>
+<p>For example:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">bgr8_image_t</span>             <span class="n">a</span><span class="p">;</span>    <span class="c1">// 8-bit interleaved BGR image</span>
+<span class="n">cmyk16_pixel_t</span>           <span class="n">b</span><span class="p">;</span>    <span class="c1">// 16-bit CMYK pixel value;</span>
+<span class="n">cmyk16c_planar_ref_t</span>     <span class="nf">c</span><span class="p">(</span><span class="n">b</span><span class="p">);</span> <span class="c1">// const reference to a 16-bit planar CMYK pixel.</span>
+<span class="n">rgb32f_planar_step_ptr_t</span> <span class="n">d</span><span class="p">;</span>    <span class="c1">// step pointer to a 32-bit planar RGB pixel.</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Tutorial: Image Gradient" href="tutorial/gradient.html"><img src="_static/prev.png" alt="prev"/></a>
+      <a class="next" title="Design Guide" href="design/index.html"><img src="_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

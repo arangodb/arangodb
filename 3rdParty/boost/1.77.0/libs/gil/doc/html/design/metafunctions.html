@@ -1,0 +1,308 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Metafunctions - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Dynamic images and image views" href="dynamic_image.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Dynamic images and image views" href="dynamic_image.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Examples" href="examples.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="metafunctions">
+<h1>Metafunctions</h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#overview" id="id1">Overview</a></li>
+<li><a class="reference internal" href="#homogeneous-memory-based-images" id="id2">Homogeneous memory-based images</a></li>
+<li><a class="reference internal" href="#packed-and-bit-aligned-images" id="id3">Packed and bit-aligned images</a></li>
+<li><a class="reference internal" href="#iterators-and-views" id="id4">Iterators and views</a></li>
+<li><a class="reference internal" href="#pixel-components" id="id5">Pixel components</a></li>
+<li><a class="reference internal" href="#deriving-and-manipulating-existing-types" id="id6">Deriving and manipulating existing types</a></li>
+<li><a class="reference internal" href="#type-traits" id="id7">Type traits</a></li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id1">Overview</a></h2>
+<p>Flexibility comes at a price. GIL types can be very long and hard to read.
+To address this problem, GIL provides typedefs to refer to any standard image,
+pixel iterator, pixel locator, pixel reference or pixel value.</p>
+<p>They follow this pattern:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="o">*</span><span class="n">ColorSpace</span><span class="o">*</span> <span class="o">+</span> <span class="o">*</span><span class="n">BitDepth</span><span class="o">*</span> <span class="o">+</span> <span class="p">[</span><span class="s">&quot;s|f&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="s">&quot;c&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="s">&quot;_planar&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="s">&quot;_step&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="o">*</span><span class="n">ClassType</span><span class="o">*</span> <span class="o">+</span> <span class="s">&quot;_t&quot;</span>
+</pre></div>
+</div>
+<p>where <em>ColorSpace</em> also indicates the ordering of components.</p>
+<p>Examples are <code class="docutils literal"><span class="pre">rgb</span></code>, <code class="docutils literal"><span class="pre">bgr</span></code>, <code class="docutils literal"><span class="pre">cmyk</span></code>, <code class="docutils literal"><span class="pre">rgba</span></code>. <em>BitDepth</em> can be, for
+example, <code class="docutils literal"><span class="pre">8</span></code>,``16``,``32``. By default the bits are unsigned integral type.
+Append <code class="docutils literal"><span class="pre">s</span></code> to the bit depth to indicate signed integral, or <code class="docutils literal"><span class="pre">f</span></code> to
+indicate floating point. <code class="docutils literal"><span class="pre">c</span></code> indicates object whose associated pixel
+reference is immutable. <code class="docutils literal"><span class="pre">_planar</span></code> indicates planar organization (as opposed
+to interleaved). <code class="docutils literal"><span class="pre">_step</span></code> indicates the type has a dynamic step and
+<em>ClassType</em> is <code class="docutils literal"><span class="pre">_image</span></code> (image, using a standard allocator), <code class="docutils literal"><span class="pre">_view</span></code>
+(image view), <code class="docutils literal"><span class="pre">_loc</span></code> (pixel locator), <code class="docutils literal"><span class="pre">_ptr</span></code> (pixel iterator), <code class="docutils literal"><span class="pre">_ref</span></code>
+(pixel reference), <code class="docutils literal"><span class="pre">_pixel</span></code> (pixel value).</p>
+<p>Here are examples:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">bgr8_image_t</span>               <span class="n">i</span><span class="p">;</span>     <span class="c1">// 8-bit unsigned (unsigned char) interleaved BGR image</span>
+<span class="n">cmyk16_pixel_t</span><span class="p">;</span>            <span class="n">x</span><span class="p">;</span>     <span class="c1">// 16-bit unsigned (unsigned short) CMYK pixel value;</span>
+<span class="n">cmyk16sc_planar_ref_t</span>      <span class="nf">p</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>  <span class="c1">// const reference to a 16-bit signed integral (signed short) planar CMYK pixel x.</span>
+<span class="n">rgb32f_planar_step_ptr_t</span>   <span class="n">ii</span><span class="p">;</span>    <span class="c1">// step iterator to a floating point 32-bit (float) planar RGB pixel.</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="homogeneous-memory-based-images">
+<h2><a class="toc-backref" href="#id2">Homogeneous memory-based images</a></h2>
+<p>GIL provides the metafunctions that return the types of standard
+homogeneous memory-based GIL constructs given a channel type, a
+layout, and whether the construct is planar, has a step along the X
+direction, and is mutable:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsPlanar</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsMutable</span><span class="o">=</span><span class="nb">true</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">pixel_reference_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Channel</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">pixel_value_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsPlanar</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsStep</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span>  <span class="kt">bool</span> <span class="n">IsMutable</span><span class="o">=</span><span class="nb">true</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">iterator_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsPlanar</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsXStep</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsMutable</span><span class="o">=</span><span class="nb">true</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">locator_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsPlanar</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsXStep</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsMutable</span><span class="o">=</span><span class="nb">true</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">view_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsPlanar</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">image_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">BitField</span><span class="p">,</span> <span class="k">typename</span> <span class="n">ChannelBitSizeVector</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">packed_image_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ChannelBitSizeVector</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">bit_aligned_image_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="packed-and-bit-aligned-images">
+<h2><a class="toc-backref" href="#id3">Packed and bit-aligned images</a></h2>
+<p>There are also helper metafunctions to construct packed and
+bit-aligned images with up to five channels:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">BitField</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">packed_image1_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">BitField</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size2</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">packed_image2_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">BitField</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size2</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size3</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">packed_image3_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">BitField</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size2</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size3</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size4</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">packed_image4_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">BitField</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size2</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size3</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size4</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size5</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">packed_image5_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">bit_aligned_image1_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size2</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">bit_aligned_image2_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size2</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size3</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">bit_aligned_image3_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size2</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size3</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size4</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">bit_aligned_image4_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="kt">unsigned</span> <span class="n">Size1</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size2</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size3</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size4</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">Size5</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Alloc</span><span class="o">=</span><span class="n">std</span><span class="o">::</span><span class="n">allocator</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="o">&gt;</span> <span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">bit_aligned_image5_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="iterators-and-views">
+<h2><a class="toc-backref" href="#id4">Iterators and views</a></h2>
+<p>Here <code class="docutils literal"><span class="pre">ChannelValue</span></code> models <code class="docutils literal"><span class="pre">ChannelValueConcept</span></code>. We don&#8217;t need
+<code class="docutils literal"><span class="pre">IsYStep</span></code> because GIL&#8217;s memory-based locator and view already allow
+the vertical step to be specified dynamically. Iterators and views can
+be constructed from a pixel type:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Pixel</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsPlanar</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsStep</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsMutable</span><span class="o">=</span><span class="nb">true</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">iterator_type_from_pixel</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Pixel</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsPlanar</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsStepX</span><span class="o">=</span><span class="nb">false</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">IsMutable</span><span class="o">=</span><span class="nb">true</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">view_type_from_pixel</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+</pre></div>
+</div>
+<p>Using a heterogeneous pixel type will result in heterogeneous iterators and
+views. Types can also be constructed from horizontal iterator:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">XIterator</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">type_from_x_iterator</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">step_iterator_t</span><span class="p">;</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">xy_locator_t</span><span class="p">;</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">view_t</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="pixel-components">
+<h2><a class="toc-backref" href="#id5">Pixel components</a></h2>
+<p>You can get pixel-related types of any pixel-based GIL constructs (pixels,
+iterators, locators and views) using the following metafunctions provided by
+<code class="docutils literal"><span class="pre">PixelBasedConcept</span></code>, <code class="docutils literal"><span class="pre">HomogeneousPixelBasedConcept</span></code> and metafunctions
+built on top of them:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">color_space_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">channel_mapping_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">is_planar</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+
+<span class="c1">// Defined by homogeneous constructs</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">channel_type</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">num_channels</span> <span class="p">{</span> <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span> <span class="p">};</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="deriving-and-manipulating-existing-types">
+<h2><a class="toc-backref" href="#id6">Deriving and manipulating existing types</a></h2>
+<p>There are metafunctions to construct the type of a construct from an existing
+type by changing one or more of its properties:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">PixelReference</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsPlanar</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsMutable</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">derived_pixel_reference_type</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span>  <span class="c1">// Models PixelConcept</span>
+<span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Iterator</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsPlanar</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsStep</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsMutable</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">derived_iterator_type</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span>  <span class="c1">// Models PixelIteratorConcept</span>
+<span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">View</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsPlanar</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsXStep</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsMutable</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">derived_view_type</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span>  <span class="c1">// Models ImageViewConcept</span>
+<span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Image</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="p">,</span> <span class="k">typename</span> <span class="n">IsPlanar</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">derived_image_type</span>
+<span class="p">{</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">type</span><span class="p">;</span>  <span class="c1">// Models ImageConcept</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>You can replace one or more of its properties and use <code class="docutils literal"><span class="pre">boost::use_default</span></code>
+for the rest. In this case <code class="docutils literal"><span class="pre">IsPlanar</span></code>, <code class="docutils literal"><span class="pre">IsStep</span></code> and <code class="docutils literal"><span class="pre">IsMutable</span></code> are
+MPL boolean constants. For example, here is how to create the type of a view
+just like <code class="docutils literal"><span class="pre">View</span></code>, but being grayscale and planar:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">using</span> <span class="n">VT</span> <span class="o">=</span> <span class="k">typename</span> <span class="n">derived_view_type</span><span class="o">&lt;</span><span class="n">View</span><span class="p">,</span> <span class="n">boost</span><span class="o">::</span><span class="n">use_default</span><span class="p">,</span> <span class="n">gray_t</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">true_</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="type-traits">
+<h2><a class="toc-backref" href="#id7">Type traits</a></h2>
+<p>These are metafunctions, some of which return integral types which can be
+evaluated like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">static_assert</span><span class="p">(</span><span class="n">is_planar</span><span class="o">&lt;</span><span class="n">rgb8_planar_view_t</span><span class="o">&gt;::</span><span class="n">value</span> <span class="o">==</span> <span class="nb">true</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>GIL also supports type analysis metafunctions of the form:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="p">[</span><span class="n">pixel_reference</span><span class="o">/</span><span class="n">iterator</span><span class="o">/</span><span class="n">locator</span><span class="o">/</span><span class="n">view</span><span class="o">/</span><span class="n">image</span><span class="p">]</span> <span class="o">+</span> <span class="s">&quot;_is_&quot;</span> <span class="o">+</span> <span class="p">[</span><span class="n">basic</span><span class="o">/</span><span class="k">mutable</span><span class="o">/</span><span class="n">step</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>For example:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">if</span> <span class="p">(</span><span class="n">view_is_mutable</span><span class="o">&lt;</span><span class="n">View</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">)</span>
+<span class="p">{</span>
+ <span class="p">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>A <em>basic</em> GIL construct is a memory-based construct that uses the built-in GIL
+classes and does not have any function object to invoke upon dereferencing.
+For example, a simple planar or interleaved, step or non-step RGB image view
+is basic, but a color converted view or a virtual view is not.</p>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Dynamic images and image views" href="dynamic_image.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Examples" href="examples.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

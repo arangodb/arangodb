@@ -1,0 +1,537 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Annotations - Decorating the ASTs</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Spirit X3 3.0.9">
+<link rel="up" href="../tutorials.html" title="Tutorials">
+<link rel="prev" href="minimal.html" title="X3 Program Structure">
+<link rel="next" href="rexpr.html" title="RExpressions - Recursive ASTs!">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="minimal.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorials.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="rexpr.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="spirit_x3.tutorials.annotation"></a><a class="link" href="annotation.html" title="Annotations - Decorating the ASTs">Annotations - Decorating
+      the ASTs</a>
+</h3></div></div></div>
+<p>
+        As a prerequisite in understanding this tutorial, please review the previous
+        <a class="link" href="employee.html" title="Employee - Parsing into structs">employee example</a>. This
+        example builds on top of that example.
+      </p>
+<p>
+        Stop and think about it... We're actually generating ASTs (abstract syntax
+        trees) in our previoius examples. We parsed a single structure and generated
+        an in-memory representation of it in the form of a struct: the struct employee.
+        If we changed the implementation to parse one or more employees, the result
+        would be a std::vector&lt;employee&gt;. We can go on and add more hierarchy:
+        teams, departments, corporations, etc. We can have an AST representation
+        of it all.
+      </p>
+<p>
+        This example shows how to annotate the AST with the iterator positions for
+        access to the source code when post processing using a client supplied <code class="computeroutput"><span class="identifier">on_success</span></code> handler. The example will show
+        how to get the position in input source stream that corresponds to a given
+        element in the AST.
+      </p>
+<p>
+        In addition, This example also shows how to "inject" client data,
+        using the "with" directive, that the <code class="computeroutput"><span class="identifier">on_success</span></code>
+        handler can access as it is called within the parse traversal through the
+        parser's context.
+      </p>
+<p>
+        The full cpp file for this example can be found here: <a href="../../../../../example/x3/annotation.cpp" target="_top">annotation.cpp</a>
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h0"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.the_ast"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.the_ast">The
+        AST</a>
+      </h5>
+<p>
+        First, we'll update our previous employee struct, this time separating the
+        person into its own struct. So now, we have two structs, the <code class="computeroutput"><span class="identifier">person</span></code> and the <code class="computeroutput"><span class="identifier">employee</span></code>.
+        Take note too that we now inherit <code class="computeroutput"><span class="identifier">person</span></code>
+        and <code class="computeroutput"><span class="identifier">employee</span></code> from <code class="computeroutput"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">position_tagged</span></code>
+        which provides positional information that we can use to tell the AST's position
+        in the input stream anytime.
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">client</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">ast</span>
+<span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">person</span> <span class="special">:</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">position_tagged</span>
+    <span class="special">{</span>
+        <span class="identifier">person</span><span class="special">(</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">first_name</span> <span class="special">=</span> <span class="string">""</span>
+          <span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">last_name</span> <span class="special">=</span> <span class="string">""</span>
+        <span class="special">)</span>
+        <span class="special">:</span> <span class="identifier">first_name</span><span class="special">(</span><span class="identifier">first_name</span><span class="special">)</span>
+        <span class="special">,</span> <span class="identifier">last_name</span><span class="special">(</span><span class="identifier">last_name</span><span class="special">)</span>
+        <span class="special">{}</span>
+
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">first_name</span><span class="special">,</span> <span class="identifier">last_name</span><span class="special">;</span>
+    <span class="special">};</span>
+
+    <span class="keyword">struct</span> <span class="identifier">employee</span> <span class="special">:</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">position_tagged</span>
+    <span class="special">{</span>
+        <span class="keyword">int</span> <span class="identifier">age</span><span class="special">;</span>
+        <span class="identifier">person</span> <span class="identifier">who</span><span class="special">;</span>
+        <span class="keyword">double</span> <span class="identifier">salary</span><span class="special">;</span>
+    <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+<p>
+        Like before, we need to tell <a href="../../../../../../../libs/fusion/doc/html/index.html" target="_top">Boost.Fusion</a>
+        about our structs to make them first-class fusion citizens that the grammar
+        can utilize:
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_FUSION_ADAPT_STRUCT</span><span class="special">(</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">person</span><span class="special">,</span>
+    <span class="identifier">first_name</span><span class="special">,</span> <span class="identifier">last_name</span>
+<span class="special">)</span>
+
+<span class="identifier">BOOST_FUSION_ADAPT_STRUCT</span><span class="special">(</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">,</span>
+    <span class="identifier">age</span><span class="special">,</span> <span class="identifier">who</span><span class="special">,</span> <span class="identifier">salary</span>
+<span class="special">)</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h1"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.x3__position_cache"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.x3__position_cache">x3::position_cache</a>
+      </h5>
+<p>
+        Before we proceed, let me introduce a helper class called the <code class="computeroutput"><span class="identifier">position_cache</span></code>. It is a simple class that
+        collects iterator ranges that point to where each element in the AST are
+        located in the input stream. Given an AST, you can query the position_cache
+        about AST's position. For example:
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">pos</span> <span class="special">=</span> <span class="identifier">positions</span><span class="special">.</span><span class="identifier">position_of</span><span class="special">(</span><span class="identifier">my_ast</span><span class="special">);</span>
+</pre>
+<p>
+        Where <code class="computeroutput"><span class="identifier">my_ast</span></code> is the AST,
+        <code class="computeroutput"><span class="identifier">positions</span></code> and is the <code class="computeroutput"><span class="identifier">position_cache</span></code>, <code class="computeroutput"><span class="identifier">position_of</span></code>
+        returns an iterator range that points to the start and end (<code class="computeroutput"><span class="identifier">pos</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">pos</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span></code>)
+        positions where the AST was parsed from. <code class="computeroutput"><span class="identifier">positions</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">positions</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span></code>
+        points to the start and end of the entire input stream.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h2"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.on_success"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.on_success">on_success</a>
+      </h5>
+<p>
+        The <code class="computeroutput"><span class="identifier">on_success</span></code> gives you
+        everything you want from semantic actions without the visual clutter. Declarative
+        code can and should be free from imperative code. <code class="computeroutput"><span class="identifier">on_success</span></code>
+        as a concept and mechanism is an important departure from how things are
+        done in Spirit's previous version: Qi.
+      </p>
+<p>
+        As demonstrated in the previous <a class="link" href="employee.html" title="Employee - Parsing into structs">employee
+        example</a>, the preferred way to extract data from an input source is
+        by having the parser collect the data for us into C++ structs as it traverses
+        the input stream. Ideally, Spirit X3 grammars are fully attributed and declared
+        in such a way that you do not have to add any imperative code and there should
+        be no need for semantic actions at all. The parser simply works as declared
+        and you get your data back as a result.
+      </p>
+<p>
+        However, there are certain cases where there's no way to avoid introducing
+        imperative code. But semantic actions mess up our clean declarative grammars.
+        If we care to keep our code clean, <code class="computeroutput"><span class="identifier">on_success</span></code>
+        handlers are alternative callback hooks to client code that are executed
+        by the parser after a successful parse without polluting the grammar. Like
+        semantic actions, <code class="computeroutput"><span class="identifier">on_success</span></code>
+        handlers have access to the AST, the iterators, and context. But, unlike
+        semantic actions, <code class="computeroutput"><span class="identifier">on_success</span></code>
+        handlers are cleanly separated from the actual grammar.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h3"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.annotation_handler"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.annotation_handler">Annotation
+        Handler</a>
+      </h5>
+<p>
+        As discussed, we annotate the AST with its position in the input stream with
+        our <code class="computeroutput"><span class="identifier">on_success</span></code> handler:
+      </p>
+<pre class="programlisting"><span class="comment">// tag used to get the position cache from the context</span>
+<span class="keyword">struct</span> <span class="identifier">position_cache_tag</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">annotate_position</span>
+<span class="special">{</span>
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Context</span><span class="special">&gt;</span>
+    <span class="keyword">inline</span> <span class="keyword">void</span> <span class="identifier">on_success</span><span class="special">(</span><span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">last</span>
+    <span class="special">,</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">ast</span><span class="special">,</span> <span class="identifier">Context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">context</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">position_cache</span> <span class="special">=</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">position_cache_tag</span><span class="special">&gt;(</span><span class="identifier">context</span><span class="special">).</span><span class="identifier">get</span><span class="special">();</span>
+        <span class="identifier">position_cache</span><span class="special">.</span><span class="identifier">annotate</span><span class="special">(</span><span class="identifier">ast</span><span class="special">,</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        <code class="computeroutput"><span class="identifier">position_cache_tag</span></code> is a special
+        tag we will use to get a reference to the actual <code class="computeroutput"><span class="identifier">position_cache</span></code>,
+        client data that we will inject at very start, when we call parse. More on
+        that later.
+      </p>
+<p>
+        Our <code class="computeroutput"><span class="identifier">on_success</span></code> handler gets
+        a reference to the actual <code class="computeroutput"><span class="identifier">position_cache</span></code>
+        and calls its <code class="computeroutput"><span class="identifier">annotate</span></code> member
+        function, passing in the AST and the iterators. <code class="computeroutput"><span class="identifier">position_cache</span><span class="special">.</span><span class="identifier">annotate</span><span class="special">(</span><span class="identifier">ast</span><span class="special">,</span>
+        <span class="identifier">first</span><span class="special">,</span>
+        <span class="identifier">last</span><span class="special">)</span></code>
+        annotates the AST with information required by <code class="computeroutput"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">position_tagged</span></code>.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h4"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.the_parser"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.the_parser">The
+        Parser</a>
+      </h5>
+<p>
+        Now we'll write a parser for our employee. To simplify, inputs will be of
+        the form:
+      </p>
+<pre class="programlisting"><span class="special">{</span> <span class="identifier">age</span><span class="special">,</span> <span class="string">"forename"</span><span class="special">,</span> <span class="string">"surname"</span><span class="special">,</span> <span class="identifier">salary</span> <span class="special">}</span>
+</pre>
+<p>
+        <a name="__tutorial_annotated_employee_parser__"></a>Here we go:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">parser</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">int_</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">double_</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">lexeme</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">ascii</span><span class="special">::</span><span class="identifier">char_</span><span class="special">;</span>
+
+    <span class="keyword">struct</span> <span class="identifier">quoted_string_class</span><span class="special">;</span>
+    <span class="keyword">struct</span> <span class="identifier">person_class</span><span class="special">;</span>
+    <span class="keyword">struct</span> <span class="identifier">employee_class</span><span class="special">;</span>
+
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">quoted_string_class</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">quoted_string</span> <span class="special">=</span> <span class="string">"quoted_string"</span><span class="special">;</span>
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">person_class</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">::</span><span class="identifier">person</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">person</span> <span class="special">=</span> <span class="string">"person"</span><span class="special">;</span>
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">employee_class</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">employee</span> <span class="special">=</span> <span class="string">"employee"</span><span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">quoted_string_def</span> <span class="special">=</span> <span class="identifier">lexeme</span><span class="special">[</span><span class="char">'"'</span> <span class="special">&gt;&gt;</span> <span class="special">+(</span><span class="identifier">char_</span> <span class="special">-</span> <span class="char">'"'</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">'"'</span><span class="special">];</span>
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">person_def</span> <span class="special">=</span> <span class="identifier">quoted_string</span> <span class="special">&gt;&gt;</span> <span class="char">','</span> <span class="special">&gt;&gt;</span> <span class="identifier">quoted_string</span><span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">employee_def</span> <span class="special">=</span>
+            <span class="char">'{'</span>
+        <span class="special">&gt;&gt;</span>  <span class="identifier">int_</span> <span class="special">&gt;&gt;</span> <span class="char">','</span>
+        <span class="special">&gt;&gt;</span>  <span class="identifier">person</span> <span class="special">&gt;&gt;</span> <span class="char">','</span>
+        <span class="special">&gt;&gt;</span>  <span class="identifier">double_</span>
+        <span class="special">&gt;&gt;</span>  <span class="char">'}'</span>
+        <span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">employees</span> <span class="special">=</span> <span class="identifier">employee</span> <span class="special">&gt;&gt;</span> <span class="special">*(</span><span class="char">','</span> <span class="special">&gt;&gt;</span> <span class="identifier">employee</span><span class="special">);</span>
+
+    <span class="identifier">BOOST_SPIRIT_DEFINE</span><span class="special">(</span><span class="identifier">quoted_string</span><span class="special">,</span> <span class="identifier">person</span><span class="special">,</span> <span class="identifier">employee</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h5"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.rule_declarations"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.rule_declarations">Rule
+        Declarations</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">quoted_string_class</span><span class="special">;</span>
+<span class="keyword">struct</span> <span class="identifier">person_class</span><span class="special">;</span>
+<span class="keyword">struct</span> <span class="identifier">employee_class</span><span class="special">;</span>
+
+<span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">quoted_string_class</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">quoted_string</span> <span class="special">=</span> <span class="string">"quoted_string"</span><span class="special">;</span>
+<span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">person_class</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">::</span><span class="identifier">person</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">person</span> <span class="special">=</span> <span class="string">"person"</span><span class="special">;</span>
+<span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">employee_class</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">employee</span> <span class="special">=</span> <span class="string">"employee"</span><span class="special">;</span>
+</pre>
+<p>
+        Go back and review the original <a class="link" href="employee.html#__tutorial_employee_parser__">employee
+        parser</a>. What has changed?
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            We split the single employee rule into three smaller rules: <code class="computeroutput"><span class="identifier">quoted_string</span></code>, <code class="computeroutput"><span class="identifier">person</span></code>
+            and <code class="computeroutput"><span class="identifier">employee</span></code>.
+          </li>
+<li class="listitem">
+            We're using forward declared rule classes: <code class="computeroutput"><span class="identifier">quoted_string_class</span></code>,
+            <code class="computeroutput"><span class="identifier">person_class</span></code>, and <code class="computeroutput"><span class="identifier">employee_class</span></code>.
+          </li>
+</ul></div>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h6"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.rule_classes"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.rule_classes">Rule
+        Classes</a>
+      </h5>
+<p>
+        Like before, in this example, the rule classes, <code class="computeroutput"><span class="identifier">quoted_string_class</span></code>,
+        <code class="computeroutput"><span class="identifier">person_class</span></code>, and <code class="computeroutput"><span class="identifier">employee_class</span></code> provide statically known
+        IDs for the rules required by X3 to perform its tasks. In addition to that,
+        the rule class can also be extended to have some user-defined customization
+        hooks that are called:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            On success: After a rule successfully parses an input.
+          </li>
+<li class="listitem">
+            On Error: After a rule fails to parse.
+          </li>
+</ul></div>
+<p>
+        By subclassing the rule class from a client supplied handler such as our
+        <code class="computeroutput"><span class="identifier">annotate_position</span></code> handler
+        above:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">person_class</span> <span class="special">:</span> <span class="identifier">annotate_position</span> <span class="special">{};</span>
+<span class="keyword">struct</span> <span class="identifier">employee_class</span> <span class="special">:</span> <span class="identifier">annotate_position</span> <span class="special">{};</span>
+</pre>
+<p>
+        The code above tells X3 to check the rule class if it has an <code class="computeroutput"><span class="identifier">on_success</span></code> or <code class="computeroutput"><span class="identifier">on_error</span></code>
+        member functions and appropriately calls them on such events.
+      </p>
+<a name="__tutorial_with_directive__"></a><h5>
+<a name="spirit_x3.tutorials.annotation.h7"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.the_with_directive"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.the_with_directive">The
+        with Directive</a>
+      </h5>
+<p>
+        For any parser <code class="computeroutput"><span class="identifier">p</span></code>, one can
+        inject supplementary data that semantic actions and handlers can access later
+        on when they are called. The general syntax is:
+      </p>
+<pre class="programlisting"><span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">tag</span><span class="special">&gt;(</span><span class="identifier">data</span><span class="special">)[</span><span class="identifier">p</span><span class="special">]</span>
+</pre>
+<p>
+        For our particular example, we use to inject the <code class="computeroutput"><span class="identifier">position_cache</span></code>
+        into the parse for our <code class="computeroutput"><span class="identifier">annotate_position</span></code>
+        on_success handler to have access to:
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">parser</span> <span class="special">=</span>
+    <span class="comment">// we pass our position_cache to the parser so we can access</span>
+    <span class="comment">// it later in our on_sucess handlers</span>
+    <span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">position_cache_tag</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">positions</span><span class="special">))</span>
+    <span class="special">[</span>
+        <span class="identifier">employees</span>
+    <span class="special">];</span>
+</pre>
+<p>
+        Typically this is done just before calling <code class="computeroutput"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">parse</span></code>
+        or <code class="computeroutput"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">phrase_parse</span></code>. <code class="computeroutput"><span class="identifier">with</span></code>
+        is a very lightwight operation. It is possible to inject as much data as
+        you want, even multiple <code class="computeroutput"><span class="identifier">with</span></code>
+        directives:
+      </p>
+<pre class="programlisting"><span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">tag1</span><span class="special">&gt;(</span><span class="identifier">data1</span><span class="special">)</span>
+<span class="special">[</span>
+    <span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">tag2</span><span class="special">&gt;(</span><span class="identifier">data2</span><span class="special">)[</span><span class="identifier">p</span><span class="special">]</span>
+<span class="special">]</span>
+</pre>
+<p>
+        Multiple <code class="computeroutput"><span class="identifier">with</span></code> directives
+        can (perhaps not obviously) be injected from outside the called function.
+        Here's an outline:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Parser</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">bar</span><span class="special">(</span><span class="identifier">Parser</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">p</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Inject data2</span>
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">parser</span> <span class="special">=</span> <span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">tag2</span><span class="special">&gt;(</span><span class="identifier">data2</span><span class="special">)[</span><span class="identifier">p</span><span class="special">];</span>
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">parse</span><span class="special">(</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">parser</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">foo</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// Inject data1</span>
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">parser</span> <span class="special">=</span> <span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">tag1</span><span class="special">&gt;(</span><span class="identifier">data1</span><span class="special">)[</span><span class="identifier">my_parser</span><span class="special">];</span>
+    <span class="identifier">bar</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h8"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.let_s_parse"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.let_s_parse">Let's
+        Parse</a>
+      </h5>
+<p>
+        Now we have the complete parse mechanism with support for annotations:
+      </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">iterator_type</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">::</span><span class="identifier">const_iterator</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">position_cache</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">position_cache</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">iterator_type</span><span class="special">&gt;&gt;;</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span>
+<span class="identifier">parse</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">input</span><span class="special">,</span> <span class="identifier">position_cache</span><span class="special">&amp;</span> <span class="identifier">positions</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">ascii</span><span class="special">::</span><span class="identifier">space</span><span class="special">;</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span> <span class="identifier">ast</span><span class="special">;</span>
+    <span class="identifier">iterator_type</span> <span class="identifier">iter</span> <span class="special">=</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span>
+    <span class="identifier">iterator_type</span> <span class="keyword">const</span> <span class="identifier">end</span> <span class="special">=</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">end</span><span class="special">();</span>
+
+    <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">with</span><span class="special">;</span>
+
+    <span class="comment">// Our parser</span>
+    <span class="keyword">using</span> <span class="identifier">client</span><span class="special">::</span><span class="identifier">parser</span><span class="special">::</span><span class="identifier">employees</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">client</span><span class="special">::</span><span class="identifier">parser</span><span class="special">::</span><span class="identifier">position_cache_tag</span><span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">parser</span> <span class="special">=</span>
+        <span class="comment">// we pass our position_cache to the parser so we can access</span>
+        <span class="comment">// it later in our on_sucess handlers</span>
+        <span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">position_cache_tag</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">positions</span><span class="special">))</span>
+        <span class="special">[</span>
+            <span class="identifier">employees</span>
+        <span class="special">];</span>
+
+    <span class="keyword">bool</span> <span class="identifier">r</span> <span class="special">=</span> <span class="identifier">phrase_parse</span><span class="special">(</span><span class="identifier">iter</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">parser</span><span class="special">,</span> <span class="identifier">space</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">);</span>
+
+    <span class="comment">// ... Some error checking here</span>
+
+    <span class="keyword">return</span> <span class="identifier">ast</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Let's walk through the code.
+      </p>
+<p>
+        First, we have some typedefs for 1) The iterator type we are using for the
+        parser, <code class="computeroutput"><span class="identifier">iterator_type</span></code> and
+        2) For the <code class="computeroutput"><span class="identifier">position_cache</span></code>
+        type. The latter is a template that accepts the type of container it will
+        hold. In this case, a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">iterator_type</span><span class="special">&gt;</span></code>.
+      </p>
+<p>
+        The main parse function accepts an input, a std::string and a reference to
+        a position_cache, and returns an AST: <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span></code>.
+      </p>
+<p>
+        Inside the parse function, we first create an AST where parsed data will
+        be stored:
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span> <span class="identifier">ast</span><span class="special">;</span>
+</pre>
+<p>
+        Then finally, we create a parser, injecting a reference to the <code class="computeroutput"><span class="identifier">position_cache</span></code>, and call phrase_parse:
+      </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">client</span><span class="special">::</span><span class="identifier">parser</span><span class="special">::</span><span class="identifier">employees</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">client</span><span class="special">::</span><span class="identifier">parser</span><span class="special">::</span><span class="identifier">position_cache_tag</span><span class="special">;</span>
+
+<span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">parser</span> <span class="special">=</span>
+    <span class="comment">// we pass our position_cache to the parser so we can access</span>
+    <span class="comment">// it later in our on_sucess handlers</span>
+    <span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">position_cache_tag</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">positions</span><span class="special">))</span>
+    <span class="special">[</span>
+        <span class="identifier">employees</span>
+    <span class="special">];</span>
+
+<span class="keyword">bool</span> <span class="identifier">r</span> <span class="special">=</span> <span class="identifier">phrase_parse</span><span class="special">(</span><span class="identifier">iter</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">parser</span><span class="special">,</span> <span class="identifier">space</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">);</span>
+</pre>
+<p>
+        On successful parse, the AST, <code class="computeroutput"><span class="identifier">ast</span></code>,
+        will contain the actual parsed data.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h9"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.getting_the_source_positions"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.getting_the_source_positions">Getting
+        The Source Positions</a>
+      </h5>
+<p>
+        Now that we have our main parse function, let's have an example sourcefile
+        to parse and show how we can obtain the position of an AST element, returned
+        after a successful parse.
+      </p>
+<p>
+        Given this input:
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">input</span> <span class="special">=</span> <span class="identifier">R</span><span class="string">"(
+{
+    23,
+    "</span><span class="identifier">Amanda</span><span class="string">",
+    "</span><span class="identifier">Stefanski</span><span class="string">",
+    1000.99
+},
+{
+    35,
+    "</span><span class="identifier">Angie</span><span class="string">",
+    "</span><span class="identifier">Chilcote</span><span class="string">",
+    2000.99
+},
+{
+    43,
+    "</span><span class="identifier">Dannie</span><span class="string">",
+    "</span><span class="identifier">Dillinger</span><span class="string">",
+    3000.99
+},
+{
+    22,
+    "</span><span class="identifier">Dorene</span><span class="string">",
+    "</span><span class="identifier">Dole</span><span class="string">",
+    2500.99
+},
+{
+    38,
+    "</span><span class="identifier">Rossana</span><span class="string">",
+    "</span><span class="identifier">Rafferty</span><span class="string">",
+    5000.99
+}
+)"</span><span class="special">;</span>
+</pre>
+<p>
+        We call our parse function after instantiating a <code class="computeroutput"><span class="identifier">position_cache</span></code>
+        object that will hold the source stream positions:
+      </p>
+<pre class="programlisting"><span class="identifier">position_cache</span> <span class="identifier">positions</span><span class="special">{</span><span class="identifier">input</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">end</span><span class="special">()};</span>
+<span class="keyword">auto</span> <span class="identifier">ast</span> <span class="special">=</span> <span class="identifier">parse</span><span class="special">(</span><span class="identifier">input</span><span class="special">,</span> <span class="identifier">positions</span><span class="special">);</span>
+</pre>
+<p>
+        We now have an AST, <code class="computeroutput"><span class="identifier">ast</span></code>,
+        that contains the parsed results. Let us get the source positions of the
+        2nd employee:
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">pos</span> <span class="special">=</span> <span class="identifier">positions</span><span class="special">.</span><span class="identifier">position_of</span><span class="special">(</span><span class="identifier">ast</span><span class="special">[</span><span class="number">1</span><span class="special">]);</span> <span class="comment">// zero based of course!</span>
+</pre>
+<p>
+        <code class="computeroutput"><span class="identifier">pos</span></code> is an iterator range
+        that contains iterators to the start and end of <code class="computeroutput"><span class="identifier">ast</span><span class="special">[</span><span class="number">1</span><span class="special">]</span></code>
+        in the input stream.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.annotation.h10"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.annotation.config"></a></span><a class="link" href="annotation.html#spirit_x3.tutorials.annotation.config">Config</a>
+      </h5>
+<p>
+        If you read the previous <a class="link" href="minimal.html" title="X3 Program Structure">Program
+        Structure</a> tutorial where we separated various logical modules of the
+        parser into separate cpp and header files, and you are wondering how to provide
+        the context configuration information (see <a class="link" href="minimal.html#tutorial_configuration">Config
+        Section</a>), we need to supplement the context like this:
+      </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">phrase_context_type</span> <span class="special">=</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">phrase_parse_context</span><span class="special">&lt;</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">ascii</span><span class="special">::</span><span class="identifier">space_type</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">context</span><span class="special">&lt;</span>
+    <span class="identifier">position_cache_tag</span>
+  <span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">reference_wrapper</span><span class="special">&lt;</span><span class="identifier">position_cache</span><span class="special">&gt;</span>
+  <span class="special">,</span> <span class="identifier">phrase_context_type</span><span class="special">&gt;</span>
+<span class="identifier">context_type</span><span class="special">;</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2018 Joel de Guzman,
+      Hartmut Kaiser<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="minimal.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorials.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="rexpr.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

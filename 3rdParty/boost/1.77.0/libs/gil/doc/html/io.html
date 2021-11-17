@@ -1,0 +1,753 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>IO extensions - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    './',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="index.html" />
+    <link rel="next" title="ToolBox extension" href="toolbox.html" />
+    <link rel="prev" title="Affine region detectors" href="image_processing/affine-region-detectors.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="index.html"><img
+          alt="C++ Boost" src="_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Affine region detectors" href="image_processing/affine-region-detectors.html"><img src="_static/prev.png" alt="prev"/></a>
+      <a class="next" title="ToolBox extension" href="toolbox.html"><img src="_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="io-extensions">
+<h1>IO extensions</h1>
+<div class="section" id="overview">
+<h2>Overview</h2>
+<p>This extension to boost::gil provides an easy to use interface for reading and
+writing various image formats. It also includes a framework for adding
+new formats.</p>
+<p>Please see section 3.3 for all supported image formats. A basic tutorial is
+provided in section [link gil.io.tutorial Tutorial].
+Also, this extension requires Boost version 1.42 and up.
+Furthermore the GIL extension Toolbox is used.</p>
+<p>For adding new image formats please refer to section
+[link gil.io.using_io.extending_gil__io_with_new_formats Extending GIL::IO with new Formats].</p>
+</div>
+<div class="section" id="supported-platforms">
+<h2>Supported Platforms</h2>
+<p>All platforms supported by Boost which have a decent C++ compiler.
+Depending on the image format one or more of the following image
+libraries might be needed:</p>
+<ul class="simple">
+<li>libtiff</li>
+<li>libjpeg</li>
+<li>libpng</li>
+<li>libraw</li>
+<li>zlib</li>
+</ul>
+<p>The library is designed to support as many formats as required by the user.
+For instance, if the user only needs bmp support none of the above mentioned
+dependencies are required.</p>
+<p>There are more details available in this documentation on the image format
+dependencies. Please see section
+[link gil.io.using_io.supported_image_formats Supported Image Formats].</p>
+</div>
+<div class="section" id="tutorial">
+<h2>Tutorial</h2>
+<p>Thanks to modern C++ programming techniques the interface for this library
+is rather small and easy to use. In this tutorial I&#8217;ll give you a short
+walk-around on how to use this boost::gil extension.
+For more details please refer to section 3.</p>
+<p>For each supported IO format a single top-level header file is provided.
+For instance, include <cite>boost/gil/extension/io/tiff.hpp</cite> to be able
+to read or write TIFF files.</p>
+<div class="section" id="reading-an-image">
+<h3>Reading An Image</h3>
+<p>Probably the most common case to read a tiff image can be done as follows:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">filename</span><span class="p">(</span> <span class="s">&quot;image.tif&quot;</span> <span class="p">);</span>
+<span class="n">rgb8_image_t</span> <span class="n">img</span><span class="p">;</span>
+<span class="n">read_image</span><span class="p">(</span> <span class="n">filename</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">tiff_tag</span><span class="p">()</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>The code would be same for all other image formats. The only thing that needs
+to change is the tag type ( tiff_tag ) in the read_image call.
+The read_image() expects the supplied image type to be compatible with the
+image stored in the file. If the user doesn&#8217;t know what format an image has she
+can use read_and_convert_image().
+Another important fact is that read_image() will allocate the appropriate
+memory needed for the read operation. There are <code class="docutils literal"><span class="pre">read_view</span></code> or
+<code class="docutils literal"><span class="pre">read_and_convert_view</span></code> counterparts, if the memory is already allocated.</p>
+<p>Sometimes the user only wants to read a sub-part of an image,
+then the above call would look as follows:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">read_image</span><span class="p">(</span> <span class="n">filename</span>
+          <span class="p">,</span> <span class="n">img</span>
+          <span class="p">,</span> <span class="n">image_read_settings</span><span class="o">&lt;</span> <span class="n">tiff_tag</span> <span class="o">&gt;</span><span class="p">(</span> <span class="n">point_t</span><span class="p">(</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span> <span class="p">),</span> <span class="n">point_t</span><span class="p">(</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">50</span> <span class="p">)</span> <span class="p">)</span>
+          <span class="p">);</span>
+</pre></div>
+</div>
+<p>The image_read_settings class will provide the user with image format
+independent reading setting but can also serves as a pointer for format
+dependent settings.
+Please see the specific image format sections
+[link gil.io.using_io.supported_image_formats Supported Image Formats]
+for more details.</p>
+</div>
+<div class="section" id="writing-an-image">
+<h3>Writing An Image</h3>
+<p>Besides reading the information also writing is the second part of this
+Boost.GIL extension. Writing is a lot simpler than reading since an existing
+image view contains all the information.</p>
+<p>For instance writing an image can be done as follows:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">filename</span><span class="p">(</span> <span class="s">&quot;image.tif&quot;</span> <span class="p">);</span>
+<span class="n">rgb8_image_t</span> <span class="nf">img</span><span class="p">(</span> <span class="mi">640</span><span class="p">,</span> <span class="mi">480</span> <span class="p">);</span>
+
+<span class="c1">// write data into image</span>
+
+<span class="n">write_view</span><span class="p">(</span> <span class="n">filename</span>
+          <span class="p">,</span> <span class="n">view</span><span class="p">(</span> <span class="n">img</span> <span class="p">)</span>
+          <span class="p">,</span> <span class="n">tiff_tag</span><span class="p">()</span>
+          <span class="p">);</span>
+</pre></div>
+</div>
+<p>The interface is similar to reading an image. To add image format specific
+parameter the user can use <code class="docutils literal"><span class="pre">image_write_info</span></code> class.
+For instance, a user can specify the JPEG quality when writing like this:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">filename</span><span class="p">(</span> <span class="s">&quot;image.jpg&quot;</span> <span class="p">);</span>
+<span class="n">rgb8_image_t</span> <span class="nf">img</span><span class="p">(</span> <span class="mi">640</span><span class="p">,</span> <span class="mi">480</span> <span class="p">);</span>
+
+<span class="c1">// write data into image</span>
+
+<span class="n">write_view</span><span class="p">(</span> <span class="n">filename</span>
+          <span class="p">,</span> <span class="n">view</span><span class="p">(</span> <span class="n">img</span> <span class="p">)</span>
+          <span class="p">,</span> <span class="n">image_write_info</span><span class="o">&lt;</span> <span class="n">jpeg_tag</span> <span class="o">&gt;</span><span class="p">(</span> <span class="mi">95</span> <span class="p">)</span>
+          <span class="p">);</span>
+</pre></div>
+</div>
+<p>The above example will write an image where the jpeg quality is
+set to 95 percent.</p>
+</div>
+<div class="section" id="reading-and-writing-in-memory-buffers">
+<h3>Reading And Writing In-Memory Buffers</h3>
+<p>Reading and writing in-memory buffers are supported as well. See as follows:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="c1">// 1. Read an image.</span>
+<span class="n">ifstream</span> <span class="nf">in</span><span class="p">(</span> <span class="s">&quot;test.tif&quot;</span><span class="p">,</span> <span class="n">ios</span><span class="o">::</span><span class="n">binary</span> <span class="p">);</span>
+
+<span class="n">rgb8_image_t</span> <span class="n">img</span><span class="p">;</span>
+<span class="n">read_image</span><span class="p">(</span> <span class="n">in</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">tiff_tag</span><span class="p">()</span> <span class="p">);</span>
+
+<span class="c1">// 2. Write image to in-memory buffer.</span>
+<span class="n">stringstream</span> <span class="nf">out_buffer</span><span class="p">(</span> <span class="n">ios_base</span><span class="o">::</span><span class="n">out</span> <span class="o">|</span> <span class="n">ios_base</span><span class="o">::</span><span class="n">binary</span> <span class="p">);</span>
+
+<span class="n">rgb8_image_t</span> <span class="n">src</span><span class="p">;</span>
+<span class="n">write_view</span><span class="p">(</span> <span class="n">out_buffer</span><span class="p">,</span> <span class="n">view</span><span class="p">(</span> <span class="n">src</span> <span class="p">),</span> <span class="n">tiff_tag</span><span class="p">()</span> <span class="p">);</span>
+
+<span class="c1">// 3. Copy in-memory buffer to another.</span>
+<span class="n">stringstream</span> <span class="nf">in_buffer</span><span class="p">(</span> <span class="n">ios_base</span><span class="o">::</span><span class="n">in</span> <span class="o">|</span> <span class="n">ios_base</span><span class="o">::</span><span class="n">binary</span> <span class="p">);</span>
+<span class="n">in_buffer</span> <span class="o">&lt;&lt;</span> <span class="n">out_buffer</span><span class="p">.</span><span class="n">rdbuf</span><span class="p">();</span>
+
+<span class="c1">// 4. Read in-memory buffer to gil image</span>
+<span class="n">rgb8_image_t</span> <span class="n">dst</span><span class="p">;</span>
+<span class="n">read_image</span><span class="p">(</span> <span class="n">in_buffer</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">tag_t</span><span class="p">()</span> <span class="p">);</span>
+
+<span class="c1">// 5. Write out image.</span>
+<span class="n">string</span> <span class="nf">filename</span><span class="p">(</span> <span class="s">&quot;out.tif&quot;</span> <span class="p">);</span>
+<span class="n">ofstream</span> <span class="nf">out</span><span class="p">(</span> <span class="n">filename</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span> <span class="n">ios_base</span><span class="o">::</span><span class="n">binary</span> <span class="p">);</span>
+<span class="n">write_view</span><span class="p">(</span> <span class="n">out</span><span class="p">,</span> <span class="n">view</span><span class="p">(</span> <span class="n">dst</span> <span class="p">),</span> <span class="n">tiff_tag</span><span class="p">()</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>In case the user is using his own stream classes he has to make sure it
+has the common interface read, write, seek, close, etc. Interface.</p>
+</div>
+</div>
+<div class="section" id="using-io">
+<h2>Using IO</h2>
+<div class="section" id="general-overview">
+<h3>General Overview</h3>
+<p>The tutorial pointed out some use cases for reading and writing images in
+various image formats. This section will provide a more thorough overview.</p>
+<p>The next sections will introduce the Read and Write interface. But it might be
+worth pointing out that by using some advanced metaprogramming techniques the
+interface is rather small and hopefully easy to understand.</p>
+<p>Besides the general interface the user also has the ability to interface
+directly with the underlying image format. For that each reader or writer
+provides access to the so-called backend.</p>
+<p>For instance:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">typedef</span> <span class="n">get_reader_backend</span><span class="o">&lt;</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span>
+                          <span class="p">,</span> <span class="n">tag_t</span>
+                          <span class="o">&gt;::</span><span class="n">type</span> <span class="n">backend_t</span><span class="p">;</span>
+
+<span class="n">backend_t</span> <span class="n">backend</span> <span class="o">=</span> <span class="n">read_image_info</span><span class="p">(</span> <span class="n">bmp_filename</span>
+                                   <span class="p">,</span> <span class="n">tag_t</span><span class="p">()</span>
+                                   <span class="p">);</span>
+
+<span class="n">BOOST_CHECK_EQUAL</span><span class="p">(</span> <span class="n">backend</span><span class="p">.</span><span class="n">_info</span><span class="p">.</span><span class="n">_width</span> <span class="p">,</span> <span class="mi">127</span> <span class="p">);</span>
+<span class="n">BOOST_CHECK_EQUAL</span><span class="p">(</span> <span class="n">backend</span><span class="p">.</span><span class="n">_info</span><span class="p">.</span><span class="n">_height</span><span class="p">,</span> <span class="mi">64</span> <span class="p">);</span>
+</pre></div>
+</div>
+<p>Of course, the typedef can be removed when using c++11&#8217;s auto feature.</p>
+</div>
+<div class="section" id="read-interface">
+<h3>Read Interface</h3>
+<p>As the Tutorial demonstrated there are a few ways to read images.
+Here is an enumeration of all read functions with a short description:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">read_image</span></code> - read into a gil image with no conversion.
+Memory is allocated.</li>
+<li><code class="docutils literal"><span class="pre">read_view</span></code> - read into a gil view with no conversion.</li>
+<li><code class="docutils literal"><span class="pre">read_and_convert_image</span></code> - read and convert into a gil image.
+Memory is allocated.</li>
+<li><code class="docutils literal"><span class="pre">read_and_convert_view</span></code> - read and convert into a gil view.</li>
+<li><code class="docutils literal"><span class="pre">read_image_info</span></code> - read the image header.</li>
+</ul>
+<p>Conversion in this context is necessary if the source (file) has an
+incompatible color space with the destination (gil image type).
+If that&#8217;s the case the user has to use the xxx_and_convert_xxx variants.</p>
+<p>All functions take the filename or a device as the first parameter.
+The filename can be anything from a C-string, <code class="docutils literal"><span class="pre">std::string</span></code>,
+<code class="docutils literal"><span class="pre">std::wstring</span></code> and <code class="docutils literal"><span class="pre">boost::filesystem</span></code> path. When using the path
+object the user needs to define the ADD_FS_PATH_SUPPORT compiler symbol to
+include the boost::filesystem dependency.
+Devices could be a <code class="docutils literal"><span class="pre">FILE*</span></code>, <code class="docutils literal"><span class="pre">std::ifstream</span></code>, and <code class="docutils literal"><span class="pre">TIFF*</span></code> for TIFF images.</p>
+<p>The second parameter is either an image or view type depending on the
+<code class="docutils literal"><span class="pre">read_xxx</span></code> function.
+The third and last parameter is either an instance of the
+<code class="docutils literal"><span class="pre">image_read_settings&lt;FormatTag&gt;</span></code> or just the <code class="docutils literal"><span class="pre">FormatTag</span></code>.
+The settings can be various depending on the format which is being read.
+But the all share settings for reading a partial image area.
+The first point describes the top left image coordinate whereas the second
+are the dimensions in x and y directions.</p>
+<p>Here an example of setting up partial read:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">read_image</span><span class="p">(</span> <span class="n">filename</span>
+          <span class="p">,</span> <span class="n">img</span>
+          <span class="p">,</span> <span class="n">image_read_settings</span><span class="o">&lt;</span> <span class="n">tiff_tag</span> <span class="o">&gt;</span><span class="p">(</span> <span class="n">point_t</span><span class="p">(</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span> <span class="p">),</span> <span class="n">point_t</span><span class="p">(</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">50</span> <span class="p">)</span> <span class="p">)</span>
+          <span class="p">);</span>
+</pre></div>
+</div>
+<p>Each format supports reading just the header information,
+using <code class="docutils literal"><span class="pre">read_image_info</span></code>. Please refer to the format specific sections
+under 3.3. A basic example follows:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">image_read_info</span><span class="o">&lt;</span> <span class="n">tiff_t</span> <span class="o">&gt;</span> <span class="n">info</span> <span class="o">=</span> <span class="n">read_image_info</span><span class="p">(</span> <span class="n">filename</span>
+                                                <span class="p">,</span> <span class="n">tiff_t</span><span class="p">()</span>
+                                                <span class="p">);</span>
+</pre></div>
+</div>
+<p>GIL also comes with a dynamic image extension.
+In the context of GIL.IO a user can define an <code class="docutils literal"><span class="pre">any_image</span></code> type based on
+several image types. The IO extension would then pick the matching image type
+to the current image file.
+The following example shows this feature:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">typedef</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span> <span class="n">gray8_image_t</span>
+                   <span class="p">,</span> <span class="n">gray16_image_t</span>
+                   <span class="p">,</span> <span class="n">rgb8_image_t</span>
+                   <span class="p">,</span> <span class="n">rgba_image_t</span>
+                   <span class="o">&gt;</span> <span class="n">my_img_types</span><span class="p">;</span>
+
+<span class="n">any_image</span><span class="o">&lt;</span> <span class="n">my_img_types</span> <span class="o">&gt;</span> <span class="n">runtime_image</span><span class="p">;</span>
+
+<span class="n">read_image</span><span class="p">(</span> <span class="n">filename</span>
+          <span class="p">,</span> <span class="n">runtime_image</span>
+          <span class="p">,</span> <span class="n">tiff_tag</span><span class="p">()</span>
+          <span class="p">);</span>
+</pre></div>
+</div>
+<p>During the review it became clear that there is a need to read big images
+scanline by scanline. To support such use case a <code class="docutils literal"><span class="pre">scanline_reader</span></code> is
+implemented for all supported image formats.
+The <code class="docutils literal"><span class="pre">scanline_read_iterators</span></code> will then allow to traverse through the image.
+The following code sample shows the usage:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">typedef</span> <span class="n">tiff_tag</span> <span class="n">tag_t</span><span class="p">;</span>
+
+<span class="k">typedef</span> <span class="n">scanline_reader</span><span class="o">&lt;</span> <span class="k">typename</span> <span class="n">get_read_device</span><span class="o">&lt;</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span>
+                                                 <span class="p">,</span> <span class="n">tag_t</span>
+                                                 <span class="o">&gt;::</span><span class="n">type</span>
+                        <span class="p">,</span> <span class="n">tag_t</span>
+                        <span class="o">&gt;</span> <span class="n">reader_t</span><span class="p">;</span>
+
+<span class="n">reader_t</span> <span class="n">reader</span> <span class="o">=</span> <span class="n">make_scanline_reader</span><span class="p">(</span> <span class="s">&quot;C:/boost/libs/gil/test/extension/io/images/tiff/test.tif&quot;</span><span class="p">,</span> <span class="n">tag_t</span><span class="p">()</span> <span class="p">);</span>
+
+<span class="k">typedef</span> <span class="n">rgba8_image_t</span> <span class="n">image_t</span><span class="p">;</span>
+
+<span class="n">image_t</span> <span class="nf">dst</span><span class="p">(</span> <span class="n">reader</span><span class="p">.</span><span class="n">_info</span><span class="p">.</span><span class="n">_width</span><span class="p">,</span> <span class="n">reader</span><span class="p">.</span><span class="n">_info</span><span class="p">.</span><span class="n">_height</span> <span class="p">);</span>
+<span class="n">fill_pixels</span><span class="p">(</span> <span class="n">view</span><span class="p">(</span><span class="n">dst</span><span class="p">),</span> <span class="n">image_t</span><span class="o">::</span><span class="n">value_type</span><span class="p">()</span> <span class="p">);</span>
+
+<span class="k">typedef</span> <span class="n">reader_t</span><span class="o">::</span><span class="n">iterator_t</span> <span class="n">iterator_t</span><span class="p">;</span>
+
+<span class="n">iterator_t</span> <span class="n">it</span>  <span class="o">=</span> <span class="n">reader</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span>
+<span class="n">iterator_t</span> <span class="n">end</span> <span class="o">=</span> <span class="n">reader</span><span class="p">.</span><span class="n">end</span><span class="p">();</span>
+
+<span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span class="n">row</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">it</span> <span class="o">!=</span> <span class="n">end</span><span class="p">;</span> <span class="o">++</span><span class="n">it</span><span class="p">,</span> <span class="o">++</span><span class="n">row</span> <span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">copy_pixels</span><span class="p">(</span> <span class="n">interleaved_view</span><span class="p">(</span> <span class="n">reader</span><span class="p">.</span><span class="n">_info</span><span class="p">.</span><span class="n">_width</span>
+                                    <span class="p">,</span> <span class="mi">1</span>
+                                    <span class="p">,</span> <span class="p">(</span> <span class="n">image_t</span><span class="o">::</span><span class="n">view_t</span><span class="o">::</span><span class="n">x_iterator</span> <span class="p">)</span> <span class="o">*</span><span class="n">it</span>
+                                    <span class="p">,</span> <span class="n">reader</span><span class="p">.</span><span class="n">_scanline_length</span>
+                                    <span class="p">)</span>
+                <span class="p">,</span> <span class="n">subimage_view</span><span class="p">(</span> <span class="n">view</span><span class="p">(</span> <span class="n">dst</span> <span class="p">)</span>
+                                <span class="p">,</span> <span class="mi">0</span>
+                                <span class="p">,</span> <span class="n">row</span>
+                                <span class="p">,</span> <span class="n">reader</span><span class="p">.</span><span class="n">_info</span><span class="p">.</span><span class="n">_width</span>
+                                <span class="p">,</span> <span class="mi">1</span>
+                                <span class="p">)</span>
+                <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>There are many ways to traverse an image but for as of now only by
+scanline is supported.</p>
+</div>
+<div class="section" id="write-interface">
+<h3>Write Interface</h3>
+<p>There is only one function for writing out images, write_view.
+Similar to reading the first parameter is either a filename or a device.
+The filename can be anything from a C-string, <code class="docutils literal"><span class="pre">std::string</span></code>,
+<code class="docutils literal"><span class="pre">std::wstring</span></code>, and <code class="docutils literal"><span class="pre">boost::filesystem</span></code> path. When using the path object
+the user needs to define the <code class="docutils literal"><span class="pre">ADD_FS_PATH_SUPPORT</span></code> compiler symbol to
+include the <code class="docutils literal"><span class="pre">boost::filesystem</span></code> dependency.
+Devices could be <code class="docutils literal"><span class="pre">FILE*</span></code>, <code class="docutils literal"><span class="pre">std::ifstream</span></code>, and <code class="docutils literal"><span class="pre">TIFF*</span></code> for TIFF images.</p>
+<p>The second parameter is an view object to image being written.
+The third and last parameter is either a tag or an
+<code class="docutils literal"><span class="pre">image_write_info&lt;FormatTag&gt;</span></code> object containing more settings.
+One example for instance is the JPEG quality.
+Refer to the format specific sections under 3.3. to have a list of all
+the possible settings.</p>
+<p>Writing an any_image&lt;...&gt; is supported. See the following example:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">typedef</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span> <span class="n">gray8_image_t</span>
+                   <span class="p">,</span> <span class="n">gray16_image_t</span>
+                   <span class="p">,</span> <span class="n">rgb8_image_t</span>
+                   <span class="p">,</span> <span class="n">rgba_image_t</span>
+                   <span class="o">&gt;</span> <span class="n">my_img_types</span><span class="p">;</span>
+
+
+<span class="n">any_image</span><span class="o">&lt;</span> <span class="n">my_img_types</span> <span class="o">&gt;</span> <span class="n">runtime_image</span><span class="p">;</span>
+
+<span class="c1">// fill any_image</span>
+
+<span class="n">write_view</span><span class="p">(</span> <span class="n">filename</span>
+          <span class="p">,</span> <span class="n">view</span><span class="p">(</span> <span class="n">runtime_image</span> <span class="p">)</span>
+          <span class="p">,</span> <span class="n">tiff_tag</span><span class="p">()</span>
+          <span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="compiler-symbols">
+<h3>Compiler Symbols</h3>
+<p>The following table gives an overview of all supported compiler symbols
+that can be set by the user:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="34%" />
+<col width="66%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Symbol</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>BOOST_GIL_IO_ENABLE_GRAY_ALPHA</td>
+<td>Enable the color space &#8220;gray_alpha&#8221;.</td>
+</tr>
+<tr class="row-odd"><td>BOOST_GIL_IO_ADD_FS_PATH_SUPPORT</td>
+<td>Enable boost::filesystem 3.0 library.</td>
+</tr>
+<tr class="row-even"><td>BOOST_GIL_IO_PNG_FLOATING_POINT_SUPPORTED</td>
+<td>Use libpng in floating point mode. This symbol is incompatible with BOOST_GIL_IO_PNG_FIXED_POINT_SUPPORTED.</td>
+</tr>
+<tr class="row-odd"><td>BOOST_GIL_IO_PNG_FIXED_POINT_SUPPORTED</td>
+<td>Use libpng in integer mode. This symbol is incompatible with BOOST_GIL_IO_PNG_FLOATING_POINT_SUPPORTED.</td>
+</tr>
+<tr class="row-even"><td>BOOST_GIL_IO_PNG_DITHERING_SUPPORTED</td>
+<td>Look up &#8220;dithering&#8221; in libpng manual for explanation.</td>
+</tr>
+<tr class="row-odd"><td>BOOST_GIL_IO_PNG_1_4_OR_LOWER</td>
+<td>Allow compiling with libpng 1.4 or lower.</td>
+</tr>
+<tr class="row-even"><td>BOOST_GIL_EXTENSION_IO_JPEG_C_LIB_COMPILED_AS_CPLUSPLUS</td>
+<td>libjpeg is compiled as c++ lib.</td>
+</tr>
+<tr class="row-odd"><td>BOOST_GIL_EXTENSION_IO_PNG_C_LIB_COMPILED_AS_CPLUSPLUS</td>
+<td>libpng is compiled as c++ lib.</td>
+</tr>
+<tr class="row-even"><td>BOOST_GIL_EXTENSION_IO_TIFF_C_LIB_COMPILED_AS_CPLUSPLUS</td>
+<td>libtiff is compiled as c++ lib.</td>
+</tr>
+<tr class="row-odd"><td>BOOST_GIL_EXTENSION_IO_ZLIB_C_LIB_COMPILED_AS_CPLUSPLUS</td>
+<td>zlib is compiled as c++ lib.</td>
+</tr>
+<tr class="row-even"><td>BOOST_GIL_IO_TEST_ALLOW_READING_IMAGES</td>
+<td>Allow basic test images to be read from local hard drive. The paths can be set in paths.hpp</td>
+</tr>
+<tr class="row-odd"><td>BOOST_GIL_IO_TEST_ALLOW_WRITING_IMAGES</td>
+<td>Allow images to be written to the local hard drive. The paths can be set in paths.hpp</td>
+</tr>
+<tr class="row-even"><td>BOOST_GIL_IO_USE_BMP_TEST_SUITE_IMAGES</td>
+<td>Run tests using the bmp test images suite. See _BMP_TEST_FILES</td>
+</tr>
+<tr class="row-odd"><td>BOOST_GIL_IO_USE_PNG_TEST_SUITE_IMAGES</td>
+<td>Run tests using the png test images suite. See _PNG_TEST_FILES</td>
+</tr>
+<tr class="row-even"><td>BOOST_GIL_IO_USE_PNM_TEST_SUITE_IMAGES</td>
+<td>Run tests using the pnm test images suite. Send me an email for accessing the files.</td>
+</tr>
+<tr class="row-odd"><td>BOOST_GIL_IO_USE_TIFF_LIBTIFF_TEST_SUITE_IMAGES</td>
+<td>Run tests using the targa file format test images suite. See _TIFF_LIB_TIFF_TEST_FILES</td>
+</tr>
+<tr class="row-even"><td>BOOST_GIL_IO_USE_TIFF_GRAPHICSMAGICK_TEST_SUITE_IMAGES</td>
+<td>Run tests using the targa file format test images suite. See _TIFF_GRAPHICSMAGICK_TEST_FILES</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="supported-image-formats">
+<h3>Supported Image Formats</h3>
+<div class="section" id="bmp">
+<h4>BMP</h4>
+<p>For a general overview of the BMP image file format go to the
+following <a class="reference external" href="http://en.wikipedia.org/wiki/BMP_file_format">BMP_Wiki</a>.</p>
+<p>Please note, the code has not been tested on X Windows System variations
+of the BMP format which are usually referred to XBM and XPM formats.</p>
+<p>Here, only the MS Windows and OS/2 format is relevant.</p>
+<p>Currently the code is able to read and write the following image types:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Read:</th><td class="field-body"><code class="docutils literal"><span class="pre">gray1_image_t</span></code>, <code class="docutils literal"><span class="pre">gray4_image_t</span></code>, <code class="docutils literal"><span class="pre">gray8_image_t</span></code>, <code class="docutils literal"><span class="pre">rgb8_image_t</span></code> and, <code class="docutils literal"><span class="pre">rgba8_image_t</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Write:</th><td class="field-body"><code class="docutils literal"><span class="pre">rgb8_image_t</span></code> and, <code class="docutils literal"><span class="pre">rgba8_image_t</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>The lack of having an indexed image type in gil restricts the current
+interface to only write out non-indexed images.
+This is subject to change soon.</p>
+</div>
+<div class="section" id="jpeg">
+<h4>JPEG</h4>
+<p>For a general overview of the JPEG image file format go to the
+following <a class="reference external" href="http://en.wikipedia.org/wiki/JPEG">JPEG_Wiki</a>.</p>
+<p>This jpeg extension is based on the libjpeg library which can be
+found here, <a class="reference external" href="http://www.ijg.org/">JPEG_Lib</a>.</p>
+<p>All versions starting from 8x are supported.</p>
+<p>The user has to make sure this library is properly installed.
+I strongly recommend the user to build the library yourself.
+It could potentially save you a lot of trouble.</p>
+<p>Currently the code is able to read and write the following image types:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Read:</th><td class="field-body"><code class="docutils literal"><span class="pre">gray8_image_t</span></code>, <code class="docutils literal"><span class="pre">rgb8_image_t</span></code>, <code class="docutils literal"><span class="pre">cmyk8_image_t</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Write:</th><td class="field-body"><code class="docutils literal"><span class="pre">gray8_image_t</span></code>, <code class="docutils literal"><span class="pre">rgb8_image_t</span></code>, <code class="docutils literal"><span class="pre">cmyk8_image_t</span></code></td>
+</tr>
+</tbody>
+</table>
+<p>Reading YCbCr or YCCK images is possible but might result in inaccuracies since
+both color spaces aren&#8217;t available yet for gil.
+For now these color space are read as rgb images.
+This is subject to change soon.</p>
+</div>
+<div class="section" id="png">
+<h4>PNG</h4>
+<p>For a general overview of the PNG image file format go to the
+following <a class="reference external" href="http://en.wikipedia.org/wiki/Portable_Network_Graphics">PNG_Wiki</a>.</p>
+<p>This png extension is based on the libpng, which can be found
+here, <a class="reference external" href="http://libpng.org/pub/png/libpng.html">PNG_Lib</a>.</p>
+<p>All versions starting from 1.5.x are supported.</p>
+<p>The user has to make sure this library is properly installed.
+I strongly recommend the user to build the library yourself.
+It could potentially save you a lot of trouble.</p>
+<p>Currently the code is able to read and write the following image types:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Read:</th><td class="field-body">gray1, gray2, gray4, gray8, gray16, gray_alpha_8, gray_alpha_16, rgb8, rgb16, rgba8, rgba16</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Write:</th><td class="field-body">gray1, gray2, gray4, gray8, gray16, gray_alpha_8, gray_alpha_16, rgb8, rgb16, rgba8, rgba16</td>
+</tr>
+</tbody>
+</table>
+<p>For reading gray_alpha images the user has to compile application with <code class="docutils literal"><span class="pre">BOOST_GIL_IO_ENABLE_GRAY_ALPHA</span></code>
+macro  defined. This color space is defined in the toolbox by using <code class="docutils literal"><span class="pre">gray_alpha.hpp</span></code>.</p>
+</div>
+<div class="section" id="pnm">
+<h4>PNM</h4>
+<p>For a general overview of the PNM image file format go to the
+following <a class="reference external" href="http://en.wikipedia.org/wiki/Portable_anymap">PNM_Wiki</a>. No external library is needed for the pnm format.</p>
+<p>The extension can read images in both flavours of the formats, ASCII and binary,
+that is types from P1 through P6; can write only binary formats.</p>
+<p>Currently the code is able to read and write the following image types:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Read:</th><td class="field-body">gray1, gray8, rgb8</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Write:</th><td class="field-body">gray1, gray8, rgb8</td>
+</tr>
+</tbody>
+</table>
+<p>When reading a mono text image the data is read as a gray8 image.</p>
+</div>
+<div class="section" id="raw">
+<h4>RAW</h4>
+<p>For a general overview see <a class="reference external" href="http://en.wikipedia.org/wiki/Raw_image_format">RAW_Wiki</a>.</p>
+<p>Currently the extension is only able to read rgb8 images.</p>
+</div>
+<div class="section" id="targa">
+<h4>TARGA</h4>
+<p>For a general overview of the BMP image file format go to the
+following <a class="reference external" href="http://en.wikipedia.org/wiki/Truevision_TGA">TARGA_Wiki</a>.</p>
+<p>Currently the code is able to read and write the following image types:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Read:</th><td class="field-body">rgb8_image_t and rgba8_image_t</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Write:</th><td class="field-body">rgb8_image_t and rgba8_image_t</td>
+</tr>
+</tbody>
+</table>
+<p>The lack of having an indexed image type in gil restricts the current
+interface to only write out non-indexed images.
+This is subject to change soon.</p>
+</div>
+<div class="section" id="tiff">
+<h4>TIFF</h4>
+<p>For a general overview of the TIFF image file format go to the
+following <a class="reference external" href="http://en.wikipedia.org/wiki/Tagged_Image_File_Format">TIFF_Wiki</a>.</p>
+<p>This tiff extension is based on the libtiff, which can be found, <a class="reference external" href="http://www.remotesensing.org/libtiff/">TIFF_Lib</a>.</p>
+<p>All versions starting from 3.9.x are supported.</p>
+<p>The user has to make sure this library is properly installed. I strongly
+recommend the user to build the library yourself. It could potentially
+save you a lot of trouble.</p>
+<p>TIFF images can virtually encode all kinds of channel sizes representing
+various color spaces. Even planar images are possible.
+For instance, <code class="docutils literal"><span class="pre">rbg323</span></code> or <code class="docutils literal"><span class="pre">gray7</span></code>. The channels also can have specific
+formats, like integer values or floating point values.</p>
+<p>For a complete set of options please consult the following websites:</p>
+<ul class="simple">
+<li><a class="reference external" href="http://www.awaresystems.be/imaging/tiff/tifftags/baseline.html">TIFF_Base_Tags</a></li>
+<li><a class="reference external" href="http://www.awaresystems.be/imaging/tiff/tifftags/extension.html">TIFF_Extension_Tags</a></li>
+</ul>
+<p>The author of this extension is not claiming all tiff formats are supported.
+This extension is likely to be a moving target adding new features with each
+new milestone. Here is an incomplete lists:</p>
+<ul class="simple">
+<li>Multi-page TIFF - read only</li>
+<li>Strip TIFF - read and write support</li>
+<li>Tiled TIFF - read and write support with user defined tiled sizes</li>
+<li>Bit images TIFF - fully supported, like <code class="docutils literal"><span class="pre">gray1_image_t</span></code> (minisblack)</li>
+<li>Planar TIFF - fully supported</li>
+<li>Floating-point TIFF - fully supported</li>
+<li>Palette TIFF - supported but no indexed image type is available as of now</li>
+</ul>
+<p>This gil extension uses two different test image suites to test read and
+write capabilities. See <code class="docutils literal"><span class="pre">test_image</span></code> folder.
+It&#8217;s advisable to use ImageMagick test viewer to display images.</p>
+</div>
+</div>
+<div class="section" id="extending-gil-io-with-new-formats">
+<h3>Extending GIL::IO with new Formats</h3>
+<p>Extending the gil::io with new formats is meant to be simple and
+straightforward. Before adding I would recommend to have a look at existing
+implementations and then trying to follow a couple of guidelines:</p>
+<ul>
+<li><dl class="first docutils">
+<dt>Create the following files for your new xxx format</dt>
+<dd><ul class="first last simple">
+<li><code class="docutils literal"><span class="pre">xxx_read.hpp</span></code> - Only includes read code</li>
+<li><code class="docutils literal"><span class="pre">xxx_write.hpp</span></code> - Only includes write code</li>
+<li><code class="docutils literal"><span class="pre">xxx_all.hpp</span></code> - includes xxx_read.hpp and xxx_write.hpp</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p class="first">Add the code to the <code class="docutils literal"><span class="pre">boost::gil::detail</span></code> namespace</p>
+</li>
+<li><p class="first">Create a tag type for the new format. Like this:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">struct</span> <span class="nl">xxx_tag</span> <span class="p">:</span> <span class="n">format_tag</span> <span class="p">{};</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create the image_read_info for the new format. It contains all the
+information that are necessary to read an image. It should be filled
+and returned by the <code class="docutils literal"><span class="pre">get_info</span></code> member of the reader class. See below:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;&gt;</span> <span class="k">struct</span> <span class="n">image_read_info</span><span class="o">&lt;</span> <span class="n">xxx_tag</span> <span class="o">&gt;</span> <span class="p">{};</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create the image_write_info for the new format. It contains all the
+information that are necessary to write an image:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;&gt;</span> <span class="k">struct</span> <span class="n">image_write_info</span><span class="o">&lt;</span> <span class="n">xxx_tag</span> <span class="o">&gt;</span> <span class="p">{};</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">Use the following reader skeleton as a start:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;</span> <span class="k">typename</span> <span class="n">Device</span>
+        <span class="p">,</span> <span class="k">typename</span> <span class="n">ConversionPolicy</span>
+        <span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">reader</span><span class="o">&lt;</span> <span class="n">Device</span>
+            <span class="p">,</span> <span class="n">xxx_tag</span>
+            <span class="p">,</span> <span class="n">ConversionPolicy</span>
+            <span class="o">&gt;</span>
+            <span class="o">:</span> <span class="k">public</span> <span class="n">reader_base</span><span class="o">&lt;</span> <span class="n">xxx_tag</span>
+                                <span class="p">,</span> <span class="n">ConversionPolicy</span>
+                                <span class="o">&gt;</span>
+<span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+
+    <span class="k">typedef</span> <span class="k">typename</span> <span class="n">ConversionPolicy</span><span class="o">::</span><span class="n">color_converter_type</span> <span class="n">cc_t</span><span class="p">;</span>
+
+<span class="k">public</span><span class="o">:</span>
+
+    <span class="n">reader</span><span class="p">(</span> <span class="n">Device</span><span class="o">&amp;</span> <span class="n">device</span> <span class="p">)</span>
+    <span class="o">:</span> <span class="n">_io_dev</span><span class="p">(</span> <span class="n">device</span> <span class="p">)</span>
+    <span class="p">{}</span>
+
+    <span class="n">reader</span><span class="p">(</span> <span class="n">Device</span><span class="o">&amp;</span>     <span class="n">device</span>
+          <span class="p">,</span> <span class="k">const</span> <span class="n">cc_t</span><span class="o">&amp;</span> <span class="n">cc</span>
+          <span class="p">)</span>
+    <span class="o">:</span> <span class="n">_io_dev</span><span class="p">(</span> <span class="n">device</span> <span class="p">)</span>
+    <span class="p">,</span> <span class="n">reader_base</span><span class="o">&lt;</span> <span class="n">xxx_tag</span>
+                 <span class="p">,</span> <span class="n">ConversionPolicy</span>
+                 <span class="o">&gt;</span><span class="p">(</span> <span class="n">cc</span> <span class="p">)</span>
+    <span class="p">{}</span>
+
+    <span class="n">image_read_info</span><span class="o">&lt;</span> <span class="n">xxx_tag</span> <span class="o">&gt;</span> <span class="n">get_info</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="c1">// your implementation here</span>
+    <span class="p">}</span>
+
+    <span class="k">template</span><span class="o">&lt;</span> <span class="k">typename</span> <span class="n">View</span> <span class="o">&gt;</span>
+    <span class="kt">void</span> <span class="n">apply</span><span class="p">(</span> <span class="k">const</span> <span class="n">View</span><span class="o">&amp;</span> <span class="n">dst_view</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">// your implementation here</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</li>
+<li><p class="first">The writer skeleton:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;</span> <span class="k">typename</span> <span class="n">Device</span> <span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">writer</span><span class="o">&lt;</span> <span class="n">Device</span>
+            <span class="p">,</span> <span class="n">xxx_tag</span>
+            <span class="o">&gt;</span>
+<span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+
+    <span class="n">writer</span><span class="p">(</span> <span class="n">Device</span> <span class="o">&amp;</span> <span class="n">file</span> <span class="p">)</span>
+    <span class="o">:</span> <span class="n">out</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    <span class="p">{}</span>
+
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">View</span><span class="o">&gt;</span>
+    <span class="kt">void</span> <span class="n">apply</span><span class="p">(</span> <span class="k">const</span> <span class="n">View</span><span class="o">&amp;</span> <span class="n">view</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">// your implementation here</span>
+    <span class="p">}</span>
+
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">View</span><span class="o">&gt;</span>
+    <span class="kt">void</span> <span class="n">apply</span><span class="p">(</span> <span class="k">const</span> <span class="n">View</span><span class="o">&amp;</span>                        <span class="n">view</span>
+              <span class="p">,</span> <span class="k">const</span> <span class="n">image_write_info</span><span class="o">&lt;</span> <span class="n">xxx_tag</span> <span class="o">&gt;&amp;</span> <span class="n">info</span> <span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">// your implementation here</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="running-gil-io-tests">
+<h2>Running gil::io tests</h2>
+<p>gil::io comes with a large suite of test cases which reads and writes various
+file formats. It uses some test image suites which can be found online or
+which can be demanded from me by sending me an email.</p>
+<p>There are some test images created by me in the test folder.
+To enable unit tests which make use of them set the following compiler options
+<code class="docutils literal"><span class="pre">BOOST_GIL_IO_TEST_ALLOW_READING_IMAGES</span></code> and
+<code class="docutils literal"><span class="pre">BOOST_GIL_IO_TEST_ALLOW_WRITING_IMAGES</span></code>.</p>
+<p>The following list provides all links to the image suites the compiler symbol
+to enable the tests:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">BMP:</th><td class="field-body"><a class="reference external" href="http://entropymine.com/jason/bmpsuite/">BMP_TEST_FILES</a>                 &#8211; BOOST_GIL_IO_USE_BMP_TEST_SUITE_IMAGES</td>
+</tr>
+<tr class="field-even field"><th class="field-name">PNG:</th><td class="field-body"><a class="reference external" href="http://www.schaik.com/pngsuite/pngsuite.html">PNG_TEST_FILES</a>                 &#8211; BOOST_GIL_IO_USE_PNG_TEST_SUITE_IMAGES</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">PNM:</th><td class="field-body">request files from me           &#8211; BOOST_GIL_IO_USE_PNM_TEST_SUITE_IMAGES</td>
+</tr>
+<tr class="field-even field"><th class="field-name">TIFF:</th><td class="field-body"><a class="reference external" href="http://www.remotesensing.org/libtiff/images.html">TIFF_LIB_TIFF_TEST_FILES</a>       &#8211; BOOST_GIL_IO_USE_TIFF_LIBTIFF_TEST_SUITE_IMAGES</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">TIFF:</th><td class="field-body"><a class="reference external" href="ftp://ftp.graphicsmagick.org/pub/tiff-samples/tiff-sample-images-be.tar.gz">TIFF_GRAPHICSMAGICK_TEST_FILES</a> &#8211; BOOST_GIL_IO_USE_TIFF_GRAPHICSMAGICK_TEST_SUITE_IMAGES</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Affine region detectors" href="image_processing/affine-region-detectors.html"><img src="_static/prev.png" alt="prev"/></a>
+      <a class="next" title="ToolBox extension" href="toolbox.html"><img src="_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

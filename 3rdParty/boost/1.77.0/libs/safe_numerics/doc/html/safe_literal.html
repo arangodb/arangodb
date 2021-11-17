@@ -1,0 +1,170 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>safe_signed_literal&lt;Value, PP , EP&gt; and safe_unsigned_literal&lt;Value, PP, EP&gt;</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="up" href="types.html" title="Types">
+<link rel="prev" href="safe_range.html" title="safe_signed_range&lt;MIN, MAX, PP, EP&gt; and safe_unsigned_range&lt;MIN, MAX, PP, EP&gt;">
+<link rel="next" href="exception.html" title="exception">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="safe_range.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="types.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="exception.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numerics.safe_literal"></a>safe_signed_literal&lt;Value, PP , EP&gt; and
+  safe_unsigned_literal&lt;Value, PP, EP&gt;</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="safe_literal.html#idm462684354608">Description</a></span></dt>
+<dt><span class="section"><a href="safe_literal.html#idm462684353104">Associated Types</a></span></dt>
+<dt><span class="section"><a href="safe_literal.html#idm462684346192">Template Parameters</a></span></dt>
+<dt><span class="section"><a href="safe_literal.html#idm462684328656">Model of</a></span></dt>
+<dt><span class="section"><a href="safe_literal.html#idm462684326048">Inherited Valid Expressions</a></span></dt>
+<dt><span class="section"><a href="safe_literal.html#idm462684294608">Example of use</a></span></dt>
+<dt><span class="section"><a href="safe_literal.html#safe_numerics.safe_literal.make_safe_literal"><code class="computeroutput">make_safe_literal(n, PP, EP) </code></a></span></dt>
+<dt><span class="section"><a href="safe_literal.html#idm462684279040">Header</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462684354608"></a>Description</h4></div></div></div>
+<p>A safe type which holds a literal value. This is required to be able
+    to initialize other safe types in such a way that an exception code is not
+    generated. It is also useful when creating constexpr versions of safe
+    types. It contains one immutable value known at compile time and hence can
+    be used in any constexpr expression.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462684353104"></a>Associated Types</h4></div></div></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col align="left">
+<col align="left">
+</colgroup>
+<tbody>
+<tr>
+<td align="left"><code class="computeroutput">PP</code></td>
+<td align="left">A type which specifies the result type of an expression
+            using safe types.</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">EP</code></td>
+<td align="left">A type containing members which are called when a correct
+            result cannot be returned</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462684346192"></a>Template Parameters</h4></div></div></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col align="left">
+<col align="left">
+<col align="left">
+</colgroup>
+<thead><tr>
+<th align="left">Parameter</th>
+<th align="left">Type Requirements</th>
+<th align="left">Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td align="left"><code class="computeroutput">Value</code></td>
+<td align="left"><code class="computeroutput"><a class="link" href="integer_concept.html" title="Integer&lt;T&gt;">Integer</a></code></td>
+<td align="left">value used to initialize the literal</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP</code></td>
+<td align="left"><a class="link" href="">PromotionPolicy&lt;PP&gt;</a></td>
+<td align="left"><p>Optional promotion policy. Default value is
+            <code class="computeroutput">void</code></p></td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">EP</code></td>
+<td align="left"><a class="link" href="">Exception
+            Policy&lt;EP&gt;</a></td>
+<td align="left"><p>Optional exception policy. Default value is
+            <code class="computeroutput">void</code></p></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462684328656"></a>Model of</h4></div></div></div>
+<p><a class="link" href="numeric_concept.html" title="Numeric&lt;T&gt;">Numeric</a></p>
+<p><a class="link" href="integer_concept.html" title="Integer&lt;T&gt;">Integer</a></p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462684326048"></a>Inherited Valid Expressions</h4></div></div></div>
+<p>safe literal types are immutable. Hence they only inherit those
+    valid expressions which don't change the value. <span class="emphasis"><em>This excludes
+    assignment, increment, and decrement and all unary operators except unary
+    -, + and ~</em></span>. Other than that, they can be used anywhere a Value
+    type can be used. Note that the default promotion and exception policies
+    are void. This is usually convenient since when a safe literal is used in
+    a binary operation, this will inherit the policies of the other type. On
+    the other hand, this can be inconvenient when operands of a binary
+    expression are both safe literals. This will fail to compile since there
+    are no designated promotion and exception policies. The way to address
+    this to assign specific policies as in this example.</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">compile_time_value</span> <span class="special">=</span> <span class="identifier">safe_signed_literal</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span><span class="special">;</span>
+
+<span class="keyword">constexpr</span> <span class="identifier">compile_time_value</span><span class="special">&lt;</span><span class="number">1000</span><span class="special">&gt;</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="keyword">constexpr</span> <span class="identifier">compile_time_value</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="identifier">y</span><span class="special">;</span>
+
+<span class="comment">// should compile and execute without problem</span>
+    
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+
+<span class="comment">// all the following statements should fail to compile because there are </span>
+<span class="comment">// no promotion and exception policies specified.</span>
+<span class="keyword">constexpr</span> <span class="identifier">safe</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">/</span> <span class="identifier">y</span><span class="special">;</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462684294608"></a>Example of use</h4></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer_literal</span><span class="special">.</span><span class="identifier">hp</span><span class="special">&gt;</span>
+
+<span class="keyword">constexpr</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe_signed_literal</span><span class="special">&lt;</span><span class="number">42</span><span class="special">&gt;</span> <span class="identifier">x</span><span class="special">;</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="safe_numerics.safe_literal.make_safe_literal"></a><code class="computeroutput">make_safe_literal(n, PP, EP) </code>
+</h4></div></div></div>
+<p>This is a macro which returns an instance of a safe literal type.
+    This instance will hold the value n. The type of the value returned will
+    be the smallest safe type which can hold the value <code class="computeroutput">n</code>.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462684279040"></a>Header</h4></div></div></div>
+<p><a href="../../include/boost/safe_numerics/safe_integer_literal.hpp" target="_top">#include
+    &lt;boost/safe_numerics/safe_integer_literal.hpp&gt;</a></p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="safe_range.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="types.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="exception.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

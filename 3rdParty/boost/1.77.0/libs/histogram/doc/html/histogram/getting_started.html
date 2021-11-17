@@ -1,0 +1,477 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Getting started</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="prev" href="overview.html" title="Overview">
+<link rel="next" href="guide.html" title="User guide">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overview.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="guide.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="histogram.getting_started"></a><a class="link" href="getting_started.html" title="Getting started">Getting started</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="getting_started.html#histogram.getting_started.1d_histogram_with_axis_types_kno">1d-histogram
+      with axis types known at compile-time</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#histogram.getting_started.3d_histogram_axis_configuration_">3d-histogram
+      (axis configuration defined at run-time)</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#histogram.getting_started.1d_profile">1d-profile</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#histogram.getting_started.standard_library_algorithms">Standard
+      library algorithms</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#histogram.getting_started.making_classes_that_hold_histogr">Making
+      classes that hold histograms</a></span></dt>
+</dl></div>
+<p>
+      Here are some commented examples to copy-paste from, this should allow you
+      to kick off a project with Boost.Histogram. If you prefer a traditional structured
+      exposition, go to the <a class="link" href="guide.html" title="User guide">user guide</a>.
+    </p>
+<p>
+      Boost.Histogram uses <span class="emphasis"><em>axis</em></span> objects to convert input values
+      into indices. The library comes with several builtin axis types, which can
+      be configured via template parameters. This already gives you a lot of flexibility
+      should you need it, otherwise just use the defaults. Beyond that, you can easily
+      write your own axis type.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.getting_started.1d_histogram_with_axis_types_kno"></a><a class="link" href="getting_started.html#histogram.getting_started.1d_histogram_with_axis_types_kno" title="1d-histogram with axis types known at compile-time">1d-histogram
+      with axis types known at compile-time</a>
+</h3></div></div></div>
+<p>
+        When the axis types for the histogram are known at compile-time, the library
+        generates the fastest and most efficient code for you. Here is such an example.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">algorithm</span><span class="special">&gt;</span>           <span class="comment">// std::for_each</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">format</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>    <span class="comment">// only needed for printing</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">histogram</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// make_histogram, regular, weight, indexed</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cassert</span><span class="special">&gt;</span>             <span class="comment">// assert (used to test this example for correctness)</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">functional</span><span class="special">&gt;</span>          <span class="comment">// std::ref</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>            <span class="comment">// std::cout, std::flush</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>             <span class="comment">// std::ostringstream</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">;</span> <span class="comment">// strip the boost::histogram prefix</span>
+
+  <span class="comment">/*
+    Create a 1d-histogram with a regular axis that has 6 equidistant bins on
+    the real line from -1.0 to 2.0, and label it as "x". A family of overloaded
+    factory functions called `make_histogram` makes creating histograms easy.
+
+    A regular axis is a sequence of semi-open bins. Extra under- and overflow
+    bins extend the axis by default (this can be turned off).
+
+    index    :      -1  |  0  |  1  |  2  |  3  |  4  |  5  |  6
+    bin edges:  -inf  -1.0  -0.5   0.0   0.5   1.0   1.5   2.0   inf
+  */</span>
+  <span class="keyword">auto</span> <span class="identifier">h</span> <span class="special">=</span> <span class="identifier">make_histogram</span><span class="special">(</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;(</span><span class="number">6</span><span class="special">,</span> <span class="special">-</span><span class="number">1.0</span><span class="special">,</span> <span class="number">2.0</span><span class="special">,</span> <span class="string">"x"</span><span class="special">));</span>
+
+  <span class="comment">/*
+    Let's fill a histogram with data, typically this happens in a loop.
+
+    STL algorithms are supported. std::for_each is very convenient to fill a
+    histogram from an iterator range. Use std::ref in the call, if you don't
+    want std::for_each to make a copy of your histogram.
+  */</span>
+  <span class="keyword">auto</span> <span class="identifier">data</span> <span class="special">=</span> <span class="special">{-</span><span class="number">0.5</span><span class="special">,</span> <span class="number">1.1</span><span class="special">,</span> <span class="number">0.3</span><span class="special">,</span> <span class="number">1.7</span><span class="special">};</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">data</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">data</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">h</span><span class="special">));</span>
+  <span class="comment">// let's fill some more values manually</span>
+  <span class="identifier">h</span><span class="special">(-</span><span class="number">1.5</span><span class="special">);</span> <span class="comment">// is placed in underflow bin -1</span>
+  <span class="identifier">h</span><span class="special">(-</span><span class="number">1.0</span><span class="special">);</span> <span class="comment">// is placed in bin 0, bin interval is semi-open</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="number">2.0</span><span class="special">);</span>  <span class="comment">// is placed in overflow bin 6, bin interval is semi-open</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="number">20.0</span><span class="special">);</span> <span class="comment">// is placed in overflow bin 6</span>
+
+  <span class="comment">/*
+    This does a weighted fill using the `weight` function as an additional
+    argument. It may appear at the beginning or end of the argument list. C++
+    doesn't have keyword arguments like Python, this is the next-best thing.
+  */</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="number">0.1</span><span class="special">,</span> <span class="identifier">weight</span><span class="special">(</span><span class="number">1.0</span><span class="special">));</span>
+
+  <span class="comment">/*
+    Iterate over bins with the `indexed` range generator, which provides a
+    special accessor object, that can be used to obtain the current bin index,
+    and the current bin value by dereferncing (it acts like a pointer to the
+    value). Using `indexed` is convenient and gives you better performance than
+    looping over the histogram cells with hand-written for loops. By default,
+    under- and overflow bins are skipped. Passing `coverage::all` as the
+    optional second argument iterates over all bins.
+
+    - Access the value with the dereference operator.
+    - Access the current index with `index(d)` method of the accessor.
+    - Access the corresponding bin interval view with `bin(d)`.
+
+    The return type of `bin(d)` depends on the axis type (see the axis reference
+    for details). It usually is a class that represents a semi-open interval.
+    Edges can be accessed with methods `lower()` and `upper()`.
+  */</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">os</span><span class="special">;</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span><span class="special">&amp;&amp;</span> <span class="identifier">x</span> <span class="special">:</span> <span class="identifier">indexed</span><span class="special">(</span><span class="identifier">h</span><span class="special">,</span> <span class="identifier">coverage</span><span class="special">::</span><span class="identifier">all</span><span class="special">))</span> <span class="special">{</span>
+    <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">format</span><span class="special">(</span><span class="string">"bin %2i [%4.1f, %4.1f): %i\n"</span><span class="special">)</span>
+          <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">index</span><span class="special">()</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">bin</span><span class="special">().</span><span class="identifier">lower</span><span class="special">()</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">bin</span><span class="special">().</span><span class="identifier">upper</span><span class="special">()</span> <span class="special">%</span> <span class="special">*</span><span class="identifier">x</span><span class="special">;</span>
+  <span class="special">}</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">os</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">flush</span><span class="special">;</span>
+
+  <span class="identifier">assert</span><span class="special">(</span><span class="identifier">os</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">==</span> <span class="string">"bin -1 [-inf, -1.0): 1\n"</span>
+                     <span class="string">"bin  0 [-1.0, -0.5): 1\n"</span>
+                     <span class="string">"bin  1 [-0.5, -0.0): 1\n"</span>
+                     <span class="string">"bin  2 [-0.0,  0.5): 2\n"</span>
+                     <span class="string">"bin  3 [ 0.5,  1.0): 0\n"</span>
+                     <span class="string">"bin  4 [ 1.0,  1.5): 1\n"</span>
+                     <span class="string">"bin  5 [ 1.5,  2.0): 1\n"</span>
+                     <span class="string">"bin  6 [ 2.0,  inf): 2\n"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        We passed the <code class="computeroutput"><a class="link" href="../boost/histogram/axis/regular.html" title="Class template regular">regular</a></code>
+        axis type directly to the <code class="computeroutput"><a class="link" href="reference.html#header.boost.histogram.make_histogram_hpp" title="Header &lt;boost/histogram/make_histogram.hpp&gt;">make_histogram</a></code>
+        function. The library then generates a specialized histogram type with just
+        one regular axis from a generic template.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Pro: Many user errors are already caught at compile-time, not at run-time.
+          </li>
+<li class="listitem">
+            Con: You get template errors if you make a mistake, which may be hard
+            to read. We try to give you useful error messages, but still.
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.getting_started.3d_histogram_axis_configuration_"></a><a class="link" href="getting_started.html#histogram.getting_started.3d_histogram_axis_configuration_" title="3d-histogram (axis configuration defined at run-time)">3d-histogram
+      (axis configuration defined at run-time)</a>
+</h3></div></div></div>
+<p>
+        Sometimes, you don't know the number or types of axes at compile-time, because
+        it depends on run-time information. Perhaps you want to write a command-line
+        tool that generates histograms from input data, or you use this library as
+        a back-end for a product with a GUI. This is possible as well, here is the
+        example.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">format</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">histogram</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cassert</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">;</span>
+
+  <span class="comment">/*
+    Create a histogram which can be configured dynamically at run-time. The axis
+    configuration is first collected in a vector of axis::variant type, which
+    can hold different axis types (those in its template argument list). Here,
+    we use a variant that can store a regular and a category axis.
+  */</span>
+  <span class="keyword">using</span> <span class="identifier">reg</span> <span class="special">=</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;;</span>
+  <span class="keyword">using</span> <span class="identifier">cat</span> <span class="special">=</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">category</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;;</span>
+  <span class="keyword">using</span> <span class="identifier">variant</span> <span class="special">=</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span><span class="special">&lt;</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;,</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">category</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;&gt;;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">variant</span><span class="special">&gt;</span> <span class="identifier">axes</span><span class="special">;</span>
+  <span class="identifier">axes</span><span class="special">.</span><span class="identifier">emplace_back</span><span class="special">(</span><span class="identifier">cat</span><span class="special">({</span><span class="string">"red"</span><span class="special">,</span> <span class="string">"blue"</span><span class="special">}));</span>
+  <span class="identifier">axes</span><span class="special">.</span><span class="identifier">emplace_back</span><span class="special">(</span><span class="identifier">reg</span><span class="special">(</span><span class="number">3</span><span class="special">,</span> <span class="number">0.0</span><span class="special">,</span> <span class="number">1.0</span><span class="special">,</span> <span class="string">"x"</span><span class="special">));</span>
+  <span class="identifier">axes</span><span class="special">.</span><span class="identifier">emplace_back</span><span class="special">(</span><span class="identifier">reg</span><span class="special">(</span><span class="number">3</span><span class="special">,</span> <span class="number">0.0</span><span class="special">,</span> <span class="number">1.0</span><span class="special">,</span> <span class="string">"y"</span><span class="special">));</span>
+  <span class="comment">// passing an iterator range also works here</span>
+  <span class="keyword">auto</span> <span class="identifier">h</span> <span class="special">=</span> <span class="identifier">make_histogram</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">axes</span><span class="special">));</span>
+
+  <span class="comment">// fill histogram with data, usually this happens in a loop</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="string">"red"</span><span class="special">,</span> <span class="number">0.1</span><span class="special">,</span> <span class="number">0.2</span><span class="special">);</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="string">"blue"</span><span class="special">,</span> <span class="number">0.7</span><span class="special">,</span> <span class="number">0.3</span><span class="special">);</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="string">"red"</span><span class="special">,</span> <span class="number">0.3</span><span class="special">,</span> <span class="number">0.7</span><span class="special">);</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="string">"red"</span><span class="special">,</span> <span class="number">0.7</span><span class="special">,</span> <span class="number">0.7</span><span class="special">);</span>
+
+  <span class="comment">/*
+    Print histogram by iterating over bins.
+    Since the [bin type] of the category axis cannot be converted into a double,
+    it cannot be handled by the polymorphic interface of axis::variant. We use
+    axis::get to "cast" the variant type to the actual category type.
+  */</span>
+
+  <span class="comment">// get reference to category axis, performs a run-time checked static cast</span>
+  <span class="keyword">const</span> <span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">cat_axis</span> <span class="special">=</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">cat</span><span class="special">&gt;(</span><span class="identifier">h</span><span class="special">.</span><span class="identifier">axis</span><span class="special">(</span><span class="number">0</span><span class="special">));</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">os</span><span class="special">;</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span><span class="special">&amp;&amp;</span> <span class="identifier">x</span> <span class="special">:</span> <span class="identifier">indexed</span><span class="special">(</span><span class="identifier">h</span><span class="special">))</span> <span class="special">{</span>
+    <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">format</span><span class="special">(</span><span class="string">"(%i, %i, %i) %4s [%3.1f, %3.1f) [%3.1f, %3.1f) %3.0f\n"</span><span class="special">)</span>
+          <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="number">2</span><span class="special">)</span>
+          <span class="special">%</span> <span class="identifier">cat_axis</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="number">0</span><span class="special">))</span>
+          <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="number">1</span><span class="special">).</span><span class="identifier">lower</span><span class="special">()</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="number">1</span><span class="special">).</span><span class="identifier">upper</span><span class="special">()</span>
+          <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="number">2</span><span class="special">).</span><span class="identifier">lower</span><span class="special">()</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="number">2</span><span class="special">).</span><span class="identifier">upper</span><span class="special">()</span>
+          <span class="special">%</span> <span class="special">*</span><span class="identifier">x</span><span class="special">;</span>
+  <span class="special">}</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">os</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">flush</span><span class="special">;</span>
+  <span class="identifier">assert</span><span class="special">(</span><span class="identifier">os</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">==</span> <span class="string">"(0, 0, 0)  red [0.0, 0.3) [0.0, 0.3)   1\n"</span>
+                     <span class="string">"(1, 0, 0) blue [0.0, 0.3) [0.0, 0.3)   0\n"</span>
+                     <span class="string">"(0, 1, 0)  red [0.3, 0.7) [0.0, 0.3)   0\n"</span>
+                     <span class="string">"(1, 1, 0) blue [0.3, 0.7) [0.0, 0.3)   0\n"</span>
+                     <span class="string">"(0, 2, 0)  red [0.7, 1.0) [0.0, 0.3)   0\n"</span>
+                     <span class="string">"(1, 2, 0) blue [0.7, 1.0) [0.0, 0.3)   1\n"</span>
+                     <span class="string">"(0, 0, 1)  red [0.0, 0.3) [0.3, 0.7)   0\n"</span>
+                     <span class="string">"(1, 0, 1) blue [0.0, 0.3) [0.3, 0.7)   0\n"</span>
+                     <span class="string">"(0, 1, 1)  red [0.3, 0.7) [0.3, 0.7)   0\n"</span>
+                     <span class="string">"(1, 1, 1) blue [0.3, 0.7) [0.3, 0.7)   0\n"</span>
+                     <span class="string">"(0, 2, 1)  red [0.7, 1.0) [0.3, 0.7)   0\n"</span>
+                     <span class="string">"(1, 2, 1) blue [0.7, 1.0) [0.3, 0.7)   0\n"</span>
+                     <span class="string">"(0, 0, 2)  red [0.0, 0.3) [0.7, 1.0)   1\n"</span>
+                     <span class="string">"(1, 0, 2) blue [0.0, 0.3) [0.7, 1.0)   0\n"</span>
+                     <span class="string">"(0, 1, 2)  red [0.3, 0.7) [0.7, 1.0)   0\n"</span>
+                     <span class="string">"(1, 1, 2) blue [0.3, 0.7) [0.7, 1.0)   0\n"</span>
+                     <span class="string">"(0, 2, 2)  red [0.7, 1.0) [0.7, 1.0)   1\n"</span>
+                     <span class="string">"(1, 2, 2) blue [0.7, 1.0) [0.7, 1.0)   0\n"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        The axis configuration is passed to <code class="computeroutput"><span class="identifier">make_histogram</span></code>
+        as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span><span class="special">&lt;...&gt;&gt;</span></code>,
+        which can hold arbitrary sequences of axis types from a predefined set.
+      </p>
+<p>
+        Run-time configurable histograms are a slower than their compile-time brethren,
+        but still pretty fast.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          If you know already at compile-time that you will only use one axis type,
+          <code class="computeroutput"><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;</span></code>
+          for example, but not how many per histogram, then you can also pass a
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;&gt;</span></code>
+          to <code class="computeroutput"><span class="identifier">make_histogram</span></code>. You
+          get almost the same speed as in the very first case, where both the axis
+          configuration was fully known at compile-time.
+        </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          If you care about maximum performance: In this example, <code class="computeroutput"><span class="identifier">axis</span><span class="special">::</span><span class="identifier">category</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span></code> is used with two string labels "red"
+          and "blue". It is faster to use an enum, <code class="computeroutput"><span class="keyword">enum</span>
+          <span class="special">{</span> <span class="identifier">red</span><span class="special">,</span> <span class="identifier">blue</span> <span class="special">};</span></code> and a <code class="computeroutput"><span class="identifier">axis</span><span class="special">::</span><span class="identifier">category</span><span class="special">&lt;&gt;</span></code> axis.
+        </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.getting_started.1d_profile"></a><a class="link" href="getting_started.html#histogram.getting_started.1d_profile" title="1d-profile">1d-profile</a>
+</h3></div></div></div>
+<p>
+        The library was designed to be very flexible and modular. The modularity
+        is used, for example, to also provide profiles. Profiles are generalized
+        histograms. A histogram counts how often an input falls into a particular
+        cell. A profile accepts pairs of input values and a sample value. The profile
+        computes the mean of the samples that end up in each cell. Have a look at
+        the example, which should clear up any confusion.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">format</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">histogram</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cassert</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">;</span>
+
+  <span class="comment">/*
+    Create a profile. Profiles does not only count entries in each cell, but
+    also compute the mean of a sample value in each cell.
+  */</span>
+  <span class="keyword">auto</span> <span class="identifier">p</span> <span class="special">=</span> <span class="identifier">make_profile</span><span class="special">(</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;(</span><span class="number">5</span><span class="special">,</span> <span class="number">0.0</span><span class="special">,</span> <span class="number">1.0</span><span class="special">));</span>
+
+  <span class="comment">/*
+    Fill profile with data, usually this happens in a loop. You pass the sample
+    with the `sample` helper function. The sample can be the first or last
+    argument.
+  */</span>
+  <span class="identifier">p</span><span class="special">(</span><span class="number">0.1</span><span class="special">,</span> <span class="identifier">sample</span><span class="special">(</span><span class="number">1</span><span class="special">));</span>
+  <span class="identifier">p</span><span class="special">(</span><span class="number">0.15</span><span class="special">,</span> <span class="identifier">sample</span><span class="special">(</span><span class="number">3</span><span class="special">));</span>
+  <span class="identifier">p</span><span class="special">(</span><span class="number">0.2</span><span class="special">,</span> <span class="identifier">sample</span><span class="special">(</span><span class="number">4</span><span class="special">));</span>
+  <span class="identifier">p</span><span class="special">(</span><span class="number">0.9</span><span class="special">,</span> <span class="identifier">sample</span><span class="special">(</span><span class="number">5</span><span class="special">));</span>
+
+  <span class="comment">/*
+    Iterate over bins and print profile.
+  */</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">os</span><span class="special">;</span>
+  <span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span><span class="special">&amp;&amp;</span> <span class="identifier">x</span> <span class="special">:</span> <span class="identifier">indexed</span><span class="special">(</span><span class="identifier">p</span><span class="special">))</span> <span class="special">{</span>
+    <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">format</span><span class="special">(</span><span class="string">"bin %i [%3.1f, %3.1f) count %i mean %g\n"</span><span class="special">)</span>
+          <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">index</span><span class="special">()</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">bin</span><span class="special">().</span><span class="identifier">lower</span><span class="special">()</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">bin</span><span class="special">().</span><span class="identifier">upper</span><span class="special">()</span>
+          <span class="special">%</span> <span class="identifier">x</span><span class="special">-&gt;</span><span class="identifier">count</span><span class="special">()</span> <span class="special">%</span> <span class="identifier">x</span><span class="special">-&gt;</span><span class="identifier">value</span><span class="special">();</span>
+  <span class="special">}</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">os</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">flush</span><span class="special">;</span>
+  <span class="identifier">assert</span><span class="special">(</span><span class="identifier">os</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">==</span> <span class="string">"bin 0 [0.0, 0.2) count 2 mean 2\n"</span>
+                     <span class="string">"bin 1 [0.2, 0.4) count 1 mean 4\n"</span>
+                     <span class="string">"bin 2 [0.4, 0.6) count 0 mean 0\n"</span>
+                     <span class="string">"bin 3 [0.6, 0.8) count 0 mean 0\n"</span>
+                     <span class="string">"bin 4 [0.8, 1.0) count 1 mean 5\n"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.getting_started.standard_library_algorithms"></a><a class="link" href="getting_started.html#histogram.getting_started.standard_library_algorithms" title="Standard library algorithms">Standard
+      library algorithms</a>
+</h3></div></div></div>
+<p>
+        The library was designed to work well with the C++ standard library. Here
+        is an example on how to get the most common color from an image, using a
+        3d histogram and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">max_element</span></code>.
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">algorithm</span><span class="special">&gt;</span>           <span class="comment">// std::max_element</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">format</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>    <span class="comment">// only needed for printing</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">histogram</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// make_histogram, integer, indexed</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>            <span class="comment">// std::cout, std::endl</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>             <span class="comment">// std::ostringstream</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">;</span>
+  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">literals</span><span class="special">;</span>
+
+  <span class="comment">/*
+    We make a 3d histogram for color values (r, g, b) in an image. We assume the values
+    are of type char. The value range then is [0, 256). The integer axis is perfect for
+    color values.
+  */</span>
+  <span class="keyword">auto</span> <span class="identifier">h</span> <span class="special">=</span> <span class="identifier">make_histogram</span><span class="special">(</span>
+    <span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;(</span><span class="number">0</span><span class="special">,</span> <span class="number">256</span><span class="special">,</span> <span class="string">"r"</span><span class="special">),</span>
+    <span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;(</span><span class="number">0</span><span class="special">,</span> <span class="number">256</span><span class="special">,</span> <span class="string">"g"</span><span class="special">),</span>
+    <span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;(</span><span class="number">0</span><span class="special">,</span> <span class="number">256</span><span class="special">,</span> <span class="string">"b"</span><span class="special">)</span>
+  <span class="special">);</span>
+
+  <span class="comment">/*
+    We don't have real image data, so fill some fake data.
+  */</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">);</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">);</span>
+  <span class="identifier">h</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="number">0</span><span class="special">);</span>
+
+  <span class="comment">/*
+    Now let's say we want to know which color is most common. We can use std::max_element
+    on an indexed range for that.
+  */</span>
+  <span class="keyword">auto</span> <span class="identifier">ind</span> <span class="special">=</span> <span class="identifier">indexed</span><span class="special">(</span><span class="identifier">h</span><span class="special">);</span>
+  <span class="keyword">auto</span> <span class="identifier">max_it</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">max_element</span><span class="special">(</span><span class="identifier">ind</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">ind</span><span class="special">.</span><span class="identifier">end</span><span class="special">());</span>
+
+  <span class="comment">/*
+    max_it is a special iterator to the histogram cell with the highest count.
+    This iterator allows one to access the cell value, bin indices, and bin values.
+    You need to twice dereference it to get to the cell value.
+  */</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">os</span><span class="special">;</span>
+  <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">format</span><span class="special">(</span><span class="string">"count=%i rgb=(%i, %i, %i)"</span><span class="special">)</span>
+        <span class="special">%</span> <span class="special">**</span><span class="identifier">max_it</span> <span class="special">%</span> <span class="identifier">max_it</span><span class="special">-&gt;</span><span class="identifier">bin</span><span class="special">(</span><span class="number">0</span><span class="identifier">_c</span><span class="special">)</span> <span class="special">%</span> <span class="identifier">max_it</span><span class="special">-&gt;</span><span class="identifier">bin</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">%</span> <span class="identifier">max_it</span><span class="special">-&gt;</span><span class="identifier">bin</span><span class="special">(</span><span class="number">2</span><span class="special">);</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">os</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+  <span class="identifier">assert</span><span class="special">(</span><span class="identifier">os</span><span class="special">.</span><span class="identifier">str</span><span class="special">()</span> <span class="special">==</span> <span class="string">"count=2 rgb=(1, 2, 3)"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.getting_started.making_classes_that_hold_histogr"></a><a class="link" href="getting_started.html#histogram.getting_started.making_classes_that_hold_histogr" title="Making classes that hold histograms">Making
+      classes that hold histograms</a>
+</h3></div></div></div>
+<p>
+        The histograms get their great flexibility and performance from being templated,
+        but this can make the types a bit cumbersome to write. Often it is possible
+        to use <code class="computeroutput"><span class="keyword">auto</span></code> to let the compiler
+        deduce the type, but when you want to store histograms in a class, you need
+        to write the type explicitly. The next example shows how this works.
+      </p>
+<pre class="programlisting"><span class="comment">//////////////// Begin: put this in header file ////////////////////</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">algorithm</span><span class="special">&gt;</span>           <span class="comment">// std::max_element</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">format</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>    <span class="comment">// only needed for printing</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">histogram</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="comment">// make_histogram, integer, indexed</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>            <span class="comment">// std::cout, std::endl</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>             <span class="comment">// std::ostringstream</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">tuple</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">vector</span><span class="special">&gt;</span>
+
+<span class="comment">// use this when axis configuration is fix to get highest performance</span>
+<span class="keyword">struct</span> <span class="identifier">HolderOfStaticHistogram</span> <span class="special">{</span>
+  <span class="comment">// put axis types here</span>
+  <span class="keyword">using</span> <span class="identifier">axes_t</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;</span>
+  <span class="special">&gt;;</span>
+  <span class="keyword">using</span> <span class="identifier">hist_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">&lt;</span><span class="identifier">axes_t</span><span class="special">&gt;;</span>
+  <span class="identifier">hist_t</span> <span class="identifier">hist_</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">// use this when axis configuration should be flexible</span>
+<span class="keyword">struct</span> <span class="identifier">HolderOfDynamicHistogram</span> <span class="special">{</span>
+  <span class="comment">// put all axis types here that you are going to use</span>
+  <span class="keyword">using</span> <span class="identifier">axis_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span><span class="special">&lt;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variable</span><span class="special">&lt;&gt;,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;</span>
+  <span class="special">&gt;;</span>
+  <span class="keyword">using</span> <span class="identifier">axes_t</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">axis_t</span><span class="special">&gt;;</span>
+  <span class="keyword">using</span> <span class="identifier">hist_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">&lt;</span><span class="identifier">axes_t</span><span class="special">&gt;;</span>
+  <span class="identifier">hist_t</span> <span class="identifier">hist_</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">//////////////// End: put this in header file ////////////////////</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">;</span>
+
+  <span class="identifier">HolderOfStaticHistogram</span> <span class="identifier">hs</span><span class="special">;</span>
+  <span class="identifier">hs</span><span class="special">.</span><span class="identifier">hist_</span> <span class="special">=</span> <span class="identifier">make_histogram</span><span class="special">(</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;(</span><span class="number">5</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">1</span><span class="special">),</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;(</span><span class="number">0</span><span class="special">,</span> <span class="number">3</span><span class="special">));</span>
+  <span class="comment">// now assign a different histogram</span>
+  <span class="identifier">hs</span><span class="special">.</span><span class="identifier">hist_</span> <span class="special">=</span> <span class="identifier">make_histogram</span><span class="special">(</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;(</span><span class="number">3</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">),</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;(</span><span class="number">4</span><span class="special">,</span> <span class="number">6</span><span class="special">));</span>
+  <span class="comment">// hs.hist_ = make_histogram(axis::regular&lt;&gt;(5, 0, 1)); does not work;</span>
+  <span class="comment">// the static histogram cannot change the number or order of axis types</span>
+
+  <span class="identifier">HolderOfDynamicHistogram</span> <span class="identifier">hd</span><span class="special">;</span>
+  <span class="identifier">hd</span><span class="special">.</span><span class="identifier">hist_</span> <span class="special">=</span> <span class="identifier">make_histogram</span><span class="special">(</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;(</span><span class="number">5</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">1</span><span class="special">),</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;(</span><span class="number">0</span><span class="special">,</span> <span class="number">3</span><span class="special">));</span>
+  <span class="comment">// now assign a different histogram</span>
+  <span class="identifier">hd</span><span class="special">.</span><span class="identifier">hist_</span> <span class="special">=</span> <span class="identifier">make_histogram</span><span class="special">(</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">regular</span><span class="special">&lt;&gt;(</span><span class="number">3</span><span class="special">,</span> <span class="special">-</span><span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">));</span>
+  <span class="comment">// and assign another</span>
+  <span class="identifier">hd</span><span class="special">.</span><span class="identifier">hist_</span> <span class="special">=</span> <span class="identifier">make_histogram</span><span class="special">(</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;(</span><span class="number">0</span><span class="special">,</span> <span class="number">5</span><span class="special">),</span> <span class="identifier">axis</span><span class="special">::</span><span class="identifier">integer</span><span class="special">&lt;&gt;(</span><span class="number">3</span><span class="special">,</span> <span class="number">5</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overview.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="guide.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

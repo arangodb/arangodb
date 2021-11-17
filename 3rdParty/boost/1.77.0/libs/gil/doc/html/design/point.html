@@ -1,0 +1,140 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Point - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Channel" href="channel.html" />
+    <link rel="prev" title="Concepts" href="concepts.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Concepts" href="concepts.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Channel" href="channel.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="point">
+<h1>Point</h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#overview" id="id1">Overview</a></li>
+<li><a class="reference internal" href="#models" id="id2">Models</a></li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id1">Overview</a></h2>
+<p>A point defines the location of a pixel inside an image. It can also be used
+to describe the dimensions of an image. In most general terms, points are
+N-dimensional and model the following concept:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">concept</span> <span class="n">PointNDConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">Regular</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="c1">// the type of a coordinate along each axis</span>
+    <span class="k">template</span> <span class="o">&lt;</span><span class="kt">size_t</span> <span class="n">K</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">axis</span><span class="p">;</span> <span class="n">where</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="n">axis</span><span class="o">&gt;</span><span class="p">;</span>
+
+    <span class="k">const</span> <span class="kt">size_t</span> <span class="n">num_dimensions</span><span class="p">;</span>
+
+    <span class="c1">// accessor/modifier of the value of each axis.</span>
+    <span class="k">template</span> <span class="o">&lt;</span><span class="kt">size_t</span> <span class="n">K</span><span class="o">&gt;</span> <span class="k">const</span> <span class="k">typename</span> <span class="n">axis</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&amp;</span> <span class="n">T</span><span class="o">::</span><span class="n">axis_value</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+    <span class="k">template</span> <span class="o">&lt;</span><span class="kt">size_t</span> <span class="n">K</span><span class="o">&gt;</span>       <span class="k">typename</span> <span class="n">axis</span><span class="o">&lt;</span><span class="n">K</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&amp;</span> <span class="n">T</span><span class="o">::</span><span class="n">axis_value</span><span class="p">();</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>GIL uses a two-dimensional point, which is a refinement of <code class="docutils literal"><span class="pre">PointNDConcept</span></code>
+in which both dimensions are of the same type:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">concept</span> <span class="n">Point2DConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">PointNDConcept</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="n">where</span> <span class="n">num_dimensions</span> <span class="o">==</span> <span class="mi">2</span><span class="p">;</span>
+    <span class="n">where</span> <span class="n">SameType</span><span class="o">&lt;</span><span class="n">axis</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">,</span> <span class="n">axis</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span><span class="p">;</span>
+
+    <span class="k">typename</span> <span class="n">value_type</span> <span class="o">=</span> <span class="n">axis</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">;</span>
+
+    <span class="k">const</span> <span class="n">value_type</span><span class="o">&amp;</span> <span class="k">operator</span><span class="p">[](</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">i</span><span class="p">);</span>
+        <span class="n">value_type</span><span class="o">&amp;</span> <span class="k">operator</span><span class="p">[](</span>      <span class="n">T</span><span class="o">&amp;</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">i</span><span class="p">);</span>
+
+    <span class="n">value_type</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<ul class="last simple">
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_point_n_d_concept.html">PointNDConcept</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_point2_d_concept.html">Point2DConcept</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="models">
+<h2><a class="toc-backref" href="#id2">Models</a></h2>
+<p>GIL provides a model of <code class="docutils literal"><span class="pre">Point2DConcept</span></code>, <code class="docutils literal"><span class="pre">point&lt;T&gt;</span></code> where <code class="docutils literal"><span class="pre">T</span></code> is the
+coordinate type.</p>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Concepts" href="concepts.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Channel" href="channel.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

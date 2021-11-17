@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>errno - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../motivation/exceptions.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../motivation.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../motivation/error_codes.html"><img src="../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">errno</h1></div></div></div>
+  
+
+<p>The idiom of returning, upon failure, a special value and storing an error code
+(an <code>int</code>) inside a global (or thread-local) object <code>errno</code> is inherited from C,
+and used in its Standard Library:</p>
+<div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="kt">int</span> <span class="nf">readValue</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*</span> <span class="n">filename</span><span class="p">)</span>
+<span class="p">{</span>  
+  <span class="n">FILE</span><span class="o">*</span> <span class="n">f</span> <span class="o">=</span> <span class="n">fopen</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">&#34;r&#34;</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">f</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// special value indicating failure
+</span><span class="c1"></span>              <span class="c1">// keep errno value set by fopen()
+</span><span class="c1"></span>
+  <span class="kt">int</span> <span class="n">i</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">r</span> <span class="o">=</span> <span class="n">fscanf</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s">&#34;%d&#34;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">i</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">r</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">r</span> <span class="o">==</span> <span class="n">EOF</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// special values: i not read
+</span><span class="c1"></span>    <span class="n">errno</span> <span class="o">=</span> <span class="n">ENODATA</span><span class="p">;</span>        <span class="c1">// choose error value to return
+</span><span class="c1"></span>    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+
+  <span class="n">fclose</span><span class="p">(</span><span class="n">f</span><span class="p">);</span>
+  <span class="n">errno</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  <span class="c1">// clear error info (success)
+</span><span class="c1"></span>  <span class="k">return</span> <span class="n">i</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>One advantage (to some, and a disadvantage to others) of this technique is that it
+uses familiar control statements (<code>if</code> and <code>return</code>) to indicate all execution
+paths that handle failures. When we read this code we know when and under what
+conditions it can exit without producing the expected result.</p>
+
+<h3 id="downsides">Downsides</h3>
+
+<p>Because on failure, as well as success, we write into a global (or thread-local)
+object, our functions are not <em>pure</em>: they have <em>side effects</em>. This means many
+useful compiler optimizations (like common subexpression elimination) cannot be
+applied. This shows that it is not only C++ that chooses suboptimal solutions
+for reporting failures.</p>
+
+<p>Whatever type we return, we always need a special value to spare, which is
+sometimes troublesome. In the above example, if the successfully read value of
+<code>i</code> is <code>0</code>, and we return it, our callers will think it is a failure even though
+it is not.</p>
+
+<p>Error propagation using <code>if</code> statements and early <code>return</code>s is manual. We can easily
+forget to check for the failure, and incorrectly let the subsequent operations
+execute, potentially causing damage to the program state.</p>
+
+<p>Upon nearly each function call layer we may have to change error code value
+so that it reflects the error condition adequate to the current layer. If we
+do so, the original error code is gone.</p>
+
+
+        </div><p><small>Last revised: January 16, 2019 at 01:05:39 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../motivation/exceptions.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../motivation.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../motivation/error_codes.html"><img src="../images/next.png" alt="Next"></a></div></body>
+</html>

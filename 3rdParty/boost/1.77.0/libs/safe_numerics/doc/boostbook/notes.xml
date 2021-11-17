@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN"
+"http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<section id="safe_numerics.notes">
+  <title>Background</title>
+
+  <para>This library started out as a re-implementation of the facilities
+  provided by <ulink url="http://safeint.codeplex.com">David LeBlanc's SafeInt
+  Library</ulink>. I found this library to be well done in every way. My main
+  usage was to run unit tests for my embedded systems projects on my PC.
+  Still, from my perspective it had a few issues.</para>
+
+  <itemizedlist>
+    <listitem>
+      <para>It was a lot of code in one header - 6400 lines. Very unwieldy to
+      understand, modify and maintain.</para>
+    </listitem>
+
+    <listitem>
+      <para>I couldn't find separate documentation other than that in the
+      header file.</para>
+    </listitem>
+
+    <listitem>
+      <para>It didn't use <ulink url="http://www.boost.org">Boost</ulink>
+      conventions for naming.</para>
+    </listitem>
+
+    <listitem>
+      <para>It required porting to different compilers.</para>
+    </listitem>
+
+    <listitem>
+      <para>It had a very long license associated with it.</para>
+    </listitem>
+
+    <listitem>
+      <para>I could find no test suite for the library.</para>
+    </listitem>
+  </itemizedlist>
+
+  <para>Using later versions of C++ and the its standard library, template
+  metaprogramming and <ulink url="http://www.boost.org">Boost
+  libraries</ulink> I managed to (re)implement similar functionality in under
+  2000 ? lines of code. I promoted this version as a possible submission to
+  the Boost. The feedback I received convinced me that no such library would
+  be considered acceptable to the large majority of C++ programmers. It seems
+  that the desire for maximum performance overrides any requirement that a
+  program be known to be free of bugs. By this time I had a better idea of the
+  opportunities available with the latest version of C++ (C++14) and resolved
+  to address this issue by creating a library which would provide all the
+  facilities of safe numerics at minimal runtime cost. The result is what you
+  see here. The library now consists of 7000 lines of code, approximately 50
+  separate tests and more than 60 pages of documentation and examples.</para>
+
+  <para>Since I wrote the above, I've been contacted by David LeBlanc. He's
+  been updating his package and informs me that the latest
+  version:<itemizedlist>
+      <listitem>
+        <para>SafeInt does not require porting for different compilers, is
+        fully supported on gcc, clang, and Visual Studio.</para>
+      </listitem>
+
+      <listitem>
+        <para>The license has been changed from MS-PL to MIT license.</para>
+      </listitem>
+
+      <listitem>
+        <para>The library has had a test suite since before it was public, and
+        is now located here:</para>
+      </listitem>
+
+      <listitem>
+        <para>SafeInt also has no external dependencies other than standard
+        library files, and doesn't need anything else installed to
+        work.</para>
+      </listitem>
+    </itemizedlist></para>
+
+  <para>His current package can now be found at in <ulink
+  url="https://github.com/dcleblanc/SafeInt">github</ulink>.</para>
+</section>

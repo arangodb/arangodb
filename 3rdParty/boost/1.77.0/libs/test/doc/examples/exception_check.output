@@ -1,0 +1,7 @@
+//[example_output
+> example
+Running 1 test case...
+test.cpp(11): error in "test": exception my_exception is expected
+
+*** 1 failures is detected in test suite "example"
+//]

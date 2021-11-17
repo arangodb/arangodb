@@ -1,0 +1,178 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Creating ndarrays - Boost.Python NumPy extension 1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '1.0',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.Python NumPy extension 1.0 documentation" href="../index.html" />
+    <link rel="up" title="Boost.Python NumPy extension Tutorial" href="index.html" />
+    <link rel="next" title="Ufuncs" href="ufunc.html" />
+    <link rel="prev" title="How to use dtypes" href="dtype.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img 
+          alt="C++ Boost" src="../_static/bpl.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html">(NumPy)</a></h1>
+<!--          <h2 align="center">CallPolicies Concept</h2>-->
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="How to use dtypes" href="dtype.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Boost.Python NumPy extension Tutorial" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Ufuncs" href="ufunc.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="creating-ndarrays">
+<h1>Creating ndarrays</h1>
+<p>The Boost.Numpy library exposes quite a few methods to create ndarrays. ndarrays can be created in a variety of ways, include empty arrays and zero filled arrays.
+ndarrays can also be created from arbitrary python sequences as well as from data and dtypes.</p>
+<p>This tutorial will introduce you to some of the ways in which you can create ndarrays. The methods covered here include creating ndarrays from arbitrary Python sequences, as well as from C++ containers, using both unit and non-unit strides</p>
+<p>First, as before, initialise the necessary namepaces and runtimes</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="cp">#include</span> <span class="cpf">&lt;boost/python/numpy.hpp&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+
+<span class="k">namespace</span> <span class="n">p</span> <span class="o">=</span> <span class="n">boost</span><span class="o">::</span><span class="n">python</span><span class="p">;</span>
+<span class="k">namespace</span> <span class="n">np</span> <span class="o">=</span> <span class="n">boost</span><span class="o">::</span><span class="n">python</span><span class="o">::</span><span class="n">numpy</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">Py_Initialize</span><span class="p">();</span>
+  <span class="n">np</span><span class="o">::</span><span class="n">initialize</span><span class="p">();</span>
+</pre></div>
+</div>
+<p>Let&#8217;s now create an ndarray from a simple tuple. We first create a tuple object, and then pass it to the array method, to generate the necessary tuple</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">p</span><span class="o">::</span><span class="n">object</span> <span class="n">tu</span> <span class="o">=</span> <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="sc">&#39;a&#39;</span><span class="p">,</span><span class="sc">&#39;b&#39;</span><span class="p">,</span><span class="sc">&#39;c&#39;</span><span class="p">);</span>
+<span class="n">np</span><span class="o">::</span><span class="n">ndarray</span> <span class="n">example_tuple</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">array</span><span class="p">(</span><span class="n">tu</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Let&#8217;s now try the same with a list. We create an empty list, add an element using the append method, and as before, call the array method</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">p</span><span class="o">::</span><span class="n">list</span> <span class="n">l</span><span class="p">;</span>
+<span class="n">l</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="sc">&#39;a&#39;</span><span class="p">);</span>
+<span class="n">np</span><span class="o">::</span><span class="n">ndarray</span> <span class="n">example_list</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">array</span> <span class="p">(</span><span class="n">l</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Optionally, we can also specify a dtype for the array</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">np</span><span class="o">::</span><span class="n">dtype</span> <span class="n">dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">dtype</span><span class="o">::</span><span class="n">get_builtin</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">np</span><span class="o">::</span><span class="n">ndarray</span> <span class="n">example_list1</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">array</span> <span class="p">(</span><span class="n">l</span><span class="p">,</span><span class="n">dt</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>We can also create an array by supplying data arrays and a few other parameters.</p>
+<p>First,create an integer array</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="kt">int</span> <span class="n">data</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">};</span>
+</pre></div>
+</div>
+<p>Create a shape, and strides, needed by the function</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">p</span><span class="o">::</span><span class="n">tuple</span> <span class="n">shape</span> <span class="o">=</span> <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+<span class="n">p</span><span class="o">::</span><span class="n">tuple</span> <span class="n">stride</span> <span class="o">=</span> <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>Here, shape is (4,) , and the stride is <cite>sizeof(int)`</cite>.
+A stride is the number of bytes that must be traveled to get to the next desired element while constructing the ndarray.</p>
+<p>The function also needs an owner, to keep track of the data array passed. Passing none is dangerous</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">p</span><span class="o">::</span><span class="n">object</span> <span class="n">own</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>The from_data function takes the data array, datatype,shape,stride and owner as arguments and returns an ndarray</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">np</span><span class="o">::</span><span class="n">ndarray</span> <span class="n">data_ex1</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">from_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">dt</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span><span class="n">stride</span><span class="p">,</span><span class="n">own</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Now let&#8217;s print the ndarray we created</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Single dimensional array ::&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span>
+          <span class="o">&lt;&lt;</span> <span class="n">p</span><span class="o">::</span><span class="n">extract</span><span class="o">&lt;</span><span class="kt">char</span> <span class="k">const</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">p</span><span class="o">::</span><span class="n">str</span><span class="p">(</span><span class="n">data_ex</span><span class="p">))</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Let&#8217;s make it a little more interesting. Lets make an 3x2 ndarray from a multi-dimensional array using non-unit strides</p>
+<p>First lets create a 3x4 array of 8-bit integers</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="kt">uint8_t</span> <span class="n">mul_data</span><span class="p">[][</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="p">{{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">},{</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">},{</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">7</span><span class="p">}};</span>
+</pre></div>
+</div>
+<p>Now let&#8217;s create an array of 3x2 elements, picking the first and third elements from each row . For that, the shape will be 3x2.
+The strides will be 4x2 i.e. 4 bytes to go to the next desired row, and 2 bytes to go to the next desired column</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">shape</span> <span class="o">=</span> <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">);</span>
+<span class="n">stride</span> <span class="o">=</span> <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">uint8_t</span><span class="p">)</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">uint8_t</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>Get the numpy dtype for the built-in 8-bit integer data type</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">np</span><span class="o">::</span><span class="n">dtype</span> <span class="n">dt1</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">dtype</span><span class="o">::</span><span class="n">get_builtin</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">();</span>
+</pre></div>
+</div>
+<p>Now lets first create and print out the ndarray as is.
+Notice how we can pass the shape and strides in the function directly, as well as the owner. The last part can be done because we don&#8217;t have any use to
+manipulate the &#8220;owner&#8221; object</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="n">np</span><span class="o">::</span><span class="n">ndarray</span> <span class="n">mul_data_ex</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">from_data</span><span class="p">(</span><span class="n">mul_data</span><span class="p">,</span> <span class="n">dt1</span><span class="p">,</span>
+                                        <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span>
+                                        <span class="n">p</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span>
+                                        <span class="n">p</span><span class="o">::</span><span class="n">object</span><span class="p">());</span>
+<span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Original multi dimensional array :: &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span>
+          <span class="o">&lt;&lt;</span> <span class="n">p</span><span class="o">::</span><span class="n">extract</span><span class="o">&lt;</span><span class="kt">char</span> <span class="k">const</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">p</span><span class="o">::</span><span class="n">str</span><span class="p">(</span><span class="n">mul_data_ex</span><span class="p">))</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Now create the new ndarray using the shape and strides and print out the array we created using non-unit strides</p>
+<div class="highlight-c++"><div class="highlight"><pre>  <span class="n">mul_data_ex</span> <span class="o">=</span> <span class="n">np</span><span class="o">::</span><span class="n">from_data</span><span class="p">(</span><span class="n">mul_data</span><span class="p">,</span> <span class="n">dt1</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">p</span><span class="o">::</span><span class="n">object</span><span class="p">());</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Selective multidimensional array :: &quot;</span><span class="o">&lt;&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">endl</span>
+            <span class="o">&lt;&lt;</span> <span class="n">p</span><span class="o">::</span><span class="n">extract</span><span class="o">&lt;</span><span class="kt">char</span> <span class="k">const</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">p</span><span class="o">::</span><span class="n">str</span><span class="p">(</span><span class="n">mul_data_ex</span><span class="p">))</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span> <span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The from_data method will throw <code class="docutils literal"><span class="pre">error_already_set</span></code> if the number of elements dictated by the shape and the corresponding strides don&#8217;t match.</p>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="How to use dtypes" href="dtype.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Boost.Python NumPy extension Tutorial" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Ufuncs" href="ufunc.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+  </body>
+</html>

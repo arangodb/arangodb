@@ -1,0 +1,41 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>value_or_error&lt;T&gt; - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../reference/concepts/basic_result.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/concepts.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/concepts/value_or_none.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>value_or_error&lt;T&gt;</code></h1></div></div></div>
+  <p>If on C++ 20 or the Concepts TS is enabled, a boolean concept matching types with a public <code>.has_value()</code> observer which returns <code>bool</code>, a public <code>.value()</code> observer function, and a public <code>.error()</code> observer function.</p>
+
+<p>If without Concepts, a static constexpr bool which is true for types matching the same requirements, using a SFINAE based emulation.</p>
+
+<p>This concept matches expected-like types such as 
+<a href="https://wg21.link/P0323" class="api-reference" target="_blank"><i class="fa fa-book" aria-hidden="true"></i> P0323 <code>std::expected&lt;T, E&gt;</code></a>
+, one of which is <a href="../../reference/types/basic_result.html" class="api-reference"><code>basic_result&lt;T, E, NoValuePolicy&gt;</code></a>
+. Be aware it does not differentiate between value-<em>or</em>-error types and value-<em>and</em>-error types if they present the interface matched above.</p>
+
+<p>If you want a concept matching specifically <a href="../../reference/types/basic_result.html" class="api-reference"><code>basic_result&lt;T, E, NoValuePolicy&gt;</code></a>
+, see <a href="../../reference/concepts/basic_result.html" class="api-reference"><code>basic_result&lt;T&gt;</code></a>
+.</p>
+
+<p><em>Namespace</em>: <code>BOOST_OUTCOME_V2_NAMESPACE::concepts</code></p>
+
+<p><em>Header</em>: <code>&lt;boost/outcome/convert.hpp&gt;</code></p>
+
+<p><em>Legacy</em>: This was named <code>convert::ValueOrError&lt;T&gt;</code> in Outcome v2.1 and earlier. Define <a href="../../reference/macros/enable_legacy_support_for.html" class="api-reference"><code>BOOST_OUTCOME_ENABLE_LEGACY_SUPPORT_FOR</code></a>
+ to less than <code>220</code> to enable.</p>
+
+
+        </div><p><small>Last revised: August 19, 2020 at 12:15:40 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../reference/concepts/basic_result.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/concepts.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/concepts/value_or_none.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

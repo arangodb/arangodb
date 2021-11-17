@@ -1,0 +1,388 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>ssl_stream</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__http__span_body/size.html" title="http::span_body::size">
+<link rel="next" href="boost__beast__ssl_stream/native_handle_type.html" title="ssl_stream::native_handle_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__http__span_body/size.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__ssl_stream/native_handle_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__ssl_stream"></a><a class="link" href="boost__beast__ssl_stream.html" title="ssl_stream">ssl_stream</a>
+</h4></div></div></div>
+<p>
+        Provides stream-oriented functionality using OpenSSL.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__ssl_stream.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__ssl_stream.synopsis"></a></span><a class="link" href="boost__beast__ssl_stream.html#beast.ref.boost__beast__ssl_stream.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/ssl/ssl_stream.hpp" target="_top">boost/beast/ssl/ssl_stream.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">NextLayer</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">ssl_stream</span> <span class="special">:</span>
+    <span class="keyword">public</span> <span class="identifier">stream_base</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__ssl_stream.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__ssl_stream.types"></a></span><a class="link" href="boost__beast__ssl_stream.html#beast.ref.boost__beast__ssl_stream.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/executor_type.html" title="ssl_stream::executor_type">executor_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/impl_struct.html" title="ssl_stream::impl_struct">impl_struct</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Structure for use with deprecated impl_type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/native_handle_type.html" title="ssl_stream::native_handle_type">native_handle_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The native handle type of the SSL stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/next_layer_type.html" title="ssl_stream::next_layer_type">next_layer_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the next layer.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__ssl_stream.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__ssl_stream.member_functions"></a></span><a class="link" href="boost__beast__ssl_stream.html#beast.ref.boost__beast__ssl_stream.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/async_handshake.html" title="ssl_stream::async_handshake">async_handshake</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Start an asynchronous SSL handshake.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/async_read_some.html" title="ssl_stream::async_read_some">async_read_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Start an asynchronous read.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/async_shutdown.html" title="ssl_stream::async_shutdown">async_shutdown</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Asynchronously shut down SSL on the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/async_write_some.html" title="ssl_stream::async_write_some">async_write_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Start an asynchronous write.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/get_executor.html" title="ssl_stream::get_executor">get_executor</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/handshake.html" title="ssl_stream::handshake">handshake</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Perform SSL handshaking.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/native_handle.html" title="ssl_stream::native_handle">native_handle</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the underlying implementation in the native type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/next_layer.html" title="ssl_stream::next_layer">next_layer</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get a reference to the next layer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/read_some.html" title="ssl_stream::read_some">read_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read some data from the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/set_verify_callback.html" title="ssl_stream::set_verify_callback">set_verify_callback</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the callback used to verify peer certificates.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/set_verify_depth.html" title="ssl_stream::set_verify_depth">set_verify_depth</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the peer verification depth.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/set_verify_mode.html" title="ssl_stream::set_verify_mode">set_verify_mode</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the peer verification mode.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/shutdown.html" title="ssl_stream::shutdown">shutdown</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Shut down SSL on the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/ssl_stream.html" title="ssl_stream::ssl_stream">ssl_stream</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Construct a stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__ssl_stream/write_some.html" title="ssl_stream::write_some">write_some</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Write some data to the stream.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__ssl_stream.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__ssl_stream.description"></a></span><a class="link" href="boost__beast__ssl_stream.html#beast.ref.boost__beast__ssl_stream.description">Description</a>
+      </h5>
+<p>
+        The stream class template provides asynchronous and blocking stream-oriented
+        functionality using SSL.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__ssl_stream.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__ssl_stream.thread_safety"></a></span><a class="link" href="boost__beast__ssl_stream.html#beast.ref.boost__beast__ssl_stream.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Distinct</em></span><span class="emphasis"><em>objects:</em></span>Safe.
+      </p>
+<p>
+        <span class="emphasis"><em>Shared</em></span><span class="emphasis"><em>objects:</em></span>Unsafe. The application
+        must also ensure that all asynchronous operations are performed within the
+        same implicit or explicit strand.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__ssl_stream.h5"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__ssl_stream.example"></a></span><a class="link" href="boost__beast__ssl_stream.html#beast.ref.boost__beast__ssl_stream.example">Example</a>
+      </h5>
+<p>
+        To use this template with a <a class="link" href="boost__beast__tcp_stream.html" title="tcp_stream"><code class="computeroutput"><span class="identifier">tcp_stream</span></code></a>, you would write:
+      </p>
+<pre class="programlisting"><span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ioc</span><span class="special">;</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ctx</span><span class="special">{</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tlsv12</span><span class="special">};</span>
+<span class="identifier">beast</span><span class="special">::</span><span class="identifier">ssl_stream</span><span class="special">&lt;</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">tcp_stream</span><span class="special">&gt;</span> <span class="identifier">sock</span><span class="special">{</span><span class="identifier">ioc</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">};</span>
+</pre>
+<p>
+        In addition to providing an interface identical to <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code>, the wrapper has the following additional
+        properties:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Satisfies <span class="bold"><strong>MoveConstructible</strong></span>
+          </li>
+<li class="listitem">
+            Satisfies <span class="bold"><strong>MoveAssignable</strong></span>
+          </li>
+<li class="listitem">
+            Constructible from a moved socket.
+          </li>
+<li class="listitem">
+            Uses <a class="link" href="boost__beast__flat_stream.html" title="flat_stream"><code class="computeroutput"><span class="identifier">flat_stream</span></code></a> internally, as a
+            performance work-around for a limitation of <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code>
+            when writing buffer sequences having length greater than one.
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__http__span_body/size.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__ssl_stream/native_handle_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

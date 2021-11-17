@@ -1,0 +1,30 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2007-2015 Barend Gehrels, Amsterdam, the Netherlands.
+# Copyright (c) 2008-2015 Bruno Lalande, Paris, France.
+# Copyright (c) 2009-2015 Mateusz Loskot, London, UK.
+# Copyright (c) 2015 Adam Wulkiewicz, Lodz, Poland.
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-concepts
+    :
+    [ run linestring_concept.cpp                                : : : : concepts_linestring_concept ]
+    [ compile point_array.cpp                                   : :     concepts_point_array ]
+    [ compile point_concept_checker.cpp                         : :     concepts_point_concept_checker ]
+    [ compile point_well_formed.cpp                             : :     concepts_point_well_formed ]
+    [ compile point_well_formed_non_cartesian.cpp               : :     concepts_point_well_formed_non_cartesian ]
+    [ compile point_well_formed_traits.cpp                      : :     concepts_point_well_formed_traits ]
+    [ compile-fail point_geographic_custom_with_wrong_units.cpp : :     concepts_point_geographic_custom_with_wrong_units ]
+    [ compile-fail point_geographic_with_wrong_units.cpp        : :     concepts_point_geographic_with_wrong_units ]
+    [ compile-fail point_spherical_custom_with_wrong_units.cpp  : :     concepts_point_spherical_custom_with_wrong_units ]
+    [ compile-fail point_spherical_with_wrong_units.cpp         : :     concepts_point_spherical_with_wrong_units ]
+    [ compile-fail point_with_incorrect_dimension.cpp           : :     concepts_point_with_incorrect_dimension ]
+    [ compile-fail point_without_coordinate_type.cpp            : :     concepts_point_without_coordinate_type ]
+    [ compile-fail point_without_dimension.cpp                  : :     concepts_point_without_dimension ]
+    [ compile-fail point_without_getter.cpp                     : :     concepts_point_without_getter ]
+    [ compile-fail point_without_setter.cpp                     : :     concepts_point_without_setter ]
+#    [ run polygon_concept.cpp                                   : : : : concepts_polygon_concept ]
+    ;

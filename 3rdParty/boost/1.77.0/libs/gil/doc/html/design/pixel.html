@@ -1,0 +1,354 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Pixel - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Pixel Iterator" href="pixel_iterator.html" />
+    <link rel="prev" title="Color Base" href="color_base.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Color Base" href="color_base.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Pixel Iterator" href="pixel_iterator.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="pixel">
+<h1>Pixel</h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#overview" id="id1">Overview</a></li>
+<li><a class="reference internal" href="#models" id="id2">Models</a></li>
+<li><a class="reference internal" href="#algorithms" id="id3">Algorithms</a></li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id1">Overview</a></h2>
+<p>A pixel is a set of channels defining the color at a given point in an
+image. Conceptually, a pixel is little more than a color base whose
+elements model <code class="docutils literal"><span class="pre">ChannelConcept</span></code>. All properties of pixels inherit
+from color bases: pixels may be <em>homogeneous</em> if all of their channels
+have the same type; otherwise they are called <em>heterogeneous</em>. The
+channels of a pixel may be addressed using semantic or physical
+indexing, or by color; all color-base algorithms work on pixels as
+well. Two pixels are <em>compatible</em> if their color spaces are the same
+and their channels, paired semantically, are compatible. Note that
+constness, memory organization and reference/value are ignored. For
+example, an 8-bit RGB planar reference is compatible to a constant
+8-bit BGR interleaved pixel value. Most pairwise pixel operations
+(copy construction, assignment, equality, etc.) are only defined for
+compatible pixels.</p>
+<p>Pixels (as well as other GIL constructs built on pixels, such as
+iterators, locators, views and images) must provide metafunctions to
+access their color space, channel mapping, number of channels, and
+(for homogeneous pixels) the channel type:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">concept</span> <span class="n">PixelBasedConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="k">typename</span> <span class="n">color_space_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="n">color_space_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">ColorSpaceConcept</span><span class="o">&lt;</span><span class="n">color_space_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">channel_mapping_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="n">channel_mapping_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">ChannelMappingConcept</span><span class="o">&lt;</span><span class="n">channel_mapping_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">is_planar</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="n">is_planar</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">SameType</span><span class="o">&lt;</span><span class="n">is_planar</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">,</span> <span class="kt">bool</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">HomogeneousPixelBasedConcept</span><span class="o">&lt;</span><span class="n">PixelBasedConcept</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="k">typename</span> <span class="n">channel_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="n">channel_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">;</span>
+      <span class="n">where</span> <span class="n">ChannelConcept</span><span class="o">&lt;</span><span class="n">channel_type</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Pixels model the following concepts:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">concept</span> <span class="n">PixelConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">P</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">ColorBaseConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">PixelBasedConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">where</span> <span class="n">is_pixel</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;::</span><span class="n">value</span><span class="o">==</span><span class="nb">true</span><span class="p">;</span>
+  <span class="c1">// where for each K [0..size&lt;P&gt;::value-1]:</span>
+  <span class="c1">//      ChannelConcept&lt;kth_element_type&lt;K&gt; &gt;;</span>
+
+  <span class="k">typename</span> <span class="n">value_type</span><span class="p">;</span>       <span class="n">where</span> <span class="n">PixelValueConcept</span><span class="o">&lt;</span><span class="n">value_type</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">reference</span><span class="p">;</span>        <span class="n">where</span> <span class="n">PixelConcept</span><span class="o">&lt;</span><span class="n">reference</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="k">typename</span> <span class="n">const_reference</span><span class="p">;</span>  <span class="n">where</span> <span class="n">PixelConcept</span><span class="o">&lt;</span><span class="n">const_reference</span><span class="o">&gt;</span><span class="p">;</span>
+  <span class="k">static</span> <span class="k">const</span> <span class="kt">bool</span> <span class="n">P</span><span class="o">::</span><span class="n">is_mutable</span><span class="p">;</span>
+
+  <span class="k">template</span> <span class="o">&lt;</span><span class="n">PixelConcept</span> <span class="n">P2</span><span class="o">&gt;</span> <span class="n">where</span> <span class="p">{</span> <span class="n">PixelConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="p">,</span><span class="n">P2</span><span class="o">&gt;</span> <span class="p">}</span>
+      <span class="n">P</span><span class="o">::</span><span class="n">P</span><span class="p">(</span><span class="n">P2</span><span class="p">);</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="n">PixelConcept</span> <span class="n">P2</span><span class="o">&gt;</span> <span class="n">where</span> <span class="p">{</span> <span class="n">PixelConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="p">,</span><span class="n">P2</span><span class="o">&gt;</span> <span class="p">}</span>
+      <span class="kt">bool</span> <span class="k">operator</span><span class="o">==</span><span class="p">(</span><span class="k">const</span> <span class="n">P</span><span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">P2</span><span class="o">&amp;</span><span class="p">);</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="n">PixelConcept</span> <span class="n">P2</span><span class="o">&gt;</span> <span class="n">where</span> <span class="p">{</span> <span class="n">PixelConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="p">,</span><span class="n">P2</span><span class="o">&gt;</span> <span class="p">}</span>
+      <span class="kt">bool</span> <span class="k">operator</span><span class="o">!=</span><span class="p">(</span><span class="k">const</span> <span class="n">P</span><span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">P2</span><span class="o">&amp;</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">MutablePixelConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">P</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">PixelConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">MutableColorBaseConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">where</span> <span class="n">is_mutable</span><span class="o">==</span><span class="nb">true</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">HomogeneousPixelConcept</span><span class="o">&lt;</span><span class="n">PixelConcept</span> <span class="n">P</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">HomogeneousColorBaseConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">HomogeneousPixelBasedConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">P</span><span class="o">::</span><span class="k">template</span> <span class="n">element_const_reference_type</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;::</span><span class="n">type</span> <span class="k">operator</span><span class="p">[](</span><span class="n">P</span> <span class="n">p</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">i</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span> <span class="k">return</span> <span class="n">dynamic_at_c</span><span class="p">(</span><span class="n">P</span><span class="p">,</span><span class="n">i</span><span class="p">);</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">MutableHomogeneousPixelConcept</span><span class="o">&lt;</span><span class="n">MutablePixelConcept</span> <span class="n">P</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">MutableHomogeneousColorBaseConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">P</span><span class="o">::</span><span class="k">template</span> <span class="n">element_reference_type</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;::</span><span class="n">type</span> <span class="k">operator</span><span class="p">[](</span><span class="n">P</span> <span class="n">p</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">i</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">dynamic_at_c</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="n">i</span><span class="p">);</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">PixelValueConcept</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">P</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">PixelConcept</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Regular</span><span class="o">&lt;</span><span class="n">P</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">where</span> <span class="n">SameType</span><span class="o">&lt;</span><span class="n">value_type</span><span class="p">,</span><span class="n">P</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">PixelsCompatibleConcept</span><span class="o">&lt;</span><span class="n">PixelConcept</span> <span class="n">P1</span><span class="p">,</span> <span class="n">PixelConcept</span> <span class="n">P2</span><span class="o">&gt;</span> <span class="o">:</span> <span class="n">ColorBasesCompatibleConcept</span><span class="o">&lt;</span><span class="n">P1</span><span class="p">,</span><span class="n">P2</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="c1">// where for each K [0..size&lt;P1&gt;::value):</span>
+  <span class="c1">//    ChannelsCompatibleConcept&lt;kth_semantic_element_type&lt;P1,K&gt;::type, kth_semantic_element_type&lt;P2,K&gt;::type&gt;;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>A pixel is <em>convertible</em> to a second pixel if it is possible to
+approximate its color in the form of the second pixel. Conversion is
+an explicit, non-symmetric and often lossy operation (due to both
+channel and color space approximation). Convertibility requires
+modeling the following concept:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span> <span class="o">&lt;</span><span class="n">PixelConcept</span> <span class="n">SrcPixel</span><span class="p">,</span> <span class="n">MutablePixelConcept</span> <span class="n">DstPixel</span><span class="o">&gt;</span>
+<span class="n">concept</span> <span class="n">PixelConvertibleConcept</span>
+<span class="p">{</span>
+  <span class="kt">void</span> <span class="n">color_convert</span><span class="p">(</span><span class="k">const</span> <span class="n">SrcPixel</span><span class="o">&amp;</span><span class="p">,</span> <span class="n">DstPixel</span><span class="o">&amp;</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>The distinction between <code class="docutils literal"><span class="pre">PixelConcept</span></code> and <code class="docutils literal"><span class="pre">PixelValueConcept</span></code> is
+analogous to that for channels and color bases - pixel reference proxies model
+both, but only pixel values model the latter.</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<ul class="last simple">
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_pixel_based_concept.html">PixelBasedConcept&lt;P&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_pixel_concept.html">PixelConcept&lt;Pixel&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_mutable_pixel_concept.html">MutablePixelConcept&lt;Pixel&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_pixel_value_concept.html">PixelValueConcept&lt;Pixel&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_homogeneous_pixel_based_concept.html">HomogeneousPixelConcept&lt;Pixel&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_mutable_homogeneous_pixel_concept.html">MutableHomogeneousPixelConcept&lt;Pixel&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_homogeneous_pixel_value_concept.html">HomogeneousPixelValueConcept&lt;Pixel&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_pixels_compatible_concept.html">PixelsCompatibleConcept&lt;Pixel1, Pixel2&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_pixel_convertible_concept.html">PixelConvertibleConcept&lt;SrcPixel, DstPixel&gt;</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="models">
+<h2><a class="toc-backref" href="#id2">Models</a></h2>
+<p>The most commonly used pixel is a homogeneous pixel whose values are
+together in memory. For this purpose GIL provides the struct
+<code class="docutils literal"><span class="pre">pixel</span></code>, templated over the channel value and layout:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="c1">// models HomogeneousPixelValueConcept</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ChannelValue</span><span class="p">,</span> <span class="k">typename</span> <span class="n">Layout</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">pixel</span><span class="p">;</span>
+
+<span class="c1">// Those typedefs are already provided by GIL</span>
+<span class="k">typedef</span> <span class="n">pixel</span><span class="o">&lt;</span><span class="n">bits8</span><span class="p">,</span> <span class="n">rgb_layout_t</span><span class="o">&gt;</span> <span class="n">rgb8_pixel_t</span><span class="p">;</span>
+<span class="k">typedef</span> <span class="n">pixel</span><span class="o">&lt;</span><span class="n">bits8</span><span class="p">,</span> <span class="n">bgr_layout_t</span><span class="o">&gt;</span> <span class="n">bgr8_pixel_t</span><span class="p">;</span>
+
+<span class="n">bgr8_pixel_t</span> <span class="nf">bgr8</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>     <span class="c1">// pixels can be initialized with the channels directly</span>
+<span class="n">rgb8_pixel_t</span> <span class="nf">rgb8</span><span class="p">(</span><span class="n">bgr8</span><span class="p">);</span>        <span class="c1">// compatible pixels can also be copy-constructed</span>
+
+<span class="n">rgb8</span> <span class="o">=</span> <span class="n">bgr8</span><span class="p">;</span>            <span class="c1">// assignment and equality is defined between compatible pixels</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">rgb8</span> <span class="o">==</span> <span class="n">bgr8</span><span class="p">);</span>   <span class="c1">// assignment and equality operate on the semantic channels</span>
+
+<span class="c1">// The first physical channels of the two pixels are different</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">at_c</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span><span class="p">(</span><span class="n">rgb8</span><span class="p">)</span> <span class="o">!=</span> <span class="n">at_c</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span><span class="p">(</span><span class="n">bgr8</span><span class="p">));</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">dynamic_at_c</span><span class="p">(</span><span class="n">bgr8</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span> <span class="o">!=</span> <span class="n">dynamic_at_c</span><span class="p">(</span><span class="n">rgb8</span><span class="p">,</span><span class="mi">0</span><span class="p">));</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">rgb8</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">bgr8</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span> <span class="c1">// same as above (but operator[] is defined for pixels only)</span>
+</pre></div>
+</div>
+<p>Planar pixels have their channels distributed in memory. While they share the
+same value type (<code class="docutils literal"><span class="pre">pixel</span></code>) with interleaved pixels, their reference type is a
+proxy class containing references to each of the channels.
+This is implemented with the struct <code class="docutils literal"><span class="pre">planar_pixel_reference</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="c1">// models HomogeneousPixel</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ChannelReference</span><span class="p">,</span> <span class="k">typename</span> <span class="n">ColorSpace</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">planar_pixel_reference</span><span class="p">;</span>
+
+<span class="c1">// Define the type of a mutable and read-only reference. (These typedefs are already provided by GIL)</span>
+<span class="k">typedef</span> <span class="n">planar_pixel_reference</span><span class="o">&lt;</span>      <span class="n">bits8</span><span class="o">&amp;</span><span class="p">,</span><span class="n">rgb_t</span><span class="o">&gt;</span> <span class="n">rgb8_planar_ref_t</span><span class="p">;</span>
+<span class="k">typedef</span> <span class="n">planar_pixel_reference</span><span class="o">&lt;</span><span class="k">const</span> <span class="n">bits8</span><span class="o">&amp;</span><span class="p">,</span><span class="n">rgb_t</span><span class="o">&gt;</span> <span class="n">rgb8c_planar_ref_t</span><span class="p">;</span>
+</pre></div>
+</div>
+<p>Note that, unlike the <code class="docutils literal"><span class="pre">pixel</span></code> struct, planar pixel references are templated
+over the color space, not over the pixel layout. They always use a canonical
+channel ordering. Ordering of their elements is unnecessary because their
+elements are references to the channels.</p>
+<p>Sometimes the channels of a pixel may not be byte-aligned. For example an RGB
+pixel in &#8216;5-5-6&#8217; format is a 16-bit pixel whose red, green and blue channels
+occupy bits [0..4],[5..9] and [10..15] respectively. GIL provides a model for
+such packed pixel formats:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="c1">// define an rgb565 pixel</span>
+<span class="k">typedef</span> <span class="n">packed_pixel_type</span><span class="o">&lt;</span><span class="kt">uint16_t</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector3_c</span><span class="o">&lt;</span><span class="kt">unsigned</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">rgb_layout_t</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">rgb565_pixel_t</span><span class="p">;</span>
+
+<span class="n">function_requires</span><span class="o">&lt;</span><span class="n">PixelValueConcept</span><span class="o">&lt;</span><span class="n">rgb565_pixel_t</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">();</span>
+<span class="k">static_assert</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">rgb565_pixel_t</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">);</span>
+
+<span class="c1">// define a bgr556 pixel</span>
+<span class="k">typedef</span> <span class="n">packed_pixel_type</span><span class="o">&lt;</span><span class="kt">uint16_t</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector3_c</span><span class="o">&lt;</span><span class="kt">unsigned</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">bgr_layout_t</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">bgr556_pixel_t</span><span class="p">;</span>
+
+<span class="n">function_requires</span><span class="o">&lt;</span><span class="n">PixelValueConcept</span><span class="o">&lt;</span><span class="n">bgr556_pixel_t</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">();</span>
+
+<span class="c1">// rgb565 is compatible with bgr556.</span>
+<span class="n">function_requires</span><span class="o">&lt;</span><span class="n">PixelsCompatibleConcept</span><span class="o">&lt;</span><span class="n">rgb565_pixel_t</span><span class="p">,</span><span class="n">bgr556_pixel_t</span><span class="o">&gt;</span> <span class="o">&gt;</span><span class="p">();</span>
+</pre></div>
+</div>
+<p>In some cases, the pixel itself may not be byte aligned. For example,
+consider an RGB pixel in &#8216;2-3-2&#8217; format. Its size is 7 bits. GIL
+refers to such pixels, pixel iterators and images as
+&#8220;bit-aligned&#8221;. Bit-aligned pixels (and images) are more complex than
+packed ones. Since packed pixels are byte-aligned, we can use a C++
+reference as the reference type to a packed pixel, and a C pointer as
+an x_iterator over a row of packed pixels. For bit-aligned constructs
+we need a special reference proxy class (bit_aligned_pixel_reference)
+and iterator class (bit_aligned_pixel_iterator). The value type of
+bit-aligned pixels is a packed_pixel. Here is how to use bit_aligned
+pixels and pixel iterators:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="c1">// Mutable reference to a BGR232 pixel</span>
+<span class="k">typedef</span> <span class="k">const</span> <span class="n">bit_aligned_pixel_reference</span><span class="o">&lt;</span><span class="kt">unsigned</span> <span class="kt">char</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector3_c</span><span class="o">&lt;</span><span class="kt">unsigned</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">bgr_layout_t</span><span class="p">,</span> <span class="nb">true</span><span class="o">&gt;</span>  <span class="n">bgr232_ref_t</span><span class="p">;</span>
+
+<span class="c1">// A mutable iterator over BGR232 pixels</span>
+<span class="k">typedef</span> <span class="n">bit_aligned_pixel_iterator</span><span class="o">&lt;</span><span class="n">bgr232_ref_t</span><span class="o">&gt;</span> <span class="n">bgr232_ptr_t</span><span class="p">;</span>
+
+<span class="c1">// BGR232 pixel value. It is a packed_pixel of size 1 byte. (The last bit is unused)</span>
+<span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">iterator_traits</span><span class="o">&lt;</span><span class="n">bgr232_ptr_t</span><span class="o">&gt;::</span><span class="n">value_type</span> <span class="n">bgr232_pixel_t</span><span class="p">;</span>
+<span class="k">static_assert</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">bgr232_pixel_t</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s">&quot;&quot;</span><span class="p">);</span>
+
+<span class="n">bgr232_pixel_t</span> <span class="nf">red</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">);</span> <span class="c1">// = 0RRGGGBB, = 01100000 = 0x60</span>
+
+<span class="c1">// a buffer of 7 bytes fits exactly 8 BGR232 pixels.</span>
+<span class="kt">unsigned</span> <span class="kt">char</span> <span class="n">pix_buffer</span><span class="p">[</span><span class="mi">7</span><span class="p">];</span>
+<span class="n">std</span><span class="o">::</span><span class="n">fill</span><span class="p">(</span><span class="n">pix_buffer</span><span class="p">,</span><span class="n">pix_buffer</span><span class="o">+</span><span class="mi">7</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>
+
+<span class="c1">// Fill the 8 pixels with red</span>
+<span class="n">bgr232_ptr_t</span> <span class="nf">pix_it</span><span class="p">(</span><span class="o">&amp;</span><span class="n">pix_buffer</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mi">0</span><span class="p">);</span>  <span class="c1">// start at bit 0 of the first pixel</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">8</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="o">*</span><span class="n">pix_it</span><span class="o">++</span> <span class="o">=</span> <span class="n">red</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="c1">// Result: 0x60 0x30 0x11 0x0C 0x06 0x83 0xC1</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="algorithms">
+<h2><a class="toc-backref" href="#id3">Algorithms</a></h2>
+<p>Since pixels model <code class="docutils literal"><span class="pre">ColorBaseConcept</span></code> and <code class="docutils literal"><span class="pre">PixelBasedConcept</span></code> all
+algorithms and metafunctions of color bases can work with them as well:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="c1">// This is how to access the first semantic channel (red)</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">semantic_at_c</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span><span class="p">(</span><span class="n">rgb8</span><span class="p">)</span> <span class="o">==</span> <span class="n">semantic_at_c</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span><span class="p">(</span><span class="n">bgr8</span><span class="p">));</span>
+
+<span class="c1">// This is how to access the red channel by name</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">get_color</span><span class="o">&lt;</span><span class="n">red_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">rgb8</span><span class="p">)</span> <span class="o">==</span> <span class="n">get_color</span><span class="o">&lt;</span><span class="n">red_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">bgr8</span><span class="p">));</span>
+
+<span class="c1">// This is another way of doing it (some compilers don&#39;t like the first one)</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">get_color</span><span class="p">(</span><span class="n">rgb8</span><span class="p">,</span><span class="n">red_t</span><span class="p">())</span> <span class="o">==</span> <span class="n">get_color</span><span class="p">(</span><span class="n">bgr8</span><span class="p">,</span><span class="n">red_t</span><span class="p">()));</span>
+
+<span class="c1">// This is how to use the PixelBasedConcept metafunctions</span>
+<span class="n">BOOST_MPL_ASSERT</span><span class="p">(</span><span class="n">num_channels</span><span class="o">&lt;</span><span class="n">rgb8_pixel_t</span><span class="o">&gt;::</span><span class="n">value</span> <span class="o">==</span> <span class="mi">3</span><span class="p">);</span>
+<span class="n">BOOST_MPL_ASSERT</span><span class="p">((</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">channel_type</span><span class="o">&lt;</span><span class="n">rgb8_pixel_t</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">,</span> <span class="n">bits8</span><span class="o">&gt;</span><span class="p">));</span>
+<span class="n">BOOST_MPL_ASSERT</span><span class="p">((</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">color_space_type</span><span class="o">&lt;</span><span class="n">bgr8_pixel_t</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">,</span> <span class="n">rgb_t</span><span class="o">&gt;</span> <span class="p">));</span>
+<span class="n">BOOST_MPL_ASSERT</span><span class="p">((</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">channel_mapping_type</span><span class="o">&lt;</span><span class="n">bgr8_pixel_t</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector3_c</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="o">&gt;</span> <span class="o">&gt;</span> <span class="p">));</span>
+
+<span class="c1">// Pixels contain just the three channels and nothing extra</span>
+<span class="n">BOOST_MPL_ASSERT</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="n">rgb8_pixel_t</span><span class="p">)</span><span class="o">==</span><span class="mi">3</span><span class="p">);</span>
+
+<span class="n">rgb8_planar_ref_t</span> <span class="nf">ref</span><span class="p">(</span><span class="n">bgr8</span><span class="p">);</span>    <span class="c1">// copy construction is allowed from a compatible mutable pixel type</span>
+
+<span class="n">get_color</span><span class="o">&lt;</span><span class="n">red_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>     <span class="c1">// assignment is ok because the reference is mutable</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">get_color</span><span class="o">&lt;</span><span class="n">red_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">bgr8</span><span class="p">)</span><span class="o">==</span><span class="mi">10</span><span class="p">);</span>  <span class="c1">// references modify the value they are bound to</span>
+
+<span class="c1">// Create a zero packed pixel and a full regular unpacked pixel.</span>
+<span class="n">rgb565_pixel_t</span> <span class="n">r565</span><span class="p">;</span>
+<span class="n">rgb8_pixel_t</span> <span class="nf">rgb_full</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span><span class="mi">255</span><span class="p">,</span><span class="mi">255</span><span class="p">);</span>
+
+<span class="c1">// Convert all channels of the unpacked pixel to the packed one &amp; assert the packed one is full</span>
+<span class="n">get_color</span><span class="p">(</span><span class="n">r565</span><span class="p">,</span><span class="n">red_t</span><span class="p">())</span>   <span class="o">=</span> <span class="n">channel_convert</span><span class="o">&lt;</span><span class="n">rgb565_channel0_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">get_color</span><span class="p">(</span><span class="n">rgb_full</span><span class="p">,</span><span class="n">red_t</span><span class="p">()));</span>
+<span class="n">get_color</span><span class="p">(</span><span class="n">r565</span><span class="p">,</span><span class="n">green_t</span><span class="p">())</span> <span class="o">=</span> <span class="n">channel_convert</span><span class="o">&lt;</span><span class="n">rgb565_channel1_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">get_color</span><span class="p">(</span><span class="n">rgb_full</span><span class="p">,</span><span class="n">green_t</span><span class="p">()));</span>
+<span class="n">get_color</span><span class="p">(</span><span class="n">r565</span><span class="p">,</span><span class="n">blue_t</span><span class="p">())</span>  <span class="o">=</span> <span class="n">channel_convert</span><span class="o">&lt;</span><span class="n">rgb565_channel2_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">get_color</span><span class="p">(</span><span class="n">rgb_full</span><span class="p">,</span><span class="n">blue_t</span><span class="p">()));</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">r565</span> <span class="o">==</span> <span class="n">rgb565_pixel_t</span><span class="p">((</span><span class="kt">uint16_t</span><span class="p">)</span><span class="mi">65535</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>GIL also provides the <code class="docutils literal"><span class="pre">color_convert</span></code> algorithm to convert between pixels of
+different color spaces and channel types:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">rgb8_pixel_t</span> <span class="nf">red_in_rgb8</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span>
+<span class="n">cmyk16_pixel_t</span> <span class="n">red_in_cmyk16</span><span class="p">;</span>
+<span class="n">color_convert</span><span class="p">(</span><span class="n">red_in_rgb8</span><span class="p">,</span><span class="n">red_in_cmyk16</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Color Base" href="color_base.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Pixel Iterator" href="pixel_iterator.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,42 @@
+# Boost.uBLAS
+#
+# Copyright (c) 2018 Cem Bassoy
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+project boost/ublas/test/tensor
+    : requirements
+      # these tests require C++17
+      <cxxstd>11:<build>no
+      <toolset>gcc:<cxxflags>"-Wall -Wno-unknown-pragmas -Wno-sign-compare -Wno-unused-but-set-variable"
+    ;
+
+alias unit_test_framework
+    : # sources
+        /boost//unit_test_framework
+    ;
+
+# make aliases explicit so the libraries will only be built when requested
+explicit unit_test_framework ;
+
+
+
+test-suite boost-ublas-tensor-test
+    :
+    [ run test_tensor.cpp 
+          test_strides.cpp 
+          test_operators_comparison.cpp 
+          test_operators_arithmetic.cpp
+          test_multiplication.cpp
+          test_multi_index_utility.cpp
+          test_multi_index.cpp
+          test_functions.cpp
+          test_extents.cpp
+          test_expression_evaluation.cpp
+          test_einstein_notation.cpp
+          test_algorithms.cpp
+          test_tensor_matrix_vector.cpp
+          unit_test_framework ]
+    ;

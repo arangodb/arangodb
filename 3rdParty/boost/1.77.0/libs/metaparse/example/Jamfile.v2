@@ -1,0 +1,14 @@
+build-project binary_number ;
+build-project calculator ;
+build-project calculator_with_parens ;
+build-project calculator_with_parens_and_unary_ops ;
+build-project compile_to_native_code ;
+build-project constexpr_parser ;
+build-project grammar_calculator ;
+build-project meta_hs ;
+build-project meta_lambda ;
+build-project meta_metaparse ;
+build-project minimal_rational ;
+build-project parsing_error ;
+build-project rational ;
+build-project regexp ;

@@ -1,0 +1,14 @@
+{
+    "key": "local_function",
+    "name": "Local Function",
+    "authors": [
+        "Lorenzo Caminiti"
+    ],
+    "description": "Program functions locally, within other functions, directly within the scope where they are needed.",
+    "category": [
+        "Function-objects"
+    ],
+    "maintainers": [
+        "Lorenzo Caminiti <lorcaminiti -at- gmail.com>"
+    ]
+}

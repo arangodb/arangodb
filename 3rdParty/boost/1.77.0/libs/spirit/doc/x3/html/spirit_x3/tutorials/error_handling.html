@@ -1,0 +1,493 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Error Handling</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Spirit X3 3.0.9">
+<link rel="up" href="../tutorials.html" title="Tutorials">
+<link rel="prev" href="rexpr.html" title="RExpressions - Recursive ASTs!">
+<link rel="next" href="../quick_reference.html" title="Quick Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rexpr.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorials.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../quick_reference.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="spirit_x3.tutorials.error_handling"></a><a class="link" href="error_handling.html" title="Error Handling">Error Handling</a>
+</h3></div></div></div>
+<p>
+        This tutorial wouldn't be complete without touching on error handling. As
+        a prerequisite in understanding this tutorial, please review the previous
+        <a class="link" href="employee.html" title="Employee - Parsing into structs">employee</a> and <a class="link" href="annotation.html" title="Annotations - Decorating the ASTs">annotations</a>
+        examples. This example builds on top of these previous examples.
+      </p>
+<p>
+        The full cpp file for this example can be found here: <a href="../../../../../example/x3/error_handling.cpp" target="_top">error_handling.cpp</a>
+      </p>
+<p>
+        Please review the previous <a class="link" href="annotation.html" title="Annotations - Decorating the ASTs">annotations
+        example</a>. The information there will be very helpful in understanding
+        error handling.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.error_handling.h0"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.error_handling.the_ast"></a></span><a class="link" href="error_handling.html#spirit_x3.tutorials.error_handling.the_ast">The
+        AST</a>
+      </h5>
+<p>
+        Our AST is exactly the same as what we had before in the <a class="link" href="annotation.html" title="Annotations - Decorating the ASTs">annotations</a>:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">client</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">ast</span>
+<span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">person</span> <span class="special">:</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">position_tagged</span>
+    <span class="special">{</span>
+        <span class="identifier">person</span><span class="special">(</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">first_name</span> <span class="special">=</span> <span class="string">""</span>
+          <span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">last_name</span> <span class="special">=</span> <span class="string">""</span>
+        <span class="special">)</span>
+        <span class="special">:</span> <span class="identifier">first_name</span><span class="special">(</span><span class="identifier">first_name</span><span class="special">)</span>
+        <span class="special">,</span> <span class="identifier">last_name</span><span class="special">(</span><span class="identifier">last_name</span><span class="special">)</span>
+        <span class="special">{}</span>
+
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">first_name</span><span class="special">,</span> <span class="identifier">last_name</span><span class="special">;</span>
+    <span class="special">};</span>
+
+    <span class="keyword">struct</span> <span class="identifier">employee</span> <span class="special">:</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">position_tagged</span>
+    <span class="special">{</span>
+        <span class="keyword">int</span> <span class="identifier">age</span><span class="special">;</span>
+        <span class="identifier">person</span> <span class="identifier">who</span><span class="special">;</span>
+        <span class="keyword">double</span> <span class="identifier">salary</span><span class="special">;</span>
+    <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+<p>
+        We have two structs, the <code class="computeroutput"><span class="identifier">person</span></code>
+        and the <code class="computeroutput"><span class="identifier">employee</span></code>. Each inherits
+        from <code class="computeroutput"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">position_tagged</span></code> which provides positional
+        information that we can use to tell the AST's position in the input stream
+        anytime. We will need these information for error handling and reporting.
+      </p>
+<p>
+        Like before, we need to tell <a href="../../../../../../../libs/fusion/doc/html/index.html" target="_top">Boost.Fusion</a>
+        about our structs to make them first-class fusion citizens that the grammar
+        can utilize:
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_FUSION_ADAPT_STRUCT</span><span class="special">(</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">person</span><span class="special">,</span>
+    <span class="identifier">first_name</span><span class="special">,</span> <span class="identifier">last_name</span>
+<span class="special">)</span>
+
+<span class="identifier">BOOST_FUSION_ADAPT_STRUCT</span><span class="special">(</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">,</span>
+    <span class="identifier">age</span><span class="special">,</span> <span class="identifier">who</span><span class="special">,</span> <span class="identifier">salary</span>
+<span class="special">)</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.error_handling.h1"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.error_handling.expectations"></a></span><a class="link" href="error_handling.html#spirit_x3.tutorials.error_handling.expectations">Expectations</a>
+      </h5>
+<p>
+        There are occasions in which it is expected that the input must match a particular
+        parser or the input is invalid. Such cases generally arise after matching
+        a portion of a grammar, such that the context is fully known. In such a situation,
+        failure to match should result in an exception. For example, when parsing
+        an e-mail address, a name, an "@" and a domain name must be matched
+        or the address is invalid.
+      </p>
+<p>
+        Two X3 mechanisms facilitate parser expectations:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            The expectation operator (Expectation operator)
+          </li>
+<li class="listitem">
+            The expect directive (<code class="computeroutput"><span class="identifier">expect</span></code><code class="computeroutput"><span class="special">[</span><span class="identifier">p</span><span class="special">]</span></code>)
+          </li>
+</ol></div>
+<p>
+        The expectation operator (Expectation operator) requires that the following
+        parser (<code class="computeroutput"><span class="identifier">b</span></code>) match the input
+        or an <code class="computeroutput"><span class="identifier">expectation_failure</span></code>
+        is emitted. Using a client supplied <code class="computeroutput"><span class="identifier">on_error</span></code>
+        handler, the exception can be serviced by calling the handler with the source
+        iterators and context at which the parsing failed can be reported.
+      </p>
+<p>
+        By contrast, the sequence operator (Sequence) does not require that the following
+        parser match the input, which allows for backtracking or simply returning
+        false from the parse function with no exceptions.
+      </p>
+<p>
+        The expect directive (<code class="computeroutput"><span class="identifier">expect</span></code><code class="computeroutput"><span class="special">[</span><span class="identifier">p</span><span class="special">]</span></code>)
+        requires that the argument parser matches the input or an exception is emitted.
+        Using on_error(), that exception can be handled by calling a handler with
+        the context at which the parsing failed can be reported.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.error_handling.h2"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.error_handling.on_error"></a></span><a class="link" href="error_handling.html#spirit_x3.tutorials.error_handling.on_error">on_error</a>
+      </h5>
+<p>
+        <code class="computeroutput"><span class="identifier">on_error</span></code> is the counterpart
+        of <code class="computeroutput"><span class="identifier">on_success</span></code>, as discussed
+        in the <a class="link" href="annotation.html" title="Annotations - Decorating the ASTs">annotations example</a>.
+        While <code class="computeroutput"><span class="identifier">on_success</span></code> handlers
+        are callback hooks to client code that are executed by the parser after a
+        <span class="emphasis"><em>successful</em></span> parse, <code class="computeroutput"><span class="identifier">on_error</span></code>
+        handlers are callback hooks to client code that are executed by the parser
+        when an <code class="computeroutput"><span class="identifier">expectation_failure</span></code>
+        is thrown via the expect operator or directive. <code class="computeroutput"><span class="identifier">on_error</span></code>
+        handlers have access to the iterators, the context and the exception that
+        was thrown.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.error_handling.h3"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.error_handling.error_handling"></a></span><a class="link" href="error_handling.html#spirit_x3.tutorials.error_handling.error_handling">Error
+        Handling</a>
+      </h5>
+<p>
+        Before we proceed, let me introduce a helper class, the x3::error_handler.
+        It is utility class that provides <a href="https://clang.llvm.org/" target="_top">Clang</a>
+        style error reporting which gives you nice reports such as the following:
+      </p>
+<pre class="programlisting">In line 16:
+Error! Expecting: person here:
+    'I am not a person!'    &lt;--- this should be a person
+____^_
+</pre>
+<p>
+        We'll see later that this error message is exactly what this example emits.
+      </p>
+<p>
+        Here's our <code class="computeroutput"><span class="identifier">on_error</span></code> handler:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">error_handler</span>
+<span class="special">{</span>
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Exception</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Context</span><span class="special">&gt;</span>
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">error_handler_result</span> <span class="identifier">on_error</span><span class="special">(</span>
+        <span class="identifier">Iterator</span><span class="special">&amp;</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">last</span>
+      <span class="special">,</span> <span class="identifier">Exception</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">Context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">context</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">error_handler</span> <span class="special">=</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">error_handler_tag</span><span class="special">&gt;(</span><span class="identifier">context</span><span class="special">).</span><span class="identifier">get</span><span class="special">();</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">message</span> <span class="special">=</span> <span class="string">"Error! Expecting: "</span> <span class="special">+</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">which</span><span class="special">()</span> <span class="special">+</span> <span class="string">" here:"</span><span class="special">;</span>
+        <span class="identifier">error_handler</span><span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">where</span><span class="special">(),</span> <span class="identifier">message</span><span class="special">);</span>
+        <span class="keyword">return</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">error_handler_result</span><span class="special">::</span><span class="identifier">fail</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        <code class="computeroutput"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">error_handler_tag</span></code> is a special tag we will
+        use to get a reference to the actual x3::error_handler that we will inject
+        at very start, when we call parse. We get the x3::error_handler here:
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">error_handler</span> <span class="special">=</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">error_handler_tag</span><span class="special">&gt;(</span><span class="identifier">context</span><span class="special">).</span><span class="identifier">get</span><span class="special">();</span>
+</pre>
+<p>
+        The x3::error_handler handles all the nitty gritty details such as determining
+        the line number and actual column position, and formatting the error message
+        printed. All we have to do is provide the actual error string which we extract
+        from the <code class="computeroutput"><span class="identifier">expectation_failure</span></code>
+        exception:
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">message</span> <span class="special">=</span> <span class="string">"Error! Expecting: "</span> <span class="special">+</span> <span class="identifier">x</span><span class="special">.</span><span class="identifier">which</span><span class="special">()</span> <span class="special">+</span> <span class="string">" here:"</span><span class="special">;</span>
+</pre>
+<p>
+        Then, we return <code class="computeroutput"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">error_handler_result</span><span class="special">::</span><span class="identifier">fail</span></code> to tell X3 that we want to fail the
+        parse when such an event is caught. You can return one of:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Action</span></code>
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  fail
+                </p>
+              </td>
+<td>
+                <p>
+                  Quit and fail. Return a no_match.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  retry
+                </p>
+              </td>
+<td>
+                <p>
+                  Attempt error recovery, possibly moving the iterator position.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  accept
+                </p>
+              </td>
+<td>
+                <p>
+                  Force success, moving the iterator position appropriately.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  rethrow
+                </p>
+              </td>
+<td>
+                <p>
+                  Rethrows the error.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="spirit_x3.tutorials.error_handling.h4"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.error_handling.the_parser"></a></span><a class="link" href="error_handling.html#spirit_x3.tutorials.error_handling.the_parser">The
+        Parser</a>
+      </h5>
+<p>
+        Now we'll rewrite employee parser with error handling in mind. Like the
+        <a class="link" href="annotation.html" title="Annotations - Decorating the ASTs">annotations</a> example,
+        inputs will be of the form:
+      </p>
+<pre class="programlisting"><span class="special">{</span> <span class="identifier">age</span><span class="special">,</span> <span class="string">"forename"</span><span class="special">,</span> <span class="string">"surname"</span><span class="special">,</span> <span class="identifier">salary</span> <span class="special">}</span>
+</pre>
+<p>
+        Here we go:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">parser</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">int_</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">double_</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">lexeme</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">ascii</span><span class="special">::</span><span class="identifier">char_</span><span class="special">;</span>
+
+    <span class="keyword">struct</span> <span class="identifier">quoted_string_class</span><span class="special">;</span>
+    <span class="keyword">struct</span> <span class="identifier">person_class</span><span class="special">;</span>
+    <span class="keyword">struct</span> <span class="identifier">employee_class</span><span class="special">;</span>
+
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">quoted_string_class</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">quoted_string</span> <span class="special">=</span> <span class="string">"quoted_string"</span><span class="special">;</span>
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">person_class</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">::</span><span class="identifier">person</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">person</span> <span class="special">=</span> <span class="string">"person"</span><span class="special">;</span>
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">employee_class</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">employee</span> <span class="special">=</span> <span class="string">"employee"</span><span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">quoted_string_def</span> <span class="special">=</span> <span class="identifier">lexeme</span><span class="special">[</span><span class="char">'"'</span> <span class="special">&gt;&gt;</span> <span class="special">+(</span><span class="identifier">char_</span> <span class="special">-</span> <span class="char">'"'</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">'"'</span><span class="special">];</span>
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">person_def</span> <span class="special">=</span> <span class="identifier">quoted_string</span> <span class="special">&gt;</span> <span class="char">','</span> <span class="special">&gt;</span> <span class="identifier">quoted_string</span><span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">employee_def</span> <span class="special">=</span>
+            <span class="char">'{'</span>
+        <span class="special">&gt;</span>   <span class="identifier">int_</span> <span class="special">&gt;</span> <span class="char">','</span>
+        <span class="special">&gt;</span>   <span class="identifier">person</span> <span class="special">&gt;</span> <span class="char">','</span>
+        <span class="special">&gt;</span>   <span class="identifier">double_</span>
+        <span class="special">&gt;</span>   <span class="char">'}'</span>
+        <span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">employees</span> <span class="special">=</span> <span class="identifier">employee</span> <span class="special">&gt;&gt;</span> <span class="special">*(</span><span class="char">','</span> <span class="special">&gt;&gt;</span> <span class="identifier">employee</span><span class="special">);</span>
+
+    <span class="identifier">BOOST_SPIRIT_DEFINE</span><span class="special">(</span><span class="identifier">quoted_string</span><span class="special">,</span> <span class="identifier">person</span><span class="special">,</span> <span class="identifier">employee</span><span class="special">);</span>
+
+    <span class="keyword">struct</span> <span class="identifier">quoted_string_class</span> <span class="special">{};</span>
+    <span class="keyword">struct</span> <span class="identifier">person_class</span> <span class="special">:</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">annotate_on_success</span> <span class="special">{};</span>
+    <span class="keyword">struct</span> <span class="identifier">employee_class</span> <span class="special">:</span> <span class="identifier">error_handler</span><span class="special">,</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">annotate_on_success</span> <span class="special">{};</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Go back and review the <a class="link" href="annotation.html#__tutorial_annotated_employee_parser__">annotated
+        employee parser</a>. What has changed? It is almost identical, except:
+      </p>
+<p>
+        Where appropriate, we're using the expectation operator (Expectation operator)
+        in place of the sequence operator (Sequence):
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">person_def</span> <span class="special">=</span> <span class="identifier">quoted_string</span> <span class="special">&gt;</span> <span class="char">','</span> <span class="special">&gt;</span> <span class="identifier">quoted_string</span><span class="special">;</span>
+
+<span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">employee_def</span> <span class="special">=</span>
+        <span class="char">'{'</span>
+    <span class="special">&gt;</span>   <span class="identifier">int_</span> <span class="special">&gt;</span> <span class="char">','</span>
+    <span class="special">&gt;</span>   <span class="identifier">person</span> <span class="special">&gt;</span> <span class="char">','</span>
+    <span class="special">&gt;</span>   <span class="identifier">double_</span>
+    <span class="special">&gt;</span>   <span class="char">'}'</span>
+    <span class="special">;</span>
+</pre>
+<p>
+        You will have some "deterministic points" in the grammar. Those
+        are the places where backtracking <span class="bold"><strong>cannot</strong></span>
+        occur. For our example above, when you get a <code class="computeroutput"><span class="char">'{'</span></code>,
+        you definitely must see an <code class="computeroutput"><span class="identifier">int_</span></code>
+        next. After that, you definitely must have a <code class="computeroutput"><span class="char">','</span></code>
+        next and then a <code class="computeroutput"><span class="identifier">person</span></code> and
+        so on until the final <code class="computeroutput"><span class="char">'}'</span></code>. Otherwise,
+        there is no point in proceeding and trying other branches, regardless where
+        they are. The input is definitely erroneous. When this happens, an expectation_failure
+        exception is thrown. Somewhere outward, the error handler will catch the
+        exception. In our case, it is caught in our <code class="computeroutput"><span class="identifier">on_error</span></code>
+        handler.
+      </p>
+<p>
+        Notice too that we subclass the <code class="computeroutput"><span class="identifier">employee_class</span></code>
+        from our <code class="computeroutput"><span class="identifier">error_handler</span></code>. By
+        doing so, we tell X3 that we want to call our <code class="computeroutput"><span class="identifier">error_handler</span></code>
+        whenever an exception is thrown somewhere inside the <code class="computeroutput"><span class="identifier">employee</span></code>
+        rule and whatever else it calls (i.e. the <code class="computeroutput"><span class="identifier">person</span></code>
+        and <code class="computeroutput"><span class="identifier">quoted_string</span></code> rules).
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.error_handling.h5"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.error_handling.let_s_parse"></a></span><a class="link" href="error_handling.html#spirit_x3.tutorials.error_handling.let_s_parse">Let's
+        Parse</a>
+      </h5>
+<p>
+        Now we have the complete parse mechanism with error handling:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">parse</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">input</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">ascii</span><span class="special">::</span><span class="identifier">space</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">::</span><span class="identifier">const_iterator</span> <span class="identifier">iterator_type</span><span class="special">;</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span> <span class="identifier">ast</span><span class="special">;</span>
+    <span class="identifier">iterator_type</span> <span class="identifier">iter</span> <span class="special">=</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span>
+    <span class="identifier">iterator_type</span> <span class="keyword">const</span> <span class="identifier">end</span> <span class="special">=</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">end</span><span class="special">();</span>
+
+    <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">with</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">error_handler_tag</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">error_handler_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">error_handler</span><span class="special">&lt;</span><span class="identifier">iterator_type</span><span class="special">&gt;;</span>
+
+    <span class="comment">// Our error handler</span>
+    <span class="identifier">error_handler_type</span> <span class="identifier">error_handler</span><span class="special">(</span><span class="identifier">iter</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span><span class="special">);</span>
+
+    <span class="comment">// Our parser</span>
+    <span class="keyword">using</span> <span class="identifier">client</span><span class="special">::</span><span class="identifier">parser</span><span class="special">::</span><span class="identifier">employees</span><span class="special">;</span>
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">parser</span> <span class="special">=</span>
+        <span class="comment">// we pass our error handler to the parser so we can access</span>
+        <span class="comment">// it later in our on_error and on_sucess handlers</span>
+        <span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">error_handler_tag</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">error_handler</span><span class="special">))</span>
+        <span class="special">[</span>
+            <span class="identifier">employees</span>
+        <span class="special">];</span>
+
+    <span class="keyword">bool</span> <span class="identifier">r</span> <span class="special">=</span> <span class="identifier">phrase_parse</span><span class="special">(</span><span class="identifier">iter</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">parser</span><span class="special">,</span> <span class="identifier">space</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">);</span>
+
+    <span class="comment">// ... Some final reports here</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Prior to calling <code class="computeroutput"><span class="identifier">phrase_parse</span></code>,
+        we first create an AST where parsed data will be stored:
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span> <span class="identifier">ast</span><span class="special">;</span>
+</pre>
+<p>
+        We also create the actual error handler, sending message to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span></code>:
+      </p>
+<pre class="programlisting"><span class="identifier">error_handler_type</span> <span class="identifier">error_handler</span><span class="special">(</span><span class="identifier">iter</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span><span class="special">);</span>
+</pre>
+<p>
+        Then, we inject a reference to <code class="computeroutput"><span class="identifier">error_handler</span></code>,
+        using the <code class="computeroutput"><span class="identifier">with</span></code> directive
+        similar to what we did in the <a class="link" href="annotation.html#__tutorial_with_directive__">annotations
+        example</a>:
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">parser</span> <span class="special">=</span>
+    <span class="comment">// we pass our error handler to the parser so we can access</span>
+    <span class="comment">// it later in our on_error and on_sucess handlers</span>
+    <span class="identifier">with</span><span class="special">&lt;</span><span class="identifier">error_handler_tag</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">error_handler</span><span class="special">))</span>
+    <span class="special">[</span>
+        <span class="identifier">employees</span>
+    <span class="special">];</span>
+</pre>
+<p>
+        Now, if we give the parser an erroneous input:
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">bad_input</span> <span class="special">=</span> <span class="identifier">R</span><span class="string">"(
+{
+    23,
+    "</span><span class="identifier">Amanda</span><span class="string">",
+    "</span><span class="identifier">Stefanski</span><span class="string">",
+    1000.99
+},
+{
+    35,
+    "</span><span class="identifier">Angie</span><span class="string">",
+    "</span><span class="identifier">Chilcote</span><span class="string">",
+    2000.99
+},
+{
+    43,
+    'I am not a person!'    &lt;--- this should be a person
+    3000.99
+},
+{
+    22,
+    "</span><span class="identifier">Dorene</span><span class="string">",
+    "</span><span class="identifier">Dole</span><span class="string">",
+    2500.99
+},
+{
+    38,
+    "</span><span class="identifier">Rossana</span><span class="string">",
+    "</span><span class="identifier">Rafferty</span><span class="string">",
+    5000.99
+}
+)"</span><span class="special">;</span>
+</pre>
+<p>
+        The parser will complain as expected:
+      </p>
+<pre class="programlisting">-------------------------
+Now we have some errors
+In line 16:
+Error! Expecting: person here:
+    'I am not a person!'    &lt;--- this should be a person
+____^_
+-------------------------
+Parsing failed
+-------------------------
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2018 Joel de Guzman,
+      Hartmut Kaiser<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rexpr.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorials.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../quick_reference.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

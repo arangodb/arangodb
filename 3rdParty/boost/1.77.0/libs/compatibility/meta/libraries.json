@@ -1,0 +1,12 @@
+{
+    "key": "compatibility",
+    "name": "Compatibility",
+    "authors": [
+        "Ralf Grosse-Kunstleve",
+        "Jens Maurer"
+    ],
+    "description": "Help for non-conforming standard libraries.",
+    "category": [
+        "workarounds"
+    ]
+}

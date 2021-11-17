@@ -1,0 +1,14 @@
+{
+    "key": "crc",
+    "name": "CRC",
+    "authors": [
+        "Daryle Walker"
+    ],
+    "description": "The Boost CRC Library provides two implementations of CRC (cyclic redundancy code) computation objects and two implementations of CRC computation functions. The implementations are template-based.",
+    "category": [
+        "Domain"
+    ],
+    "maintainers": [
+        "Daryle Walker <darylew -at- hotmail.com>"
+    ]
+}

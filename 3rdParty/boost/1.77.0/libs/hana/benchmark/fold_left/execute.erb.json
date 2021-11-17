@@ -1,0 +1,32 @@
+<%
+  exec = (0..100).step(10).to_a
+  fusion = (0..50).step(10).to_a
+%>
+
+{
+  "title": {
+    "text": "Runtime behavior of fold_left"
+  },
+  "series": [
+    {
+      "name": "hana::tuple",
+      "data": <%= time_execution('execute.hana.tuple.erb.cpp', exec) %>
+    }, {
+      "name": "std::vector",
+      "data": <%= time_execution('execute.std.vector.erb.cpp', exec) %>
+    }, {
+      "name": "std::array",
+      "data": <%= time_execution('execute.std.array.erb.cpp', exec) %>
+    }
+
+    <% if cmake_bool("@Boost_FOUND@") %>
+    , {
+      "name": "fusion::vector",
+      "data": <%= time_execution('execute.fusion.vector.erb.cpp', fusion) %>
+    }, {
+      "name": "fusion::list",
+      "data": <%= time_execution('execute.fusion.list.erb.cpp', fusion) %>
+    }
+    <% end %>
+  ]
+}

@@ -1,0 +1,416 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Quick Look</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.JSON">
+<link rel="prev" href="overview.html" title="Overview">
+<link rel="next" href="dom.html" title="Document Model">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overview.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="dom.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="json.quick_look"></a><a class="link" href="quick_look.html" title="Quick Look">Quick Look</a>
+</h2></div></div></div>
+<p>
+      Here we highlight important features through example code to help convey the
+      style of the interface. We begin by including the library header file which
+      brings all the symbols into scope. Alternatively, individual headers may be
+      included to obtain the declarations for specific types:
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">json</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+      In order to link your program you will need to link with a built library. Alternatively
+      you can use the header-only configuration simply by including this header file
+      in any <span class="emphasis"><em>one</em></span> of your new or existing source files:
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">json</span><span class="special">/</span><span class="identifier">src</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+        Sample code and identifiers used throughout are written as if the following
+        declarations are in effect:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">json</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">;</span>
+</pre>
+</td></tr>
+</table></div>
+<h6>
+<a name="json.quick_look.h0"></a>
+      <span class="phrase"><a name="json.quick_look.values"></a></span><a class="link" href="quick_look.html#json.quick_look.values">Values</a>
+    </h6>
+<p>
+      Say you want to recreate this JSON object in a container:
+    </p>
+<pre class="programlisting"><span class="special">{</span>
+  <span class="string">"pi"</span><span class="special">:</span> <span class="number">3.141</span><span class="special">,</span>
+  <span class="string">"happy"</span><span class="special">:</span> <span class="keyword">true</span><span class="special">,</span>
+  <span class="string">"name"</span><span class="special">:</span> <span class="string">"Boost"</span><span class="special">,</span>
+  <span class="string">"nothing"</span><span class="special">:</span> <span class="identifier">null</span><span class="special">,</span>
+  <span class="string">"answer"</span><span class="special">:</span> <span class="special">{</span>
+    <span class="string">"everything"</span><span class="special">:</span> <span class="number">42</span>
+  <span class="special">},</span>
+  <span class="string">"list"</span><span class="special">:</span> <span class="special">[</span><span class="number">1</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">2</span><span class="special">],</span>
+  <span class="string">"object"</span><span class="special">:</span> <span class="special">{</span>
+    <span class="string">"currency"</span><span class="special">:</span> <span class="string">"USD"</span><span class="special">,</span>
+    <span class="string">"value"</span><span class="special">:</span> <span class="number">42.99</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+      In this library the types <a class="link" href="ref/boost__json__array.html" title="array"><code class="computeroutput"><span class="identifier">array</span></code></a>, <a class="link" href="ref/boost__json__object.html" title="object"><code class="computeroutput"><span class="identifier">object</span></code></a>, and <a class="link" href="ref/boost__json__string.html" title="string"><code class="computeroutput"><span class="identifier">string</span></code></a> hold JSON arrays, objects,
+      and strings respectively while the type <a class="link" href="ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> is a special variant which can
+      hold any JSON element. Here we construct an empty object and then insert the
+      elements above:
+    </p>
+<pre class="programlisting"><span class="identifier">object</span> <span class="identifier">obj</span><span class="special">;</span>                                                     <span class="comment">// construct an empty object</span>
+<span class="identifier">obj</span><span class="special">[</span> <span class="string">"pi"</span> <span class="special">]</span> <span class="special">=</span> <span class="number">3.141</span><span class="special">;</span>                                            <span class="comment">// insert a double</span>
+<span class="identifier">obj</span><span class="special">[</span> <span class="string">"happy"</span> <span class="special">]</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">;</span>                                          <span class="comment">// insert a bool</span>
+<span class="identifier">obj</span><span class="special">[</span> <span class="string">"name"</span> <span class="special">]</span> <span class="special">=</span> <span class="string">"Boost"</span><span class="special">;</span>                                        <span class="comment">// insert a string</span>
+<span class="identifier">obj</span><span class="special">[</span> <span class="string">"nothing"</span> <span class="special">]</span> <span class="special">=</span> <span class="keyword">nullptr</span><span class="special">;</span>                                     <span class="comment">// insert a null</span>
+<span class="identifier">obj</span><span class="special">[</span> <span class="string">"answer"</span> <span class="special">].</span><span class="identifier">emplace_object</span><span class="special">()[</span><span class="string">"everything"</span><span class="special">]</span> <span class="special">=</span> <span class="number">42</span><span class="special">;</span>            <span class="comment">// insert an object with 1 element</span>
+<span class="identifier">obj</span><span class="special">[</span> <span class="string">"list"</span> <span class="special">]</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">2</span> <span class="special">};</span>                                    <span class="comment">// insert an array with 3 elements</span>
+<span class="identifier">obj</span><span class="special">[</span> <span class="string">"object"</span> <span class="special">]</span> <span class="special">=</span> <span class="special">{</span> <span class="special">{</span><span class="string">"currency"</span><span class="special">,</span> <span class="string">"USD"</span><span class="special">},</span> <span class="special">{</span><span class="string">"value"</span><span class="special">,</span> <span class="number">42.99</span><span class="special">}</span> <span class="special">};</span>    <span class="comment">// insert an object with 2 elements</span>
+</pre>
+<p>
+      While keys are strings, the mapped type of objects and the element type of
+      arrays is a special type called <a class="link" href="ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> which can hold any JSON element,
+      as seen in the previous assignments. Instead of building the JSON document
+      using a series of function calls, we can build it in one statement using an
+      initializer list:
+    </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="special">{</span>
+    <span class="special">{</span> <span class="string">"pi"</span><span class="special">,</span> <span class="number">3.141</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"happy"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"name"</span><span class="special">,</span> <span class="string">"Boost"</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"nothing"</span><span class="special">,</span> <span class="keyword">nullptr</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"answer"</span><span class="special">,</span> <span class="special">{</span>
+        <span class="special">{</span> <span class="string">"everything"</span><span class="special">,</span> <span class="number">42</span> <span class="special">}</span> <span class="special">}</span> <span class="special">},</span>
+    <span class="special">{</span><span class="string">"list"</span><span class="special">,</span> <span class="special">{</span><span class="number">1</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="number">2</span><span class="special">}},</span>
+    <span class="special">{</span><span class="string">"object"</span><span class="special">,</span> <span class="special">{</span>
+        <span class="special">{</span> <span class="string">"currency"</span><span class="special">,</span> <span class="string">"USD"</span> <span class="special">},</span>
+        <span class="special">{</span> <span class="string">"value"</span><span class="special">,</span> <span class="number">42.99</span> <span class="special">}</span>
+            <span class="special">}</span> <span class="special">}</span>
+    <span class="special">};</span>
+</pre>
+<p>
+      When a <a class="link" href="ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>,
+      <a class="link" href="ref/boost__json__array.html" title="array"><code class="computeroutput"><span class="identifier">array</span></code></a>,
+      or <a class="link" href="ref/boost__json__object.html" title="object"><code class="computeroutput"><span class="identifier">object</span></code></a>
+      is assigned or constructed from an initializer list, the creation of the new
+      value happens only once. This makes initializer lists equally efficient as
+      using the other ways to create a value. The types in this library are first-class,
+      supporting copy and move construction and assignment:
+    </p>
+<pre class="programlisting"><span class="identifier">array</span> <span class="identifier">arr</span><span class="special">;</span>                                          <span class="comment">// construct an empty array</span>
+<span class="identifier">arr</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span> <span class="special">};</span>                                  <span class="comment">// replace the contents with 3 elements</span>
+<span class="identifier">value</span> <span class="identifier">jv1</span><span class="special">(</span> <span class="identifier">arr</span> <span class="special">);</span>                                   <span class="comment">// this makes a copy of the array</span>
+<span class="identifier">value</span> <span class="identifier">jv2</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">arr</span><span class="special">)</span> <span class="special">);</span>                        <span class="comment">// this performs a move-construction</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">arr</span><span class="special">.</span><span class="identifier">empty</span><span class="special">()</span> <span class="special">);</span>                              <span class="comment">// moved-from arrays become empty</span>
+<span class="identifier">arr</span> <span class="special">=</span> <span class="special">{</span> <span class="keyword">nullptr</span><span class="special">,</span> <span class="keyword">true</span><span class="special">,</span> <span class="string">"boost"</span> <span class="special">};</span>                   <span class="comment">// fill in the array again</span>
+</pre>
+<h6>
+<a name="json.quick_look.h1"></a>
+      <span class="phrase"><a name="json.quick_look.allocators"></a></span><a class="link" href="quick_look.html#json.quick_look.allocators">Allocators</a>
+    </h6>
+<p>
+      To permit custom memory allocation strategies, these containers all allow construction
+      with a <a class="link" href="ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a>
+      which is a smart pointer to a <a class="link" href="ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>. The constructor signatures
+      have the same ordering as their <code class="computeroutput"><span class="identifier">std</span></code>
+      equivalents which use <span class="emphasis"><em>Allocator</em></span> parameters. Once a container
+      is constructed its memory resource can never change. Here we create an array
+      without performing any dynamic allocations:
+    </p>
+<pre class="programlisting"><span class="special">{</span>
+    <span class="keyword">unsigned</span> <span class="keyword">char</span> <span class="identifier">buf</span><span class="special">[</span> <span class="number">4096</span> <span class="special">];</span>                      <span class="comment">// storage for our array</span>
+    <span class="identifier">static_resource</span> <span class="identifier">mr</span><span class="special">(</span> <span class="identifier">buf</span> <span class="special">);</span>                      <span class="comment">// memory resource which uses buf</span>
+    <span class="identifier">array</span> <span class="identifier">arr</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>                               <span class="comment">// construct using the memory resource</span>
+    <span class="identifier">arr</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span> <span class="special">};</span>                              <span class="comment">// all allocated memory comes from `buf`</span>
+<span class="special">}</span>
+</pre>
+<p>
+      The containers in this library enforce the invariant that every element of
+      the container will use the same memory resource:
+    </p>
+<pre class="programlisting"><span class="special">{</span>
+    <span class="identifier">monotonic_resource</span> <span class="identifier">mr</span><span class="special">;</span>                          <span class="comment">// memory resource optimized for insertion</span>
+    <span class="identifier">array</span> <span class="identifier">arr</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>                               <span class="comment">// construct using the memory resource</span>
+    <span class="identifier">arr</span><span class="special">.</span><span class="identifier">resize</span><span class="special">(</span> <span class="number">1</span> <span class="special">);</span>                                <span class="comment">// make space for one element</span>
+    <span class="identifier">arr</span><span class="special">[</span> <span class="number">0</span> <span class="special">]</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span> <span class="special">};</span>                         <span class="comment">// assign an array to element 0</span>
+    <span class="identifier">assert</span><span class="special">(</span> <span class="special">*</span><span class="identifier">arr</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">==</span> <span class="special">*</span><span class="identifier">arr</span><span class="special">.</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">);</span>  <span class="comment">// same memory resource</span>
+<span class="special">}</span>
+</pre>
+<p>
+      When a library type is used as the element type of a pmr container; that is,
+      a container which uses a <a class="link" href="ref/boost__json__polymorphic_allocator.html" title="polymorphic_allocator"><code class="computeroutput"><span class="identifier">polymorphic_allocator</span></code></a>, the memory
+      resource will automaticaly propagate to the type and all of its children:
+    </p>
+<pre class="programlisting"><span class="special">{</span>
+    <span class="identifier">monotonic_resource</span> <span class="identifier">mr</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">pmr</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">value</span> <span class="special">&gt;</span> <span class="identifier">vv</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">mr</span> <span class="special">);</span>
+    <span class="identifier">vv</span><span class="special">.</span><span class="identifier">resize</span><span class="special">(</span> <span class="number">3</span> <span class="special">);</span>
+
+    <span class="comment">// The memory resource of the container is propagated to each element</span>
+    <span class="identifier">assert</span><span class="special">(</span> <span class="special">*</span><span class="identifier">vv</span><span class="special">.</span><span class="identifier">get_allocator</span><span class="special">().</span><span class="identifier">resource</span><span class="special">()</span> <span class="special">==</span> <span class="special">*</span><span class="identifier">vv</span><span class="special">[</span><span class="number">0</span><span class="special">].</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">);</span>
+    <span class="identifier">assert</span><span class="special">(</span> <span class="special">*</span><span class="identifier">vv</span><span class="special">.</span><span class="identifier">get_allocator</span><span class="special">().</span><span class="identifier">resource</span><span class="special">()</span> <span class="special">==</span> <span class="special">*</span><span class="identifier">vv</span><span class="special">[</span><span class="number">1</span><span class="special">].</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">);</span>
+    <span class="identifier">assert</span><span class="special">(</span> <span class="special">*</span><span class="identifier">vv</span><span class="special">.</span><span class="identifier">get_allocator</span><span class="special">().</span><span class="identifier">resource</span><span class="special">()</span> <span class="special">==</span> <span class="special">*</span><span class="identifier">vv</span><span class="special">[</span><span class="number">2</span><span class="special">].</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+      Up until now we have shown how values may be constructed from a memory resource
+      pointer, where ownership is not transferred. In this case the caller is responsible
+      for ensuring that the lifetime of the resource is extended for the life of
+      the container. Sometimes you want the container to acquire shared ownership
+      of the resource. This is accomplished with <a class="link" href="ref/boost__json__make_shared_resource.html" title="make_shared_resource"><code class="computeroutput"><span class="identifier">make_shared_resource</span></code></a>:
+    </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">f</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="comment">// create a reference-counted memory resource</span>
+    <span class="identifier">storage_ptr</span> <span class="identifier">sp</span> <span class="special">=</span> <span class="identifier">make_shared_resource</span><span class="special">&lt;</span> <span class="identifier">monotonic_resource</span> <span class="special">&gt;();</span>
+
+    <span class="comment">// construct with shared ownership of the resource</span>
+    <span class="identifier">value</span> <span class="identifier">jv</span><span class="special">(</span> <span class="identifier">sp</span> <span class="special">);</span>
+
+    <span class="comment">// assign an array with 3 elements, the monotonic resource will be used</span>
+    <span class="identifier">jv</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span> <span class="special">};</span>
+
+    <span class="comment">// The caller receives the value, which still owns the resource</span>
+    <span class="keyword">return</span> <span class="identifier">jv</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      A counted memory resource will not be destroyed until every container with
+      shared ownership of the resource is destroyed.
+    </p>
+<h6>
+<a name="json.quick_look.h2"></a>
+      <span class="phrase"><a name="json.quick_look.parsing"></a></span><a class="link" href="quick_look.html#json.quick_look.parsing">Parsing</a>
+    </h6>
+<p>
+      JSON can be parsed into the value container in one step using a free function.
+      In the following snippet, a parse error is indicated by a thrown exception:
+    </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">parse</span><span class="special">(</span> <span class="string">"[1, 2, 3]"</span> <span class="special">);</span>
+</pre>
+<p>
+      Error codes are also possible:
+    </p>
+<pre class="programlisting"><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">parse</span><span class="special">(</span> <span class="identifier">R</span><span class="string">"( "</span><span class="identifier">Hello</span><span class="special">,</span> <span class="identifier">world</span><span class="special">!</span><span class="string">" )"</span><span class="special">,</span> <span class="identifier">ec</span> <span class="special">);</span>
+</pre>
+<p>
+      By default, the parser is strict and only accepts JSON compliant with the standard.
+      However this behavior can be relaxed by filling out an options structure enabling
+      one or more extensions. Here we use a static buffer and enable two non-standard
+      extensions:
+    </p>
+<pre class="programlisting"><span class="keyword">unsigned</span> <span class="keyword">char</span> <span class="identifier">buf</span><span class="special">[</span> <span class="number">4096</span> <span class="special">];</span>
+<span class="identifier">static_resource</span> <span class="identifier">mr</span><span class="special">(</span> <span class="identifier">buf</span> <span class="special">);</span>
+<span class="identifier">parse_options</span> <span class="identifier">opt</span><span class="special">;</span>
+<span class="identifier">opt</span><span class="special">.</span><span class="identifier">allow_comments</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">;</span>
+<span class="identifier">opt</span><span class="special">.</span><span class="identifier">allow_trailing_commas</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">;</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">parse</span><span class="special">(</span> <span class="string">"[1, 2, 3, ] // array "</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">mr</span><span class="special">,</span> <span class="identifier">opt</span> <span class="special">);</span>
+</pre>
+<p>
+      The parser in this library implements a <a href="https://en.wikipedia.org/wiki/Online_algorithm" target="_top"><span class="emphasis"><em>streaming
+      algorithm</em></span></a>; it can process JSON piece-by-piece, without the
+      requirement that the entire input is available from the start. The parser uses
+      a temporary memory allocation to do its work. If you plan on parsing multiple
+      JSONs, for example in a network server, keeping the same parser instance will
+      allow re-use of this temporary storage, improving performance.
+    </p>
+<pre class="programlisting"><span class="identifier">stream_parser</span> <span class="identifier">p</span><span class="special">;</span>
+<span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+<span class="identifier">p</span><span class="special">.</span><span class="identifier">reset</span><span class="special">();</span>
+<span class="identifier">p</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span> <span class="string">"[1, 2 "</span><span class="special">,</span> <span class="identifier">ec</span> <span class="special">);</span>
+<span class="keyword">if</span><span class="special">(</span> <span class="special">!</span> <span class="identifier">ec</span> <span class="special">)</span>
+    <span class="identifier">p</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span> <span class="string">", 3]"</span><span class="special">,</span> <span class="identifier">ec</span> <span class="special">);</span>
+<span class="keyword">if</span><span class="special">(</span> <span class="special">!</span> <span class="identifier">ec</span> <span class="special">)</span>
+    <span class="identifier">p</span><span class="special">.</span><span class="identifier">finish</span><span class="special">(</span> <span class="identifier">ec</span> <span class="special">);</span>
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">ec</span> <span class="special">)</span>
+    <span class="keyword">return</span><span class="special">;</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">release</span><span class="special">();</span>
+</pre>
+<p>
+      With strategic use of the right memory resources, parser instance, and calculated
+      upper limits on buffer sizes, it is possible to parse and examine JSON without
+      <span class="emphasis"><em>any</em></span> dynamic memory allocations. This is explored in more
+      detail in a later section.
+    </p>
+<h6>
+<a name="json.quick_look.h3"></a>
+      <span class="phrase"><a name="json.quick_look.serializing"></a></span><a class="link" href="quick_look.html#json.quick_look.serializing">Serializing</a>
+    </h6>
+<p>
+      Simple free functions are provided for serializing a <a class="link" href="ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> to a <a href="https://en.cppreference.com/w/cpp/string/basic_string" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code></a>
+      containing JSON:
+    </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span> <span class="special">};</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">s</span> <span class="special">=</span> <span class="identifier">serialize</span><span class="special">(</span> <span class="identifier">jv</span> <span class="special">);</span>                <span class="comment">// produces "[1,2,3]"</span>
+</pre>
+<p>
+      The serializer in this library implements a <a href="https://en.wikipedia.org/wiki/Online_algorithm" target="_top"><span class="emphasis"><em>streaming
+      algorithm</em></span></a>; it can output JSON a piece at a time, without
+      the requirement that the entire output area is allocated at once:
+    </p>
+<pre class="programlisting"><span class="identifier">serializer</span> <span class="identifier">sr</span><span class="special">;</span>
+<span class="identifier">sr</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">jv</span> <span class="special">);</span>                                <span class="comment">// prepare to output `jv`</span>
+<span class="keyword">do</span>
+<span class="special">{</span>
+    <span class="keyword">char</span> <span class="identifier">buf</span><span class="special">[</span> <span class="number">16</span> <span class="special">];</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">read</span><span class="special">(</span> <span class="identifier">buf</span> <span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">while</span><span class="special">(</span> <span class="special">!</span> <span class="identifier">sr</span><span class="special">.</span><span class="identifier">done</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<h6>
+<a name="json.quick_look.h4"></a>
+      <span class="phrase"><a name="json.quick_look.value_conversion"></a></span><a class="link" href="quick_look.html#json.quick_look.value_conversion">Value
+      Conversion</a>
+    </h6>
+<p>
+      Given a user-defined type:
+    </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">my_app</span> <span class="special">{</span>
+
+<span class="keyword">struct</span> <span class="identifier">customer</span>
+<span class="special">{</span>
+    <span class="keyword">int</span> <span class="identifier">id</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">name</span><span class="special">;</span>
+    <span class="keyword">bool</span> <span class="identifier">current</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}</span> <span class="comment">// namespace my_app</span>
+</pre>
+<p>
+      We can define a conversion from the user-defined type to a <a class="link" href="ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> by defining an overload of
+      <code class="computeroutput"><span class="identifier">tag_invoke</span></code> in the same namespace.
+      This maps <code class="computeroutput"><span class="identifier">customer</span></code> to a JSON
+      object:
+    </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">my_app</span> <span class="special">{</span>
+
+<span class="keyword">void</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="identifier">value_from_tag</span><span class="special">,</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span><span class="special">,</span> <span class="identifier">customer</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">c</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">jv</span> <span class="special">=</span> <span class="special">{</span>
+        <span class="special">{</span> <span class="string">"id"</span> <span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">id</span> <span class="special">},</span>
+        <span class="special">{</span> <span class="string">"name"</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">name</span> <span class="special">},</span>
+        <span class="special">{</span> <span class="string">"current"</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">current</span> <span class="special">}</span>
+    <span class="special">};</span>
+<span class="special">}</span>
+
+<span class="special">}</span> <span class="comment">// namespace my_app</span>
+</pre>
+<p>
+      This allows us to use the library function <a class="link" href="ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a> to produce a <a class="link" href="ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> from our type:
+    </p>
+<pre class="programlisting"><span class="identifier">my_app</span><span class="special">::</span><span class="identifier">customer</span> <span class="identifier">c</span><span class="special">{</span> <span class="number">1001</span><span class="special">,</span> <span class="string">"Boost"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">};</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">serialize</span><span class="special">(</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">c</span> <span class="special">)</span> <span class="special">);</span>
+</pre>
+<p>
+      The library knows what to do with standard containers. Here we convert an array
+      of customers to a value:
+    </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">my_app</span><span class="special">::</span><span class="identifier">customer</span> <span class="special">&gt;</span> <span class="identifier">vc</span><span class="special">;</span>
+<span class="comment">//...</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">vc</span> <span class="special">);</span>
+</pre>
+<p>
+      To go from JSON to a user-defined type we use <a class="link" href="ref/boost__json__value_to.html" title="value_to"><code class="computeroutput"><span class="identifier">value_to</span></code></a>, which uses another overload
+      of <code class="computeroutput"><span class="identifier">tag_invoke</span></code>. This converts
+      a JSON value to a <code class="computeroutput"><span class="identifier">customer</span></code>.
+      It throws an exception if the contents of the value do not match what is expected:
+    </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">my_app</span> <span class="special">{</span>
+
+<span class="comment">// This helper function deduces the type and assigns the value with the matching key</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">extract</span><span class="special">(</span> <span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">obj</span><span class="special">,</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">t</span><span class="special">,</span> <span class="identifier">string_view</span> <span class="identifier">key</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">t</span> <span class="special">=</span> <span class="identifier">value_to</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;(</span> <span class="identifier">obj</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="identifier">key</span> <span class="special">)</span> <span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">customer</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="identifier">value_to_tag</span><span class="special">&lt;</span> <span class="identifier">customer</span> <span class="special">&gt;,</span> <span class="identifier">value</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">jv</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">customer</span> <span class="identifier">c</span><span class="special">;</span>
+    <span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">obj</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_object</span><span class="special">();</span>
+    <span class="identifier">extract</span><span class="special">(</span> <span class="identifier">obj</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">id</span><span class="special">,</span> <span class="string">"id"</span> <span class="special">);</span>
+    <span class="identifier">extract</span><span class="special">(</span> <span class="identifier">obj</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">name</span><span class="special">,</span> <span class="string">"name"</span> <span class="special">);</span>
+    <span class="identifier">extract</span><span class="special">(</span> <span class="identifier">obj</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">current</span><span class="special">,</span> <span class="string">"current"</span> <span class="special">);</span>
+    <span class="keyword">return</span> <span class="identifier">c</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="special">}</span> <span class="comment">// namespace my_app</span>
+</pre>
+<p>
+      The code above defines the convenience function <code class="computeroutput"><span class="identifier">extract</span></code>,
+      which deduces the types of the struct members. This works, but requires that
+      the struct is <a href="https://en.cppreference.com/w/cpp/named_req/DefaultConstructible" target="_top"><span class="emphasis"><em>DefaultConstructible</em></span></a>.
+      An alternative is to construct the object directly, which is a little more
+      verbose but doesn't require default construction:
+    </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">my_app</span> <span class="special">{</span>
+
+<span class="identifier">customer</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="identifier">value_to_tag</span><span class="special">&lt;</span> <span class="identifier">customer</span> <span class="special">&gt;,</span> <span class="identifier">value</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">jv</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">obj</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_object</span><span class="special">();</span>
+    <span class="keyword">return</span> <span class="identifier">customer</span> <span class="special">{</span>
+        <span class="identifier">value_to</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span> <span class="identifier">obj</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"id"</span> <span class="special">)</span> <span class="special">),</span>
+        <span class="identifier">value_to</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;(</span> <span class="identifier">obj</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"name"</span> <span class="special">)</span> <span class="special">),</span>
+        <span class="identifier">value_to</span><span class="special">&lt;</span><span class="keyword">bool</span><span class="special">&gt;(</span> <span class="identifier">obj</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"current"</span> <span class="special">)</span> <span class="special">)</span>
+    <span class="special">};</span>
+<span class="special">}</span>
+
+<span class="special">}</span> <span class="comment">// namespace my_app</span>
+</pre>
+<p>
+      Now we can construct customers from JSON:
+    </p>
+<pre class="programlisting"><span class="identifier">json</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">jv</span><span class="special">;</span>
+<span class="comment">//...</span>
+<span class="identifier">customer</span> <span class="identifier">c</span><span class="special">(</span> <span class="identifier">value_to</span><span class="special">&lt;</span><span class="identifier">customer</span><span class="special">&gt;(</span><span class="identifier">jv</span><span class="special">)</span> <span class="special">);</span>
+</pre>
+<p>
+      The library's generic algorithms recognize when you are converting a <a class="link" href="ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+      to a container which resembles an array or object, so if you wanted to turn
+      a JSON array into a vector of customers you might write:
+    </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">customer</span> <span class="special">&gt;</span> <span class="identifier">vc</span> <span class="special">=</span> <span class="identifier">value_to</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">customer</span> <span class="special">&gt;</span> <span class="special">&gt;(</span> <span class="identifier">jv</span> <span class="special">);</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overview.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="dom.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

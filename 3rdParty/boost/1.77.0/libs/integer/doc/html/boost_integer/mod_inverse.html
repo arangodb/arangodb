@@ -1,0 +1,107 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Modular Multiplicative Inverse</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Integer">
+<link rel="up" href="../index.html" title="Boost.Integer">
+<link rel="prev" href="extended_euclidean.html" title="Extended Euclidean Algorithm">
+<link rel="next" href="mask.html" title="Integer Masks">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="extended_euclidean.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="mask.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_integer.mod_inverse"></a><a class="link" href="mod_inverse.html" title="Modular Multiplicative Inverse">Modular Multiplicative Inverse</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="mod_inverse.html#boost_integer.mod_inverse.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="mod_inverse.html#boost_integer.mod_inverse.synopsis">Synopsis</a></span></dt>
+<dt><span class="section"><a href="mod_inverse.html#boost_integer.mod_inverse.usage">Usage</a></span></dt>
+<dt><span class="section"><a href="mod_inverse.html#boost_integer.mod_inverse.references">References</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_integer.mod_inverse.introduction"></a><a class="link" href="mod_inverse.html#boost_integer.mod_inverse.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+        The modular multiplicative inverse of a number <span class="emphasis"><em>a</em></span> is
+        that number <span class="emphasis"><em>x</em></span> which satisfies <span class="emphasis"><em>ax</em></span>
+        = 1 mod <span class="emphasis"><em>p</em></span>. A fast algorithm for computing modular multiplicative
+        inverses based on the extended Euclidean algorithm exists and is provided
+        by Boost.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_integer.mod_inverse.synopsis"></a><a class="link" href="mod_inverse.html#boost_integer.mod_inverse.synopsis" title="Synopsis">Synopsis</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">integer</span><span class="special">/</span><span class="identifier">mod_inverse</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">integer</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Z</span><span class="special">&gt;</span>
+<span class="identifier">Z</span> <span class="identifier">mod_inverse</span><span class="special">(</span><span class="identifier">Z</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">Z</span> <span class="identifier">m</span><span class="special">);</span>
+
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_integer.mod_inverse.usage"></a><a class="link" href="mod_inverse.html#boost_integer.mod_inverse.usage" title="Usage">Usage</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">x</span> <span class="special">=</span> <span class="identifier">mod_inverse</span><span class="special">(</span><span class="number">2</span><span class="special">,</span> <span class="number">5</span><span class="special">);</span>
+<span class="comment">// prints x = 3:</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"x = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span> <span class="special">&lt;&lt;</span> <span class="string">"\n"</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">y</span> <span class="special">=</span> <span class="identifier">mod_inverse</span><span class="special">(</span><span class="number">2</span><span class="special">,</span> <span class="number">4</span><span class="special">);</span>
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">y</span> <span class="special">==</span> <span class="number">0</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"There is no inverse of 2 mod 4\n"</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Multiplicative modular inverses exist if and only if <span class="emphasis"><em>a</em></span>
+        and <span class="emphasis"><em>m</em></span> are coprime. If <span class="emphasis"><em>a</em></span> and <span class="emphasis"><em>m</em></span>
+        share a common factor, then <code class="computeroutput"><span class="identifier">mod_inverse</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span>
+        <span class="identifier">m</span><span class="special">)</span></code>
+        returns zero.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_integer.mod_inverse.references"></a><a class="link" href="mod_inverse.html#boost_integer.mod_inverse.references" title="References">References</a>
+</h3></div></div></div>
+<p>
+        Wagstaff, Samuel S., <span class="emphasis"><em>The Joy of Factoring</em></span>, Vol. 68.
+        American Mathematical Soc., 2013.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2009 Beman
+      Dawes, Daryle Walker, Gennaro Prota, John Maddock<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="https://www.boost.org/LICENSE_1_0.txt" target="_top">https://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="extended_euclidean.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="mask.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

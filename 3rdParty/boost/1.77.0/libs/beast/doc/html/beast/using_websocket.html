@@ -1,0 +1,271 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>WebSocket</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Beast">
+<link rel="prev" href="more_examples/send_child_process_output.html" title="Send Child Process Output 💡">
+<link rel="next" href="using_websocket/establishing_connections.html" title="Connecting">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="more_examples/send_child_process_output.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="using_websocket/establishing_connections.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="beast.using_websocket"></a><a class="link" href="using_websocket.html" title="WebSocket">WebSocket</a>
+</h2></div></div></div>
+<p>
+      The WebSocket Protocol enables two-way communication between a client running
+      untrusted code in a controlled environment to a remote host that has opted-in
+      to communications from that code. The protocol consists of an opening handshake
+      followed by basic message framing, layered over TCP. The goal of this technology
+      is to provide a mechanism for browser-based applications needing two-way communication
+      with servers without relying on opening multiple HTTP connections.
+    </p>
+<p>
+      Beast provides developers with a robust WebSocket implementation built on Boost.Asio
+      with a consistent asynchronous model using a modern C++ approach.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+        This documentation assumes familiarity with <a href="../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>
+        and the protocol specification described in <a href="https://tools.ietf.org/html/rfc6455" target="_top">rfc6455</a>.
+        Sample code and identifiers appearing in this section is written as if these
+        declarations are in effect:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">beast</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">beast</span><span class="special">/</span><span class="identifier">ssl</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ssl</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        
+  </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">net</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">beast</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">;</span>
+
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ioc</span><span class="special">;</span>
+<span class="identifier">tcp_stream</span> <span class="identifier">sock</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">);</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span> <span class="identifier">ctx</span><span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">tlsv12</span><span class="special">);</span>
+</pre>
+</td></tr>
+</table></div>
+<h4>
+<a name="beast.using_websocket.h0"></a>
+      <span class="phrase"><a name="beast.using_websocket.construction"></a></span><a class="link" href="using_websocket.html#beast.using_websocket.construction">Construction</a>
+    </h4>
+<p>
+      A WebSocket connection requires a stateful object, represented in Beast by
+      a single class template <a class="link" href="ref/boost__beast__websocket__stream.html" title="websocket::stream"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code></a>. The interface uses the layered
+      stream model. A websocket stream object contains another stream object, called
+      the "next layer", which it uses to perform I/O. Descriptions of each
+      template parameter follow:
+    </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">beast</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">websocket</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">NextLayer</span><span class="special">,</span>
+    <span class="keyword">bool</span> <span class="identifier">deflateSupported</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">stream</span><span class="special">;</span>
+
+<span class="special">}</span> <span class="comment">// websocket</span>
+<span class="special">}</span> <span class="comment">// beast</span>
+<span class="special">}</span> <span class="comment">// boost</span>
+</pre>
+<div class="table">
+<a name="beast.using_websocket.websocket_stream_template_parame"></a><p class="title"><b>Table 1.29. WebSocket Stream Template Parameters</b></p>
+<div class="table-contents"><table class="table" summary="WebSocket Stream Template Parameters">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Name
+              </p>
+            </th>
+<th>
+              <p>
+                Description
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">NextLayer</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                The type of the next layer. An object of this type will be constructed
+                and maintained for the lifetime of the stream. All reads and writes
+                will go through the next layer. This type must meet the requirements
+                of either <a class="link" href="concepts/streams.html#beast.concepts.streams.SyncStream"><span class="emphasis"><em>SyncStream</em></span></a>,
+                <a class="link" href="concepts/streams.html#beast.concepts.streams.AsyncStream"><span class="emphasis"><em>AsyncStream</em></span></a>,
+                or both, depending on the style of I/O that is to be performed.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <code class="computeroutput"><span class="identifier">deflateSupported</span></code>
+              </p>
+            </td>
+<td>
+              <p>
+                When this value is <code class="computeroutput"><span class="keyword">true</span></code>,
+                the stream will support (but not require) the <a href="https://tools.ietf.org/html/rfc7692" target="_top">permessage-deflate
+                extension</a>. Whether or not the stream actually requests or
+                accepts the extension during a handshake depends on a separate configurable
+                option.
+              </p>
+              <p>
+                When the value is <code class="computeroutput"><span class="keyword">false</span></code>
+                the extension is disabled. Streams will never request the extension
+                in the client role or accept a request for the extension in the server
+                role. An additional benefit of disabling the extension is that compilation
+                will be faster, and the resulting program executable will contain
+                less code.
+              </p>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      When a stream is constructed, any arguments provided to the constructor are
+      forwarded to the next layer object's constructor. This declares a stream over
+      a plain TCP/IP socket using an I/O context:
+    </p>
+<pre class="programlisting"><span class="comment">// This newly constructed WebSocket stream will use the specified</span>
+<span class="comment">// I/O context and have support for the permessage-deflate extension.</span>
+
+<span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">tcp_stream</span><span class="special">&gt;</span> <span class="identifier">ws</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">);</span>
+</pre>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Websocket streams use their own protocol-specific timeout feature. When using
+        a websocket stream with the <a class="link" href="ref/boost__beast__tcp_stream.html" title="tcp_stream"><code class="computeroutput"><span class="identifier">tcp_stream</span></code></a> or <a class="link" href="ref/boost__beast__basic_stream.html" title="basic_stream"><code class="computeroutput"><span class="identifier">basic_stream</span></code></a> class template, timeouts
+        should be disabled on the TCP or basic stream after the connection is established,
+        otherwise the behavior of the stream is undefined.
+      </p></td></tr>
+</table></div>
+<p>
+      As with most I/O objects, a websocket stream is <span class="bold"><strong>not thread-safe</strong></span>.
+      Undefined behavior results if two different threads access the object concurrently.
+      For multi-threaded programs, the <code class="computeroutput"><span class="identifier">tcp_stream</span></code>
+      can be constructed from an executor, in this case a strand. The stream declared
+      below will use a strand to invoke all completion handlers:
+    </p>
+<pre class="programlisting"><span class="comment">// The `tcp_stream` will be constructed with a new</span>
+<span class="comment">// strand which uses the specified I/O context.</span>
+
+<span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">tcp_stream</span><span class="special">&gt;</span> <span class="identifier">ws</span><span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">make_strand</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">));</span>
+</pre>
+<p>
+      If the next layer supports move-construction, then the websocket stream can
+      be constructed from a moved-from object.
+    </p>
+<pre class="programlisting"><span class="comment">// Ownership of the `tcp_stream` is transferred to the websocket stream</span>
+
+<span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">tcp_stream</span><span class="special">&gt;</span> <span class="identifier">ws</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">sock</span><span class="special">));</span>
+</pre>
+<p>
+      The next layer may be accessed by calling <a class="link" href="ref/boost__beast__websocket__stream/next_layer/overload1.html" title="websocket::stream::next_layer (1 of 2 overloads)"><code class="computeroutput"><span class="identifier">stream</span><span class="special">::</span><span class="identifier">next_layer</span></code></a>.
+    </p>
+<pre class="programlisting"><span class="comment">// Calls `close` on the underlying `beast::tcp_stream`</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">next_layer</span><span class="special">().</span><span class="identifier">close</span><span class="special">();</span>
+</pre>
+<h4>
+<a name="beast.using_websocket.h1"></a>
+      <span class="phrase"><a name="beast.using_websocket.using_ssl"></a></span><a class="link" href="using_websocket.html#beast.using_websocket.using_ssl">Using
+      SSL</a>
+    </h4>
+<p>
+      To use WebSockets over SSL, use an instance of the <a href="../../../../../doc/html/boost_asio/reference/ssl__stream.html" target="_top"><code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code></a>
+      class template as the template type for the stream. The required <a href="../../../../../doc/html/boost_asio/reference/io_context.html" target="_top"><code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span></code></a>
+      and <a href="../../../../../doc/html/boost_asio/reference/ssl__context.html" target="_top"><code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">context</span></code></a>
+      arguments are forwarded to the wrapped stream's constructor:
+    </p>
+<pre class="programlisting"><span class="comment">// The WebSocket stream will use SSL and a new strand</span>
+<span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">ssl_stream</span><span class="special">&lt;</span><span class="identifier">tcp_stream</span><span class="special">&gt;&gt;</span> <span class="identifier">wss</span><span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">make_strand</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">),</span> <span class="identifier">ctx</span><span class="special">);</span>
+</pre>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Code which declares websocket stream objects using Asio SSL types must include
+        the file <code class="literal">&lt;<a href="../../../../../boost/beast/websocket/ssl.hpp" target="_top">boost/beast/websocket/ssl.hpp</a>&gt;</code>.
+      </p></td></tr>
+</table></div>
+<p>
+      As before, the underlying SSL stream may be accessed by calling <code class="computeroutput"><span class="identifier">next_layer</span></code>.
+    </p>
+<pre class="programlisting"><span class="comment">// Perform the SSL handshake in the client role</span>
+<span class="identifier">wss</span><span class="special">.</span><span class="identifier">next_layer</span><span class="special">().</span><span class="identifier">handshake</span><span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream_base</span><span class="special">::</span><span class="identifier">client</span><span class="special">);</span>
+</pre>
+<p>
+      With multi-layered streams such as the one declared above, accessing an individual
+      layer can be cumbersome when using chained calls to <code class="computeroutput"><span class="identifier">next_layer</span></code>.
+      The function <a class="link" href="ref/boost__beast__get_lowest_layer.html" title="get_lowest_layer"><code class="computeroutput"><span class="identifier">get_lowest_layer</span></code></a> returns the last
+      stream in a stack of layers in a layered stream. Here we access the lowest
+      layer to cancel all outstanding I/O.
+    </p>
+<pre class="programlisting"><span class="comment">// Cancel all pending I/O on the underlying `tcp_stream`</span>
+<span class="identifier">get_lowest_layer</span><span class="special">(</span><span class="identifier">wss</span><span class="special">).</span><span class="identifier">cancel</span><span class="special">();</span>
+</pre>
+<h4>
+<a name="beast.using_websocket.h2"></a>
+      <span class="phrase"><a name="beast.using_websocket.non_blocking_mode"></a></span><a class="link" href="using_websocket.html#beast.using_websocket.non_blocking_mode">Non-Blocking
+      Mode</a>
+    </h4>
+<p>
+      Please note that websocket streams do not support non-blocking modes.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="more_examples/send_child_process_output.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="using_websocket/establishing_connections.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

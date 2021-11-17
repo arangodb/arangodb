@@ -1,0 +1,127 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Conclusions - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Image Processing" href="../image_processing/index.html" />
+    <link rel="prev" title="Extending" href="extending.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Extending" href="extending.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Image Processing" href="../image_processing/index.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="conclusions">
+<h1>Conclusions</h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#generality" id="id1">Generality</a></li>
+<li><a class="reference internal" href="#performance" id="id2">Performance</a></li>
+<li><a class="reference internal" href="#flexibility" id="id3">Flexibility</a></li>
+<li><a class="reference internal" href="#extensibility" id="id4">Extensibility</a></li>
+<li><a class="reference internal" href="#compatibility" id="id5">Compatibility</a></li>
+</ul>
+</div>
+<p>The Generic Image Library is designed with the following five goals in mind:</p>
+<div class="section" id="generality">
+<h2><a class="toc-backref" href="#id1">Generality</a></h2>
+<p>Abstracts image representations from algorithms on images.
+It allows for writing code once and have it work for any image type.</p>
+</div>
+<div class="section" id="performance">
+<h2><a class="toc-backref" href="#id2">Performance</a></h2>
+<p>Speed has been instrumental to the design of the library.
+The generic algorithms provided in the library are in many cases comparable
+in speed to hand-coding the algorithm for a specific image type.</p>
+</div>
+<div class="section" id="flexibility">
+<h2><a class="toc-backref" href="#id3">Flexibility</a></h2>
+<p>Compile-type parameter resolution results in faster code, but severely limits
+code flexibility. The library allows for any image parameter to be specified
+at run time, at a minor performance cost.</p>
+</div>
+<div class="section" id="extensibility">
+<h2><a class="toc-backref" href="#id4">Extensibility</a></h2>
+<p>Virtually every construct in GIL can be extended - new channel types,
+color spaces, layouts, iterators, locators, image views and images
+can be provided by modeling the corresponding GIL concepts.</p>
+</div>
+<div class="section" id="compatibility">
+<h2><a class="toc-backref" href="#id5">Compatibility</a></h2>
+<p>The library is designed as an STL complement.
+Generic STL algorithms can be used for pixel manipulation, and they are
+specifically targeted for optimization. The library works with existing
+raw pixel data from another image library.</p>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Extending" href="extending.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Image Processing" href="../image_processing/index.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

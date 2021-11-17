@@ -1,0 +1,432 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Summary of the API for writing tests</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../testing_tools.html" title="Writing unit tests">
+<link rel="prev" href="debugging.html" title="Debugging the assertions">
+<link rel="next" href="../test_output.html" title="Controlling outputs">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="debugging.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../testing_tools.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../test_output.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.testing_tools.summary"></a><a class="link" href="summary.html" title="Summary of the API for writing tests">Summary of the API
+      for writing tests</a>
+</h3></div></div></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Assertions
+                </p>
+              </th>
+<th>
+                <p>
+                  Short description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a>, <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  General purpose assertion macro.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level.html" title="BOOST_&lt;level&gt;"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Simple validation of a boolean predicate value.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_bitwise_eq.html" title="BOOST_&lt;level&gt;_BITWISE_EQUAL"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_BITWISE_EQUAL</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Bitwise equality test of two elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_eq.html" title="BOOST_&lt;level&gt;_EQUAL"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_EQUAL</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Equality test of two elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_eq_collections.html" title="BOOST_&lt;level&gt;_EQUAL_COLLECTIONS"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_EQUAL_COLLECTIONS</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Element-wise equality test of two collections.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_close.html" title="BOOST_&lt;level&gt;_CLOSE"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_CLOSE</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Floating point comparison using a percentage of deviation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_close_fraction.html" title="BOOST_&lt;level&gt;_CLOSE_FRACTION"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_CLOSE_FRACTION</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Floating point comparison using the fraction of the compared operands.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_exception.html" title="BOOST_&lt;level&gt;_EXCEPTION"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_EXCEPTION</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Exception detection and validation check.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_ge.html" title="BOOST_&lt;level&gt;_GE"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_GE</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Comparison of two values (with convenient reporting).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_gt.html" title="BOOST_&lt;level&gt;_GT"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_GT</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Comparison of two values (with convenient reporting).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_le.html" title="BOOST_&lt;level&gt;_LE"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_LE</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Comparison of two values (with convenient reporting).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_lt.html" title="BOOST_&lt;level&gt;_LT"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_LT</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Comparison of two values (with convenient reporting).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_message.html" title="BOOST_&lt;level&gt;_MESSAGE"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_MESSAGE</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Same as <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level.html" title="BOOST_&lt;level&gt;"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span></code></a>
+                  with a custom message in case of failure.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_ne.html" title="BOOST_&lt;level&gt;_NE"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_NE</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Comparison of two values (with convenient reporting).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_no_throw.html" title="BOOST_&lt;level&gt;_NO_THROW"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_NO_THROW</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Checks an expression does not throw any exception.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_predicate.html" title="BOOST_&lt;level&gt;_PREDICATE"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_PREDICATE</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Checks a list of arguments against a predicate functor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_small.html" title="BOOST_&lt;level&gt;_SMALL"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_SMALL</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Checks a value is small according to a tolerance.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_level_throw.html" title="BOOST_&lt;level&gt;_THROW"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_THROW</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Checks an expression throws a specific type of expression.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/test_org_boost_test_case_expected_failure.html" title="BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Indicates the number of expected failures for a test case
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_error.html" title="BOOST_ERROR"><code class="computeroutput"><span class="identifier">BOOST_ERROR</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Logs an error message, fails but does not abort the current test.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_fail.html" title="BOOST_FAIL"><code class="computeroutput"><span class="identifier">BOOST_FAIL</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Logs an error message, fails and aborts the current test.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_is_defined.html" title="BOOST_IS_DEFINED"><code class="computeroutput"><span class="identifier">BOOST_IS_DEFINED</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Checks at runtime whether or not the supplied preprocessor symbol
+                  is defined.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Decorators
+                </p>
+              </th>
+<th>
+                <p>
+                  Short description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/decorator_expected_failures.html" title="expected_failures (decorator)"><code class="computeroutput"><span class="identifier">expected_failures</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Indicates the expected failures of a test unit.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/decorator_timeout.html" title="timeout (decorator)"><code class="computeroutput"><span class="identifier">timeout</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sets the maximum amount of time a test unit should take.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/decorator_tolerance.html" title="tolerance (decorator)"><code class="computeroutput"><span class="identifier">tolerance</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sets the floating point comparison tolerance for a test unit.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Control macros
+                </p>
+              </th>
+<th>
+                <p>
+                  Short description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_control_under_debugger.html" title="BOOST_TEST_TOOLS_UNDER_DEBUGGER"><code class="computeroutput"><span class="identifier">BOOST_TEST_TOOLS_UNDER_DEBUGGER</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  When defined, test assertions are compiled in debugger-friendly
+                  mode.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../utf_reference/testing_tool_ref/assertion_control_under_debuggable.html" title="BOOST_TEST_TOOLS_DEBUGGABLE"><code class="computeroutput"><span class="identifier">BOOST_TEST_TOOLS_DEBUGGABLE</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  When defined, test assertions are compiled in two modes (debugger-friendly
+                  and full-featured), and the version is selected at run-time.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="debugging.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../testing_tools.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../test_output.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

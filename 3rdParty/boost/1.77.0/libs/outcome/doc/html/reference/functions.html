@@ -1,0 +1,106 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Functions - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../reference/aliases/unchecked.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../reference.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../reference/functions/hooks.html"><img src="../images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Functions</h1></div></div></div>
+<ol class="children children-li"><li>
+	<a href="../reference/functions/hooks.html" >Hooks</a>
+<p>Functions used to hook into the functionality of <code>basic_result</code> and <code>basic_outcome</code>.</p><ol><li>
+	<a href="../reference/functions/hooks/spare_storage.html" ><code>uint16_t spare_storage(const basic_result|basic_outcome *) noexcept</code></a>
+<p>Returns the sixteen bits of spare storage in the specified result or outcome.</p><li>
+	<a href="../reference/functions/hooks/hook_outcome_construction.html" ><code>void hook_outcome_construction(T *, U &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the implicit constructors of <code>basic_outcome</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_outcome_construction2.html" ><code>void hook_outcome_construction(T *, U &amp;&amp;, V &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the implicit constructors of <code>basic_outcome</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_outcome_copy_construction.html" ><code>void hook_outcome_copy_construction(T *, U &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the converting copy constructors of <code>basic_outcome</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_outcome_copy_construction2.html" ><code>void hook_outcome_copy_construction(T *, U &amp;&amp;, V &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the converting copy constructors of <code>basic_outcome</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_outcome_in_place_construction.html" ><code>void hook_outcome_in_place_construction(T *, in_place_type_t&lt;U&gt;, Args &amp;&amp;...) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the in-place constructors of <code>basic_outcome</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_outcome_move_construction.html" ><code>void hook_outcome_move_construction(T *, U &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the converting move constructors of <code>basic_outcome</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_outcome_move_construction2.html" ><code>void hook_outcome_move_construction(T *, U &amp;&amp;, V &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the converting move constructors of <code>basic_outcome</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_result_construction.html" ><code>void hook_result_construction(T *, U &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the implicit constructors of <code>basic_result</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_result_copy_construction.html" ><code>void hook_result_copy_construction(T *, U &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the converting copy constructors of <code>basic_result</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_result_in_place_construction.html" ><code>void hook_result_in_place_construction(T *, in_place_type_t&lt;U&gt;, Args &amp;&amp;...) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the in-place constructors of <code>basic_result</code>.</p><li>
+	<a href="../reference/functions/hooks/hook_result_move_construction.html" ><code>void hook_result_move_construction(T *, U &amp;&amp;) noexcept</code></a>
+<p>(Until v2.2.0) ADL discovered free function hook invoked by the converting move constructors of <code>basic_result</code>.</p><li>
+	<a href="../reference/functions/hooks/override_outcome_exception.html" ><code>void override_outcome_exception(basic_outcome&lt;T, EC, EP, NoValuePolicy&gt; *, U &amp;&amp;) noexcept</code></a>
+<p>Overrides the exception to something other than what was constructed.</p><li>
+	<a href="../reference/functions/hooks/set_spare_storage.html" ><code>void set_spare_storage(basic_result|basic_outcome *, uint16_t) noexcept</code></a>
+<p>Sets the sixteen bits of spare storage in the specified result or outcome.</p></li></ol><li>
+	<a href="../reference/functions/iostream.html" >Iostream</a>
+<p>Functions used to print, serialise and deserialise <code>basic_result</code> and <code>basic_outcome</code>.</p><ol><li>
+	<a href="../reference/functions/iostream/outcome_operator_in.html" ><code>std::istream &amp;operator&gt;&gt;(std::istream &amp;, basic_outcome&lt;T, EC, EP, NoValuePolicy&gt; &amp;)</code></a>
+<p>Deserialises a <code>basic_outcome</code> from a <code>std::istream</code>.</p><li>
+	<a href="../reference/functions/iostream/result_operator_in.html" ><code>std::istream &amp;operator&gt;&gt;(std::istream &amp;, basic_result&lt;T, E, NoValuePolicy&gt; &amp;)</code></a>
+<p>Deserialises a <code>basic_result</code> from a <code>std::istream</code>.</p><li>
+	<a href="../reference/functions/iostream/outcome_operator_out.html" ><code>std::ostream &amp;operator&lt;&lt;(std::ostream &amp;, const basic_outcome&lt;T, EC, EP, NoValuePolicy&gt; &amp;)</code></a>
+<p>Serialises a <code>basic_outcome</code> to a <code>std::ostream</code>.</p><li>
+	<a href="../reference/functions/iostream/result_operator_out.html" ><code>std::ostream &amp;operator&lt;&lt;(std::ostream &amp;, const basic_result&lt;T, E, NoValuePolicy&gt; &amp;)</code></a>
+<p>Serialises a <code>basic_result</code> to a <code>std::ostream</code>.</p><li>
+	<a href="../reference/functions/iostream/outcome_print.html" ><code>std::string print(const basic_outcome&lt;T, EC, EP, NoValuePolicy&gt; &amp;)</code></a>
+<p>Returns a string containing a human readable rendition of the <code>basic_outcome</code>.</p><li>
+	<a href="../reference/functions/iostream/result_print.html" ><code>std::string print(const basic_result&lt;T, E, NoValuePolicy&gt; &amp;)</code></a>
+<p>Returns a string containing a human readable rendition of the <code>basic_result</code>.</p></li></ol><li>
+	<a href="../reference/functions/policy.html" >Policy</a>
+<p>Functions used to customise how the policy classes operate.</p><ol><li>
+	<a href="../reference/functions/policy/basic_outcome_failure_exception_from_error.html" ><code>auto basic_outcome_failure_exception_from_error(const EC &amp;)</code></a>
+<p>ADL discovered free function synthesising an exception type from an error type, used by the <code>.failure()</code> observers.</p><li>
+	<a href="../reference/functions/policy/error_code.html" ><code>decltype(auto) error_code(T &amp;&amp;)</code></a>
+<p>Extracts a <code>boost::system::error_code</code> or <code>std::error_code</code> from the input via ADL discovery of a suitable <code>make_error_code(T)</code> function.</p><li>
+	<a href="../reference/functions/policy/exception_ptr.html" ><code>decltype(auto) exception_ptr(T &amp;&amp;)</code></a>
+<p>Extracts a <code>boost::exception_ptr</code> or <code>std::exception_ptr</code> from the input via ADL discovery of a suitable <code>make_exception_ptr(T)</code> function.</p><li>
+	<a href="../reference/functions/policy/outcome_throw_as_system_error_with_payload_boost_enum.html" ><code>void outcome_throw_as_system_error_with_payload(BoostErrorCodeEnum &amp;&amp;)</code></a>
+<p>Specialisation of <code>outcome_throw_as_system_error_with_payload()</code> for input types where <code>boost::system::is_error_code_enum&lt;BoostErrorCodeEnum&gt;</code> or <code>boost::system::is_error_condition_enum&lt;BoostErrorCodeEnum&gt;</code> is true.</p><li>
+	<a href="../reference/functions/policy/outcome_throw_as_system_error_with_payload_std_enum.html" ><code>void outcome_throw_as_system_error_with_payload(ErrorCodeEnum &amp;&amp;)</code></a>
+<p>Specialisation of <code>outcome_throw_as_system_error_with_payload()</code> for input types where <code>std::is_error_code_enum&lt;ErrorCodeEnum&gt;</code> or <code>std::is_error_condition_enum&lt;ErrorCodeEnum&gt;</code> is true.</p><li>
+	<a href="../reference/functions/policy/outcome_throw_as_system_error_with_payload_boost_error_code.html" ><code>void outcome_throw_as_system_error_with_payload(const boost::system::error_code &amp;)</code></a>
+<p>Specialisation of <code>outcome_throw_as_system_error_with_payload()</code> for <code>boost::system::error_code</code>.</p><li>
+	<a href="../reference/functions/policy/outcome_throw_as_system_error_with_payload_std_error_code.html" ><code>void outcome_throw_as_system_error_with_payload(const std::error_code &amp;)</code></a>
+<p>Specialisation of <code>outcome_throw_as_system_error_with_payload()</code> for <code>std::error_code</code>.</p></li></ol><li>
+	<a href="../reference/functions/failure.html" ><code>auto failure(T &amp;&amp;, ...)</code></a>
+<p>Returns appropriate type sugar for constructing an unsuccessful result or outcome.</p><li>
+	<a href="../reference/functions/success.html" ><code>auto success(T &amp;&amp;, ...)</code></a>
+<p>Returns appropriate type sugar for constructing a successful result or outcome.</p><li>
+	<a href="../reference/functions/try_operation_has_value.html" ><code>bool try_operation_has_value(X)</code></a>
+<p>Default implementation of <code>try_operation_has_value(X)</code> ADL customisation point for <code>BOOST_OUTCOME_TRY</code>.</p><li>
+	<a href="../reference/functions/try_operation_extract_value.html" ><code>decltype(auto) try_operation_extract_value(X)</code></a>
+<p>Default implementation of <code>try_operation_extract_value(X)</code> ADL customisation point for <code>BOOST_OUTCOME_TRY</code>.</p><li>
+	<a href="../reference/functions/try_operation_return_as.html" ><code>decltype(auto) try_operation_return_as(X)</code></a>
+<p>Default implementation of <code>try_operation_return_as(X)</code> ADL customisation point for <code>BOOST_OUTCOME_TRY</code>.</p><li>
+	<a href="../reference/functions/error_from_exception.html" ><code>std::error_code error_from_exception(std::exception_ptr &amp;&amp;ep = std::current_exception(), std::error_code not_matched = std::make_error_code(std::errc::resource_unavailable_try_again)) noexcept</code></a>
+<p>Returns an error code matching a thrown standard library exception.</p><li>
+	<a href="../reference/functions/strong_swap.html" ><code>void strong_swap(bool &amp;all_good, T &amp;a, T &amp;b)</code></a>
+<p>Tries to perform a strong guarantee swap.</p><li>
+	<a href="../reference/functions/try_throw_std_exception_from_error.html" ><code>void try_throw_std_exception_from_error(std::error_code ec, const std::string &amp;msg = std::string{})</code></a>
+<p>Try to throw a standard library exception type matching an error code.</p></li></ol>
+
+
+
+
+
+
+
+
+        </div><p><small>Last revised: December 13, 2018 at 21:10:19 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../reference/aliases/unchecked.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../reference.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../reference/functions/hooks.html"><img src="../images/next.png" alt="Next"></a></div></body>
+</html>

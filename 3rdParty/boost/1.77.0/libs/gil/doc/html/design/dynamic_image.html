@@ -1,0 +1,280 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Dynamic images and image views - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Metafunctions" href="metafunctions.html" />
+    <link rel="prev" title="Image" href="image.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Image" href="image.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Metafunctions" href="metafunctions.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="dynamic-images-and-image-views">
+<h1>Dynamic images and image views</h1>
+<p>The GIL extension called <code class="docutils literal"><span class="pre">dynamic_image</span></code> allows for images, image views
+or any GIL constructs to have their parameters defined at run time.</p>
+<p>The color space, channel depth, channel ordering, and interleaved/planar
+structure of an image are defined by the type of its template argument, which
+makes them compile-time bound. Often some of these parameters are available
+only at run time. Consider, for example, writing a module that opens the image
+at a given file path, rotates it and saves it back in its original color space
+and channel depth. How can we possibly write this using our generic image?
+What type is the image loading code supposed to return?</p>
+<p>Here is an example:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include</span> <span class="cpf">&lt;boost/gil/extension/dynamic_image/dynamic_image_all.hpp&gt;</span><span class="cp"></span>
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">boost</span><span class="p">;</span>
+
+<span class="cp">#define ASSERT_SAME(A,B) static_assert(is_same&lt; A,B &gt;::value, &quot;&quot;)</span>
+
+<span class="c1">// Create any_image class (or any_image_view) class with a set of allowed images</span>
+<span class="k">typedef</span> <span class="n">any_image</span><span class="o">&lt;</span><span class="n">rgb8_image_t</span><span class="p">,</span> <span class="n">cmyk16_planar_image_t</span><span class="o">&gt;</span> <span class="n">my_any_image_t</span><span class="p">;</span>
+
+<span class="c1">// Associated view types are available (equivalent to the ones in image_t)</span>
+<span class="k">typedef</span> <span class="n">any_image_view</span><span class="o">&lt;</span><span class="n">rgb8_view_t</span><span class="p">,</span> <span class="n">cmyk16_planar_view_t</span><span class="o">&gt;</span> <span class="n">AV</span><span class="p">;</span>
+<span class="n">ASSERT_SAME</span><span class="p">(</span><span class="n">my_any_image_t</span><span class="o">::</span><span class="n">view_t</span><span class="p">,</span> <span class="n">AV</span><span class="p">);</span>
+
+<span class="k">typedef</span> <span class="n">any_image_view</span><span class="o">&lt;</span><span class="n">rgb8c_view_t</span><span class="p">,</span> <span class="n">cmyk16c_planar_view_t</span><span class="o">&gt;&gt;</span> <span class="n">CAV</span><span class="p">;</span>
+<span class="n">ASSERT_SAME</span><span class="p">(</span><span class="n">my_any_image_t</span><span class="o">::</span><span class="n">const_view_t</span><span class="p">,</span> <span class="n">CAV</span><span class="p">);</span>
+<span class="n">ASSERT_SAME</span><span class="p">(</span><span class="n">my_any_image_t</span><span class="o">::</span><span class="n">const_view_t</span><span class="p">,</span> <span class="n">my_any_image_t</span><span class="o">::</span><span class="n">view_t</span><span class="o">::</span><span class="n">const_t</span><span class="p">);</span>
+
+<span class="k">typedef</span> <span class="n">any_image_view</span><span class="o">&lt;</span><span class="n">rgb8_step_view_t</span><span class="p">,</span> <span class="n">cmyk16_planar_step_view_t</span><span class="o">&gt;</span> <span class="n">SAV</span><span class="p">;</span>
+<span class="n">ASSERT_SAME</span><span class="p">(</span><span class="k">typename</span> <span class="n">dynamic_x_step_type</span><span class="o">&lt;</span><span class="n">my_any_image_t</span><span class="o">::</span><span class="n">view_t</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">,</span> <span class="n">SAV</span><span class="p">);</span>
+
+<span class="c1">// Assign it a concrete image at run time:</span>
+<span class="n">my_any_image_t</span> <span class="n">myImg</span> <span class="o">=</span> <span class="n">my_any_image_t</span><span class="p">(</span><span class="n">rgb8_image_t</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">));</span>
+
+<span class="c1">// Change it to another at run time. The previous image gets destroyed</span>
+<span class="n">myImg</span> <span class="o">=</span> <span class="n">cmyk16_planar_image_t</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span><span class="mi">100</span><span class="p">);</span>
+
+<span class="c1">// Assigning to an image not in the allowed set throws an exception</span>
+<span class="n">myImg</span> <span class="o">=</span> <span class="n">gray8_image_t</span><span class="p">();</span>        <span class="c1">// will throw std::bad_cast</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">any_image</span></code> and <code class="docutils literal"><span class="pre">any_image_view</span></code> subclass from Boost.Variant2 <code class="docutils literal"><span class="pre">variant</span></code> class,
+a never valueless variant type, compatible with <code class="docutils literal"><span class="pre">std::variant</span></code> in C++17.</p>
+<p>GIL <code class="docutils literal"><span class="pre">any_image_view</span></code> and <code class="docutils literal"><span class="pre">any_image</span></code> are subclasses of <code class="docutils literal"><span class="pre">variant</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="p">...</span><span class="n">ImageViewTypes</span><span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">any_image_view</span> <span class="o">:</span> <span class="k">public</span> <span class="n">variant</span><span class="o">&lt;</span><span class="n">ImageViewTypes</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">const_t</span><span class="p">;</span> <span class="c1">// immutable equivalent of this</span>
+  <span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="kt">ptrdiff_t</span> <span class="n">x_coord_t</span><span class="p">;</span>
+  <span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="kt">ptrdiff_t</span> <span class="n">y_coord_t</span><span class="p">;</span>
+  <span class="k">typedef</span> <span class="n">point</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">ptrdiff_t</span><span class="o">&gt;</span> <span class="n">point_t</span><span class="p">;</span>
+  <span class="k">using</span> <span class="n">size_type</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="p">;</span>
+
+  <span class="n">any_image_view</span><span class="p">();</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="k">explicit</span> <span class="n">any_image_view</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">obj</span><span class="p">);</span>
+  <span class="n">any_image_view</span><span class="p">(</span><span class="k">const</span> <span class="n">any_image_view</span><span class="o">&amp;</span> <span class="n">v</span><span class="p">);</span>
+
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">any_image_view</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">obj</span><span class="p">);</span>
+  <span class="n">any_image_view</span><span class="o">&amp;</span>                       <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">any_image_view</span><span class="o">&amp;</span> <span class="n">v</span><span class="p">);</span>
+
+  <span class="c1">// parameters of the currently instantiated view</span>
+  <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">num_channels</span><span class="p">()</span>  <span class="k">const</span><span class="p">;</span>
+  <span class="n">point_t</span>     <span class="nf">dimensions</span><span class="p">()</span>    <span class="k">const</span><span class="p">;</span>
+  <span class="n">size_type</span>   <span class="nf">size</span><span class="p">()</span>          <span class="k">const</span><span class="p">;</span>
+  <span class="n">x_coord_t</span>   <span class="nf">width</span><span class="p">()</span>         <span class="k">const</span><span class="p">;</span>
+  <span class="n">y_coord_t</span>   <span class="nf">height</span><span class="p">()</span>        <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="p">...</span><span class="n">ImageTypes</span><span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">any_image</span> <span class="o">:</span> <span class="k">public</span> <span class="n">variant</span><span class="o">&lt;</span><span class="n">ImageTypes</span><span class="p">...</span><span class="o">&gt;</span>
+<span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">const_view_t</span><span class="p">;</span>
+  <span class="k">typedef</span> <span class="p">...</span> <span class="n">view_t</span><span class="p">;</span>
+  <span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="kt">ptrdiff_t</span> <span class="n">x_coord_t</span><span class="p">;</span>
+  <span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="kt">ptrdiff_t</span> <span class="n">y_coord_t</span><span class="p">;</span>
+  <span class="k">typedef</span> <span class="n">point</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">ptrdiff_t</span><span class="o">&gt;</span> <span class="n">point_t</span><span class="p">;</span>
+
+  <span class="n">any_image</span><span class="p">();</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="k">explicit</span> <span class="n">any_image</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">obj</span><span class="p">);</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="k">explicit</span> <span class="n">any_image</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">obj</span><span class="p">,</span> <span class="kt">bool</span> <span class="n">do_swap</span><span class="p">);</span>
+  <span class="n">any_image</span><span class="p">(</span><span class="k">const</span> <span class="n">any_image</span><span class="o">&amp;</span> <span class="n">v</span><span class="p">);</span>
+
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">any_image</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">obj</span><span class="p">);</span>
+  <span class="n">any_image</span><span class="o">&amp;</span>                       <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="k">const</span> <span class="n">any_image</span><span class="o">&amp;</span> <span class="n">v</span><span class="p">);</span>
+
+  <span class="kt">void</span> <span class="nf">recreate</span><span class="p">(</span><span class="k">const</span> <span class="n">point_t</span><span class="o">&amp;</span> <span class="n">dims</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">alignment</span><span class="o">=</span><span class="mi">1</span><span class="p">);</span>
+  <span class="kt">void</span> <span class="nf">recreate</span><span class="p">(</span><span class="n">x_coord_t</span> <span class="n">width</span><span class="p">,</span> <span class="n">y_coord_t</span> <span class="n">height</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="n">alignment</span><span class="o">=</span><span class="mi">1</span><span class="p">);</span>
+
+  <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">num_channels</span><span class="p">()</span>  <span class="k">const</span><span class="p">;</span>
+  <span class="n">point_t</span>     <span class="nf">dimensions</span><span class="p">()</span>    <span class="k">const</span><span class="p">;</span>
+  <span class="n">x_coord_t</span>   <span class="nf">width</span><span class="p">()</span>         <span class="k">const</span><span class="p">;</span>
+  <span class="n">y_coord_t</span>   <span class="nf">height</span><span class="p">()</span>        <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Operations are invoked on variants via <code class="docutils literal"><span class="pre">apply_operation</span></code> passing a
+function object to perform the operation. The code for every allowed
+type in the variant is instantiated and the appropriate instantiation
+is selected via a switch statement. Since image view algorithms
+typically have time complexity at least linear on the number of
+pixels, the single switch statement of image view variant adds
+practically no measurable performance overhead compared to templated
+image views.</p>
+<p>Variants behave like the underlying type. Their copy constructor will
+invoke the copy constructor of the underlying instance. Equality
+operator will check if the two instances are of the same type and then
+invoke their <code class="docutils literal"><span class="pre">operator==</span></code>, etc. The default constructor of a variant
+will default-construct the first type. That means that
+<code class="docutils literal"><span class="pre">any_image_view</span></code> has shallow default-constructor, copy-constructor,
+assignment and equality comparison, whereas <code class="docutils literal"><span class="pre">any_image</span></code> has deep
+ones.</p>
+<p>It is important to note that even though <code class="docutils literal"><span class="pre">any_image_view</span></code> and
+<code class="docutils literal"><span class="pre">any_image</span></code> resemble the static <code class="docutils literal"><span class="pre">image_view</span></code> and <code class="docutils literal"><span class="pre">image</span></code>, they
+do not model the full requirements of <code class="docutils literal"><span class="pre">ImageViewConcept</span></code> and
+<code class="docutils literal"><span class="pre">ImageConcept</span></code>. In particular they don&#8217;t provide access to the
+pixels. There is no &#8220;any_pixel&#8221; or &#8220;any_pixel_iterator&#8221; in GIL. Such
+constructs could be provided via the <code class="docutils literal"><span class="pre">variant</span></code> mechanism, but doing
+so would result in inefficient algorithms, since the type resolution
+would have to be performed per pixel. Image-level algorithms should be
+implemented via <code class="docutils literal"><span class="pre">apply_operation</span></code>. That said, many common operations
+are shared between the static and dynamic types. In addition, all of
+the image view transformations and many STL-like image view algorithms
+have overloads operating on <code class="docutils literal"><span class="pre">any_image_view</span></code>, as illustrated with
+<code class="docutils literal"><span class="pre">copy_pixels</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="n">rgb8_view_t</span> <span class="nf">v1</span><span class="p">(...);</span>  <span class="c1">// concrete image view</span>
+<span class="n">bgr8_view_t</span> <span class="nf">v2</span><span class="p">(...);</span>  <span class="c1">// concrete image view compatible with v1 and of the same size</span>
+<span class="n">any_image_view</span><span class="o">&lt;</span><span class="n">Types</span><span class="o">&gt;</span>  <span class="n">av</span><span class="p">(...);</span>  <span class="c1">// run-time specified image view</span>
+
+<span class="c1">// Copies the pixels from v1 into v2.</span>
+<span class="c1">// If the pixels are incompatible triggers compile error</span>
+<span class="n">copy_pixels</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span><span class="n">v2</span><span class="p">);</span>
+
+<span class="c1">// The source or destination (or both) may be run-time instantiated.</span>
+<span class="c1">// If they happen to be incompatible, throws std::bad_cast</span>
+<span class="n">copy_pixels</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">av</span><span class="p">);</span>
+<span class="n">copy_pixels</span><span class="p">(</span><span class="n">av</span><span class="p">,</span> <span class="n">v2</span><span class="p">);</span>
+<span class="n">copy_pixels</span><span class="p">(</span><span class="n">av</span><span class="p">,</span> <span class="n">av</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>By having algorithm overloads supporting dynamic constructs, we create
+a base upon which it is possible to write algorithms that can work
+with either compile-time or runtime images or views. The following
+code, for example, uses the GIL I/O extension to turn an image on disk
+upside down:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include</span> <span class="cpf">&lt;boost\gil\extension\io\jpeg_dynamic_io.hpp&gt;</span><span class="cp"></span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Image</span><span class="o">&gt;</span>    <span class="c1">// Could be rgb8_image_t or any_image&lt;...&gt;</span>
+<span class="kt">void</span> <span class="n">save_180rot</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">file_name</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">Image</span> <span class="n">img</span><span class="p">;</span>
+  <span class="n">jpeg_read_image</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">img</span><span class="p">);</span>
+  <span class="n">jpeg_write_view</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">rotated180_view</span><span class="p">(</span><span class="n">view</span><span class="p">(</span><span class="n">img</span><span class="p">)));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>It can be instantiated with either a compile-time or a runtime image
+because all functions it uses have overloads taking runtime
+constructs. For example, here is how <code class="docutils literal"><span class="pre">rotated180_view</span></code> is
+implemented:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="c1">// implementation using templated view</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">View</span><span class="o">&gt;</span>
+<span class="k">typename</span> <span class="n">dynamic_xy_step_type</span><span class="o">&lt;</span><span class="n">View</span><span class="o">&gt;::</span><span class="n">type</span> <span class="n">rotated180_view</span><span class="p">(</span><span class="k">const</span> <span class="n">View</span><span class="o">&amp;</span> <span class="n">src</span><span class="p">)</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
+
+<span class="k">namespace</span> <span class="n">detail</span>
+<span class="p">{</span>
+  <span class="c1">// the function, wrapped inside a function object</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Result</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">rotated180_view_fn</span>
+  <span class="p">{</span>
+      <span class="k">typedef</span> <span class="n">Result</span> <span class="n">result_type</span><span class="p">;</span>
+      <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">View</span><span class="o">&gt;</span> <span class="n">result_type</span> <span class="k">operator</span><span class="p">()(</span><span class="k">const</span> <span class="n">View</span><span class="o">&amp;</span> <span class="n">src</span><span class="p">)</span> <span class="k">const</span>
+<span class="p">{</span>
+          <span class="k">return</span> <span class="n">result_type</span><span class="p">(</span><span class="n">rotated180_view</span><span class="p">(</span><span class="n">src</span><span class="p">));</span>
+      <span class="p">}</span>
+  <span class="p">};</span>
+<span class="p">}</span>
+
+<span class="c1">// overloading of the function using variant. Takes and returns run-time bound view.</span>
+<span class="c1">// The returned view has a dynamic step</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">ViewTypes</span><span class="o">&gt;</span> <span class="kr">inline</span> <span class="c1">// Models MPL Random Access Container of models of ImageViewConcept</span>
+<span class="k">typename</span> <span class="n">dynamic_xy_step_type</span><span class="o">&lt;</span><span class="n">any_image_view</span><span class="o">&lt;</span><span class="n">ViewTypes</span><span class="o">&gt;</span> <span class="o">&gt;::</span><span class="n">type</span> <span class="n">rotated180_view</span><span class="p">(</span><span class="k">const</span> <span class="n">any_image_view</span><span class="o">&lt;</span><span class="n">ViewTypes</span><span class="o">&gt;&amp;</span> <span class="n">src</span><span class="p">)</span>
+<span class="p">{</span>
+  <span class="k">return</span> <span class="n">apply_operation</span><span class="p">(</span><span class="n">src</span><span class="p">,</span><span class="n">detail</span><span class="o">::</span><span class="n">rotated180_view_fn</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">dynamic_xy_step_type</span><span class="o">&lt;</span><span class="n">any_image_view</span><span class="o">&lt;</span><span class="n">ViewTypes</span><span class="o">&gt;</span> <span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;</span><span class="p">());</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Variants should be used with caution (especially algorithms that take
+more than one variant) because they instantiate the algorithm for
+every possible model that the variant can take. This can take a toll
+on compile time and executable size. Despite these limitations,
+<code class="docutils literal"><span class="pre">variant</span></code> is a powerful technique that allows us to combine the
+speed of compile-time resolution with the flexibility of run-time
+resolution. It allows us to treat images of different parameters
+uniformly as a collection and store them in the same container.</p>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Image" href="image.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Metafunctions" href="metafunctions.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

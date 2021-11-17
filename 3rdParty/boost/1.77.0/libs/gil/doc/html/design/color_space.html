@@ -1,0 +1,170 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Color Space and Layout - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Color Base" href="color_base.html" />
+    <link rel="prev" title="Channel" href="channel.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Channel" href="channel.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Color Base" href="color_base.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="color-space-and-layout">
+<h1>Color Space and Layout</h1>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><a class="reference internal" href="#overview" id="id1">Overview</a></li>
+<li><a class="reference internal" href="#models" id="id2">Models</a></li>
+</ul>
+</div>
+<div class="section" id="overview">
+<h2><a class="toc-backref" href="#id1">Overview</a></h2>
+<p>A color space captures the set and interpretation of channels comprising a
+pixel. In Boost.GIL, color space is defined as an MPL random access sequence
+containing the types of all elements in the color space.</p>
+<p>Two color spaces are considered <em>compatible</em> if they are equal (i.e. have the
+same set of colors in the same order).</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<ul class="last simple">
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_color_space_concept.html">ColorSpaceConcept&lt;ColorSpace&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_color_spaces_compatible_concept.html">ColorSpacesCompatibleConcept&lt;ColorSpace1,ColorSpace2&gt;</a></li>
+<li><a class="reference external" href="reference/structboost_1_1gil_1_1_channel_mapping_concept.html">ChannelMappingConcept&lt;Mapping&gt;</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="models">
+<h2><a class="toc-backref" href="#id2">Models</a></h2>
+<p>GIL currently provides the following color spaces:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">gray_t</span></code></li>
+<li><code class="docutils literal"><span class="pre">rgb_t</span></code></li>
+<li><code class="docutils literal"><span class="pre">rgba_t</span></code></li>
+<li><code class="docutils literal"><span class="pre">cmyk_t</span></code></li>
+</ul>
+<p>It also provides unnamed N-channel color spaces of two to five channels:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">devicen_t&lt;2&gt;</span></code></li>
+<li><code class="docutils literal"><span class="pre">devicen_t&lt;3&gt;</span></code></li>
+<li><code class="docutils literal"><span class="pre">devicen_t&lt;4&gt;</span></code></li>
+<li><code class="docutils literal"><span class="pre">devicen_t&lt;5&gt;</span></code></li>
+</ul>
+<p>Besides the standard layouts, it also provides:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">bgr_layout_t</span></code></li>
+<li><code class="docutils literal"><span class="pre">bgra_layout_t</span></code></li>
+<li><code class="docutils literal"><span class="pre">abgr_layout_t</span></code></li>
+<li><code class="docutils literal"><span class="pre">argb_layout_t</span></code></li>
+</ul>
+<p>As an example, here is how GIL defines the RGBA color space:</p>
+<div class="highlight-c++"><div class="highlight"><pre><span class="p">..</span> <span class="n">code</span><span class="o">-</span><span class="n">block</span><span class="o">::</span> <span class="n">cpp</span>
+</pre></div>
+</div>
+<blockquote>
+<div>struct red_t {};
+struct green_t {};
+struct blue_t {};
+struct alpha_t {};
+rgba_t = using mpl::vector4&lt;red_t, green_t, blue_t, alpha_t&gt;;</div></blockquote>
+<p>The ordering of the channels in the color space definition specifies their
+semantic order. For example, <code class="docutils literal"><span class="pre">red_t</span></code> is the first semantic channel of
+<code class="docutils literal"><span class="pre">rgba_t</span></code>. While there is a unique semantic ordering of the channels in a
+color space, channels may vary in their physical ordering in memory</p>
+<p>The mapping of channels is specified by <code class="docutils literal"><span class="pre">ChannelMappingConcept</span></code>, which is
+an MPL random access sequence of integral types.
+A color space and its associated mapping are often used together.</p>
+<p>Thus they are grouped in GIL&#8217;s layout:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span>
+<span class="o">&lt;</span>
+    <span class="k">typename</span> <span class="n">ColorSpace</span><span class="p">,</span>
+    <span class="k">typename</span> <span class="n">ChannelMapping</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">::</span><span class="n">range_c</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">size</span><span class="o">&lt;</span><span class="n">ColorSpace</span><span class="o">&gt;::</span><span class="n">value</span><span class="o">&gt;</span>
+<span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">layout</span>
+<span class="p">{</span>
+  <span class="k">using</span> <span class="n">color_space_t</span> <span class="o">=</span> <span class="n">ColorSpace</span><span class="p">;</span>
+  <span class="k">using</span> <span class="n">channel_mapping_t</span> <span class="o">=</span> <span class="n">ChannelMapping</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Here is how to create layouts for the RGBA color space:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">using</span> <span class="n">rgba_layout_t</span> <span class="o">=</span> <span class="n">layout</span><span class="o">&lt;</span><span class="n">rgba_t</span><span class="o">&gt;</span><span class="p">;</span> <span class="c1">// default ordering is 0,1,2,3...</span>
+<span class="k">using</span> <span class="n">bgra_layout_t</span> <span class="o">=</span> <span class="n">layout</span><span class="o">&lt;</span><span class="n">rgba_t</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector4_c</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+<span class="k">using</span> <span class="n">argb_layout_t</span> <span class="o">=</span> <span class="n">layout</span><span class="o">&lt;</span><span class="n">rgba_t</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector4_c</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+<span class="k">using</span> <span class="n">abgr_layout_t</span> <span class="o">=</span> <span class="n">layout</span><span class="o">&lt;</span><span class="n">rgba_t</span><span class="p">,</span> <span class="n">mpl</span><span class="o">::</span><span class="n">vector4_c</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Channel" href="channel.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Color Base" href="color_base.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

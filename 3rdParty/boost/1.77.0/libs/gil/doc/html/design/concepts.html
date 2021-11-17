@@ -1,0 +1,149 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Concepts - Boost.GIL  documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    '../',
+          VERSION:     '',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="top" title="Boost.GIL  documentation" href="../index.html" />
+    <link rel="up" title="Design Guide" href="index.html" />
+    <link rel="next" title="Point" href="point.html" />
+    <link rel="prev" title="Basics" href="basics.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="../index.html"><img
+          alt="C++ Boost" src="../_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="../index.html"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="../search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Basics" href="basics.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Point" href="point.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="concepts">
+<h1>Concepts</h1>
+<p>All constructs in GIL are models of GIL concepts. A <em>concept</em> is a set of
+requirements that a type (or a set of related types) must fulfill to be used
+correctly in generic algorithms. The requirements include syntactic and
+algorithmic guarantees. For example, GIL class <code class="docutils literal"><span class="pre">pixel</span></code> is a model of GIL
+<code class="docutils literal"><span class="pre">PixelConcept</span></code>. The user may substitute the pixel class with one of their
+own, and, as long as it satisfies the requirements of <code class="docutils literal"><span class="pre">PixelConcept</span></code>,
+all other GIL classes and algorithms can be used with it.
+See more about concepts is avaialble at
+<a class="reference external" href="https://web.archive.org/web/20160324115943/http://www.generic-programming.org/languages/conceptcpp/">Generic Programming in ConceptC++</a></p>
+<p>In this document we will use a syntax for defining concepts that is described
+in the C++ standard proposal paper
+<a class="reference external" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n2081.pdf">[N2081] Concepts</a>.</p>
+<p>Here are some common concepts that will be used in GIL.
+Most of them are defined at the
+<a class="reference external" href="https://web.archive.org/web/20160326060858/http://www.generic-programming.org/languages/conceptcpp/concept_web.php">ConceptC++ Concept Web</a>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">auto</span> <span class="n">concept</span> <span class="n">DefaultConstructible</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="n">T</span><span class="o">::</span><span class="n">T</span><span class="p">();</span>
+<span class="p">};</span>
+
+<span class="k">auto</span> <span class="n">concept</span> <span class="n">CopyConstructible</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="n">T</span><span class="o">::</span><span class="n">T</span><span class="p">(</span><span class="n">T</span><span class="p">);</span>
+    <span class="n">T</span><span class="o">::~</span><span class="n">T</span><span class="p">();</span>
+<span class="p">};</span>
+
+<span class="k">auto</span> <span class="n">concept</span> <span class="n">Assignable</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="p">,</span> <span class="k">typename</span> <span class="n">U</span> <span class="o">=</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="k">typename</span> <span class="n">result_type</span><span class="p">;</span>
+    <span class="n">result_type</span> <span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span><span class="p">,</span> <span class="n">U</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="k">auto</span> <span class="n">concept</span> <span class="n">EqualityComparable</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="p">,</span> <span class="k">typename</span> <span class="n">U</span> <span class="o">=</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="kt">bool</span> <span class="k">operator</span><span class="o">==</span><span class="p">(</span><span class="n">T</span> <span class="n">x</span><span class="p">,</span> <span class="n">U</span> <span class="n">y</span><span class="p">);</span>
+    <span class="kt">bool</span> <span class="k">operator</span><span class="o">!=</span><span class="p">(</span><span class="n">T</span> <span class="n">x</span><span class="p">,</span> <span class="n">U</span> <span class="n">y</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="o">!</span><span class="p">(</span><span class="n">x</span><span class="o">==</span><span class="n">y</span><span class="p">);</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="n">concept</span> <span class="n">SameType</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="p">,</span> <span class="k">typename</span> <span class="n">U</span><span class="o">&gt;</span> <span class="p">{</span> <span class="cm">/* unspecified */</span> <span class="p">};</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">concept_map</span> <span class="n">SameType</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">T</span><span class="o">&gt;</span> <span class="p">{</span> <span class="cm">/* unspecified */</span> <span class="p">};</span>
+
+<span class="k">auto</span> <span class="n">concept</span> <span class="n">Swappable</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="kt">void</span> <span class="n">swap</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">t</span><span class="p">,</span> <span class="n">T</span><span class="o">&amp;</span> <span class="n">u</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Here are some additional basic concepts that GIL needs:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">auto</span> <span class="n">concept</span> <span class="n">Regular</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> <span class="o">:</span>
+    <span class="n">DefaultConstructible</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">CopyConstructible</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">EqualityComparable</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">Assignable</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">Swappable</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{};</span>
+
+<span class="k">auto</span> <span class="n">concept</span> <span class="n">Metafunction</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="p">{</span>
+    <span class="k">typename</span> <span class="n">type</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="prev" title="Basics" href="basics.html"><img src="../_static/prev.png" alt="prev"/></a>
+      <a class="up" title="Design Guide" href="index.html"><img src="../_static/up.png" alt="up"/></a>
+      <a class="next" title="Point" href="point.html"><img src="../_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+    <div class="footer" role="contentinfo">
+      Last updated on 2021-08-05 09:08:10.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+    </div>
+  </body>
+</html>

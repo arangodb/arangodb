@@ -1,0 +1,16 @@
+{
+    "key": "typeof",
+    "name": "Typeof",
+    "authors": [
+        "Arkadiy Vertleyb",
+        "Peder Holt"
+    ],
+    "description": "Typeof operator emulation.",
+    "category": [
+        "Emulation"
+    ],
+    "maintainers": [
+        "Arkadiy Vertleyb <vertleyb -at- hotmail.com>",
+        "Peder Holt <peder.holt -at- gmail.com>"
+    ]
+}
