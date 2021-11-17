@@ -163,7 +163,7 @@ void load_libraries(
       return true; // skip non-library extensions
     }
 
-    auto stem = irs::utf8_path{irs::utf8_path::string_type(path_parts.stem)}.string();
+    auto stem = irs::utf8_path{irs::utf8_path::string_type(path_parts.stem)}.u8string();
 
     if (stem.size() < prefix.size() + suffix.size() ||
         strncmp(stem.c_str(), prefix.c_str(), prefix.size()) != 0 ||
@@ -174,7 +174,7 @@ void load_libraries(
     const auto path_stem = plugin_path / stem; // strip extension
 
     // FIXME TODO check double-load of same dll
-    const void* handle = load_library(path_stem.string().c_str(), 1);
+    const void* handle = load_library(path_stem.u8string().c_str(), 1);
 
     if (!handle) {
       IR_FRMT_ERROR("library load failed for path: %s", path_stem.u8string().c_str());

@@ -588,7 +588,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   auto dir_visitor = [&path, &visitor](const file_path_t name) {
     path = name;
 
-    auto filename = path.string();
+    auto filename = path.u8string();
     return visitor(filename);
   };
 #else
