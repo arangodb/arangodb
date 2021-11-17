@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed an issue in old incremental sync protocol with document keys that
+  contained special characters (`%`). These keys could be send unencoded in
+  the incremental sync protocol, leading to wrong key ranges being transfered
+  between leader and follower, and thus causing follow-up errors and preventing
+  getting in sync.
+
 * APM-209: Histogram displaying is now switched off by default. For displaying
   it, the new flag `histogram.generate` must be set to true. Its default value
   is false for compatibility with other versions and also for complying with the
