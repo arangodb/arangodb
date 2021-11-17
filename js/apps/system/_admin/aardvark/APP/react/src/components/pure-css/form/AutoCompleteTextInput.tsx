@@ -7,7 +7,7 @@ type AutoCompleteTextInputProps = {
   id?: string;
   label?: ReactNode;
   disabled?: boolean;
-  value?: string | number;
+  value: string | number;
   onSelect: (value: string | number) => void;
   maxOptions?: number;
   onRequestOptions?: () => void;
@@ -24,7 +24,6 @@ type AutoCompleteTextInputProps = {
 const AutoCompleteTextInput = ({
                                  id,
                                  label,
-                                 disabled,
                                  onSelect,
                                  value,
                                  ...rest
@@ -37,26 +36,15 @@ const AutoCompleteTextInput = ({
     }
   }, [id]);
 
-  useEffect(() => {
-    const els = document.getElementsByClassName('react-autocomplete-input');
-
-    if (els.length) {
-      const el = els[0] as HTMLElement;
-
-      el.style.left = 'unset';
-      el.style.top = 'unset';
-    }
-  }, [value]);
-
   const style = defaultsDeep(rest.style, { width: '90%' });
 
   rest = omit(rest, 'style', 'changeOnSelect', 'defaultValue', 'trigger', 'passThroughEnter',
-    'Component', 'type', 'value', 'onSelect', 'offsetX', 'offsetY');
+    'Component', 'type');
 
   return <>
     {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}
-    <TextInput Component={'input'} type={'text'} id={thisId} disabled={disabled} trigger={''}
-               passThroughEnter={false} value={value} onSelect={onSelect} style={style} {...rest}/>
+    <TextInput Component={'input'} type={'text'} id={thisId} trigger={''} value={value} onSelect={onSelect}
+               passThroughEnter={false} style={style} {...rest}/>
   </>;
 };
 

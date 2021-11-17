@@ -97,6 +97,7 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
       },
       basePath
     });
+    setOptions(without(options, analyzer as string));
   };
 
   const removeAnalyzer = (analyzer: string | number) => {
@@ -108,6 +109,7 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
       },
       basePath
     });
+    setOptions(options.concat([analyzer as string]).sort());
   };
 
   const updateStoreValues = (event: ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +132,7 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
       {/* <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled} rows={4}*/}
       {/*          label={'Analyzers (One per line)'}/>*/}
       <AutoCompleteMultiSelect values={analyzers} onRemove={removeAnalyzer} onSelect={addAnalyzer}
-                               options={options} label={'Analyzers'}/>
+                               options={options} label={'Analyzers'} disabled={disabled}/>
     </Cell>
     <Cell size={'1-3'}>
       <Grid style={{ marginTop: 24 }}>
