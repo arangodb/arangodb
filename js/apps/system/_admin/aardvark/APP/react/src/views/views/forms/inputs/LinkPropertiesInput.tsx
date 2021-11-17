@@ -1,7 +1,7 @@
 import { DispatchArgs, FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
-import React, { ChangeEvent, Dispatch, useEffect, useState } from "react";
-import { isEmpty, map, without } from "lodash";
+import React, { ChangeEvent, Dispatch, useEffect, useMemo, useState } from "react";
+import { chain, isEmpty, map, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../../components/arango/table";
@@ -23,11 +23,15 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
   const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
   const [options, setOptions] = useState<string[]>([]);
 
+  const analyzers = useMemo(() => formState.analyzers || [], [formState.analyzers]);
+
   useEffect(() => {
     if (data) {
-      setOptions(map(data.body.result, 'name').sort());
+      const tempOptions = chain(data.body.result).map('name').difference(analyzers).value();
+
+      setOptions(tempOptions);
     }
-  }, [data]);
+  }, [analyzers, data]);
 
   const updateField = (event: ChangeEvent<HTMLSelectElement>) => {
     setField(event.target.value);
@@ -58,35 +62,6 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
     });
     setField('');
   };
-
-  // const updateAnalyzers = (event: ChangeEvent<HTMLTextAreaElement>) => {
-  //   const analyzers = event.target.value.split('\n');
-  //
-  //   if (filter(analyzers, negate(isEmpty)).length) {
-  //     dispatch({
-  //       type: 'setField',
-  //       field: {
-  //         path: 'analyzers',
-  //         value: analyzers
-  //       },
-  //       basePath
-  //     });
-  //   } else {
-  //     dispatch({
-  //       type: 'unsetField',
-  //       field: {
-  //         path: 'analyzers'
-  //       },
-  //       basePath
-  //     });
-  //   }
-  // };
-
-  // const getAnalyzers = () => {
-  //   return (formState.analyzers || []).join('\n');
-  // };
-
-  const analyzers = formState.analyzers || [];
 
   const addAnalyzer = (analyzer: string | number) => {
     dispatch({
@@ -130,8 +105,6 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
 
   return <Grid>
     <Cell size={'1-3'}>
-      {/* <Textarea value={getAnalyzers()} onChange={updateAnalyzers} disabled={disabled} rows={4}*/}
-      {/*          label={'Analyzers (One per line)'}/>*/}
       <AutoCompleteMultiSelect values={analyzers} onRemove={removeAnalyzer} onSelect={addAnalyzer}
                                options={options} label={'Analyzers'} disabled={disabled}/>
     </Cell>

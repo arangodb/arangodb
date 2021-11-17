@@ -74,6 +74,7 @@ export const linksSchema = {
   $id: 'https://arangodb.com/schemas/views/linkProperties.json',
   $recursiveAnchor: true,
   type: 'object',
+  nullable: true,
   properties: {
     analyzers: {
       type: 'array',
@@ -133,6 +134,7 @@ export const formSchema: JSONSchemaType<FormState> = {
       patternProperties: {
         '^[a-zA-Z0-9-_]+$': {
           type: 'object',
+          nullable: true,
           $ref: 'linkProperties.json'
         }
       },
