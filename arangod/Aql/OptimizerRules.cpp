@@ -5024,8 +5024,7 @@ bool isInputForModificationNode(ExecutionPlan const& plan,
       }
 
       // get parent node
-      n = n->getMember(0);
-      if (n->type != NODE_TYPE_REFERENCE) {
+      if (n->getMember(0)->type != NODE_TYPE_REFERENCE) {
         LOG_DEVEL <<  __LINE__;
         return false;
       }
@@ -5035,7 +5034,7 @@ bool isInputForModificationNode(ExecutionPlan const& plan,
         LOG_DEVEL <<  __LINE__;
         return false;
       }
-      inputVariable = static_cast<Variable const*>(n->getData());
+      inputVariable = static_cast<Variable const*>(n->getMember(0)->getData());
       setter = plan.getVarSetBy(inputVariable->id);
     } else if (n->isObject()) {
       // note for which shard keys we need to look for
