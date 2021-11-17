@@ -1,6 +1,21 @@
 devel
 -----
 
+* Removed the following deprecated arangobench testcases:
+  * aqltrx
+  * aqlv8
+  * counttrx
+  * deadlocktrx
+  * multi-collection
+  * multitrx
+  * random-shapes
+  * shapes
+  * shapes-append
+  * skiplist
+  * stream-cursor
+
+* Renamed arangobench testcase "hash" to "persistent-index".
+
 * Fixed an issue in old incremental sync protocol with document keys that
   contained special characters (`%`). These keys could be send unencoded in
   the incremental sync protocol, leading to wrong key ranges being transfered
