@@ -4993,12 +4993,9 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
-bool isInputForModificationNode(ExecutionPlan const& plan,
-                                ModificationNode const* modificationNode,
+bool isInputForModificationNode(ExecutionPlan const& plan, Collection const* collection,
+                                Variable const* inputVariable,
                                 ExecutionNode const* otherNode) {
-  // extract the input variable for the modification node
-  auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(modificationNode);
-
   // find the setter of the input variable
   TRI_ASSERT(inputVariable != nullptr);
   ExecutionNode const* setter = plan.getVarSetBy(inputVariable->id);
@@ -5104,7 +5101,6 @@ bool isInputForModificationNode(ExecutionPlan const& plan,
 
   return true;
 }
-
 
 /// WalkerWorker for undistributeRemoveAfterEnumColl
 class RemoveToEnumCollFinder final
@@ -8370,7 +8366,7 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
           // sharding!
           allowKeyConversionToObject = true;
           setInVariable = [updateReplaceNode](Variable* var) {
-            updateReplaceNode->setInKeyVariable(var);
+           updateReplaceNode->setInKeyVariable(var);
           };
         } else {
           inputVariable = updateReplaceNode->inDocVariable();
@@ -9093,16 +9089,97 @@ namespace {
       if (nodeEligibleForDistribute(lower.getShardByNode()->getType())) {
         auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(lower.getShardByNode());
         auto up = upper.getShardByNode();
-
-        if (lower.getShardByNode()->isModificationNode() && 
-            isInputForModificationNode(plan, ExecutionNode::castTo<ModificationNode const*>(lower.getShardByNode()), up)) {
-          return upper;
+        // TEMPORARY hack to figure out that this still works:
+        TRI_ASSERT(inputVariable != nullptr);
+        ExecutionNode* setter = plan.getVarSetBy(inputVariable->id);
+        TRI_ASSERT(setter != nullptr);
+        bool rewiredToDistributeInput = false;
+        // To get rid of this hack, we test if this pointer is inside the list of Context Nodes
+        if (setter->getType() == EN::CALCULATION) {
+          // We try to rewire the input variable to be the input of MAKE_DISTRIBUTE_INPUT
+          auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
+          auto expr = cn->expression();
+          AstNode const* n = expr->node();
+          TRI_ASSERT(n != nullptr);
+          if (n->type == NODE_TYPE_FCALL) {
+            auto func = static_cast<Function const*>(n->getData());
+            if (func->name == "MAKE_DISTRIBUTE_INPUT" ||
+                func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT") {
+              /*
+               * Alterantive, this way, we can specifically select the argument
+               * Requires more intenral knowledge, but may be faster.
+              auto member = n->getMemberUnchecked(0);
+              size_t const numArgs = member->numMembers();
+              auto firstArg = member->getMember(0);
+              */
+              VarSet usedVars{};
+              cn->getVariablesUsedHere(usedVars);
+              TRI_ASSERT(usedVars.size() == 1);
+              inputVariable = *usedVars.begin();
+              rewiredToDistributeInput = true;
+            }
+          }
         }
 
-        VarSet variablesToTest;
-        variablesToTest.insert(inputVariable);
-        if (up->setsVariable(variablesToTest)) {
-          LOG_DEVEL << "Distribute by attached producer, " << inputVariable->name << " produced by " << up->getTypeString();
+        if (isInputForModificationNode(plan, collection, inputVariable, up)) {
+          LOG_DEVEL << "Distribute by attached producer, " << inputVariable->name
+                    << " produced by " << up->getTypeString();
+          if (rewiredToDistributeInput) {
+            LOG_DEVEL << "Removing MAKE_DISTRIBUTE_INPUT again";
+            plan.unlinkNode(setter);
+            switch (lower.getShardByNode()->getType()) {
+              case ExecutionNode::INSERT: {
+                auto* specificNode =
+                    ExecutionNode::castTo<InsertNode*>(lower.getShardByNode());
+                specificNode->setInVariable(inputVariable);
+                break;
+              }
+              case ExecutionNode::REMOVE: {
+                auto* specificNode =
+                    ExecutionNode::castTo<RemoveNode*>(lower.getShardByNode());
+                specificNode->setInVariable(inputVariable);
+                break;
+              }
+              case ExecutionNode::UPDATE:
+              case ExecutionNode::REPLACE: {
+                auto* updateReplaceNode =
+                    ExecutionNode::castTo<UpdateReplaceNode*>(lower.getShardByNode());
+                if (updateReplaceNode->inKeyVariable() != nullptr) {
+                  updateReplaceNode->setInKeyVariable(inputVariable);
+                } else {
+                  updateReplaceNode->setInDocVariable(inputVariable);
+                }
+                break;
+              }
+              case ExecutionNode::UPSERT: {
+                auto* upsertNode =
+                    ExecutionNode::castTo<UpsertNode*>(lower.getShardByNode());
+                upsertNode->setInsertVariable(inputVariable);
+                break;
+              }
+              case ExecutionNode::TRAVERSAL: {
+                auto* traversalNode =
+                    ExecutionNode::castTo<TraversalNode*>(lower.getShardByNode());
+                traversalNode->setInVariable(inputVariable);
+                break;
+              }
+              case ExecutionNode::K_SHORTEST_PATHS: {
+                auto* kShortestPathsNode =
+                    ExecutionNode::castTo<KShortestPathsNode*>(lower.getShardByNode());
+                kShortestPathsNode->setStartInVariable(inputVariable);
+                break;
+              }
+              case ExecutionNode::SHORTEST_PATH: {
+                auto* shortestPathNode =
+                    ExecutionNode::castTo<ShortestPathNode*>(lower.getShardByNode());
+                shortestPathNode->setStartInVariable(inputVariable);
+                break;
+              }
+              default:
+                // The above logic should never let any nonhandled not through here.
+                TRI_ASSERT(false);
+            }
+          }
           return upper;
         }
       }
