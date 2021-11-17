@@ -278,7 +278,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_known) {
   // We could get away without network requests in between
   auto queryString = R"aql(
     FOR x IN collection
-    UPDATE {id: 123} WITH {value: 1} INTO customKeysCollection)aql";
+    UPDATE {_key: x._key, id: "123"} WITH {value: 1} INTO customKeysCollection)aql";
   auto plan = prepareQuery(queryString);
 
   auto planSlice = plan->slice();
@@ -286,9 +286,8 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_known) {
   planSlice = planSlice.get("nodes");
   LOG_DEVEL << nodeNames(planSlice);
 
-  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", "CalculationNode",
-                               "EnumerateCollectionNode", "RemoteNode",
-                               "GatherNode", "ScatterNode", "RemoteNode",
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", 
+                               "EnumerateCollectionNode",
                                "UpdateNode", "RemoteNode", "GatherNode"});
 }
 
@@ -350,7 +349,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_known) {
   // We could get away without network requests in between
   auto queryString = R"aql(
     FOR x IN collection
-    REPLACE {id: "fuxx"} WITH {value: 1} INTO customKeysCollection)aql";
+    REPLACE {_key: x._key, id: "fuxx"} WITH {value: 1} INTO customKeysCollection)aql";
   auto plan = prepareQuery(queryString);
 
   auto planSlice = plan->slice();
@@ -358,8 +357,8 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_known) {
   planSlice = planSlice.get("nodes");
   LOG_DEVEL << nodeNames(planSlice);
 
-  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", "CalculationNode",
-                               "EnumerateCollectionNode", "RemoteNode",
+  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode", 
+                               "EnumerateCollectionNode", "CalculationNode", "RemoteNode",
                                "GatherNode", "CalculationNode", "DistributeNode",
                                "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode"});
 }
@@ -376,11 +375,10 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_unknown) {
   ASSERT_TRUE(planSlice.hasKey("nodes"));
   planSlice = planSlice.get("nodes");
   LOG_DEVEL << nodeNames(planSlice);
-  
+ 
   assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
-                               "EnumerateCollectionNode", "RemoteNode",
-                               "GatherNode", "DistributeNode",
-                               "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode"});
+                               "EnumerateCollectionNode",
+                               "ReplaceNode", "RemoteNode", "GatherNode"});
 }
 
 TEST_F(DistributeQueryRuleTest, enumerate_remove_custom_shardkey) {

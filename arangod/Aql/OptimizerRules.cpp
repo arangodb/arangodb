@@ -8816,9 +8816,10 @@ namespace {
     // dependency <- remote <- gather <- node
     auto dependencyNode = node->getFirstDependency();
     LOG_DEVEL << "Adding gather " << dependencyNode->getTypeString() << " <- " << node->getTypeString();
+    node->removeDependencies();
     remoteNode->addDependency(dependencyNode);
     gatherNode->addDependency(remoteNode);
-    node->replaceDependency(dependencyNode, gatherNode);
+    node->addDependency(gatherNode);
 
     // TODO Performance, i think this is not necessary here, as the above injected nodes
     // do not convey new variable information
@@ -8884,6 +8885,7 @@ namespace {
     TRI_ASSERT(node->hasParent());
     TRI_ASSERT(node->getParents().size() == 1);
     auto* parent = node->getFirstParent();
+    parent->removeDependencies();
     LOG_DEVEL << "Adding " << scatterNode->getTypeString() <<  ": " << node->getTypeString() << " <- " << parent->getTypeString();
     // TODO this is not nice, maybe we can refactor this a bit
     if (scatterNode->getType() == ExecutionNode::DISTRIBUTE) {
@@ -8904,7 +8906,7 @@ namespace {
       scatterNode->addDependency(node);
     }
     remoteNode->addDependency(scatterNode);
-    parent->replaceDependency(node, remoteNode);
+    parent->addDependency(remoteNode);
 
     // TODO Performance, i think this is not necessary here, as the above injected nodes
     // do not convey new variable information, unless we inserted a distribute
