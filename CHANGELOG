@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make `db.<collection>.figures(true)` operate on the same snapshot when 
+  counting the number of documents in the documents column family and the
+  indexes. This ensures consistency for the results of a single figures result.
+
 * Fixed an issue in old incremental sync protocol with document keys that
   contained special characters (`%`). These keys could be send unencoded in
   the incremental sync protocol, leading to wrong key ranges being transfered
