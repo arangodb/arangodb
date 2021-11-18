@@ -245,7 +245,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   new UInt32Parameter(&_maxNumberOfMoveShards),
                   arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                                arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(30900);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
