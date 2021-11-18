@@ -1823,14 +1823,14 @@ using CollectionShardPair = RestAdminClusterHandler::CollectionShardPair;
 using MoveShardDescription = RestAdminClusterHandler::MoveShardDescription;
 
 void theSimpleStupidOne(std::map<std::string, std::unordered_set<CollectionShardPair>>& shardMap,
-                        std::vector<MoveShardDescription>& moves) {
+                        std::vector<MoveShardDescription>& moves, std::uint32_t numMoveShards) {
   // If you dislike this algorithm feel free to add a new one.
   // shardMap is a map from dbserver to a set of shards located on that server.
   // your algorithm has to fill `moves` with the move shard operations that it wants to execute.
   // Please fill in all values of the `MoveShardDescription` struct.
 
   std::unordered_set<std::string> movedShards;
-  while (moves.size() < 10) {
+  while (moves.size() < numMoveShards) {
     auto [emptiest, fullest] =
         std::minmax_element(shardMap.begin(), shardMap.end(),
                             [](auto const& a, auto const& b) {
@@ -1872,15 +1872,23 @@ void theSimpleStupidOne(std::map<std::string, std::unordered_set<CollectionShard
 
 RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalanceShards(
     const ReshardAlgorithm& algorithm) {
+
   // dbserver -> shards
   std::vector<MoveShardDescription> moves;
   std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;
   getShardDistribution(shardMap);
 
-  algorithm(shardMap, moves);
+  algorithm(shardMap, moves, server().getFeature<ClusterFeature>().maxNumberOfMoveShards());
+
+  VPackBuilder responseBuilder;
+  responseBuilder.openObject();
+  responseBuilder.add("operations", VPackValue(moves.size()));
+  responseBuilder.close();
 
   if (moves.empty()) {
-    resetResponse(rest::ResponseCode::OK);
+
+
+    generateOk(rest::ResponseCode::OK, responseBuilder.slice());
     return futures::makeFuture();
   }
 
@@ -1912,9 +1920,9 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
     std::move(write).end().done();
   }
 
-  return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this](AsyncAgencyCommResult&& result) {
+  return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue([this, resBuilder = std::move(responseBuilder)](AsyncAgencyCommResult&& result) {
     if (result.ok() && result.statusCode() == 200) {
-      generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
+      generateOk(rest::ResponseCode::ACCEPTED, resBuilder.slice());
     } else {
       generateError(result.asResult());
     }

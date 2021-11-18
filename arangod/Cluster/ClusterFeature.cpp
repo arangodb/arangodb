@@ -238,6 +238,14 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                                arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30800);
+  options
+      ->addOption("--cluster.max-number-of-move-shards",
+                  "number of shards to be moved per rebalance operation. "
+                  "If value = 0, no shards will be moved",
+                  new UInt32Parameter(&_maxNumberOfMoveShards),
+                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                               arangodb::options::Flags::OnCoordinator))
+      .setIntroducedIn(31000);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
