@@ -224,7 +224,7 @@
     addNewGraph: function (e) {
       e.preventDefault();
       if (!this.readOnly) {
-        if (frontendConfig.isCluster && frontendConfig.isEnterprise) {
+        if (frontendConfig.isEnterprise) {
           this.createEditGraphModal();
         } else {
           this.createEditGraphModal();
@@ -425,7 +425,7 @@
     },
 
     setCacheModeState: function (forget) {
-      if (!frontendConfig.isCluster || !frontendConfig.isEnterprise) {
+      if (!frontendConfig.isEnterprise) {
         return;
       }
 
@@ -780,7 +780,7 @@
         orphanCollections: vertexCollections
       };
 
-      // if SmartGraph
+      // SmartGraph enterprise area
       if ($('#tab-smartGraph').parent().hasClass('active')) {
         if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
           arangoHelper.arangoError('SmartGraph creation', 'numberOfShards and/or smartGraphAttribute not set!');
@@ -805,11 +805,13 @@
           }
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
+        // SatelliteGraph enterprise area
         newCollectionObject.options = {
           replicationFactor: "satellite"
         };
       } else {
         if (frontendConfig.isCluster) {
+          // General graph community cluster area
           if ($('#general-numberOfShards').val().length > 0) {
             newCollectionObject.options = {
               numberOfShards: parseInt($('#general-numberOfShards').val())
@@ -1020,7 +1022,8 @@
         );
       }
 
-      if (frontendConfig.isEnterprise === true && frontendConfig.isCluster && !graph) {
+      if (frontendConfig.isEnterprise === true && !graph) {
+        // Enterprise Graphs
         tableContent.push(
           window.modalView.createTextEntry(
             'new-numberOfShards',
@@ -1102,6 +1105,7 @@
       }
 
       if (frontendConfig.isCluster && !graph) {
+        // General Graphs Community
         tableContent.push(
           window.modalView.createTextEntry(
             'general-numberOfShards',

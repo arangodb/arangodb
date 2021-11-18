@@ -222,8 +222,12 @@ bool isIgnoredHiddenEnterpriseCollection(arangodb::DumpFeature::Options const& o
                                          std::string const& name) {
 #ifdef USE_ENTERPRISE
   if (!options.force && name[0] == '_') {
-    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
-        strncmp(name.c_str(), "_from_", 6) == 0 || strncmp(name.c_str(), "_to_", 4) == 0) {
+    if (strncmp(name.c_str(), arangodb::StaticStrings::FullLocalPrefix.c_str(),
+                arangodb::StaticStrings::FullLocalPrefix.size()) == 0 ||
+        strncmp(name.c_str(), arangodb::StaticStrings::FullFromPrefix.c_str(),
+                arangodb::StaticStrings::FullFromPrefix.size()) == 0 ||
+        strncmp(name.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(),
+                arangodb::StaticStrings::FullToPrefix.size()) == 0) {
       LOG_TOPIC("d921a", INFO, arangodb::Logger::DUMP)
           << "Dump is ignoring collection '" << name
           << "'. Will be created via SmartGraphs of a full dump. If you want "
@@ -482,7 +486,7 @@ Result DumpFeature::DumpCollectionJob::run(arangodb::httpclient::SimpleHttpClien
       VPackObjectBuilder object(&excludes);
       {
         VPackObjectBuilder subObject(&excludes, "parameters");
-        subObject->add("shadowCollections", VPackSlice::nullSlice());
+        subObject->add(StaticStrings::ShadowCollections, VPackSlice::nullSlice());
       }
     }
 
@@ -897,7 +901,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
       continue;
     }
 
-    if (_options.clusterMode && isIgnoredHiddenEnterpriseCollection(_options, name)) {
+    if (isIgnoredHiddenEnterpriseCollection(_options, name)) {
       continue;
     }
     
