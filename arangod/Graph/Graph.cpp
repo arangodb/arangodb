@@ -179,8 +179,7 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
     _numberOfShards =
         Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
     if (Helper::getStringRef(options.get(StaticStrings::ReplicationFactor),
-                             velocypack::StringRef("")) == StaticStrings::Satellite &&
-        arangodb::ServerState::instance()->isRunningInCluster()) {
+                             velocypack::StringRef("")) == StaticStrings::Satellite) {
       _isSatellite = true;
       setReplicationFactor(0);
     } else {
@@ -362,8 +361,12 @@ void Graph::toPersistence(VPackBuilder& builder) const {
   // The name
   builder.add(StaticStrings::KeyString, VPackValue(_graphName));
 
-  // Cluster Information
-  if (arangodb::ServerState::instance()->isRunningInCluster()) {
+  // Cluster related information:
+  // Will be also persisted in SingleServer operation mode as we'll support creating
+  // SmartGraphs and SatelliteGraphs in SingleServer mode as well. This information
+  // will be necessary in case we dump & restore from SingleServer to a clustered
+  // environment.
+  if (arangodb::ServerState::instance()->isRunningInCluster() || isSmart() || isSatellite()) {
     builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
     if (isSatellite()) {
       builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
