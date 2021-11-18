@@ -227,12 +227,7 @@ class Builder {
   }
 
   // Return a Slice of the result:
-  inline Slice slice() const {
-    if (isEmpty()) {
-      return Slice();
-    }
-    return Slice(start());
-  }
+  Slice slice() const;
 
 #if __cplusplus >= 201703L
   // Return a SharedSlice of the result (makes a copy of the slice)

@@ -23,6 +23,7 @@
 #include <fuerte/detail/vst.h>
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
+#include <velocypack/Exception.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -33,6 +34,12 @@
 namespace {
 static std::string const emptyString;
 }
+
+namespace arangodb::debug {
+void logBacktrace() noexcept;
+void logString(std::string_view str) noexcept;
+void logBin(std::string_view msg, std::uint8_t const* data, std::size_t len) noexcept;
+}  // namespace arangodb::debug
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -219,18 +226,49 @@ std::vector<VPackSlice> Response::slices() const {
 
     auto length = _payload.byteSize() - _payloadOffset;
     auto cursor = _payload.data() + _payloadOffset;
-    while (length) {
-      // will throw on an error
-      validator.validate(cursor, length, true);
+    try {
+      while (length) {
+        // will throw on an error
+        validator.validate(cursor, length, true);
 
-      slices.emplace_back(cursor);
-      auto sliceSize = slices.back().byteSize();
-      if (length < sliceSize) {
-        throw std::logic_error("invalid buffer");
+        slices.emplace_back(cursor);
+        auto sliceSize = slices.back().byteSize();
+        if (length < sliceSize) {
+          throw std::logic_error("invalid buffer");
+        }
+        FUERTE_ASSERT(length >= sliceSize);
+        cursor += sliceSize;
+        length -= sliceSize;
       }
-      FUERTE_ASSERT(length >= sliceSize);
-      cursor += sliceSize;
-      length -= sliceSize;
+    } catch(::arangodb::velocypack::Exception const& e) {
+      auto message = std::string();
+      message += "[" __FILE__ ":";
+      message += std::to_string(__LINE__);
+      message += "@";
+      message += __FUNCTION__;
+      message += "] ";
+      message += "Failed to validate slice, exception was: (";
+      message += std::to_string(e.errorCode());
+      message += ") ";
+      message += e.what();
+
+      ::arangodb::debug::logString(message);
+      ::arangodb::debug::logBacktrace();
+      ::arangodb::debug::logBin("Slice: ", cursor, length);
+      throw;
+    } catch(...) {
+      auto message = std::string();
+      message += "[" __FILE__ ":";
+      message += std::to_string(__LINE__);
+      message += "@";
+      message += __FUNCTION__;
+      message += "] ";
+      message += "Failed to validate slice, unknown exception.";
+
+      ::arangodb::debug::logString(message);
+      ::arangodb::debug::logBacktrace();
+      ::arangodb::debug::logBin("Slice: ", cursor, length);
+      throw;
     }
   }
   return slices;

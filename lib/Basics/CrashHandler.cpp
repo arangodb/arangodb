@@ -42,6 +42,9 @@
 #include <exception>
 #include <mutex>
 #include <thread>
+#include <string_view>
+#include <ios>
+#include <iomanip>
 
 #include <boost/core/demangle.hpp>
 
@@ -716,3 +719,23 @@ void CrashHandler::setMiniDumpDirectory(std::string path) {
 #endif
 
 }  // namespace arangodb
+
+namespace arangodb::debug {
+void logBacktrace() noexcept;
+void logString(std::string_view str) noexcept;
+void logBin(std::string_view msg, std::uint8_t const* data, std::size_t len) noexcept;
+}  // namespace arangodb::debug
+
+namespace arangodb::debug {
+void logBacktrace() noexcept { CrashHandler::logBacktrace(); }
+void logString(std::string_view str) noexcept {
+  LOG_TOPIC("f4b29", INFO, Logger::FIXME) << str;
+}
+void logBin(std::string_view msg, std::uint8_t const* data, std::size_t len) noexcept {
+  auto bin = std::stringstream();
+  for (std::size_t i = 0; i < len; ++i) {
+    bin << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)data[i] << " ";
+  }
+  LOG_TOPIC("68145", INFO, Logger::FIXME) << msg << ": " << bin.str();
+}
+}  // namespace arangodb::debug
