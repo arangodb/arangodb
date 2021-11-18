@@ -112,9 +112,9 @@ function edgeCollectionRestrictionSuite() {
       cleanup();
    
       try {
-        graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)], null, { numberOfShards: 4, smartGraphAttribute: "aha" });
-
-        graphHelper.runTraversalRestrictEdgeCollectionTests(vn, en, gn);
+        const smartGraphAttribute = 'smart';
+        graphs._create(gn, [graphs._relation(en + "1", vn, vn), graphs._relation(en + "2", vn, vn)], null, { numberOfShards: 4, smartGraphAttribute: smartGraphAttribute });
+        graphHelper.runTraversalRestrictEdgeCollectionTests(vn, en, gn, false, smartGraphAttribute);
       } finally {
         cleanup();
       }

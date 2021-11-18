@@ -223,7 +223,7 @@ function promtoolClusterSuite() {
       try {
         let metricsUrl = metricsUrlPath + "?serverId=" + serverId;
         let res = arango.GET_RAW(metricsUrl);
-        assertEqual(503, res.code);
+        assertTrue(res.code === 500 || res.code === 503);
         //Do not validate response body because errorNum and errorMessage can differ depending on whether there was an open connection
         //between coordinator and db server when the later stopped responding. This cannot be reproduced consistently in the test.
         //        let body = res.parsedBody;

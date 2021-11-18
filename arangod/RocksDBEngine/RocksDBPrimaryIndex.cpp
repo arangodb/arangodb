@@ -55,7 +55,7 @@
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/VirtualCollection.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <rocksdb/iterator.h>
@@ -1142,7 +1142,7 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx, VPackBuilder*
     if (_isRunningInCluster) {
 #ifdef USE_ENTERPRISE
       if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
-        auto c = dynamic_cast<VirtualSmartEdgeCollection const*>(collection.get());
+        auto c = dynamic_cast<VirtualClusterSmartEdgeCollection const*>(collection.get());
         if (c == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
