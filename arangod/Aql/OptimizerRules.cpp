@@ -9020,7 +9020,11 @@ namespace {
                                std::vector<ExecutionNode*> const& additionalNodesWithContext) {
     LOG_DEVEL << "Joining snippets " << lower.getNode()->getTypeString()
               << " with " << upper.getNode()->getTypeString();
-    LOG_DEVEL_IF(!additionalNodesWithContext.empty()) << std::reduce(additionalNodesWithContext.begin(), additionalNodesWithContext.end(), std::string(""), [](std::string old, ExecutionNode* next) -> std::string {return old + ", " + next->getTypeString();});
+
+    // the following line does not compile with clang-12, because the lambda in std::reduce with be called
+    // with [arg1, arg2], [arg1, arg1] and [arg2, arg2]. So the types of the arguments should be the same,
+    // not different.
+    // LOG_DEVEL_IF(!additionalNodesWithContext.empty()) << std::reduce(additionalNodesWithContext.begin(), additionalNodesWithContext.end(), std::string(""), [](std::string old, ExecutionNode* next) -> std::string {return old + ", " + next->getTypeString();});
     TRI_ASSERT(lower.getNode() != upper.getNode());
     auto lowerLoc = lower.getAllowedLocation();
     auto upperLoc = upper.getAllowedLocation();
