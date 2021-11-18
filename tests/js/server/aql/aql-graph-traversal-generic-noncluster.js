@@ -25,12 +25,11 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-const {protoGraphs, TestVariants} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
+const {protoGraphs} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
 const {testsByGraph, metaTests} = require('@arangodb/testutils/aql-graph-traversal-generic-tests.js');
 const console = require('console');
 const jsunity = require("jsunity");
 const _ = require("lodash");
-const isEnterprise = require("internal").isEnterprise();
 
 function graphTraversalGenericGeneralGraphStandaloneSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
@@ -38,18 +37,6 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
     _.each(protoGraph.prepareSingleServerGraph(), function (testGraph) {
       testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerGeneralGraph`] = testGraph;
     });
-
-    if (isEnterprise) {
-      _.each(protoGraph.prepareSmartGraphs(TestVariants.SmartGraphSingleServer), function (testGraph) {
-        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerSmartGraph`] = testGraph;
-      });
-      _.each(protoGraph.prepareDisjointSmartGraphs(TestVariants.DisjointSmartGraphSingleServer), function (testGraph) {
-        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerDisjointSmartGraph`] = testGraph;
-      });
-      _.each(protoGraph.prepareSatelliteGraphs(TestVariants.SatelliteGraphSingleServer), function (testGraph) {
-        testGraphs[protoGraph.name()][`${testGraph.name()}_SingleServerSatelliteGraph`] = testGraph;
-      });
-    }
   });
 
   const suite = {
