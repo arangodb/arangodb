@@ -405,10 +405,16 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   auto const& vertex = step.getVertex();
 
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
-  TRI_ASSERT(_vertexConnectedEdges.find(vertex.getID()) != _vertexConnectedEdges.end());
-  for (auto const& relation : _vertexConnectedEdges.at(vertex.getID())) {
-    bool const fetched = _vertexConnectedEdges.contains(relation.second);
-    callback(Step{relation.second, relation.first, previous, fetched});
+  auto const relations = _vertexConnectedEdges.find(vertex.getID());
+  TRI_ASSERT(relations != _vertexConnectedEdges.end());
+
+  if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
+    for (auto const& relation : relations->second) {
+      bool const fetched = _vertexConnectedEdges.contains(relation.second);
+      callback(Step{relation.second, relation.first, previous, fetched});
+    }
+  } else {
+    throw std::out_of_range{"ClusterProvider::_vertexConnectedEdges"};
   }
 }
 
