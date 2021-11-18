@@ -50,6 +50,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
@@ -210,7 +211,7 @@ bool isValidDocument(VPackSlice slice) {
   slice = slice.resolveExternals();
 
   if (slice.isObject()) {
-    std::unordered_set<VPackStringRef> keys;
+    containers::FlatHashSet<VPackStringRef> keys;
 
     auto it = VPackObjectIterator(slice, true);
 
@@ -676,7 +677,7 @@ std::string extractCollectionName(transaction::Methods* trx,
 }
 
 /// @brief extract attribute names from the arguments
-void extractKeys(std::unordered_set<std::string>& names, ExpressionContext* expressionContext,
+void extractKeys(containers::FlatHashSet<std::string>& names, ExpressionContext* expressionContext,
                  VPackOptions const* vopts, VPackFunctionParameters const& parameters,
                  size_t startParameter, char const* functionName) {
   size_t const n = parameters.size();
@@ -821,7 +822,7 @@ bool sortNumberList(VPackOptions const* vopts, AqlValue const& values,
 ///        Recursively iterates over sub-object and unsets or keeps their values
 ///        as well
 void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
-                 std::unordered_set<std::string> const& names,
+                 containers::FlatHashSet<std::string> const& names,
                  bool unset,  // true means unset, false means keep
                  bool recursive, VPackBuilder& result) {
   TRI_ASSERT(value.isObject());
@@ -4343,7 +4344,7 @@ AqlValue Functions::Unset(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
 
-  std::unordered_set<std::string> names;
+  containers::FlatHashSet<std::string> names;
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
@@ -4369,7 +4370,7 @@ AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
-  std::unordered_set<std::string> names;
+  containers::FlatHashSet<std::string> names;
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
@@ -4394,7 +4395,7 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, AstNode const&,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
-  std::unordered_set<std::string> names;
+  containers::FlatHashSet<std::string> names;
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
@@ -5190,7 +5191,7 @@ AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
+  containers::FlatHashSet<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
@@ -5223,7 +5224,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, AstNode const&,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
+  containers::FlatHashSet<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
@@ -5378,7 +5379,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
   auto* vopts = &trx->vpackOptions();
 
   size_t const n = parameters.size();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
+  containers::FlatHashSet<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(vopts));
 
@@ -6350,7 +6351,7 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, AstNode const&,
   builder->openObject();
 
   // Buffer will temporarily hold the keys
-  std::unordered_set<std::string> keysSeen;
+  containers::FlatHashSet<std::string> keysSeen;
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
@@ -7464,7 +7465,7 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, AstNode const&,
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
       11, basics::VelocyPackHelper::VPackHash(),
       basics::VelocyPackHelper::VPackEqual(options));
 
