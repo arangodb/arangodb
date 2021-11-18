@@ -1103,15 +1103,18 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
         try {
           TRI_ParseAttributeString(nameSlice.stringRef(), fieldParts, true);
                   TRI_ASSERT(!fieldParts.empty());
-          // we only allow expansion of the last field
-          if (fieldParts.rend() !=
-              std::find_if(++fieldParts.rbegin(), fieldParts.rend(),
-                           [](basics::AttributeName const& a) {
-                             return a.shouldExpand;
-                           })) {
+          // we only allow one expansion
+          size_t expansionCount{0};
+          std::for_each(fieldParts.begin(), fieldParts.end(),
+                        [&expansionCount](basics::AttributeName const& a) -> void {
+            if (a.shouldExpand) {
+              ++expansionCount;
+            }
+          });
+          if (expansionCount > 1) {
             LOG_TOPIC("2646b", ERR, iresearch::TOPIC)
-                << "Error parsing field: '" << val.stringView() << "'. "
-                << "Expansion is allowed only for the last path part.";
+                << "Error parsing field: '" << nameSlice.stringView() << "'. "
+                << "Expansion is allowed only once.";
             errorField = fieldsFieldName + "[" +
                          basics::StringUtils::itoa(itr.index()) + "]";
             return false;

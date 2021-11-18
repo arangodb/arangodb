@@ -600,6 +600,14 @@ std::string mangleStringIdentity(std::string name) {
   return name;
 }
 
+
+std::string mangleInvertedIndexStringIdentity(std::string name) {
+  arangodb::iresearch::kludge::mangleField(
+    name, false, arangodb::iresearch::FieldMeta::Analyzer());
+
+  return name;
+}
+
 void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryString,
                            irs::filter const& expectedFilter,
                            arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,

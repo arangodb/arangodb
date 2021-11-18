@@ -234,7 +234,9 @@ class InvertedIndexFieldIterator {
     return *this;
   }
 
-  explicit InvertedIndexFieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection, IndexId indexId);
+  // we don't need trx as we don't index the _id attribute.
+  // but we require it here just to match signature of "FieldIterator" in general
+  explicit InvertedIndexFieldIterator(arangodb::transaction::Methods&, irs::string_ref collection, IndexId indexId);
 
   bool valid() const noexcept { return _fieldsMeta && _begin != _end;}
 
@@ -260,7 +262,6 @@ class InvertedIndexFieldIterator {
   Field _value;  // iterator's value
   VPackSlice _slice; // input slice
   VPackSlice _valueSlice;
-  arangodb::transaction::Methods* _trx;
   irs::string_ref _collection;
   IndexId _indexId;
   // Support for outputting primitive type from analyzer

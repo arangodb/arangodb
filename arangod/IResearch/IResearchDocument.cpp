@@ -705,10 +705,10 @@ bool StoredValue::write(irs::data_output& out) const {
   return true;
 }
 
-InvertedIndexFieldIterator::InvertedIndexFieldIterator(arangodb::transaction::Methods& trx,
+InvertedIndexFieldIterator::InvertedIndexFieldIterator(arangodb::transaction::Methods&,
                                                        irs::string_ref collection,
                                                        IndexId indexId)
-  : _trx(&trx), _collection(collection), _indexId(indexId) {
+  : _collection(collection), _indexId(indexId) {
   _value._storeValues = ValueStorage::ID; // we need id column for range queries
 }
 
@@ -772,9 +772,9 @@ void InvertedIndexFieldIterator::next() {
               TRI_ERROR_NOT_IMPLEMENTED,
               "Inverted index does not support indexing objects and configured "
               "analyzer does "
-              " not accept objects. Please use another analyzer to process an "
-              "object or exclude field '%s'"
-              " from index definition",
+              "not accept objects. Please use another analyzer to process an "
+              "object or exclude field '%s' "
+              "from index definition",
               _nameBuffer.c_str());
           break;
         case VPackValueType::Array: {
@@ -788,8 +788,8 @@ void InvertedIndexFieldIterator::next() {
                 "Configured analyzer does not accept arrays and field has no "
                 "expansion set. "
                 "Please use another analyzer to process an array or exclude "
-                "field '%s'"
-                " from index definition or enable expansion",
+                "field '%s' "
+                "from index definition or enable expansion",
                 _nameBuffer.c_str());
           }
         } break;

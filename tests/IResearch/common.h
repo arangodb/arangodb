@@ -141,6 +141,7 @@ std::string mangleNull(std::string name);
 std::string mangleNumeric(std::string name);
 std::string mangleString(std::string name, std::string_view suffix);
 std::string mangleStringIdentity(std::string name);
+std::string mangleInvertedIndexStringIdentity(std::string name);
 
 inline arangodb::aql::AstNode* defaultExpressionExtractor(arangodb::aql::AstNode* root) {
   return root->getMember(0);
