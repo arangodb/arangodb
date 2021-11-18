@@ -76,6 +76,11 @@ in the ArangoDB source tree:
 We use `clang-format` to enfore consistent code formatting. Check STYLEGUIDE.md
 for comprehensive description of ArangoDB Coding Guidelines.
 
+### Compiler support policy
+
+We support only officially released compiler versions which major version is
+at least 9 month old.
+
 ### Unique Log Ids
 
 We have unique log ids in order to allow for easy locating of code producing
