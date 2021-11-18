@@ -631,9 +631,19 @@ Result GraphManager::ensureCollections(
   std::vector<std::shared_ptr<LogicalCollection>> created;
   OperationOptions opOptions(ExecContext::current());
 
-  Result finalResult = methods::Collections::create(ctx()->vocbase(), opOptions,
-                                                    collectionsToCreate.get(), waitForSync,
-                                                    true, false, nullptr, created);
+#ifdef USE_ENTERPRISE
+  const bool allowEnterpriseCollectionsOnSingleServer =
+      ServerState::instance()->isSingleServer() &&
+      (graph.isSmart() || graph.isSatellite());
+#else
+  const bool allowEnterpriseCollectionsOnSingleServer = false;
+#endif
+
+  Result finalResult =
+      methods::Collections::create(ctx()->vocbase(), opOptions,
+                                   collectionsToCreate.get(), waitForSync, true,
+                                   false, nullptr, created, false,
+                                   allowEnterpriseCollectionsOnSingleServer);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();
@@ -705,7 +715,8 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
-  auto query = arangodb::aql::Query::create(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
+  auto query =
+      arangodb::aql::Query::create(ctx(), arangodb::aql::QueryString(queryStr), nullptr);
   query->queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
@@ -843,11 +854,17 @@ bool GraphManager::collectionExists(std::string const& collection) const {
 
 OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
                                           bool dropCollections) {
+  // the set of collections that have no distributeShardsLike attribute
   std::unordered_set<std::string> leadersToBeRemoved;
+  // the set of collections that have a distributeShardsLike attribute, they are
+  // removed before the collections from leadersToBeRemoved
   std::unordered_set<std::string> followersToBeRemoved;
   OperationOptions options(ExecContext::current());
 
   if (dropCollections) {
+    // Puts the collection with name colName to leadersToBeRemoved (if
+    // distributeShardsLike is not defined) or to followersToBeRemoved (if it
+    // is defined) or does nothing if there is no collection with this name.
     auto addToRemoveCollections = [this, &graph, &leadersToBeRemoved,
                                    &followersToBeRemoved](std::string const& colName) {
       std::shared_ptr<LogicalCollection> col =
@@ -1083,17 +1100,37 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
                                                                   VPackSlice input) const {
   try {
     TRI_ASSERT(input.isObject());
-    if (ServerState::instance()->isCoordinator()) {
+
+    if (ServerState::instance()->isCoordinator() ||
+        ServerState::instance()->isSingleServer()) {
       VPackSlice s = input.get(StaticStrings::IsSmart);
-      if (s.isBoolean() && s.getBoolean()) {
-        s = input.get("options");
-        if (s.isObject()) {
-          s = s.get(StaticStrings::ReplicationFactor);
-          if ((s.isNumber() && s.getNumber<int>() == 0) ||
-              (s.isString() && s.stringRef() == "satellite")) {
+      VPackSlice options = input.get(StaticStrings::GraphOptions);
+
+      bool smartSet = s.isBoolean() && s.getBoolean();
+      bool sgaSet = false;
+      if (options.isObject()) {
+        sgaSet = options.hasKey(StaticStrings::GraphSmartGraphAttribute) &&
+                 options.get(StaticStrings::GraphSmartGraphAttribute).isString();
+      }
+
+      if (smartSet || sgaSet) {
+        std::string errParameter;
+        if (smartSet) {
+          errParameter = StaticStrings::IsSmart;
+        } else {
+          errParameter = StaticStrings::GraphSmartGraphAttribute;
+        }
+
+        if (options.isObject()) {
+          VPackSlice replicationFactor = options.get(StaticStrings::ReplicationFactor);
+          if ((replicationFactor.isNumber() && replicationFactor.getNumber<int>() == 0)) {
             return Result{TRI_ERROR_BAD_PARAMETER,
-                          "invalid combination of 'isSmart' and 'satellite' "
-                          "replicationFactor"};
+                          "invalid combination of '" + errParameter +
+                              "' and 'replicationFactor'"};
+          } else if (replicationFactor.isString() &&
+                     replicationFactor.stringRef() == "satellite") {
+            return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of '" + errParameter +
+                                                       "' and 'satellite' "};
           }
         }
       }
