@@ -367,6 +367,8 @@ class LogicalCollection : public LogicalDataSource {
    */
   std::string createSmartToSatKey(arangodb::velocypack::Slice input);
 
+  void decorateWithInternalEEValidators();
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -375,8 +377,6 @@ class LogicalCollection : public LogicalDataSource {
   bool determineSyncByRevision() const;
 
   void decorateWithInternalValidators();
-
-  void decorateWithInternalEEValidators();
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;

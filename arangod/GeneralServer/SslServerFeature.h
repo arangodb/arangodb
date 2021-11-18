@@ -33,10 +33,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-// needs to come first
-#include "Ssl/ssl-helper.h"
-
-// needs to come second in order to recognize ssl
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
@@ -73,7 +69,7 @@ class SslServerFeature : public application_features::ApplicationFeature {
     std::string keyfileName;     // name of key file
     std::string keyfileContent;  // content of key file
     SNIEntry(std::string name, std::string keyfileName)
-      : serverName(name), keyfileName(keyfileName) {}
+      : serverName(std::move(name)), keyfileName(std::move(keyfileName)) {}
   };
 
   std::string _cafile;
@@ -83,11 +79,11 @@ class SslServerFeature : public application_features::ApplicationFeature {
   // server, another, to keep the actual keyfile in memory.
   std::vector<SNIEntry> _sniEntries;   // the first entry is the default server keyfile
   std::unordered_map<std::string, size_t> _sniServerIndex;  // map server names to indices in _sniEntries
-  bool _sessionCache;
   std::string _cipherList;
   uint64_t _sslProtocol;
   uint64_t _sslOptions;
   std::string _ecdhCurve;
+  bool _sessionCache;
   bool _preferHttp11InAlpn;
 
  private:

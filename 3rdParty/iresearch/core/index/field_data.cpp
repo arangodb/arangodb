@@ -1146,10 +1146,12 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 fields_data::fields_data(
     const field_features_t& field_features,
     const feature_column_info_provider_t& feature_columns,
+    std::deque<cached_column>& cached_features,
     const comparer* comparator /*= nullptr*/)
   : comparator_(comparator),
     field_features_(&field_features),
     feature_columns_(&feature_columns),
+    cached_features_(&cached_features),
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
 }
@@ -1171,7 +1173,7 @@ field_data* fields_data::emplace(
     try {
       fields_.emplace_back(
         name, features, *field_features_,
-        *feature_columns_, cached_features_, columns,
+        *feature_columns_, *cached_features_, columns,
         byte_writer_, int_writer_,
         index_features, (nullptr != comparator_));
     } catch (...) {
@@ -1231,34 +1233,15 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 void fields_data::reset() noexcept {
   byte_writer_ = byte_pool_.begin(); // reset position pointer to start of pool
   fields_.clear();
-  cached_features_.clear(); // FIXME(@gnusi): we loose all per-column buffers
   fields_map_.clear();
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
-}
-
-void fields_data::flush_features(
-    columnstore_writer& writer,
-    const doc_map& docmap,
-    sorted_column::flush_buffer_t& buffer) {
-  for (auto& feature : cached_features_) {
-    assert(feature.id);
-    if (IRS_LIKELY(!field_limits::valid(*feature.id))) {
-      *feature.id = feature.stream.flush(writer, docmap, buffer);
-    }
-  }
 }
 
 size_t fields_data::memory_active() const noexcept {
   return byte_writer_.pool_offset()
     + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
     + fields_map_.size() * sizeof(fields_map::value_type)
-    + fields_.size() * sizeof(decltype(fields_)::value_type)
-    + std::accumulate(
-        std::begin(cached_features_),
-        std::end(cached_features_),
-        size_t{0},
-        [](const auto lhs, const auto& rhs) {
-          return lhs + rhs.stream.memory_active(); });
+    + fields_.size() * sizeof(decltype(fields_)::value_type);
 }
 
 size_t fields_data::memory_reserved() const noexcept {

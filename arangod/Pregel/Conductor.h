@@ -26,7 +26,6 @@
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
-#include "Basics/asio_ns.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Reports.h"

@@ -51,7 +51,7 @@
 #include "Utils/ExecContext.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/VirtualCollection.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <fuerte/jwt.h>
@@ -483,7 +483,7 @@ Result Manager::lockCollections(TRI_vocbase_t& vocbase,
             std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
             if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
               auto theEdge =
-                  dynamic_cast<arangodb::VirtualSmartEdgeCollection*>(col.get());
+                  dynamic_cast<arangodb::VirtualClusterSmartEdgeCollection*>(col.get());
               if (theEdge == nullptr) {
                 THROW_ARANGO_EXCEPTION_MESSAGE(
                     TRI_ERROR_INTERNAL,

@@ -964,7 +964,7 @@ void Supervision::reportStatus(std::string const& status) {
     }
   }
 
-  // Importatnt! No reporting in transient for Maintenance mode.
+  // Important! No reporting in transient for Maintenance mode.
   if (status != "Maintenance") {
     transient(_agent, report);
   }
