@@ -8784,7 +8784,11 @@ class NodeInformation {
 };
 
 namespace {
-  void addGatherAbove(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* gatherFrom) {
+  /**
+   * @brief will add a gatherNode above the "node", using the information of gatherFrom, to collect the
+   * data from it. Will also return the created GatherNode for futher adjustments, like Sorting
+   */
+  GatherNode* addGatherAbove(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* gatherFrom) {
     TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
     // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
     // NOTE: No idea what subqueries should be used for. yet. (TODO)
@@ -8812,6 +8816,8 @@ namespace {
     // do not convey new variable information
     plan.clearVarUsageComputed();
     plan.findVarUsage();
+
+    return gatherNode;
   }
 
   void addScatterBelow(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* scatterTo) {
@@ -9014,6 +9020,7 @@ namespace {
                                std::vector<ExecutionNode*> const& additionalNodesWithContext) {
     LOG_DEVEL << "Joining snippets " << lower.getNode()->getTypeString()
               << " with " << upper.getNode()->getTypeString();
+    LOG_DEVEL_IF(!additionalNodesWithContext.empty()) << std::reduce(additionalNodesWithContext.begin(), additionalNodesWithContext.end(), std::string(""), [](std::string old, ExecutionNode* next) -> std::string {return old + ", " + next->getTypeString();});
     TRI_ASSERT(lower.getNode() != upper.getNode());
     auto lowerLoc = lower.getAllowedLocation();
     auto upperLoc = upper.getAllowedLocation();
@@ -9062,7 +9069,15 @@ namespace {
       // TODO: We may need to improve the gather / even omit the gather, if we figure out Upper
       // only has a single Shard
 
-      addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
+      auto gatherNode = addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
+      if (!additionalNodesWithContext.empty()) {
+        // Keep the Sort condition on the first sort node above the remote part.
+        // And move it into the gatherNode, this will cause the gather to get sorted.
+        auto sort = additionalNodesWithContext.front();
+        if (sort->getType() == ExecutionNode::SORT) {
+          gatherNode->elements(ExecutionNode::castTo<SortNode*>(sort)->elements());
+        }
+      }
       if (!subqueryScopes.empty()) {
         auto& top = subqueryScopes.top();
         top.hasInternalRemote = true;
