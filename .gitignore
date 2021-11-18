@@ -84,8 +84,6 @@ Installation/MacOSX/Bundle/Info.plist
 nbproject/
 .idea
 .vscode
-.vs
-CMakeSettings.json
 *.sublime-workspace
 *.sublime-project
 

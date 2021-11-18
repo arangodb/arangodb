@@ -24,35 +24,43 @@
 
 #include "LogicalCollection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/StorageEngine.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Validators.h"
 
 #include <velocypack/Collection.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <memory>
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
-std::string translateStatus(TRI_vocbase_col_status_e status) {
+static std::string translateStatus(TRI_vocbase_col_status_e status) {
   switch (status) {
     case TRI_VOC_COL_STATUS_LOADED:
       return "loaded";
@@ -258,7 +266,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
-    _followers = std::make_unique<FollowerInfo>(this);
+    _followers.reset(new FollowerInfo(this));
   }
 
   TRI_ASSERT(_physical != nullptr);
@@ -366,9 +374,9 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
-void LogicalCollection::setShardMap(const std::shared_ptr<ShardMap>& map) noexcept {
+void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
   TRI_ASSERT(_sharding != nullptr);
-  _sharding->setShardMap(map);
+  _sharding->setShardMap(std::move(map));
 }
 
 ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
@@ -393,7 +401,7 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 }
 
 /// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice input) const {
+std::string LogicalCollection::createKey(VPackSlice input) {
   if (isSatToSmartEdgeCollection() || isSmartToSatEdgeCollection()) {
     return createSmartToSatKey(input);
   }
@@ -401,7 +409,7 @@ std::string LogicalCollection::createKey(VPackSlice input) const {
 }
 
 #ifndef USE_ENTERPRISE
-std::string LogicalCollection::createSmartToSatKey(VPackSlice) const {
+std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
   return keyGenerator()->generate();
 }
 #endif
@@ -514,12 +522,11 @@ bool LogicalCollection::determineSyncByRevision() const {
   return false;
 }
 
-IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating,
-                                                     TransactionId tid) const {
+IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TransactionId tid) {
   return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
 }
 
-void LogicalCollection::flushClusterIndexEstimates() const {
+void LogicalCollection::flushClusterIndexEstimates() {
   getPhysical()->flushClusterIndexEstimates();
 }
 
@@ -554,8 +561,9 @@ Result LogicalCollection::rename(std::string&& newName) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
 
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {
-    return {TRI_ERROR_INTERNAL,
-            "failed to find feature 'Database' while renaming collection"};
+    return Result(
+        TRI_ERROR_INTERNAL,
+        "failed to find feature 'Database' while renaming collection");
   }
   auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
@@ -597,7 +605,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode LogicalCollection::close() const { return getPhysical()->close(); }
+ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
 
 arangodb::Result LogicalCollection::drop() {
   // make sure collection has been closed
@@ -607,7 +615,7 @@ arangodb::Result LogicalCollection::drop() {
   deleted(true);
   _physical->drop();
 
-  return {};
+  return arangodb::Result();
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
@@ -781,15 +789,14 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
                VPackValue(std::to_string(planId().id())));
   }
 
-  bool isSmartOrSatellite = isSatellite() || isSmart();
-  _sharding->toVelocyPack(result, Serialization::List != context, isSmartOrSatellite);
+  _sharding->toVelocyPack(result, Serialization::List != context);
 
   includeVelocyPackEnterprise(result);
 
   TRI_ASSERT(result.isOpenObject());
   // We leave the object open
 
-  return {};
+  return arangodb::Result();
 }
 
 void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
@@ -828,15 +835,16 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
   // ... probably a few others missing here ...
 
   if (!vocbase().server().hasFeature<DatabaseFeature>()) {
-    return {TRI_ERROR_INTERNAL,
-            "failed to find feature 'Database' while updating collection"};
+    return Result(
+        TRI_ERROR_INTERNAL,
+        "failed to find feature 'Database' while updating collection");
   }
   auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   if (!vocbase().server().hasFeature<EngineSelectorFeature>() ||
       !vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
-    return {TRI_ERROR_INTERNAL,
-            "failed to find a storage engine while updating collection"};
+    return Result(TRI_ERROR_INTERNAL,
+                  "failed to find a storage engine while updating collection");
   }
   auto& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
@@ -858,43 +866,46 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
 
   if (!replicationFactorSlice.isNone()) {
     if (replicationFactorSlice.isInteger()) {
-      auto replicationFactorTest = replicationFactorSlice.getNumber<int64_t>();
+      int64_t replicationFactorTest = replicationFactorSlice.getNumber<int64_t>();
       if (replicationFactorTest < 0) {
         // negative value for replication factor... not good
-        return {TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor"};
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for replicationFactor");
       }
 
       replicationFactor = replicationFactorSlice.getNumber<size_t>();
       if ((!isSatellite() && replicationFactor == 0) || replicationFactor > 10) {
-        return {TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor"};
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for replicationFactor");
       }
 
       if (ServerState::instance()->isCoordinator() &&
           replicationFactor != _sharding->replicationFactor()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
-          return {TRI_ERROR_FORBIDDEN,
-                  "cannot change replicationFactor for a collection "
-                  "using 'distributeShardsLike'"};
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "cannot change replicationFactor for a collection "
+                        "using 'distributeShardsLike'");
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
-          return {TRI_ERROR_NOT_IMPLEMENTED,
-                  "changing replicationFactor is "
-                  "not supported for smart edge collections"};
+          return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                        "changing replicationFactor is "
+                        "not supported for smart edge collections");
         } else if (isSatellite()) {
-          return {TRI_ERROR_FORBIDDEN,
-                  "cannot change replicationFactor of a SatelliteCollection"};
+          return Result(
+              TRI_ERROR_FORBIDDEN,
+              "cannot change replicationFactor of a SatelliteCollection");
         }
       }
     } else if (replicationFactorSlice.isString()) {
       if (replicationFactorSlice.compareString(StaticStrings::Satellite) != 0) {
         // only the string "satellite" is allowed here
-        return {TRI_ERROR_BAD_PARAMETER, "bad value for satellite"};
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
       }
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE
       if (!isSatellite()) {
         // but the collection is not a SatelliteCollection!
-        return {TRI_ERROR_FORBIDDEN,
-                "cannot change SatelliteCollection status"};
+        return Result(TRI_ERROR_FORBIDDEN,
+                      "cannot change SatelliteCollection status");
       }
 #else
       return Result(TRI_ERROR_FORBIDDEN,
@@ -905,42 +916,42 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
       TRI_ASSERT(isSatellite() && _sharding->replicationFactor() == 0 &&
                  replicationFactor == 0);
     } else {
-      return {TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor"};
+      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
     }
   }
 
   if (!writeConcernSlice.isNone()) {
     if (writeConcernSlice.isInteger()) {
-      auto writeConcernTest = writeConcernSlice.getNumber<int64_t>();
+      int64_t writeConcernTest = writeConcernSlice.getNumber<int64_t>();
       if (writeConcernTest < 0) {
         // negative value for writeConcern... not good
-        return {TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern"};
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
       }
 
       writeConcern = writeConcernSlice.getNumber<size_t>();
       if (writeConcern > replicationFactor) {
-        return {TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern"};
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
       }
 
       if ((ServerState::instance()->isCoordinator() ||
            (ServerState::instance()->isSingleServer() && (isSatellite() || isSmart()))) &&
           writeConcern != _sharding->writeConcern()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
-          return {TRI_ERROR_FORBIDDEN,
-                  "Cannot change writeConcern, please change " +
-                      _sharding->distributeShardsLike()};
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "Cannot change writeConcern, please change " +
+                            _sharding->distributeShardsLike());
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
-          return {TRI_ERROR_NOT_IMPLEMENTED,
-                  "Changing writeConcern "
-                  "not supported for smart edge collections"};
+          return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                        "Changing writeConcern "
+                        "not supported for smart edge collections");
         } else if (isSatellite()) {
-          return {TRI_ERROR_FORBIDDEN,
-                  "SatelliteCollection, "
-                  "cannot change writeConcern"};
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "SatelliteCollection, "
+                        "cannot change writeConcern");
         }
       }
     } else {
-      return {TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern"};
+      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for writeConcern");
     }
     TRI_ASSERT((writeConcern <= replicationFactor && !isSatellite()) ||
                (writeConcern == 0 && isSatellite()));
@@ -1079,34 +1090,39 @@ void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection
 /// the read-cache
 ////////////////////////////////////////////////////////////////////////////////
 
-Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& options) const {
-  TRI_IF_FAILURE("LogicalCollection::truncate") { return {TRI_ERROR_DEBUG}; }
+Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") {
+    return Result(TRI_ERROR_DEBUG);
+  }
 
   return getPhysical()->truncate(trx, options);
 }
 
 /// @brief compact-data operation
-void LogicalCollection::compact() const { getPhysical()->compact(); }
+void LogicalCollection::compact() { getPhysical()->compact(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
-                                 ManagedDocumentResult& result,
-                                 OperationOptions& options) const {
-  TRI_IF_FAILURE("LogicalCollection::insert") { return {TRI_ERROR_DEBUG}; }
+                                 ManagedDocumentResult& result, OperationOptions& options) {
+  TRI_IF_FAILURE("LogicalCollection::insert") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   return getPhysical()->insert(trx, slice, result, options);
 }
 
 /// @brief updates a document or edge in a collection
 Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
                                  ManagedDocumentResult& result, OperationOptions& options,
-                                 ManagedDocumentResult& previous) const {
-  TRI_IF_FAILURE("LogicalCollection::update") { return {TRI_ERROR_DEBUG}; }
+                                 ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::update") {
+    return Result(TRI_ERROR_DEBUG);
+  }
 
   if (!newSlice.isObject()) {
-    return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   return getPhysical()->update(trx, newSlice, result, options, previous);
@@ -1115,10 +1131,12 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
 /// @brief replaces a document or edge in a collection
 Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice newSlice,
                                   ManagedDocumentResult& result, OperationOptions& options,
-                                  ManagedDocumentResult& previous) const {
-  TRI_IF_FAILURE("LogicalCollection::replace") { return {TRI_ERROR_DEBUG}; }
+                                  ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::replace") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   if (!newSlice.isObject()) {
-    return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   return getPhysical()->replace(trx, newSlice, result, options, previous);
@@ -1127,8 +1145,10 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice newSlice
 /// @brief removes a document or edge
 Result LogicalCollection::remove(transaction::Methods& trx,
                                  velocypack::Slice const slice, OperationOptions& options,
-                                 ManagedDocumentResult& previous) const {
-  TRI_IF_FAILURE("LogicalCollection::remove") { return {TRI_ERROR_DEBUG}; }
+                                 ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::remove") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   return getPhysical()->remove(trx, slice, previous, options);
 }
 

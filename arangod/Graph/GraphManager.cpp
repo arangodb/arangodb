@@ -22,16 +22,40 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphManager.h"
+#include "GraphOperations.h"
 
+#include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <array>
 #include <boost/range/join.hpp>
 #include <utility>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/AstNode.h"
+#include "Aql/Graphs.h"
+#include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
+#include "Graph/Graph.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Sharding/ShardingInfo.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/ExecContext.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -40,7 +64,7 @@ using namespace arangodb::graph;
 using VelocyPackHelper = basics::VelocyPackHelper;
 
 namespace {
-bool arrayContainsCollection(VPackSlice array, std::string const& colName) {
+static bool arrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
   for (VPackSlice it : VPackArrayIterator(array)) {
     if (it.stringRef() == colName) {
@@ -54,6 +78,11 @@ bool arrayContainsCollection(VPackSlice array, std::string const& colName) {
 std::shared_ptr<transaction::Context> GraphManager::ctx() const {
   // we must use v8
   return transaction::V8Context::CreateWhenRequired(_vocbase, true);
+}
+
+Result GraphManager::createEdgeCollection(std::string const& name,
+                                          bool waitForSync, VPackSlice options) {
+  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSync, options);
 }
 
 Result GraphManager::createVertexCollection(std::string const& name,
@@ -375,7 +404,7 @@ OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync)
   }
 
   // finally save the graph
-  return storeGraph(*(graph), waitForSync, false);
+  return storeGraph(*(graph.get()), waitForSync, false);
 }
 
 OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
@@ -415,9 +444,8 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
-  auto query =
-      arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                   arangodb::aql::QueryString{queryStr}, nullptr);
+  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                             arangodb::aql::QueryString{queryStr}, nullptr);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
 
@@ -604,18 +632,18 @@ Result GraphManager::ensureCollections(
   OperationOptions opOptions(ExecContext::current());
 
 #ifdef USE_ENTERPRISE
-  const bool isSingleServerEnterpriseCollection =
+  const bool allowEnterpriseCollectionsOnSingleServer =
       ServerState::instance()->isSingleServer() &&
       (graph.isSmart() || graph.isSatellite());
 #else
-  const bool isSingleServerEnterpriseCollection = false;
+  const bool allowEnterpriseCollectionsOnSingleServer = false;
 #endif
 
   Result finalResult =
       methods::Collections::create(ctx()->vocbase(), opOptions,
                                    collectionsToCreate.get(), waitForSync, true,
                                    false, nullptr, created, false,
-                                   isSingleServerEnterpriseCollection);
+                                   allowEnterpriseCollectionsOnSingleServer);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();
@@ -658,6 +686,22 @@ ResultT<std::vector<CollectionCreationInfo>> GraphManager::prepareCollectionsToC
 }
 #endif
 
+bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
+  for (auto const& cname : graph->vertexCollections()) {
+    if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
+      return false;
+    }
+  }
+
+  for (auto const& cname : graph->edgeCollections()) {
+    if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 Result GraphManager::readGraphs(velocypack::Builder& builder) const {
   std::string const queryStr{
       "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
@@ -682,7 +726,7 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
-      return {TRI_ERROR_REQUEST_CANCELED};
+      return Result(TRI_ERROR_REQUEST_CANCELED);
     }
     return std::move(queryResult.result);
   }
@@ -690,7 +734,7 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
   VPackSlice graphsSlice = queryResult.data->slice();
 
   if (graphsSlice.isNone()) {
-    return {TRI_ERROR_OUT_OF_MEMORY};
+    return Result(TRI_ERROR_OUT_OF_MEMORY);
   }
   if (!graphsSlice.isArray()) {
     LOG_TOPIC("338b7", ERR, arangodb::Logger::GRAPHS)
@@ -701,7 +745,7 @@ Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
   builder.add("graphs", graphsSlice);
   builder.close();
 
-  return {TRI_ERROR_NO_ERROR};
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 Result GraphManager::checkForEdgeDefinitionConflicts(arangodb::graph::EdgeDefinition const& edgeDefinition,
@@ -813,13 +857,13 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
   // the set of collections that have no distributeShardsLike attribute
   std::unordered_set<std::string> leadersToBeRemoved;
   // the set of collections that have a distributeShardsLike attribute, they are
-  // removed before the collections from \p leadersToBeRemoved
+  // removed before the collections from leadersToBeRemoved
   std::unordered_set<std::string> followersToBeRemoved;
   OperationOptions options(ExecContext::current());
 
   if (dropCollections) {
-    // Puts the collection with name \p colName to \p leadersToBeRemoved (if \p
-    // distributeShardsLike is not defined) or to \p followersToBeRemoved (if it
+    // Puts the collection with name colName to leadersToBeRemoved (if
+    // distributeShardsLike is not defined) or to followersToBeRemoved (if it
     // is defined) or does nothing if there is no collection with this name.
     auto addToRemoveCollections = [this, &graph, &leadersToBeRemoved,
                                    &followersToBeRemoved](std::string const& colName) {
@@ -926,7 +970,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
 
 Result GraphManager::pushCollectionIfMayBeDropped(std::string const& colName,
                                                   std::string const& graphName,
-                                                  std::unordered_set<std::string>& toBeRemoved) const {
+                                                  std::unordered_set<std::string>& toBeRemoved) {
   VPackBuilder graphsBuilder;
   Result result = readGraphs(graphsBuilder);
   if (result.fail()) {
@@ -939,7 +983,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(std::string const& colName,
   TRI_ASSERT(graphs.get("graphs").isArray());
 
   if (!graphs.get("graphs").isArray()) {
-    return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+    return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
   }
 
   for (auto graph : VPackArrayIterator(graphs.get("graphs"))) {
@@ -973,7 +1017,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(std::string const& colName,
         }
       }
     } else {
-      return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+      return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
     }
 
     // check orphan collections
@@ -990,7 +1034,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(std::string const& colName,
     toBeRemoved.emplace(colName);
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 Result GraphManager::checkDropGraphPermissions(
