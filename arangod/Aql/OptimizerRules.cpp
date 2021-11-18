@@ -8784,7 +8784,11 @@ class NodeInformation {
 };
 
 namespace {
-  void addGatherAbove(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* gatherFrom) {
+  /**
+   * @brief will add a gatherNode above the "node", using the information of gatherFrom, to collect the
+   * data from it. Will also return the created GatherNode for futher adjustments, like Sorting
+   */
+  GatherNode* addGatherAbove(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* gatherFrom) {
     TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
     // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
     // NOTE: No idea what subqueries should be used for. yet. (TODO)
@@ -8812,6 +8816,8 @@ namespace {
     // do not convey new variable information
     plan.clearVarUsageComputed();
     plan.findVarUsage();
+
+    return gatherNode;
   }
 
   void addScatterBelow(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* scatterTo) {
@@ -8904,12 +8910,17 @@ namespace {
   // Forward Declare method. The below methods need to call each other.
   NodeInformation joinSnippets(ExecutionPlan& plan, NodeInformation lower,
                                NodeInformation upper,
-                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes);
+                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes,
+                               std::vector<ExecutionNode*> const& additionalNodesWithContext);
 
 
   NodeInformation linkSubquery(ExecutionPlan& plan, SubqueryScope const& scope, 
                                std::optional<NodeInformation> upper, 
                                std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes) {
+    // TODO, those may need to be injected, also not yet clear into which of the following statements the nodes need to be added.
+    // I think it is the first call.
+    // There may also be a need to handle a stack of those calls: one entry for each subqiery.
+    std::vector<ExecutionNode*> additionalNodesWithContext{};
     if (!scope.hasInternalRemote) {
       // We can push the complete subquery to the desired location
       if (scope.shardingDefinedByNode == nullptr) {
@@ -8918,7 +8929,7 @@ namespace {
         TRI_ASSERT(scope.previous);
         TRI_ASSERT(scope.firstInternalNode == nullptr);
         if (upper.has_value()) {
-          return ::joinSnippets(plan, scope.previous, upper.value(), subqueryScopes);
+          return ::joinSnippets(plan, scope.previous, upper.value(), subqueryScopes, additionalNodesWithContext);
         } 
         return scope.previous;
       }
@@ -8932,9 +8943,13 @@ namespace {
         //    Handled it like it would be on the DBServer in full.
         //
         // The lower sharding is handled, we do not actually need to retain it.
-        std::ignore = ::joinSnippets(plan, scope.previous, {scope.subqueryEnd, scope.shardingDefinedByNode, loc}, subqueryScopes);
+        std::ignore =
+            ::joinSnippets(plan, scope.previous,
+                           {scope.subqueryEnd, scope.shardingDefinedByNode, loc},
+                           subqueryScopes, additionalNodesWithContext);
         if (upper.has_value()) {
-          return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc}, upper.value(), subqueryScopes);
+          return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc},
+                                upper.value(), subqueryScopes, additionalNodesWithContext);
         }
         auto parent = scope.getExternalStartNode()->getFirstDependency();
         TRI_ASSERT(parent);
@@ -8954,7 +8969,7 @@ namespace {
     ExecutionLocation coordinatorLocation{ExecutionLocation::LocationType::COORDINATOR};
     std::ignore = ::joinSnippets(plan, scope.previous,
                                  {scope.subqueryEnd, scope.subqueryEnd, coordinatorLocation},
-                                 subqueryScopes);
+                                 subqueryScopes, additionalNodesWithContext);
     // Link SubqueryEnd, with the first node that is relevant internally
     if (scope.getInternalEndNode() == scope.firstInternalNode) {
       // This is a special case, the ROOT of the subquery is a ModificationNode, not a return.
@@ -8979,16 +8994,16 @@ namespace {
       ExecutionNode::castTo<SubqueryNode*>(scope.subqueryEnd)->setSubquery(gatherNode, true);
     } else {
       std::ignore = ::joinSnippets(plan, {scope.getInternalEndNode(), scope.getInternalEndNode(), coordinatorLocation},
-                                   scope.firstInternalNode, subqueryScopes);
+                                   scope.firstInternalNode, subqueryScopes, additionalNodesWithContext);
     }
     // Link SubqueryStart with the last node that is relevant internally
     std::ignore = ::joinSnippets(plan, scope.lastInternalNode,
                                  {scope.subqueryStart, scope.subqueryStart, coordinatorLocation},
-                                 subqueryScopes);
+                                 subqueryScopes, additionalNodesWithContext);
     // Now link SubqueryStart with the next piece in main query
     if (upper.has_value()) {
       return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.getExternalStartNode(), coordinatorLocation},
-                            upper.value(), subqueryScopes);
+                            upper.value(), subqueryScopes, additionalNodesWithContext);
     } 
     return {scope.getExternalStartNode(), scope.getExternalStartNode(), coordinatorLocation};
   }
@@ -9001,9 +9016,11 @@ namespace {
    */
   NodeInformation joinSnippets(ExecutionPlan& plan, NodeInformation lower,
                                NodeInformation upper,
-                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes) {
+                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes,
+                               std::vector<ExecutionNode*> const& additionalNodesWithContext) {
     LOG_DEVEL << "Joining snippets " << lower.getNode()->getTypeString()
               << " with " << upper.getNode()->getTypeString();
+    LOG_DEVEL_IF(!additionalNodesWithContext.empty()) << std::reduce(additionalNodesWithContext.begin(), additionalNodesWithContext.end(), std::string(""), [](std::string old, ExecutionNode* next) -> std::string {return old + ", " + next->getTypeString();});
     TRI_ASSERT(lower.getNode() != upper.getNode());
     auto lowerLoc = lower.getAllowedLocation();
     auto upperLoc = upper.getAllowedLocation();
@@ -9052,7 +9069,15 @@ namespace {
       // TODO: We may need to improve the gather / even omit the gather, if we figure out Upper
       // only has a single Shard
 
-      addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
+      auto gatherNode = addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
+      if (!additionalNodesWithContext.empty()) {
+        // Keep the Sort condition on the first sort node above the remote part.
+        // And move it into the gatherNode, this will cause the gather to get sorted.
+        auto sort = additionalNodesWithContext.front();
+        if (sort->getType() == ExecutionNode::SORT) {
+          gatherNode->elements(ExecutionNode::castTo<SortNode*>(sort)->elements());
+        }
+      }
       if (!subqueryScopes.empty()) {
         auto& top = subqueryScopes.top();
         top.hasInternalRemote = true;
@@ -9094,30 +9119,28 @@ namespace {
         ExecutionNode* setter = plan.getVarSetBy(inputVariable->id);
         TRI_ASSERT(setter != nullptr);
         bool rewiredToDistributeInput = false;
+
         // To get rid of this hack, we test if this pointer is inside the list of Context Nodes
         if (setter->getType() == EN::CALCULATION) {
-          // We try to rewire the input variable to be the input of MAKE_DISTRIBUTE_INPUT
-          auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
-          auto expr = cn->expression();
-          AstNode const* n = expr->node();
-          TRI_ASSERT(n != nullptr);
-          if (n->type == NODE_TYPE_FCALL) {
-            auto func = static_cast<Function const*>(n->getData());
-            if (func->name == "MAKE_DISTRIBUTE_INPUT" ||
-                func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT") {
-              /*
-               * Alterantive, this way, we can specifically select the argument
-               * Requires more intenral knowledge, but may be faster.
-              auto member = n->getMemberUnchecked(0);
-              size_t const numArgs = member->numMembers();
-              auto firstArg = member->getMember(0);
-              */
-              VarSet usedVars{};
-              cn->getVariablesUsedHere(usedVars);
-              TRI_ASSERT(usedVars.size() == 1);
-              inputVariable = *usedVars.begin();
-              rewiredToDistributeInput = true;
+          auto it = std::find(additionalNodesWithContext.begin(), additionalNodesWithContext.end(), setter);
+          if (it != additionalNodesWithContext.end()) {
+            // We try to rewire the input variable to be the input of MAKE_DISTRIBUTE_INPUT
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+            // Assert that we only hit the expected node, which is MAKE_DISTRIBUTE
+            auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
+            auto expr = cn->expression();
+            AstNode const* n = expr->node();
+            TRI_ASSERT(n != nullptr);
+            if (n->type == NODE_TYPE_FCALL) {
+              auto func = static_cast<Function const*>(n->getData());
+              TRI_ASSERT(func->name == "MAKE_DISTRIBUTE_INPUT" || func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT");
             }
+#endif
+            VarSet usedVars{};
+            setter->getVariablesUsedHere(usedVars);
+            TRI_ASSERT(usedVars.size() == 1);
+            inputVariable = *usedVars.begin();
+            rewiredToDistributeInput = true;
           }
         }
 
@@ -9322,7 +9345,7 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
       LOG_DEVEL << "Need to handle context for " << node->getTypeString() << " After " << previous.getNode()->getTypeString();
       additionalNodesWithContext.emplace_back(node);
     } else {
-      previous = ::joinSnippets(*plan, previous, node, subqueryScopes);
+      previous = ::joinSnippets(*plan, previous, node, subqueryScopes, additionalNodesWithContext);
       additionalNodesWithContext.clear();
     }
   }
