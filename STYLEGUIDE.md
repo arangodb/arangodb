@@ -260,11 +260,6 @@ enum class AlternateUrlTableError {
 };
 ```
 
-Until January 2009, the style was to name enum values like macros. This caused
-problems with name collisions between enum values and macros. Hence, the change
-to prefer constant-style naming was put in place. New code should use
-constant-style naming.
-
 #### Macro Names
 
 You're not really going to define a macro, are you? If you do, they're like this: 
