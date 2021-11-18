@@ -354,16 +354,18 @@ struct CommitFailReason {
   struct QuorumSizeNotReached {
     static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
     void toVelocyPack(velocypack::Builder& builder) const;
+    ParticipantId who;
   };
   struct ForcedParticipantNotInQuorum {
     static auto fromVelocyPack(velocypack::Slice) -> ForcedParticipantNotInQuorum;
     void toVelocyPack(velocypack::Builder& builder) const;
+    ParticipantId who;
   };
   std::variant<NothingToCommit, QuorumSizeNotReached, ForcedParticipantNotInQuorum> value;
 
   static auto withNothingToCommit() noexcept -> CommitFailReason;
-  static auto withQuorumSizeNotReached() noexcept -> CommitFailReason;
-  static auto withForcedParticipantNotInQuorum() noexcept -> CommitFailReason;
+  static auto withQuorumSizeNotReached(ParticipantId const& who) noexcept -> CommitFailReason;
+  static auto withForcedParticipantNotInQuorum(ParticipantId const& who) noexcept -> CommitFailReason;
 
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
