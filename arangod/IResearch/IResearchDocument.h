@@ -244,8 +244,8 @@ class InvertedIndexFieldIterator {
              InvertedIndexFieldMeta const& fieldsMeta) {
     _slice = slice;
     _fieldsMeta = &fieldsMeta;
-    _begin = _fieldsMeta->_fields.begin();
-    _end = _fieldsMeta->_fields.end();
+    _begin = _fieldsMeta->_fields.data() - 1;
+    _end = _fieldsMeta->_fields.data() + _fieldsMeta->_fields.size();
     next();
   }
 
@@ -256,8 +256,8 @@ class InvertedIndexFieldIterator {
   void setNullValue();
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
-  InvertedIndexFieldMeta::Fields::const_iterator _begin;
-  InvertedIndexFieldMeta::Fields::const_iterator _end;
+  InvertedIndexFieldMeta::FieldRecord const* _begin{nullptr};
+  InvertedIndexFieldMeta::FieldRecord const* _end{nullptr};
   InvertedIndexFieldMeta const* _fieldsMeta{nullptr};
   Field _value;  // iterator's value
   VPackSlice _slice; // input slice

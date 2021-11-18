@@ -725,25 +725,26 @@ void InvertedIndexFieldIterator::next() {
       _currentTypedAnalyzer.reset();
     }
   }
-  _valueSlice = VPackSlice::noneSlice();
   while (_begin != _end) {
-    while (!_arrayStack.empty() && _valueSlice.isNone()) {
+    _valueSlice = VPackSlice::noneSlice();
+    while (!_arrayStack.empty()) {
       if (_arrayStack.back().valid()) {
         _valueSlice = *_arrayStack.back();
         ++_arrayStack.back();
+        break;
       } else {
         _arrayStack.pop_back();
       }
     }
     if (_arrayStack.empty()) {
-      if (!_nameBuffer.empty()) {
+      while(_valueSlice.isNone()) {
         if (++_begin == _end) {
           TRI_ASSERT(!valid());
           return; // exhausted
         }
-        _nameBuffer.clear();
+        _valueSlice = get(_slice, _begin->first, arangodb::velocypack::Slice::noneSlice());
       }
-      _valueSlice = get(_slice, _begin->first, arangodb::velocypack::Slice::noneSlice());
+      _nameBuffer.clear();
     }
     if (!_valueSlice.isNone() && (!_begin->first.back().shouldExpand || _valueSlice.isArray())) {
       if (_nameBuffer.empty()) {
