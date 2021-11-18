@@ -449,3 +449,51 @@ TEST_F(CalcCommitIndexTest, DISABLED_more_forced_than_quorum_size) {
   EXPECT_EQ(quorum.size(), 4);
   verifyQuorum(participants, quorum, expectedLogIndex);
 }
+
+TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached) {
+  auto participants = std::vector{ParticipantStateTuple{LogIndex{50}, "A", {}},
+                                  ParticipantStateTuple{LogIndex{25}, "B", {}},
+                                  ParticipantStateTuple{LogIndex{35}, "C", {}}};
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 2, 3},
+                                       LogIndex{1}, LogIndex{50});
+
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  EXPECT_EQ(std::get<CommitFailReason::QuorumSizeNotReached>(reason.value).who, "C");
+}
+
+TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{50}, "A", {}},
+      ParticipantStateTuple{LogIndex{25}, "B", {ParticipantFlag::Failed, ParticipantFlag::Forced}},
+      ParticipantStateTuple{LogIndex{35}, "C", {}},
+  };
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 2, 3},
+                                       LogIndex{1}, LogIndex{50});
+
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
+      reason.value));
+  EXPECT_EQ(std::get<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value).who, "B");
+}
+
+TEST_F(CalcCommitIndexTest, who_all_failed_excluded) {
+  auto participants = std::vector{
+      ParticipantStateTuple{LogIndex{50}, "A", {ParticipantFlag::Failed}},
+      ParticipantStateTuple{LogIndex{25}, "B", {ParticipantFlag::Excluded}}
+  };
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{1, 1, 2},
+                                       LogIndex{1}, LogIndex{50});
+
+  EXPECT_TRUE(
+      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
+  EXPECT_EQ(std::get<CommitFailReason::QuorumSizeNotReached>(reason.value).who, "A");
+}
