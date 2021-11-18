@@ -983,7 +983,7 @@
               'New Satellite collections',
               hybridSatelliteCollections,
               'Insert vertex collections here which are being used in new edge definitions (fromCollections, toCollections).' +
-              'Those defined collections will be created as satellite collections, and therefore will be replicated to all database servers.',
+              'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
               'New Satellite Collections',
               false,
               false,
@@ -1159,7 +1159,7 @@
             'Satellite collections',
             hybridSatelliteCollections,
             'Insert vertex collections here which are being used in your edge definitions (fromCollections, toCollections).' +
-            'Those defined collections will be created as satellite collections, and therefore will be replicated to all database servers.',
+            'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
             'Satellite Collections',
             false,
             false,
