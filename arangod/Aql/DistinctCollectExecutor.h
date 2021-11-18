@@ -34,6 +34,8 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
+#include "Containers/FlatHashSet.h"
+
 #include <memory>
 #include <unordered_set>
 
@@ -122,7 +124,7 @@ class DistinctCollectExecutor {
 
  private:
   Infos const& _infos;
-  std::unordered_set<AqlValue, AqlValueGroupHash, AqlValueGroupEqual> _seen;
+  containers::FlatHashSet<AqlValue, AqlValueGroupHash, AqlValueGroupEqual> _seen;
 };
 
 }  // namespace aql

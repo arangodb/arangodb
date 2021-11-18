@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/PathEnumerator.h"
 
 #include <velocypack/Slice.h>
@@ -33,11 +34,11 @@ namespace graph {
 // @brief Enumerator optimized for neighbors. Does not allow edge access
 
 class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
-  std::unordered_set<arangodb::velocypack::StringRef> _allFound;
-  std::unordered_set<arangodb::velocypack::StringRef> _currentDepth;
-  std::unordered_set<arangodb::velocypack::StringRef> _lastDepth;
-  std::unordered_set<arangodb::velocypack::StringRef>::iterator _iterator;
-  std::unordered_set<arangodb::velocypack::StringRef> _toPrune;
+  containers::FlatHashSet<arangodb::velocypack::StringRef> _allFound;
+  containers::FlatHashSet<arangodb::velocypack::StringRef> _currentDepth;
+  containers::FlatHashSet<arangodb::velocypack::StringRef> _lastDepth;
+  containers::FlatHashSet<arangodb::velocypack::StringRef>::iterator _iterator;
+  containers::FlatHashSet<arangodb::velocypack::StringRef> _toPrune;
 
   uint64_t _searchDepth;
 

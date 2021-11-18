@@ -127,8 +127,7 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     AqlValue groupValue = input.getValue(_infos.getGroupRegister().second);
 
     // now check if we already know this group
-    bool newGroup = _seen.find(groupValue) == _seen.end();
-    if (newGroup) {
+    if (!_seen.contains(groupValue)) {
       size_t memoryUsage = memoryUsageForGroup(groupValue);
       arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsage);
 
@@ -175,8 +174,7 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
     AqlValue groupValue = input.getValue(_infos.getGroupRegister().second);
 
     // now check if we already know this group
-    bool newGroup = _seen.find(groupValue) == _seen.end();
-    if (newGroup) {
+    if (!_seen.contains(groupValue)) {
       skipped += 1;
       call.didSkip(1);
       
