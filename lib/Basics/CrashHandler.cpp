@@ -732,10 +732,14 @@ void logString(std::string_view str) noexcept {
   LOG_TOPIC("f4b29", INFO, Logger::FIXME) << str;
 }
 void logBin(std::string_view msg, std::uint8_t const* data, std::size_t len) noexcept {
-  auto bin = std::stringstream();
-  for (std::size_t i = 0; i < len; ++i) {
-    bin << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)data[i] << " ";
+  try {
+    auto bin = std::stringstream();
+    for (std::size_t i = 0; i < len; ++i) {
+      bin << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)data[i] << " ";
+    }
+    LOG_TOPIC("68145", INFO, Logger::FIXME) << msg << bin.str();
+  } catch(...) {
+    LOG_TOPIC("4f343", INFO, Logger::FIXME) << msg << "!OOM, len=" << len;
   }
-  LOG_TOPIC("68145", INFO, Logger::FIXME) << msg << ": " << bin.str();
 }
 }  // namespace arangodb::debug
