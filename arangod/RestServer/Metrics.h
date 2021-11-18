@@ -46,6 +46,12 @@ class Metric {
   std::string const& name() const;
   std::string const& labels() const;
   virtual std::string type() const = 0;
+  virtual void toPrometheusBegin(std::string& result, std::string_view name) const {
+    result.append("# HELP ").append(name).append(" ").append(help()).append(
+        "\n");
+    result.append("# TYPE ").append(name).append(" ").append(type()).append(
+        "\n");
+  }
   virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName = std::string()) const = 0;
   void header(std::string& result) const;
  protected:
@@ -205,6 +211,10 @@ class GuardMetric final : public Metric {
 
   std::string type() const final { return "untyped"; }
 
+  void toPrometheusBegin(std::string& result, std::string_view name) const final {
+    std::lock_guard guard{_m};
+    _metric.needName();
+  }
   void toPrometheus(std::string& result, std::string const& globals,
                     std::string const&) const final {
     load().toPrometheus(result, globals, labels());

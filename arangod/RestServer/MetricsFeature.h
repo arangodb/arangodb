@@ -36,19 +36,20 @@
     x() { _name = #x; _help = help; } \
     }
 
-#define DECLARE_GAUGE(x, type, help)    \
+#define DECLARE_GAUGE(x, type, help)                    \
   struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    x() { _name = #x; _help = help; } \
-    }
-    
+    static constexpr std::string_view kName = #x;       \
+    x() {                                               \
+      _name = #x;                                       \
+      _help = help;                                     \
+    }                                                   \
+  }
+
 #define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
 
-#define DECLARE_GUARD_METRIC(x, type, help)                   \
+#define DECLARE_GUARD_METRIC(x, type)                         \
   struct x : arangodb::metrics::GuardMetricBuilder<x, type> { \
-    x() {                                                     \
-      _name = #x;                                             \
-      _help = help;                                           \
-    }                                                         \
+    x() { _name = #x; }                                       \
   }
 
 #define DECLARE_HISTOGRAM(x, scale, help)                   \

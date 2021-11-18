@@ -534,8 +534,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
         continue;
       }
       if (lastType != name) {
-        result += "# HELP " + name + " " + i.second->help() + "\n";
-        result += "# TYPE " + name + " " + i.second->type() + "\n";
+        i.second->toPrometheusBegin(result, name);
         lastType = name;
       }
       i.second->toPrometheus(result, _globalLabelsStr, alternativeName);
