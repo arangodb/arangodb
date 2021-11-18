@@ -46,7 +46,6 @@
 
 namespace {
 using namespace date;
-using namespace std::chrono;
 
 std::string tail(std::string const& source, size_t const length) {
   if (length >= source.size()) {
@@ -354,7 +353,7 @@ std::
                                                                             auto diffDuration =
                                                                                 tp - unixEpoch;
                                                                             auto diff =
-                                                                                duration_cast<duration<double, std::milli>>(
+                                                                                duration_cast<std::chrono::duration<double, std::milli>>(
                                                                                     diffDuration)
                                                                                     .count();
                                                                             wrk.append(std::to_string(static_cast<int64_t>(
@@ -365,7 +364,7 @@ std::
                                                                              arangodb::tp_sys_clock_ms const& tp) {
                                                                             std::string formatted = format(
                                                                                 "%FT%TZ",
-                                                                                floor<milliseconds>(tp));
+                                                                                floor<std::chrono::milliseconds>(tp));
                                                                             wrk.append(formatted);
                                                                           }},
                                                                          {"%w",
@@ -777,18 +776,15 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     return false;
   }
 
-  using namespace date;
-  using namespace std::chrono;
-
   date_tp = sys_days(year{result.year} / result.month / result.day);
-  date_tp += hours{result.hour};
-  date_tp += minutes{result.minute};
-  date_tp += seconds{result.second};
-  date_tp += milliseconds{result.millisecond};
+  date_tp += std::chrono::hours{result.hour};
+  date_tp += std::chrono::minutes{result.minute};
+  date_tp += std::chrono::seconds{result.second};
+  date_tp += std::chrono::milliseconds{result.millisecond};
 
   if (result.tzOffsetHour != 0 || result.tzOffsetMinute != 0) {
-    minutes offset = hours{result.tzOffsetHour};
-    offset += minutes{result.tzOffsetMinute};
+    std::chrono::minutes offset = std::chrono::hours{result.tzOffsetHour};
+    offset += std::chrono::minutes{result.tzOffsetMinute};
 
     if (offset.count() != 0) {
       // apply timezone adjustment

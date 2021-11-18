@@ -605,7 +605,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG OR APPLE)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++20")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
@@ -619,7 +619,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
     message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
   endif()
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++17") 
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++20")
 endif()
 
 if (CMAKE_COMPILER_IS_CLANG)
@@ -640,9 +640,9 @@ if (CMAKE_COMPILER_IS_CLANG)
   endif ()
 endif ()
 
-# need c++17
+# need c++20
 # XXX this should really be set on a per target level using cmake compile_features capabilties
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # need threads
 find_package(Threads REQUIRED)

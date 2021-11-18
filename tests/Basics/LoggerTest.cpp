@@ -211,14 +211,14 @@ TEST_F(LoggerTest, testTimeFormats) {
   
   {
     // server start time point
-    sys_time<milliseconds> startTp;
+    date::sys_time<milliseconds> startTp;
     {
       std::istringstream in{"2020-12-02 11:57:02.701"};
       in >> parse("%F %T", startTp);
     }
 
     // time point we are testing
-    sys_time<milliseconds> tp;
+    date::sys_time<milliseconds> tp;
     {
       std::istringstream in{"2020-12-02 11:57:26.004"};
       in >> parse("%F %T", tp);

@@ -786,7 +786,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
   }
 
   return std::move(figures)
-      .thenValue([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+      .thenValue([=, this, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
         if (figures.fail()) {
           THROW_ARANGO_EXCEPTION(figures.result);
         }
@@ -805,7 +805,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
         }
         return futures::makeFuture(OperationResult(Result(), options));
       })
-      .thenValue([=, &ctxt](OperationResult&& opRes) -> void {
+      .thenValue([=, this, &ctxt](OperationResult&& opRes) -> void {
         if (opRes.fail()) {
           if (showCount != CountType::None) {
             auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
