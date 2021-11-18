@@ -40,8 +40,8 @@ namespace store_test_api {
 
 class StoreTestAPI : public ::testing::Test {
  public:
-  StoreTestAPI() : _server(), _store(_server.server(), nullptr) {
-  }
+  StoreTestAPI() : _server(), _store(_server.server(), nullptr) {}
+
  protected:  
   arangodb::tests::mocks::MockCoordinator _server;
   arangodb::consensus::Store _store;
@@ -50,11 +50,10 @@ class StoreTestAPI : public ::testing::Test {
   {
     try {
       consensus::query_t q {VPackParser::fromJson(json)};
-      auto result {std::make_shared<VPackBuilder>()};
-      _store.read(q, result);
+      auto result = std::make_shared<VPackBuilder>();
+      _store.readMultiple(q->slice(), *result);
       return result;
-    }
-    catch(std::exception& ex) {
+    } catch (std::exception& ex) {
       throw std::runtime_error(std::string(ex.what()) + " while trying to read " + json);
     }
   }
@@ -62,10 +61,9 @@ class StoreTestAPI : public ::testing::Test {
   auto write(std::string const& json)
   {
     try {
-      auto q {VPackParser::fromJson(json)};
-      return _store.applyTransactions(q);
-    }
-    catch(std::exception& err) {
+      auto q = VPackParser::fromJson(json);
+      return _store.applyTransactions(q->slice());
+    } catch(std::exception& err) {
       throw std::runtime_error(std::string(err.what()) + " while parsing " + json );
     }
   }
@@ -97,12 +95,9 @@ class StoreTestAPI : public ::testing::Test {
 
 std::vector<consensus::apply_ret_t> transactAndCheck(std::string const& json) {
   try{
-    auto q {VPackParser::fromJson(json)};
-    auto results { _store.applyTransactions(q)};
-    return results;
-
-  }
-  catch(std::exception& ex) {
+    auto q = VPackParser::fromJson(json);
+    return _store.applyTransactions(q->slice());
+  } catch(std::exception& ex) {
     throw std::runtime_error(std::string(ex.what()) + ", transact failed processing " + json);
   }
 }
@@ -112,12 +107,10 @@ std::vector<consensus::apply_ret_t> transactAndCheck(std::string const& json) {
     try {
       auto r {write(json)};
       auto applied_all = std::all_of(r.begin(), r.end(), [](auto const& result){ return result == consensus::apply_ret_t::APPLIED; });
-      if (!applied_all)
-        {
-          throw std::runtime_error("This didn't work: " + json);
-        }
-    }
-    catch (std::exception& ex) {
+      if (!applied_all) {
+        throw std::runtime_error("This didn't work: " + json);
+      }
+    } catch (std::exception& ex) {
       throw std::runtime_error(std::string(ex.what()) + " processing " + json);
     }
   }
@@ -128,20 +121,17 @@ std::vector<consensus::apply_ret_t> transactAndCheck(std::string const& json) {
       if (!velocypack::NormalizedCompare::equals(result->slice(), expected->slice())) {
         throw std::runtime_error(result->toJson() + " should have been equal to " + expected->toJson());
       }
-    }
-    catch(std::exception& ex) {
+    } catch(std::exception const& ex) {
       throw std::runtime_error(std::string(ex.what()) + " comparing to " + expected_result);
     }
   }
-
-
 };
 
 TEST_F(StoreTestAPI, basic_operations_empty_results) {
   auto q = VPackParser::fromJson(R"=(
         [[{"/": {"op":"delete"}}]]
       )=");
-  auto v = _store.applyTransactions(q);
+  auto v = _store.applyTransactions(q->slice());
   ASSERT_EQ(1, v.size());
   ASSERT_EQ(consensus::APPLIED, v.front());
   

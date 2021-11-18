@@ -250,23 +250,20 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
 }
 
 /// Log transaction (leader)
-std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
+std::vector<index_t> State::logLeaderMulti(arangodb::velocypack::Slice transactions,
                                            std::vector<apply_ret_t> const& applicable,
                                            term_t term) {
 
   using namespace std::chrono;
 
-  std::vector<index_t> idx(applicable.size());
-  size_t j = 0;
-  auto const& slice = transactions->slice();
-
-  if (!slice.isArray()) {
+  if (!transactions.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
         "Agency syntax requires array of transactions [[<queries>]]");
   }
 
-  if (slice.length() != applicable.size()) {
+  std::vector<index_t> idx(applicable.size());
+  if (transactions.length() != applicable.size()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
                                    "Invalid transaction syntax");
   }
@@ -275,7 +272,8 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
 
   TRI_ASSERT(!_log.empty());  // log must never be empty
 
-  for (auto const& i : VPackArrayIterator(slice)) {
+  size_t j = 0;
+  for (auto const& i : VPackArrayIterator(transactions)) {
     if (!i.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
                                      "Transaction syntax is [{<operations>}, "
@@ -301,7 +299,7 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
   return idx;
 }
 
-index_t State::logLeaderSingle(velocypack::Slice const& slice, term_t term,
+index_t State::logLeaderSingle(arangodb::velocypack::Slice slice, term_t term,
                                std::string const& clientId) {
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   using namespace std::chrono;
@@ -311,7 +309,7 @@ index_t State::logLeaderSingle(velocypack::Slice const& slice, term_t term,
 }
 
 /// Log transaction (leader)
-index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
+index_t State::logNonBlocking(index_t idx, velocypack::Slice slice,
                               term_t term, uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
@@ -374,9 +372,8 @@ void State::logEmplaceBackNoLock(log_t&& l) {
 }
 
 /// Log transactions (follower)
-index_t State::logFollower(query_t const& transactions) {
-  VPackSlice slices = transactions->slice();
-  size_t nqs = slices.length();
+index_t State::logFollower(VPackSlice transactions) {
+  size_t nqs = transactions.length();
   using namespace std::chrono;
 
   while (!_ready && !_agent->isStopping()) {
@@ -385,8 +382,8 @@ index_t State::logFollower(query_t const& transactions) {
   }
 
   // Check whether we have got a snapshot in the first position:
-  bool gotSnapshot = slices.length() > 0 && slices[0].isObject() &&
-                     !slices[0].get("readDB").isNone();
+  bool gotSnapshot = transactions.length() > 0 && transactions[0].isObject() &&
+                     !transactions[0].get("readDB").isNone();
 
   MUTEX_LOCKER(logLock, _logLock);
 
@@ -410,9 +407,9 @@ index_t State::logFollower(query_t const& transactions) {
     bool useSnapshot = false;  // if this remains, we ignore the snapshot
 
     index_t snapshotIndex =
-        static_cast<index_t>(slices[0].get("index").getNumber<index_t>());
+        static_cast<index_t>(transactions[0].get("index").getNumber<index_t>());
     term_t snapshotTerm =
-        static_cast<term_t>(slices[0].get("term").getNumber<index_t>());
+        static_cast<term_t>(transactions[0].get("term").getNumber<index_t>());
     index_t ourLastIndex = _log.back().index;
     if (ourLastIndex < snapshotIndex) {
       useSnapshot = true;  // this implies that we completely eradicate our log
@@ -431,7 +428,7 @@ index_t State::logFollower(query_t const& transactions) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
       Store snapshot(_agent->server(), _agent, "snapshot");
-      snapshot = slices[0];
+      snapshot = transactions[0];
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
@@ -445,12 +442,10 @@ index_t State::logFollower(query_t const& transactions) {
   size_t ndups = removeConflicts(transactions, gotSnapshot);
 
   if (nqs > ndups) {
-    VPackSlice slices = transactions->slice();
-    TRI_ASSERT(slices.isArray());
-    size_t nqs = slices.length();
+    TRI_ASSERT(transactions.isArray());
 
     for (size_t i = ndups; i < nqs; ++i) {
-      VPackSlice const& slice = slices[i];
+      VPackSlice slice = transactions[i];
 
       auto query = slice.get("query");
       TRI_ASSERT(query.isObject());
@@ -481,7 +476,7 @@ index_t State::logFollower(query_t const& transactions) {
   return _log.back().index;  // never empty
 }
 
-size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
+size_t State::removeConflicts(VPackSlice transactions, bool gotSnapshot) {
   // Under _logLock MUTEX from _log, which is the only place calling this.
   // Note that this will ignore a possible snapshot in the first position!
   // This looks through the transactions and skips over those that are
@@ -491,11 +486,10 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
   // can append from this point on the new stuff. If our log is behind,
   // we might find a position at which we do not yet have log entries,
   // in which case we return and let others update our log.
-  VPackSlice slices = transactions->slice();
-  TRI_ASSERT(slices.isArray());
+  TRI_ASSERT(transactions.isArray());
   size_t ndups = gotSnapshot ? 1 : 0;
 
-  LOG_TOPIC("4083e", TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
+  LOG_TOPIC("4083e", TRACE, Logger::AGENCY) << "removeConflicts " << transactions.toJson();
   try {
     // If we've got a snapshot anything we might have is obsolete, note that
     // this happens if and only if we decided at the call site that we actually
@@ -507,8 +501,8 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
     }
     index_t lastIndex = _log.back().index;
 
-    while (ndups < slices.length()) {
-      VPackSlice slice = slices[ndups];
+    while (ndups < transactions.length()) {
+      VPackSlice slice = transactions[ndups];
       index_t idx = slice.get("index").getUInt();
       if (idx > lastIndex) {
         LOG_TOPIC("e3d7a", TRACE, Logger::AGENCY)
