@@ -31,6 +31,7 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Sink.h"
 #include "velocypack/StringRef.h"
+#include "velocypack/Validator.h"
 
 #if __cplusplus >= 201703L
 #include <string_view>
@@ -1307,6 +1308,50 @@ uint8_t* Builder::add(ArrayIterator&& sub) {
     sub.next();
   }
   return _start + oldPos;
+}
+
+namespace arangodb::debug {
+void logBacktrace() noexcept;
+void logString(std::string_view str) noexcept;
+void logBin(std::string_view msg, std::uint8_t const* data, std::size_t len) noexcept;
+}
+
+Slice Builder::slice() const {
+  if (isEmpty()) {
+    return Slice();
+  }
+  try {
+    auto validator = Validator();
+    validator.validate(start(), _pos);
+  } catch(::arangodb::velocypack::Exception const& e) {
+    auto message = std::string();
+    message += "[" __FILE__ ":";
+    message += std::to_string(__LINE__);
+    message += "@";
+    message += __FUNCTION__;
+    message += "] ";
+    message += "Failed to validate slice, exception was: (";
+    message += std::to_string(e.errorCode());
+    message += ") ";
+    message += e.what();
+
+    ::arangodb::debug::logString(message);
+    ::arangodb::debug::logBacktrace();
+    ::arangodb::debug::logBin("Slice: ", start(), _pos);
+  } catch(...) {
+    auto message = std::string();
+    message += "[" __FILE__ ":";
+    message += std::to_string(__LINE__);
+    message += "@";
+    message += __FUNCTION__;
+    message += "] ";
+    message += "Failed to validate slice, unknown exception.";
+
+    ::arangodb::debug::logString(message);
+    ::arangodb::debug::logBacktrace();
+    ::arangodb::debug::logBin("Slice: ", start(), _pos);
+  }
+  return Slice(start());
 }
 
 static_assert(sizeof(double) == 8, "double is not 8 bytes");
