@@ -326,12 +326,8 @@ struct ReplicatedLogMethodsCoordinator final
     VPackBuilder builder{};
     {
       VPackArrayBuilder arrayBuilder{&builder};
-      while (const auto payload = iter.next()) {
-        if (payload.has_value()) {
-          builder.add(payload->slice());
-        } else {
-          builder.add(VPackSlice::emptyObjectSlice());
-        }
+      while (auto const payload = iter.next()) {
+        builder.add(payload->slice());
         ++payloadSize;
       }
     }
