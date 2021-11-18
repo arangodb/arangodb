@@ -288,12 +288,12 @@ class IResearchLink {
   /// @brief index stats
   //////////////////////////////////////////////////////////////////////////////
   struct Stats {
-    size_t numBufferedDocs{};  // number of buffered docs
-    size_t numDocs{};          // number of documents
-    size_t numLiveDocs{};      // number of live documents
-    size_t numSegments{};      // number of segments
-    size_t numFiles{};         // number of files
-    size_t indexSize{};        // size of the index in bytes
+    uint64_t numBufferedDocs{};
+    uint64_t numDocs{};
+    uint64_t numLiveDocs{};
+    uint64_t numSegments{};
+    uint64_t numFiles{};
+    uint64_t indexSize{};
   };
 
   const std::string& getViewId() const noexcept;
@@ -302,8 +302,12 @@ class IResearchLink {
   std::string getCollectionName() const;
 
   struct LinkStats : Stats {
-    void toPrometheus(std::string& result, const std::string& globals,
-                      const std::string& labels) const;
+    void needName() const;
+    void toPrometheus(std::string& result, std::string_view globals,
+                      std::string_view labels) const;
+
+   private:
+    mutable bool _needName{false};
   };
 
  protected:

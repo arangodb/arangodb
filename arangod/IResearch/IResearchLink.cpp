@@ -65,8 +65,19 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-DECLARE_GUARD_METRIC(arangodb_arangosearch_link_stats, IResearchLink::LinkStats,
-                     "Index stats about documents for current snapshot");
+DECLARE_GUARD_METRIC(arangodb_arangosearch_link_stats, IResearchLink::LinkStats);
+DECLARE_GAUGE(arangodb_arangosearch_num_buffered_docs, uint64_t,
+              "Number of buffered documents");
+DECLARE_GAUGE(arangodb_arangosearch_num_docs, uint64_t,  //
+              "Number of documents");
+DECLARE_GAUGE(arangodb_arangosearch_num_live_docs, uint64_t,
+              "Number of live documents");
+DECLARE_GAUGE(arangodb_arangosearch_num_segments, uint64_t,
+              "Number of segments");
+DECLARE_GAUGE(arangodb_arangosearch_num_files, uint64_t,  //
+              "Number of files");
+DECLARE_GAUGE(arangodb_arangosearch_index_size, uint64_t,
+              "Size of the index in bytes");
 DECLARE_GAUGE(arangodb_arangosearch_num_failed_commits, uint64_t,
               "Number of failed commits");
 DECLARE_GAUGE(arangodb_arangosearch_num_failed_cleanups, uint64_t,
@@ -270,10 +281,10 @@ struct Task {
 template <typename T>
 T getMetric(const IResearchLink& link) {
   T metric;
-  metric.addLabel("viewId", link.getViewId());
-  metric.addLabel("collId", link.getCollectionName());
-  metric.addLabel("shardName", link.getShardName());
-  metric.addLabel("dbName", link.getDbName());
+  metric.addLabel("view", link.getViewId());
+  metric.addLabel("collection", link.getCollectionName());
+  metric.addLabel("shard", link.getShardName());
+  metric.addLabel("db", link.getDbName());
   return metric;
 }
 
@@ -2146,33 +2157,51 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   return dataPath;
 }
 
-void IResearchLink::LinkStats::toPrometheus(std::string& result, const std::string& globals,
-                                            const std::string& labels) const {
-  std::string annotation;
-  annotation.reserve(2 + globals.size() + 2 + labels.size() + 2);
-  annotation.append("{ ");
-  annotation.append(globals);
-  if (!labels.empty()) {
-    if (!globals.empty()) {
-      annotation.append(", ");
+void IResearchLink::LinkStats::needName() const { _needName = true; }
+
+void IResearchLink::LinkStats::toPrometheus(std::string& result,       //
+                                            std::string_view globals,  //
+                                            std::string_view labels) const {
+  auto writeAnnotation = [&] {
+    result.push_back('{');
+    result.append(globals);
+    if (!labels.empty()) {
+      if (!globals.empty()) {
+        result.push_back(',');
+      }
+      result.append(labels);
     }
-    annotation.append(labels);
-  }
-  annotation.append("} ");
-  result.reserve(6 * (39 + annotation.size() + 20 + 1));
-  auto writeMetric = [&result, &annotation](std::string_view metricName, size_t value) {
-    result.append(metricName);
-    result.append(annotation);
+    result.push_back('}');
+  };
+  auto writeMetric = [&](std::string_view name, std::string_view help, size_t value) {
+    if (_needName) {
+      result.append("# HELP ");
+      result.append(name);
+      result.push_back(' ');
+      result.append(help);
+      result.push_back('\n');
+      result.append("# TYPE ");
+      result.append(name);
+      result.append(" gauge\n");
+    }
+    result.append(name);
+    writeAnnotation();
     result.append(std::to_string(value));
     result.push_back('\n');
   };
-
-  writeMetric("arangodb_arangosearch_num_buffered_docs", numBufferedDocs);
-  writeMetric("arangodb_arangosearch_num_docs", numDocs);
-  writeMetric("arangodb_arangosearch_num_live_docs", numLiveDocs);
-  writeMetric("arangodb_arangosearch_num_segments", numSegments);
-  writeMetric("arangodb_arangosearch_num_files", numFiles);
-  writeMetric("arangodb_arangosearch_index_size", indexSize);
+  writeMetric(arangodb_arangosearch_num_buffered_docs::kName,
+              "Number of buffered documents", numBufferedDocs);
+  writeMetric(arangodb_arangosearch_num_docs::kName,  //
+              "Number of documents", numDocs);
+  writeMetric(arangodb_arangosearch_num_live_docs::kName,
+              "Number of live documents", numLiveDocs);
+  writeMetric(arangodb_arangosearch_num_segments::kName,  //
+              "Number of segments", numSegments);
+  writeMetric(arangodb_arangosearch_num_files::kName,  //
+              "Number of files", numFiles);
+  writeMetric(arangodb_arangosearch_index_size::kName,
+              "Size of the index in bytes", indexSize);
+  _needName = false;
 }
 
 std::tuple<uint64_t, uint64_t, uint64_t> IResearchLink::numFailed() const {
