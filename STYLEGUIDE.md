@@ -4,6 +4,16 @@ This document is mostly derived from [Google C++ Style
 Guide](https://google.github.io/styleguide/cppguide.html#C++_Version) with some
 ArangoDB specific adjustments.
 
+## Preamble
+
+These coding guidelines represent the C++ code style that we want to follow at ArangoDB.
+As the ArangoDB code base has evolved over a period of around 10 years, there still exists
+some code which does not or not fully follow these guidelines. Older code that is not following
+the guidelines described here will eventually be adjusted to follow these guidelines. This will
+take time.
+Any _newly_ added code however should follow the guidelines described here. When in doubt,
+please always follow the coding guidelines described here.
+
 ## Naming
 
 The most important consistency rules are those that govern naming. The style of
