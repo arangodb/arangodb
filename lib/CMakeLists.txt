@@ -219,6 +219,11 @@ target_link_libraries(arango
   ${SYSTEM_LIBRARIES}
 )
 
+cmake_policy(PUSH)
+cmake_policy(SET CMP0079 NEW)
+target_link_libraries(velocypack arango)
+cmake_policy(POP)
+
 set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
 
 target_include_directories(arango PRIVATE ${FROZEN_INCLUDE_DIR})
