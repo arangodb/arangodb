@@ -84,10 +84,10 @@ v3.9.0 (XXXX-XX-XX)
 
 * Upgrade bundled version of RocksDB to 6.26.
 
-* backport for PR 14916: The "Rebalance Shards" button now is displayed in a new tab, and it 
-  is displayed for any database in cluster mode. There is also a new flag for 
-  arangod, `--cluster.max-number-of-move-shards` (default = 10), which limits 
-  the amount of move shards operations each time the button is clicked to 
+* Backport for PR 14916: The "Rebalance Shards" button now is displayed in a new
+  tab, and it is displayed for any database in cluster mode. There is also a new
+  flag for arangod, `--cluster.max-number-of-move-shards` (default = 10), which 
+  limits the amount of move shards operations each time the button is clicked to 
   rebalance shards. When the button is clicked, the number of move shards 
   operations scheduled is shown, or that no operation was scheduled if the flag 
   `--cluster.max-number-of-move-shards` has a value of 0.
