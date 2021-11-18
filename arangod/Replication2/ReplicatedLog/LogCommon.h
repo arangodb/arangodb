@@ -331,14 +331,14 @@ struct LogConfig {
 // These settings are initialised by the ReplicatedLogFeature based on command line arguments
 struct ReplicatedLogGlobalSettings {
  public:
-  static inline constexpr std::size_t defaultMaxNetworkBatchSize{1024 * 1024};
-  static inline constexpr std::size_t minNetworkBatchSize{1024 * 1024};
+  static inline constexpr std::size_t defaultThresholdNetworkBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minThresholdNetworkBatchSize{1024 * 1024};
 
-  static inline constexpr std::size_t defaultMaxRocksDBWriteBatchSize{1024 * 1024};
-  static inline constexpr std::size_t minRocksDBWriteBatchSize{1024 * 1024};
+  static inline constexpr std::size_t defaultThresholdRocksDBWriteBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minThresholdRocksDBWriteBatchSize{1024 * 1024};
 
-  std::size_t _maxNetworkBatchSize{defaultMaxNetworkBatchSize};
-  std::size_t _maxRocksDBWriteBatchSize{defaultMaxRocksDBWriteBatchSize};
+  std::size_t _thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
+  std::size_t _thresholdRocksDBWriteBatchSize{defaultThresholdRocksDBWriteBatchSize};
 };
 
 
