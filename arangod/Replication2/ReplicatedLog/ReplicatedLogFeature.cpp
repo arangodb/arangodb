@@ -67,6 +67,7 @@ void ReplicatedLogFeature::prepare() {
 }
 
 void ReplicatedLogFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   options->addSection("replicatedlog", "Options for replicated logs");
 
   options->addOption("--replicatedlog.threshold-network-batch-size",
@@ -77,6 +78,7 @@ void ReplicatedLogFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "write a batch of log updates to RocksDB early "
                      "when threshold (in bytes) is exceeded",
                      new SizeTParameter(&_options->_thresholdRocksDBWriteBatchSize));
+#endif
 }
 
 void ReplicatedLogFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
