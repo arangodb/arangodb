@@ -2736,8 +2736,20 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     VPackObjectBuilder bb(&b);
     b.add(StaticStrings::Error, VPackValue(false));
     if (!serverId.empty()) {
-      b.add(StaticStrings::FollowingTermId,
-            VPackValue(col->followers()->newFollowingTermId(serverId)));
+      // check if the follower sent us the "wantFollowingTerm" attribute.
+      // followers >= 3.8.3 will send this to indicate that they know how
+      // to handle following term ids safely
+      bool wantFollowingTerm = VelocyPackHelper::getBooleanValue(body, "wantFollowingTerm", false);
+      if (wantFollowingTerm) {
+        b.add(StaticStrings::FollowingTermId,
+              VPackValue(col->followers()->newFollowingTermId(serverId)));
+      } else {
+        // a client < 3.8.3 does not know how to handle following term ids
+        // safely. in this case we set the follower's term id to 0, so it
+        // will be ignored on followers < 3.8.3
+        col->followers()->setFollowingTermId(serverId, 0);
+        b.add(StaticStrings::FollowingTermId, VPackValue(0));
+      }
     }
 
     // also return the _current_ last log sequence number. this may be higher
@@ -3273,13 +3285,13 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
   bool isNewDatabase = false;
   bool allowSystem = true;
-  bool isSingleServerEnterpriseCollection = false;
+  bool allowEnterpriseCollectionsOnSingleServer = false;
   bool enforceReplicationFactor = false;
 
 #ifdef USE_ENTERPRISE
   if (slice.get(StaticStrings::IsSmart).isTrue() ||
       slice.get(StaticStrings::GraphIsSatellite).isTrue()) {
-    isSingleServerEnterpriseCollection = true;
+    allowEnterpriseCollectionsOnSingleServer = true;
     enforceReplicationFactor = true;
   }
 #endif
@@ -3288,7 +3300,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(_vocbase, options, infos, true,
                       enforceReplicationFactor, isNewDatabase, nullptr, collections,
-                      allowSystem, isSingleServerEnterpriseCollection, true);
+                      allowSystem, allowEnterpriseCollectionsOnSingleServer, true);
   if (res.fail()) {
     return res.errorNumber();
   }

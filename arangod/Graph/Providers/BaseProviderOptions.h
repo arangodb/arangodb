@@ -44,7 +44,7 @@ namespace graph {
 struct IndexAccessor {
   IndexAccessor(transaction::Methods::IndexHandle idx, aql::AstNode* condition,
                 std::optional<size_t> memberToUpdate,
-                std::unique_ptr<arangodb::aql::Expression> expression, 
+                std::unique_ptr<arangodb::aql::Expression> expression,
                 std::optional<aql::NonConstExpressionContainer> nonConstPart,
                 size_t cursorId);
   IndexAccessor(IndexAccessor const&) = delete;

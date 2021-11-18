@@ -820,7 +820,7 @@ void SimpleHttpClient::processBody() {
 
   // body is compressed using deflate. inflate it
   if (_result->isDeflated()) {
-    _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
+    _readBuffer.inflate(_result->getBody(), _readBufferOffset);
   }
 
   // body is not compressed
@@ -942,7 +942,7 @@ void SimpleHttpClient::processChunkedBody() {
     }
 
     if (_result->isDeflated()) {
-      _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
+      _readBuffer.inflate(_result->getBody(), _readBufferOffset);
       _result->getBody().ensureNullTerminated();
     } else {
       _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
