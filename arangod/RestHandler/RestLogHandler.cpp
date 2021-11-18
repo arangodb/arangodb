@@ -36,11 +36,9 @@
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedLog/Utilities.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -127,7 +125,7 @@ RestStatus RestLogHandler::handlePostInsertMulti(ReplicatedLogMethods const& met
     return RestStatus::DONE;
   }
 
-  auto iter = replicated_log::LogPayloadIterator{payload};
+  auto iter = replicated_log::VPackArrayToLogPayloadIterator{payload};
   auto f = methods.insert(logId, iter).thenValue([this](auto&& waitForResult) {
     VPackBuilder response;
     {

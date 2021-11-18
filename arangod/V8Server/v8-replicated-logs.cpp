@@ -30,11 +30,13 @@
 #include "v8-externals.h"
 #include "v8-vocbaseprivate.h"
 
+#include "velocypack/Iterator.h"
+
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedLog/Utilities.h"
 
 using namespace arangodb::replication2;
 
@@ -231,7 +233,7 @@ static void JS_MultiInsert(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "multiInsert(<payload>) expects array");
   }
 
-  replicated_log::LogPayloadIterator iter{slice};
+  replicated_log::VPackArrayToLogPayloadIterator iter{slice};
   auto result = ReplicatedLogMethods::createInstance(vocbase)
                     ->insert(id, iter).get();
 
