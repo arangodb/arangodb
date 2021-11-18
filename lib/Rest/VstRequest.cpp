@@ -77,6 +77,12 @@ arangodb::velocypack::StringRef VstRequest::rawPayload() const {
                                          _payload.size() - _payloadOffset);
 }
 
+namespace arangodb::debug {
+void logBacktrace() noexcept;
+void logString(std::string_view str) noexcept;
+void logBin(std::string_view msg, std::uint8_t const* data, std::size_t len) noexcept;
+}  // namespace arangodb::debug
+
 VPackSlice VstRequest::payload(bool strictValidation) {
   if (_contentType == ContentType::JSON) {
     if (!_vpackBuilder && _payload.size() > _payloadOffset) {
@@ -91,11 +97,42 @@ VPackSlice VstRequest::payload(bool strictValidation) {
     if (_payload.size() > _payloadOffset) {
       uint8_t const* ptr = _payload.data() + _payloadOffset;
       if (!_validatedPayload) {
-        /// the header is validated in VstCommTask, the actual body is only validated on demand
-        VPackOptions const* options = validationOptions(strictValidation);
-        VPackValidator validator(options);
-        // will throw on error
-        _validatedPayload = validator.validate(ptr, _payload.size() - _payloadOffset);
+        try {
+          /// the header is validated in VstCommTask, the actual body is only validated on demand
+          VPackOptions const* options = validationOptions(strictValidation);
+          VPackValidator validator(options);
+          // will throw on error
+          _validatedPayload = validator.validate(ptr, _payload.size() - _payloadOffset);
+        } catch(::arangodb::velocypack::Exception const& e) {
+          auto message = std::string();
+          message += "[" __FILE__ ":";
+          message += std::to_string(__LINE__);
+          message += "@";
+          message += __FUNCTION__;
+          message += "] ";
+          message += "Failed to validate slice, exception was: (";
+          message += std::to_string(e.errorCode());
+          message += ") ";
+          message += e.what();
+
+          ::arangodb::debug::logString(message);
+          ::arangodb::debug::logBacktrace();
+          ::arangodb::debug::logBin("Slice: ", ptr, _payload.size() - _payloadOffset);
+          throw;
+        } catch(...) {
+          auto message = std::string();
+          message += "[" __FILE__ ":";
+          message += std::to_string(__LINE__);
+          message += "@";
+          message += __FUNCTION__;
+          message += "] ";
+          message += "Failed to validate slice, unknown exception.";
+
+          ::arangodb::debug::logString(message);
+          ::arangodb::debug::logBacktrace();
+          ::arangodb::debug::logBin("Slice: ", ptr, _payload.size() - _payloadOffset);
+          throw;
+        }
       }
       return VPackSlice(ptr);
     }
