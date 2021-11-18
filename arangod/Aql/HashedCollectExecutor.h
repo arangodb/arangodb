@@ -34,8 +34,9 @@
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
+#include <Containers/FlatHashMap.h>
+
 #include <memory>
-#include <unordered_map>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -166,7 +167,7 @@ class HashedCollectExecutor {
   using GroupKeyType = HashedAqlValueGroup;
   using GroupValueType = std::unique_ptr<ValueAggregators>;
   using GroupMapType =
-      std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
+      containers::FlatHashMap<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
   Infos const& infos() const noexcept;
 

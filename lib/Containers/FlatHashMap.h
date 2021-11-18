@@ -23,15 +23,16 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
+#include <absl/container/flat_hash_map.h>
 
 namespace arangodb {
 namespace containers {
 
-template <typename T, typename Hash = ::iresearch_absl::container_internal::hash_default_hash<T>,
+template <typename T, typename V, 
+          typename Hash = ::iresearch_absl::container_internal::hash_default_hash<T>,
           typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
           typename Allocator = std::allocator<T>>
-using FlatHashSet = ::iresearch_absl::flat_hash_set<T, Hash, Eq, Allocator>;
+using FlatHashMap = ::iresearch_absl::flat_hash_map<T, V, Hash, Eq, Allocator>;
 
 }
 }

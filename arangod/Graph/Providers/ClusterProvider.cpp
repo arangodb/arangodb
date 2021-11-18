@@ -378,8 +378,7 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
     _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
 
     for (auto const& step : result) {
-      if (_vertexConnectedEdges.find(step->getVertex().getID()) ==
-          _vertexConnectedEdges.end()) {
+      if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
         auto res = fetchEdgesFromEngines(step->getVertex().getID());
         // TODO: check stats (also take a look of vertex stats)
         // add http stats
@@ -408,8 +407,7 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   TRI_ASSERT(_vertexConnectedEdges.find(vertex.getID()) != _vertexConnectedEdges.end());
   for (auto const& relation : _vertexConnectedEdges.at(vertex.getID())) {
-    bool fetched =
-        _vertexConnectedEdges.find(relation.second) != _vertexConnectedEdges.end();
+    bool const fetched = _vertexConnectedEdges.contains(relation.second);
     callback(Step{relation.second, relation.first, previous, fetched});
   }
 }

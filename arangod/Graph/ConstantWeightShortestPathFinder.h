@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 
@@ -59,7 +60,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   };
 
   typedef std::vector<arangodb::velocypack::StringRef> Closure;
-  typedef std::unordered_map<arangodb::velocypack::StringRef, PathSnippet> Snippets;
+  typedef containers::FlatHashMap<arangodb::velocypack::StringRef, PathSnippet> Snippets;
 
  public:
   explicit ConstantWeightShortestPathFinder(ShortestPathOptions& options);
