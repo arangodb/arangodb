@@ -536,7 +536,7 @@
     exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
     delete global.MAX_NUMBER_OF_SHARDS;
   }
-  if (global.MAX_NUMBER_OF_MOVE_SHARDS) {
+  if (typeof global.MAX_NUMBER_OF_MOVE_SHARDS === 'number') {
     exports.maxNumberOfMoveShards = global.MAX_NUMBER_OF_MOVE_SHARDS;
     delete global.MAX_NUMBER_OF_MOVE_SHARDS;
   }
