@@ -2442,6 +2442,7 @@ Future<Result> Methods::replicateOperations(
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
   auto cb = [=, this](std::vector<futures::Try<network::Response>>&& responses) -> Result {
+
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics = vocbase().server().getFeature<ReplicationMetricsFeature>();
     replMetrics.synchronousOpsTotal() += 1;

@@ -236,7 +236,7 @@ std::
                                                                                 day{0};
                                                                             uint64_t daysSinceFirst =
                                                                                 duration_cast<date::days>(
-                                                                                    tp - sys_days(firstDayInYear))
+                                                                                    tp - date::sys_days(firstDayInYear))
                                                                                     .count();
                                                                             if (daysSinceFirst < 10) {
                                                                               wrk.append(
@@ -456,7 +456,7 @@ std::
                                                                                 day{0};
                                                                             uint64_t daysSinceFirst =
                                                                                 duration_cast<date::days>(
-                                                                                    tp - sys_days(firstDayInYear))
+                                                                                    tp - date::sys_days(firstDayInYear))
                                                                                     .count();
                                                                             wrk.append(std::to_string(daysSinceFirst));
                                                                           }},

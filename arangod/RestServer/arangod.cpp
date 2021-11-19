@@ -373,7 +373,7 @@ int main(int argc, char* argv[]) {
     ARGC = argc;
     ARGV = argv;
 
-    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+    SERVICE_TABLE_ENTRY ste[] = {{TEXT(const_cast<char*>("")), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
                                  {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {

@@ -619,7 +619,10 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
     message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
   endif()
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++20")
+  # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
+  # remain restricted to /std:c++latest due to WG21's upcoming changes.
+  # For more details on this see https://github.com/microsoft/STL/issues/1814#issuecomment-845572895
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++latest")
 endif()
 
 if (CMAKE_COMPILER_IS_CLANG)

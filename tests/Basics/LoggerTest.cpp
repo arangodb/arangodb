@@ -148,7 +148,6 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
 }
 
 TEST_F(LoggerTest, testTimeFormats) {
-  using namespace date;
   using namespace std::chrono;
 
   {
@@ -156,14 +155,14 @@ TEST_F(LoggerTest, testTimeFormats) {
     sys_seconds startTp;
     {
       std::istringstream in{"2016-12-11 13:59:55"};
-      in >> parse("%F %T", startTp);
+      in >> date::parse("%F %T", startTp);
     }
 
     // time point we are testing
     sys_seconds tp;
     {
       std::istringstream in{"2016-12-11 14:02:43"};
-      in >> parse("%F %T", tp);
+      in >> date::parse("%F %T", tp);
     }
 
     std::string out;
@@ -214,14 +213,14 @@ TEST_F(LoggerTest, testTimeFormats) {
     date::sys_time<milliseconds> startTp;
     {
       std::istringstream in{"2020-12-02 11:57:02.701"};
-      in >> parse("%F %T", startTp);
+      in >> date::parse("%F %T", startTp);
     }
 
     // time point we are testing
     date::sys_time<milliseconds> tp;
     {
       std::istringstream in{"2020-12-02 11:57:26.004"};
-      in >> parse("%F %T", tp);
+      in >> date::parse("%F %T", tp);
     }
 
     std::string out;
