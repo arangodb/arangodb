@@ -689,6 +689,16 @@ void CrashHandler::crash(char const* context) {
   Logger::flush();
   Logger::shutdown();
 
+#ifdef _WIN32
+  if (!::killHard.load(std::memory_order_relaxed)) {
+    if (IsDebuggerPresent()) {
+      DebugBreak();
+    } else {
+      createMiniDump(nullptr);
+    }
+  }
+#endif
+
   // crash from here
   ::killProcess(SIGABRT);
 }
