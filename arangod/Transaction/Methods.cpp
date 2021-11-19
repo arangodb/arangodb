@@ -2416,7 +2416,8 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
+  auto cb = [=, this](std::vector<futures::Try<network::Response>>&& responses) -> Result {
+
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics = vocbase().server().getFeature<ReplicationMetricsFeature>();
     replMetrics.synchronousOpsTotal() += 1;
@@ -2634,7 +2635,7 @@ Future<OperationResult> Methods::documentInternal(std::string const& cname, VPac
 
   if (_state->isCoordinator()) {
     return addTracking(documentCoordinator(cname, value, options, api),
-                       [=](OperationResult&& opRes) {
+                       [=, this](OperationResult&& opRes) {
                          events::ReadDocument(vocbase().name(), cname, value,
                                               opRes.options, opRes.errorNumber());
                          return std::move(opRes);
@@ -2667,7 +2668,7 @@ Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackS
     f = insertLocal(cname, value, optionsCopy);
   }
 
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::CreateDocument(vocbase().name(), cname,
                            (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
                            opRes.options, opRes.errorNumber());
@@ -2698,7 +2699,7 @@ Future<OperationResult> Methods::updateInternal(std::string const& cname, VPackS
     OperationOptions optionsCopy = options;
     f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::ModifyDocument(vocbase().name(), cname, newValue, opRes.options,
                            opRes.errorNumber());
     return std::move(opRes);
@@ -2728,7 +2729,7 @@ Future<OperationResult> Methods::replaceInternal(std::string const& cname, VPack
     OperationOptions optionsCopy = options;
     f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::ReplaceDocument(vocbase().name(), cname, newValue, opRes.options,
                             opRes.errorNumber());
     return std::move(opRes);
@@ -2758,7 +2759,7 @@ Future<OperationResult> Methods::removeInternal(std::string const& cname, VPackS
     OperationOptions optionsCopy = options;
     f = removeLocal(cname, value, optionsCopy);
   }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
+  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::DeleteDocument(vocbase().name(), cname, value, opRes.options,
                            opRes.errorNumber());
     return std::move(opRes);

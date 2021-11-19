@@ -73,6 +73,7 @@ class IRESEARCH_API utf8_path {
   const native_char_t* c_str() const noexcept;
   const native_str_t& native() const noexcept;
   std::string u8string() const;
+  std::string string() const { return u8string(); }
 
   template<typename T>
   utf8_path& assign(T&& source) {

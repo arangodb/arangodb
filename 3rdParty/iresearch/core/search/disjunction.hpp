@@ -1153,9 +1153,11 @@ class block_disjunction final : public doc_iterator, private score_ctx {
           if constexpr (is_min_match) {
             match_count_ = 1;
           }
-        } else if constexpr (is_min_match) {
-          if (target == value) {
-            ++match_count_;
+        } else {
+          if constexpr (is_min_match) {
+            if (target == value) {
+              ++match_count_;
+            }
           }
         }
 
