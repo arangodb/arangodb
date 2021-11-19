@@ -175,6 +175,11 @@ ExecutionEngine::ExecutionEngine(EngineId eId,
       _resultRegister(RegisterId::maxRegisterId),
       _initializeCursorCalled(false) {
   TRI_ASSERT(_sharedState != nullptr);
+
+  //FIXME: remove!!!!
+  // test code for checking ASSERTION HANDLING ON THE CI
+  TRI_ASSERT(_root != nullptr); // that will always fail here
+
   _blocks.reserve(8);
 }
 
