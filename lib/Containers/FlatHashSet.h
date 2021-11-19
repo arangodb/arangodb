@@ -18,19 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "testcases/AqlInsertTest.h"
-#include "testcases/CustomQueryTest.h"
-#include "testcases/CollectionCreationTest.h"
-#include "testcases/DocumentCreationTest.h"
-#include "testcases/DocumentCrudAppendTest.h"
-#include "testcases/DocumentCrudTest.h"
-#include "testcases/DocumentCrudWriteReadTest.h"
-#include "testcases/DocumentImportTest.h"
-#include "testcases/EdgeCrudTest.h"
-#include "testcases/PersistentIndexTest.h"
-#include "testcases/VersionTest.h"
+#include <absl/container/flat_hash_set.h>
+#include <absl/container/node_hash_set.h>
+
+namespace arangodb {
+namespace containers {
+
+template <typename T, typename Hash = ::iresearch_absl::container_internal::hash_default_hash<T>,
+          typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
+          typename Allocator = std::allocator<T>>
+using FlatHashSet = ::iresearch_absl::flat_hash_set<T, Hash, Eq, Allocator>;
+
+template <typename T, typename Hash = ::iresearch_absl::container_internal::hash_default_hash<T>,
+          typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
+          typename Allocator = std::allocator<T>>
+using NodeHashSet = ::iresearch_absl::node_hash_set<T, Hash, Eq, Allocator>;
+
+}
+}
+

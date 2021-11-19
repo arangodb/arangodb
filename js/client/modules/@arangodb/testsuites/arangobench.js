@@ -75,33 +75,6 @@ const benchTodos = [{
   'async': 'true'
 }, {
   'histogram.generate': true,
-  'requests': '10000',
-  'concurrency': '3',
-  'test-case': 'stream-cursor',
-  'complexity': '4'
-}, {
-  'histogram.generate': true,
-  'requests': '100000',
-  'concurrency': '2',
-  'test-case': 'shapes',
-  'batch-size': '16',
-  'complexity': '2'
-}, {
-  'histogram.generate': true,
-  'requests': '100000',
-  'concurrency': '2',
-  'test-case': 'shapes-append',
-  'batch-size': '16',
-  'complexity': '4'
-}, {
-  'histogram.generate': true,
-  'requests': '100000',
-  'concurrency': '2',
-  'test-case': 'random-shapes',
-  'batch-size': '16',
-  'complexity': '2'
-}, {
-  'histogram.generate': true,
   'requests': '1000',
   'concurrency': '2',
   'test-case': 'version',
@@ -141,45 +114,7 @@ const benchTodos = [{
   'histogram.generate': true,
   'requests': '5000',
   'concurrency': '2',
-  'test-case': 'hash',
-  'complexity': '1'
-}, {
-  'histogram.generate': true,
-  'requests': '5000',
-  'concurrency': '2',
-  'test-case': 'skiplist',
-  'complexity': '1'
-}, {
-  'histogram.generate': true,
-  'requests': '500',
-  'concurrency': '3',
-  'test-case': 'aqltrx',
-  'complexity': '1',
-  'transaction': true
-}, {
-  'histogram.generate': true,
-  'requests': '1000',
-  'concurrency': '4',
-  'test-case': 'aqltrx',
-  'complexity': '1',
-  'transaction': true
-}, {
-  'histogram.generate': true,
-  'requests': '100',
-  'concurrency': '3',
-  'test-case': 'counttrx',
-  'transaction': true
-}, {
-  'histogram.generate': true,
-  'requests': '500',
-  'concurrency': '3',
-  'test-case': 'multitrx',
-  'transaction': true
-}, {
-  'histogram.generate': true,
-  'duration': 15,
-  'concurrency': '2',
-  'test-case': 'skiplist',
+  'test-case': 'persistent-index',
   'complexity': '1'
 },{
   'histogram.generate': true,

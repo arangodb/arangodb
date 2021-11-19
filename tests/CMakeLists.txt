@@ -30,6 +30,7 @@ target_link_libraries(fuertetest
     boost_boost
     arango
     arango_v8server
+    arango_v8
     ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
