@@ -169,6 +169,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
+      _smartGraphAttribute(
+          Helper::getStringValue(info, StaticStrings::GraphSmartGraphAttribute, "")),
 #endif
       _countCache(/*ttl*/ system() ? 900.0 : 15.0),
       _physical(vocbase.server().getFeature<EngineSelectorFeature>().engine().createPhysicalCollection(
@@ -780,6 +782,9 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
+  }
+  if (hasSmartGraphAttribute()) {
+    result.add(StaticStrings::GraphSmartGraphAttribute, VPackValue(_smartGraphAttribute));
   }
 
   if (!forPersistence) {

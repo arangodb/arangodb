@@ -156,10 +156,12 @@ class LogicalCollection : public LogicalDataSource {
   bool isDisjoint() const { return _isDisjoint; }
   bool isSmart() const { return _isSmart; }
   bool isSmartChild() const { return _isSmartChild; }
+  bool hasSmartGraphAttribute() const { return !_smartGraphAttribute.empty(); }
 #else
   bool isDisjoint() const { return false; }
   bool isSmart() const { return false; }
   bool isSmartChild() const { return false; }
+  bool hasSmartGraphAttribute() const { return false; }
 #endif
   bool usesRevisionsAsDocumentIds() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
@@ -172,6 +174,12 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return the name of the SmartJoin attribute (empty string
   /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
+
+  /// @brief return the name of the SmartGraph attribute (empty string
+  /// if no SmartGraph attribute is present)
+  std::string const& smartGraphAttribute() const {
+    return _smartGraphAttribute;
+  }
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
@@ -424,6 +432,9 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _syncByRevision;
 
   std::string _smartJoinAttribute;
+
+  // @brief String value if this collection is a SmartVertexCollection (Enterprise Edition only)
+  std::string _smartGraphAttribute;
 
   transaction::CountCache _countCache;
 
