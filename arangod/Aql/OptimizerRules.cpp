@@ -2996,14 +2996,14 @@ struct SortToIndexNode final
         // and contains the best index found.
         auto condition = std::make_unique<Condition>(_plan->getAst());
         condition->normalize(_plan);
-
+        TRI_ASSERT(usedIndexes.size() == 1);
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
         auto newNode =
             std::make_unique<IndexNode>(_plan, _plan->nextId(),
                                         enumerateCollectionNode->collection(), outVariable,
                                         usedIndexes,
-                                        false, // FIXME: check actal value once inverted index will handle sorts
+                                        false, // here we could always assume false as there is one index anyway
                                         std::move(condition), opts);
 
         auto n = newNode.release();

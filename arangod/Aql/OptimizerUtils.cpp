@@ -704,7 +704,9 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
         usedIndexes.emplace_back(index);
         isAllCoveredByIndex = true;
         // FIXME: we should somehow consider other indices and calculate here "overall" score
-        return std::make_pair(true, false);
+        // Also a question: if sort is covered but filter is not ? What is more optimal ?
+        auto const sortSupport = index.get()->supportsSortCondition(sortCondition, reference, itemsInCollection);
+        return std::make_pair(true, sortSupport.supportsCondition);
       }
     }
   }

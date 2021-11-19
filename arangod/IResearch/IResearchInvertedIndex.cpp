@@ -554,6 +554,14 @@ std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex
   return res;
 }
 
+std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::storedFields(InvertedIndexFieldMeta const& meta) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> res;
+  for (auto const& f : meta._sort.fields()) {
+    res.push_back(f);
+  }
+  return res;
+}
+
 Result IResearchInvertedIndex::init(IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
   auto const& storedValuesColumns = _meta._storedValues.columns();
   TRI_ASSERT(_meta._sortCompression);
@@ -590,6 +598,9 @@ AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(AnalyzerPool const& analy
 bool IResearchInvertedIndex::covers(arangodb::aql::Projections& projections) const {
   std::vector<std::vector<aql::latematerialized::ColumnVariant<true>>> usedColumns;
   std::vector<aql::latematerialized::AttributeAndField<aql::latematerialized::IndexFieldData>> attrs;
+  if (projections.empty()) {
+    return false;
+  }
   for (size_t i = 0; i < projections.size(); ++i) {
     aql::latematerialized::AttributeAndField<aql::latematerialized::IndexFieldData> af;
     for (auto const& a : projections[i].path.path) {
@@ -713,7 +724,29 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
 Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
-  return Index::SortCosts();
+  auto fields = storedFields(_meta);
+  Index::SortCosts res;
+  if ( !sortCondition->onlyUsesNonNullSortAttributes(fields)||  // we are sparse, so can't help sort null values
+       !sortCondition->isOnlyAttributeAccess() || // we don't have pre-computed fields so only direct access
+        fields.size() < sortCondition->numAttributes() ||
+        sortCondition->numAttributes() > sortCondition->coveredAttributes(reference, fields)) {
+    // no need to check has expansion as we don't support expansion for stored values
+    return res;
+  }
+
+  auto const numCovered = sortCondition->numAttributes();
+  // finally check the direction
+  for (size_t i = 0; i < numCovered; ++i) {
+    if (std::get<2>(sortCondition->field(i)) != _meta._sort.direction(i)) {
+      // index is sorted in different order than requested in SORT condition
+      return res;
+    }
+  }
+
+  res.coveredAttributes = numCovered;
+  res.supportsCondition = true;
+  res.estimatedCosts = 0; // data is alredy sorted. Just let it go
+  return res;
 }
 
 Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(

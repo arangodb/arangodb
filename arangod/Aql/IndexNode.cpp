@@ -412,12 +412,12 @@ CostEstimate IndexNode::estimateCost() const {
   double totalCost = 0.0;
 
   auto root = _condition->root();
-
+  TRI_ASSERT(!_allCoveredByOneIndex || _indexes.size() == 1);
   for (size_t i = 0; i < _indexes.size(); ++i) {
     Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInCollection);
 
     if (root != nullptr && root->numMembers() > i) {
-      arangodb::aql::AstNode const* condition = root->getMember(i);
+      arangodb::aql::AstNode const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
       costs = _indexes[i]->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(),
                                                    condition, _outVariable,
                                                    itemsInCollection);

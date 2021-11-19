@@ -898,6 +898,14 @@ bool InvertedIndexFieldMeta::init(arangodb::application_features::ApplicationSer
     }
   }
   {
+    // optional primarySort
+    static VPackStringRef const fieldName("primarySort");
+    auto const field = slice.get(fieldName);
+    if (!field.isNone() && !_sort.fromVelocyPack(field, errorField)) {
+      return false;
+    }
+  }
+  {
     // optional version
     VPackStringRef constexpr fieldName("version");
     auto const field = slice.get(fieldName);
