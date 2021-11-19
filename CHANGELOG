@@ -1,6 +1,11 @@
 devel
 -----
 
+* Make the `--version` and `--version-json` commands usable in arangobackup
+  when no positional argument (operation type) was specified. Previously,
+  arangobackup insisted on specifying the operation type alongside the
+  `--version` or `--version-json` commands.
+
 * Removed the following deprecated arangobench testcases:
   * aqltrx
   * aqlv8

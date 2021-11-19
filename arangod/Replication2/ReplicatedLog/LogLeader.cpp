@@ -609,7 +609,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       transientEntries.push_back(InMemoryLogEntry(*entry));
       sizeCounter += entry->entry().approxByteSize();
 
-      if (sizeCounter >= _self._options->_maxNetworkBatchSize) {
+      if (sizeCounter >= _self._options->_thresholdNetworkBatchSize) {
         break;
       }
     }

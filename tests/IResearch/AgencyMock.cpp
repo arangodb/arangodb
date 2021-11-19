@@ -113,11 +113,10 @@ auto AsyncAgencyStorePoolConnection::handleRead(VPackSlice body)
     -> std::unique_ptr<fuerte::Response> {
   fuerte::ResponseHeader header;
 
-  auto bodyBuilder = std::make_shared<VPackBuilder>(body);
   VPackBuffer<uint8_t> responseBuffer;
   {
-    auto result = std::make_shared<arangodb::velocypack::Builder>(responseBuffer);
-    auto const success = _cache.store().read(bodyBuilder, result);
+    arangodb::velocypack::Builder result(responseBuffer);
+    auto const success = _cache.store().readMultiple(body, result);
     auto const code =
         std::find(success.begin(), success.end(), false) == success.end()
             ? fuerte::StatusOK
@@ -135,9 +134,7 @@ auto AsyncAgencyStorePoolConnection::handleRead(VPackSlice body)
 
 auto AsyncAgencyStorePoolConnection::handleWrite(VPackSlice body)
     -> std::unique_ptr<fuerte::Response> {
-  auto bodyBuilder = std::make_shared<VPackBuilder>(body);
-
-  auto [success, index] = _cache.applyTestTransaction(bodyBuilder);
+  auto [success, index] = _cache.applyTestTransaction(body);
 
   auto const code =
       std::find_if(success.begin(), success.end(),

@@ -76,7 +76,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
     auto currentSize = size_t{0};
     while (auto log = it->next()) {
       currentSize += log->approxByteSize();
-      if (currentSize >= _optionsMock->_maxNetworkBatchSize) {
+      if (currentSize >= _optionsMock->_thresholdNetworkBatchSize) {
         numRequests += 1;
         currentSize = 0;
       }
