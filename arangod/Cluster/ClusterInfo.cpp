@@ -6171,7 +6171,7 @@ void ClusterInfo::SyncerThread::run() {
   using namespace std::chrono_literals;
 
   std::function<bool(VPackSlice const& result)> update =
-    [=](VPackSlice const& result) {
+    [=, this](VPackSlice const& result) {
       if (!result.isNumber()) {
         LOG_TOPIC("d068f", ERR, Logger::CLUSTER)
           << "Plan Version is not a number! " << result.toJson();
@@ -6441,7 +6441,7 @@ AnalyzerModificationTransaction::~AnalyzerModificationTransaction() {
 }
 
 int32_t AnalyzerModificationTransaction::getPendingCount() noexcept {
-  return _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  return _pendingAnalyzerOperationsCount.load(std::memory_order_relaxed);
 }
 
 AnalyzersRevision::Revision AnalyzerModificationTransaction::buildingRevision() const noexcept {
@@ -6451,7 +6451,7 @@ AnalyzersRevision::Revision AnalyzerModificationTransaction::buildingRevision() 
 
 Result AnalyzerModificationTransaction::start() {
   auto const endTime = TRI_microtime() + 5.0; // arbitrary value.
-  int32_t count = _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  int32_t count = _pendingAnalyzerOperationsCount.load(std::memory_order_relaxed);
   // locking stage
   while (true) {
     // Do not let break out of cleanup mode.

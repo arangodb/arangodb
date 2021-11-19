@@ -93,7 +93,7 @@ TEST_P(IResearchQueryExistsTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
@@ -1364,7 +1364,7 @@ TEST_P(IResearchQueryExistsTest, StoreMaskPartially) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
