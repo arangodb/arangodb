@@ -754,44 +754,43 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       }
 
       // Transient report
-      std::shared_ptr<Builder> tReport = std::make_shared<Builder>();
+      Builder tReport;
       {
-        VPackArrayBuilder transaction(tReport.get());  // Transist Transaction
+        VPackArrayBuilder transaction(&tReport);  // Transist Transaction
         std::shared_ptr<VPackBuilder> envelope;
         {
-          VPackObjectBuilder operation(tReport.get());        // Operation
-          tReport->add(VPackValue(healthPrefix + serverID));  // Supervision/Health
+          VPackObjectBuilder operation(&tReport);        // Operation
+          tReport.add(VPackValue(healthPrefix + serverID));  // Supervision/Health
           {
-            VPackObjectBuilder oo(tReport.get());
-            transist.toVelocyPack(*tReport);
+            VPackObjectBuilder oo(&tReport);
+            transist.toVelocyPack(tReport);
           }
         }
       }  // Transaction
 
       // Persistent report
-      std::shared_ptr<Builder> pReport = nullptr;
+      Builder pReport;
       if (changed) {
-        pReport = std::make_shared<Builder>();
         {
-          VPackArrayBuilder transaction(pReport.get());  // Persist Transaction
+          VPackArrayBuilder transaction(&pReport);  // Persist Transaction
           {
-            VPackObjectBuilder operation(pReport.get());        // Operation
-            pReport->add(VPackValue(healthPrefix + serverID));  // Supervision/Health
+            VPackObjectBuilder operation(&pReport);        // Operation
+            pReport.add(VPackValue(healthPrefix + serverID));  // Supervision/Health
             {
-              VPackObjectBuilder oo(pReport.get());
-              persist.toVelocyPack(*pReport);
+              VPackObjectBuilder oo(&pReport);
+              persist.toVelocyPack(pReport);
             }
             if (envelope != nullptr) {  // Failed server
               TRI_ASSERT(envelope->slice().isArray() && envelope->slice()[0].isObject());
               for (VPackObjectIterator::ObjectPair i :
                    VPackObjectIterator(envelope->slice()[0])) {
-                pReport->add(i.key.copyString(), i.value);
+                pReport.add(i.key.copyString(), i.value);
               }
             }
           }  // Operation
           if (envelope != nullptr && envelope->slice().length() > 1) {  // Preconditions(Job)
             TRI_ASSERT(envelope->slice().isArray() && envelope->slice()[1].isObject());
-            pReport->add(envelope->slice()[1]);
+            pReport.add(envelope->slice()[1]);
           }
         }  // Transaction
       }
@@ -799,13 +798,13 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       if (!this->isStopping()) {
         // Replicate special event and only then transient store
         if (changed) {
-          write_ret_t res = singleWriteTransaction(_agent, *pReport, false);
+          write_ret_t res = singleWriteTransaction(_agent, pReport, false);
           if (res.accepted && res.indices.front() != 0) {
             ++_jobId;  // Job was booked
-            transient(_agent, *tReport);
+            transient(_agent, tReport);
           }
         } else {  // Nothing special just transient store
-          transient(_agent, *tReport);
+          transient(_agent, tReport);
         }
       }
     } else {
@@ -939,7 +938,6 @@ bool Supervision::doChecks() {
 
 void Supervision::reportStatus(std::string const& status) {
   bool persist = false;
-  query_t report;
 
   {  // Do I have to report to agency under
     _lock.assertLockedByCurrentThread();
@@ -951,28 +949,28 @@ void Supervision::reportStatus(std::string const& status) {
     }
   }
 
-  report = std::make_shared<VPackBuilder>();
+  VPackBuilder report;
   {
-    VPackArrayBuilder trx(report.get());
+    VPackArrayBuilder trx(&report);
     {
-      VPackObjectBuilder br(report.get());
-      report->add(VPackValue("/Supervision/State"));
+      VPackObjectBuilder br(&report);
+      report.add(VPackValue("/Supervision/State"));
       {
-        VPackObjectBuilder bbr(report.get());
-        report->add("Mode", VPackValue(status));
-        report->add("Timestamp",
-                    VPackValue(timepointToString(std::chrono::system_clock::now())));
+        VPackObjectBuilder bbr(&report);
+        report.add("Mode", VPackValue(status));
+        report.add("Timestamp",
+                   VPackValue(timepointToString(std::chrono::system_clock::now())));
       }
     }
   }
 
   // Important! No reporting in transient for Maintenance mode.
   if (status != "Maintenance") {
-    transient(_agent, *report);
+    transient(_agent, report);
   }
 
   if (persist) {
-    write_ret_t res = singleWriteTransaction(_agent, *report, false);
+    write_ret_t res = singleWriteTransaction(_agent, report, false);
   }
 }
 

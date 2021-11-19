@@ -95,7 +95,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
 
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb,idx] = cache.read(std::vector<std::string>{
+    auto [acb, idx] = cache.read(std::vector<std::string>{
         AgencyCommHelper::path("Plan/Databases/" + vocbase->name())});
     auto res = acb->slice();
 

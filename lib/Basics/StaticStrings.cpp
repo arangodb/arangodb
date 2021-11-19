@@ -120,6 +120,7 @@ std::string const StaticStrings::Properties("properties");
 std::string const StaticStrings::DataSourceDeleted("deleted");
 std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
 std::string const StaticStrings::DataSourceId("id");
+std::string const StaticStrings::DataSourceCid("cid");
 std::string const StaticStrings::DataSourceName("name");
 std::string const StaticStrings::DataSourcePlanId("planId");
 std::string const StaticStrings::DataSourceSystem("isSystem");
@@ -270,11 +271,6 @@ std::string_view const StaticStrings::SoftWriteConcern("softWriteConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
-std::string const StaticStrings::IsDisjoint("isDisjoint");
-std::string const StaticStrings::IsHybrid("isHybrid");
-std::string const StaticStrings::GraphIsSmart("isSmart");
-std::string const StaticStrings::GraphIsSatellite("isSatellite");
-std::string const StaticStrings::GraphSatellites("satellites");
 std::string const StaticStrings::GraphFrom("from");
 std::string const StaticStrings::GraphTo("to");
 std::string const StaticStrings::GraphOptions("options");
@@ -283,10 +279,22 @@ std::string const StaticStrings::GraphSmartGraphAttribute(
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
 std::string const StaticStrings::GraphEdgeDefinitionType("type");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
-std::string const StaticStrings::GraphInitial("initial");
-std::string const StaticStrings::GraphInitialCid("initialCid");
+
 std::string const StaticStrings::GraphName("name");
 std::string const StaticStrings::GraphTraversalProfileLevel("traversalProfile");
+
+// smart graph relevant attributes
+std::string const StaticStrings::IsDisjoint("isDisjoint");
+std::string const StaticStrings::IsHybrid("isHybrid");
+std::string const StaticStrings::GraphIsSmart("isSmart");
+std::string const StaticStrings::GraphIsSatellite("isSatellite");
+std::string const StaticStrings::GraphSatellites("satellites");
+std::string const StaticStrings::GraphInitial("initial");
+std::string const StaticStrings::GraphInitialCid("initialCid");
+std::string const StaticStrings::ShadowCollections("shadowCollections");
+std::string const StaticStrings::FullLocalPrefix("_local_");
+std::string const StaticStrings::FullFromPrefix("_from_");
+std::string const StaticStrings::FullToPrefix("_to_");
 
 // Pregel Section Start
 

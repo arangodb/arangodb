@@ -106,7 +106,7 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief Used exclusively in unit tests!
   ///        Do not use for production code under any circumstances
   std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction(
-    consensus::query_t const& trx);
+    arangodb::velocypack::Slice trx);
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

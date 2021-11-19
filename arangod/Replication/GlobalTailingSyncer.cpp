@@ -79,18 +79,13 @@ Result GlobalTailingSyncer::saveApplierState() {
   return  _applier->persistStateResult(false);
 }
 
-bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
+bool GlobalTailingSyncer::skipMarker(VPackSlice slice) {
   // we do not have a "cname" attribute in the marker...
   // now check for a globally unique id attribute ("cuid")
   // if its present, then we will use our local cuid -> collection name
   // translation table
-  VPackSlice const name = slice.get("cuid");
+  VPackSlice name = slice.get("cuid");
   if (!name.isString()) {
-    return false;
-  }
-
-  if (_state.leader.version() < 30300) {
-    // globallyUniqueId only exists in 3.3 and higher
     return false;
   }
 

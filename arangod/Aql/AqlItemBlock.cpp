@@ -652,40 +652,6 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
   return res;
 }
 
-/// @brief steal for a subset, this does not copy the entries, rather,
-/// it remembers which it has taken. This is stored in the
-/// this by removing the value counts in _valueCount.
-/// It is highly recommended to delete this object right after this
-/// operation, because it is unclear, when the values to which our
-/// AqlValues point will vanish! In particular, do not use setValue
-/// any more.
-SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
-                                          size_t from, size_t to) {
-  TRI_ASSERT(from < to && to <= chosen.size());
-
-  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _numRegisters)};
-  
-  to = std::min<size_t>(to, _maxModifiedRowIndex);
-
-  for (size_t row = from; row < to; row++) {
-    for (RegisterId::value_t col = 0; col < _numRegisters; col++) {
-      AqlValue& a(_data[getAddress(chosen[row], col)]);
-
-      if (!a.isEmpty()) {
-        steal(a);
-        try {
-          res->setValue(row - from, col, a);
-        } catch (...) {
-          a.destroy();
-        }
-        eraseValue(chosen[row], col);
-      }
-    }
-  }
-
-  return res;
-}
-
 /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
 /// can be used to recreate the AqlItemBlock via the Json constructor
 void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions,
@@ -1055,25 +1021,6 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId::value_t column) {
         // no need for an extra element.erase() in this case, as
         // destroy() calls erase() for AqlValues with dynamic memory
         return;  
-      }
-    }
-  }
-
-  element.erase();
-}
-
-void AqlItemBlock::eraseValue(size_t index, RegisterId varNr) {
-  TRI_ASSERT(varNr.isRegularRegister());
-  auto& element = _data[getAddress(index, varNr.value())];
-
-  if (element.requiresDestruction()) {
-    auto it = _valueCount.find(element.data());
-
-    if (it != _valueCount.end()) {
-      auto& valueInfo = (*it).second;
-      if (--valueInfo.refCount == 0) {
-        decreaseMemoryUsage(valueInfo.memoryUsage);
-        _valueCount.erase(it);
       }
     }
   }

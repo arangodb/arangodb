@@ -72,6 +72,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/CollectionCreationInfo.h"
 
 #include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
@@ -85,6 +86,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::cluster;
+using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");
@@ -1284,7 +1286,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
-    toMerge.add("shadowCollections", arangodb::velocypack::Slice::nullSlice());
+    toMerge.add(StaticStrings::ShadowCollections, arangodb::velocypack::Slice::nullSlice());
     toMerge.close();  // TopLevel
 
     VPackSlice const type = parameters.get("type");
@@ -1308,9 +1310,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
       // in the replication case enforcing the replication factor is absolutely
       // not desired, so it is hardcoded to false
       auto cols =
-          ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
-                                                        createWaitsForSyncReplication,
-                                                        false, false, nullptr);
+              ClusterMethods::createCollectionsOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
+                                                             createWaitsForSyncReplication,
+                                                             false, false, nullptr);
       ExecContext const& exec = ExecContext::current();
       TRI_ASSERT(cols.size() == 1);
       if (name[0] != '_' && !exec.isSuperuser()) {
@@ -2645,7 +2647,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   if (body.hasKey(StaticStrings::RebootId)) {
     if (body.get(StaticStrings::RebootId).isInteger()) {
-      if (body.hasKey("serverId") && body.get("serverId").isString()) {
+      if (body.get("serverId").isString()) {
         rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
         serverId = body.get("serverId").copyString();
       } else {
@@ -2734,9 +2736,28 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     VPackObjectBuilder bb(&b);
     b.add(StaticStrings::Error, VPackValue(false));
     if (!serverId.empty()) {
-      b.add(StaticStrings::FollowingTermId,
-            VPackValue(col->followers()->newFollowingTermId(serverId)));
+      // check if the follower sent us the "wantFollowingTerm" attribute.
+      // followers >= 3.8.3 will send this to indicate that they know how
+      // to handle following term ids safely
+      bool wantFollowingTerm = VelocyPackHelper::getBooleanValue(body, "wantFollowingTerm", false);
+      if (wantFollowingTerm) {
+        b.add(StaticStrings::FollowingTermId,
+              VPackValue(col->followers()->newFollowingTermId(serverId)));
+      } else {
+        // a client < 3.8.3 does not know how to handle following term ids
+        // safely. in this case we set the follower's term id to 0, so it
+        // will be ignored on followers < 3.8.3
+        col->followers()->setFollowingTermId(serverId, 0);
+        b.add(StaticStrings::FollowingTermId, VPackValue(0));
+      }
     }
+
+    // also return the _current_ last log sequence number. this may be higher
+    // than the tick of the transaction created above, but it still can be
+    // used by a follower as an upper bound until which to tail the WAL _at most_.
+    TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+    StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+    b.add("lastLogTick", VPackValue(engine.currentTick()));
   }
 
   LOG_TOPIC("61a9d", DEBUG, Logger::REPLICATION)
@@ -3244,8 +3265,12 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     }
   }
   patch.add(StaticStrings::ObjectId, VPackSlice::nullSlice());
-  patch.add("cid", VPackSlice::nullSlice());
+  patch.add(StaticStrings::DataSourceCid, VPackSlice::nullSlice());
   patch.add(StaticStrings::DataSourceId, VPackSlice::nullSlice());
+  if (ServerState::instance()->isSingleServer()) {
+    // needed in case we restore cluster related data into single server instance
+    patch.add(StaticStrings::DataSourcePlanId, VPackSlice::nullSlice());
+  }
   patch.close();
 
   VPackBuilder builder =
@@ -3253,11 +3278,38 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
                              /*mergeValues*/ true, /*nullMeansRemove*/ true);
   slice = builder.slice();
 
-  col = _vocbase.createCollection(slice);
+  // Initializing creation options
+  TRI_col_type_e collectionType =
+      Helper::getNumericValue<TRI_col_type_e, int>(slice, StaticStrings::DataSourceType,
+                                                   TRI_COL_TYPE_UNKNOWN);
+  std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
+  bool isNewDatabase = false;
+  bool allowSystem = true;
+  bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool enforceReplicationFactor = false;
 
-  if (col == nullptr) {
+#ifdef USE_ENTERPRISE
+  if (slice.get(StaticStrings::IsSmart).isTrue() ||
+      slice.get(StaticStrings::GraphIsSatellite).isTrue()) {
+    allowEnterpriseCollectionsOnSingleServer = true;
+    enforceReplicationFactor = true;
+  }
+#endif
+
+  OperationOptions options(_context);
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  Result res = methods::Collections::create(_vocbase, options, infos, true,
+                      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+                      allowSystem, allowEnterpriseCollectionsOnSingleServer, true);
+  if (res.fail()) {
+    return res.errorNumber();
+  }
+
+  // TODO: This can be improved as soon as we restore all collections here in one go.
+  if (collections.size() == 0 || collections.front() == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
+  col = collections.front();
 
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(col->system() == (name[0] == '_'));

@@ -76,6 +76,14 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
     auto currentSize = size_t{0};
     while (auto log = it->next()) {
       currentSize += log->approxByteSize();
+      if (currentSize >= _optionsMock->_thresholdNetworkBatchSize) {
+        numRequests += 1;
+        currentSize = 0;
+      }
+    }
+    {
+      // Add first entry in term
+      currentSize += PersistingLogEntry{LogTerm{5}, LogIndex{1}, std::nullopt}.approxByteSize();
       if (currentSize >= _optionsMock->_maxNetworkBatchSize) {
         numRequests += 1;
         currentSize = 0;

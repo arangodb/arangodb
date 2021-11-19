@@ -483,7 +483,6 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
   return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "restoring view", body);
-  //return ::checkHttpResponse(httpClient, response, "restoring view", body);
 }
 
 arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpClient) {

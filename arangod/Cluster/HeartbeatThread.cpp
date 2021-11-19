@@ -350,7 +350,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
   auto start = std::chrono::steady_clock::now();
 
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb,idx] = cache.read(
+  auto [acb, idx] = cache.read(
   std::vector<std::string>{
     AgencyCommHelper::path("Shutdown"), AgencyCommHelper::path("Current/Version"),
     AgencyCommHelper::path("Target/FailedServers"), "/.agency"});

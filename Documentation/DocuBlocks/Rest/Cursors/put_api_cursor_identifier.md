@@ -40,6 +40,17 @@ If the cursor identifier is omitted, the server will respond with *HTTP 404*.
 If no cursor with the specified identifier can be found, the server will respond
 with *HTTP 404*.
 
+@RESTRETURNCODE{410}
+The server will respond with *HTTP 410* if a server which processes the query
+or is the leader for a shard which is used in the query stops responding, but 
+the connection has not been closed.
+
+@RESTRETURNCODE{503}
+The server will respond with *HTTP 503* if a server which processes the query
+or is the leader for a shard which is used in the query is down, either for 
+going through a restart, a failure or connectivity issues.
+
+
 @EXAMPLES
 
 Valid request for next batch
