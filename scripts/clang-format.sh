@@ -6,12 +6,12 @@ echo "ArangoDB directory: $adb_path"
 echo "Enterprise directory: $adb_path/$ent_dir"
 
 cd "$adb_path"
-community_diff=$(git diff --diff-filter=d --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
+community_diff=$(git diff --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
 
 if [ -d "$adb_path/$ent_dir" ] # assume enterprise directory is within arangodb directory
 then
    cd "$adb_path/$ent_dir"
-   enterprise_diff=$(git diff --diff-filter=d --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h' | sed "s,^,$ent_dir/,")
+   enterprise_diff=$(git diff --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h' | sed "s,^,$ent_dir/,")
 fi
 
 diff="$community_diff $enterprise_diff"
