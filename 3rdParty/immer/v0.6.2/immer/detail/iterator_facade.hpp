@@ -107,13 +107,13 @@ public:
         return derived() + n;
     }
 
-    bool operator==(const DerivedT& rhs) const
+    friend bool operator==(const DerivedT& lhs, const DerivedT& rhs)
     {
-        return access_t::equal(derived(), rhs);
+        return access_t::equal(lhs, rhs);
     }
-    bool operator!=(const DerivedT& rhs) const
+    friend bool operator!=(const DerivedT& lhs, const DerivedT& rhs)
     {
-        return !access_t::equal(derived(), rhs);
+      return !access_t::equal(lhs, rhs);
     }
 
     DerivedT& operator++()

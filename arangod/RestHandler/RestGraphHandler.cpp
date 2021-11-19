@@ -39,7 +39,7 @@ using namespace arangodb::graph;
 
 RestGraphHandler::RestGraphHandler(application_features::ApplicationServer& server,
                                    GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response), _gmngr(_vocbase) {}
+    : RestVocbaseBaseHandler(server, request, response), _graphManager(_vocbase) {}
 
 RestStatus RestGraphHandler::execute() {
   Result res = executeGharial();
@@ -178,8 +178,10 @@ Result RestGraphHandler::graphAction(Graph& graph) {
 Result RestGraphHandler::graphsAction() {
   switch (request()->requestType()) {
     case RequestType::GET:
+      // this method will create a list of existing graphs
       return graphActionReadGraphs();
     case RequestType::POST:
+      // this method will take care of graph creation
       return graphActionCreateGraph();
     default:;
   }
@@ -556,7 +558,7 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
 }
 
 std::unique_ptr<Graph> RestGraphHandler::getGraph(const std::string& graphName) {
-  auto graphResult = _gmngr.lookupGraphByName(graphName);
+  auto graphResult = _graphManager.lookupGraphByName(graphName);
   if (graphResult.fail()) {
     THROW_ARANGO_EXCEPTION(std::move(graphResult).result());
   }
@@ -929,7 +931,7 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool dropCollections = _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
-  OperationResult result = _gmngr.removeGraph(graph, waitForSync, dropCollections);
+  OperationResult result = _graphManager.removeGraph(graph, waitForSync, dropCollections);
 
   if (result.fail()) {
     generateTransactionError(/*collection*/"", result);
@@ -943,6 +945,7 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
 }
 
 Result RestGraphHandler::graphActionCreateGraph() {
+  // Parsing the body with all needed information
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -950,20 +953,22 @@ Result RestGraphHandler::graphActionCreateGraph() {
   }
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
+  // Actual graph creation process
   {
-    OperationResult result = _gmngr.createGraph(body, waitForSync);
+    OperationResult result = _graphManager.createGraph(body, waitForSync);
 
     if (result.fail()) {
+      // collection name? Check generateTransactionError / check return behaviour.
       generateTransactionError(/*collection*/"", result);
       return result.result;
     }
   }
 
+  // Write the response for the client (in case of success)
   std::string graphName = body.get(StaticStrings::DataSourceName).copyString();
 
   transaction::StandaloneContext ctx(_vocbase);
   std::unique_ptr<Graph const> graph = getGraph(graphName);
-  TRI_ASSERT(graph != nullptr);
 
   VPackBuilder builder;
   builder.openObject();
@@ -979,7 +984,7 @@ Result RestGraphHandler::graphActionReadGraphs() {
   transaction::StandaloneContext ctx(_vocbase);
 
   VPackBuilder builder;
-  _gmngr.readGraphs(builder);
+  _graphManager.readGraphs(builder);
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
