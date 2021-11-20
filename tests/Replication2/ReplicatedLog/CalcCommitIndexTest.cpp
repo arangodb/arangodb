@@ -22,7 +22,6 @@
 
 #include <gtest/gtest.h>
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "TestHelper.h"
 
 #include "Replication2/ReplicatedLog/Algorithms.h"
 
@@ -460,9 +459,22 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached) {
                                        CalculateCommitIndexOptions{2, 2, 3},
                                        LogIndex{1}, LogIndex{50});
 
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
-  EXPECT_EQ(std::get<CommitFailReason::QuorumSizeNotReached>(reason.value).who, "C");
+  EXPECT_EQ(reason, CommitFailReason::withQuorumSizeNotReached("C"));
+}
+
+TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
+  auto participants = std::vector{ParticipantStateTuple{LogIndex{25}, "A", {}},
+                                  ParticipantStateTuple{LogIndex{25}, "B", {}},
+                                  ParticipantStateTuple{LogIndex{25}, "C", {}}};
+
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants,
+                                       CalculateCommitIndexOptions{2, 2, 3},
+                                       LogIndex{1}, LogIndex{50});
+
+  EXPECT_TRUE(reason == CommitFailReason::withQuorumSizeNotReached("A") ||
+                reason == CommitFailReason::withQuorumSizeNotReached("B") ||
+                reason == CommitFailReason::withQuorumSizeNotReached("C"));
 }
 
 TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
@@ -477,9 +489,7 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
                                        CalculateCommitIndexOptions{2, 2, 3},
                                        LogIndex{1}, LogIndex{50});
 
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
-      reason.value));
-  EXPECT_EQ(std::get<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value).who, "B");
+  EXPECT_EQ(reason, CommitFailReason::withForcedParticipantNotInQuorum("B"));
 }
 
 TEST_F(CalcCommitIndexTest, who_all_failed_excluded) {
@@ -493,7 +503,6 @@ TEST_F(CalcCommitIndexTest, who_all_failed_excluded) {
                                        CalculateCommitIndexOptions{1, 1, 2},
                                        LogIndex{1}, LogIndex{50});
 
-  EXPECT_TRUE(
-      std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(reason.value));
-  EXPECT_EQ(std::get<CommitFailReason::QuorumSizeNotReached>(reason.value).who, "A");
+  EXPECT_TRUE(reason == CommitFailReason::withQuorumSizeNotReached("A") ||
+              reason == CommitFailReason::withQuorumSizeNotReached("B"));
 }

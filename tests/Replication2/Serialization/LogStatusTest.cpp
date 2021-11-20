@@ -113,8 +113,6 @@ TEST(LogStatusTest, commit_fail_reason) {
   slice = builder.slice();
   fromVPack = CommitFailReason::fromVelocyPack(slice);
   EXPECT_EQ(reason, fromVPack);
-  EXPECT_EQ(std::get<CommitFailReason::QuorumSizeNotReached>(reason.value).who,
-            std::get<CommitFailReason::QuorumSizeNotReached>(fromVPack.value).who);
 
   builder.clear();
   reason = CommitFailReason::withForcedParticipantNotInQuorum("PRMR-1234");
@@ -122,8 +120,6 @@ TEST(LogStatusTest, commit_fail_reason) {
   slice = builder.slice();
   fromVPack = CommitFailReason::fromVelocyPack(slice);
   EXPECT_EQ(reason, fromVPack);
-  EXPECT_EQ(std::get<CommitFailReason::ForcedParticipantNotInQuorum>(reason.value).who,
-            std::get<CommitFailReason::ForcedParticipantNotInQuorum>(fromVPack.value).who);
 
   jsonBuffer = R"({"xyz": "NothingToCommit", "reason": "xyz"})"_vpack;
   jsonSlice = velocypack::Slice(jsonBuffer.data());
