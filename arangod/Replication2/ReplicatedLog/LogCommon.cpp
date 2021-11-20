@@ -380,14 +380,14 @@ auto replicated_log::CommitFailReason::withNothingToCommit() noexcept -> CommitF
   return CommitFailReason(std::in_place, NothingToCommit{});
 }
 
-auto replicated_log::CommitFailReason::withQuorumSizeNotReached(ParticipantId const& who) noexcept
+auto replicated_log::CommitFailReason::withQuorumSizeNotReached(ParticipantId who) noexcept
     -> CommitFailReason {
-  return CommitFailReason(std::in_place, QuorumSizeNotReached{who});
+  return CommitFailReason(std::in_place, QuorumSizeNotReached{std::move(who)});
 }
 
-auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum(ParticipantId const& who) noexcept
+auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum(ParticipantId who) noexcept
     -> CommitFailReason {
-  return CommitFailReason(std::in_place, ForcedParticipantNotInQuorum{who});
+  return CommitFailReason(std::in_place, ForcedParticipantNotInQuorum{std::move(who)});
 }
 
 namespace {
@@ -450,8 +450,6 @@ void replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::toVelocyPac
   builder.add(VPackStringRef(WhoFieldName), VPackValue(who));
 }
 
-
-
 auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> CommitFailReason {
   auto reason = s.get(ReasonFieldName).stringView();
   if (reason == NothingToCommitEnum) {
@@ -488,15 +486,4 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
   };
 
   return std::visit(ToStringVisitor{}, r.value);
-}
-
-auto replicated_log::operator==(CommitFailReason const& left,
-                                CommitFailReason const& right) noexcept -> bool {
-  // Ignoring the `who` field so that we only compare the reason of failure.
-  return left.value.index() == right.value.index();
-}
-
-auto replicated_log::operator!=(CommitFailReason const& left,
-                                CommitFailReason const& right) noexcept -> bool {
-  return !(left == right);
 }
