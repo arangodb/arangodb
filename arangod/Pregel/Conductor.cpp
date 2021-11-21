@@ -901,7 +901,10 @@ VPackBuilder Conductor::toVelocyPack() const {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
   }
-  result.add("parallelism", _userParams.slice().get(Utils::parallelismKey));
+  auto parallelismSlice = _userParams.slice().get(Utils::parallelismKey);
+  if (!parallelismSlice.isNone()) {
+    result.add("parallelism", parallelismSlice);
+  }
   if (_masterContext) {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
