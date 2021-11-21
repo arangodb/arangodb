@@ -1,6 +1,19 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* APM-187: The "Rebalance Shards" button now is displayed in a new tab, and it
+  is displayed for any database in cluster mode. There is also a new flag for
+  arangod, `--cluster.max-number-of-move-shards` (default = 10), which limits
+  the amount of move shards operations each time the button is clicked to
+  rebalance shards. When the button is clicked, the number of move shards
+  operations scheduled is shown, or that no operation was scheduled if the flag
+  `--cluster.max-number-of-move-shards` has a value of 0.
+
+* Make the `--version` and `--version-json` commands usable in arangobackup when
+  no positional argument (operation type) was specified. Previously,
+  arangobackup insisted on specifying the operation type alongside the
+  `--version` or `--version-json` commands.
+
 * Fixed an issue in old incremental sync protocol with document keys that
   contained special characters (`%`). These keys could be send unencoded in the
   incremental sync protocol, leading to wrong key ranges being transfered
@@ -83,7 +96,7 @@ v3.9.0 (XXXX-XX-XX)
   by concurrently running edge lookups.
 
 * Upgrade bundled version of RocksDB to 6.26.
-
+  
 * BTS-623: The audit log messages, when written, were not showing the log level
   of the message, as in the example:
     `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |

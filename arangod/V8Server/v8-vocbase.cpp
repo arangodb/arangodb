@@ -2274,6 +2274,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
+
+  // max number of move shards
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_MOVE_SHARDS"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfMoveShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      .FromMaybe(false);  // ignore result
   
   // force one shard collections?
   context->Global()
