@@ -162,6 +162,28 @@ function readOwnWritesSuite () {
       assertFalse(fors[0].readOwnWrites);
       assertTrue(fors[1].readOwnWrites);
     },
+    
+    testUpsertSubquery : function () {
+      const query = `FOR i IN 1..3 LET sub = (UPSERT {value: 123} INSERT {} UPDATE {} IN ${cn} RETURN OLD) RETURN [i, sub]`;
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
+      assertEqual(1, fors.length);
+      assertEqual("EnumerateCollectionNode", fors[0].type);
+      
+      assertTrue(fors[0].readOwnWrites);
+    },
+    
+    testUpsertSubqueryInForLoop : function () {
+      const query = `FOR doc IN ${cn} LET sub = (UPSERT {value: 123} INSERT {} UPDATE {} IN ${cn} RETURN OLD) RETURN [doc, sub]`;
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
+      assertEqual(2, fors.length);
+      assertEqual("EnumerateCollectionNode", fors[0].type);
+      assertEqual("EnumerateCollectionNode", fors[1].type);
+      
+      assertFalse(fors[0].readOwnWrites);
+      assertTrue(fors[1].readOwnWrites);
+    },
   };
 }
 
