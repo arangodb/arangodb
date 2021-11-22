@@ -2081,9 +2081,13 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     usedPorts.push(port);
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
-    instanceArgs['agency.supervision-grace-period'] = '10.0';
-    instanceArgs['agency.supervision-frequency'] = '1.0';
 
+    if (!instanceArgs.hasOwnProperty("agency.supervision-grace-period")) {
+      instanceArgs['agency.supervision-grace-period'] = '10.0';
+    }
+    if (!instanceArgs.hasOwnProperty("agency.supervision-frequency")) {
+      instanceArgs['agency.supervision-frequency'] = '1.0';
+    }
     if (i === N - 1) {
       let l = [];
       instanceInfo.arangods.forEach(arangod => {
