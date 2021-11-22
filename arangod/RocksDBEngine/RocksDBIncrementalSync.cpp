@@ -200,7 +200,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   {
     std::string const url =
         baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(chunkId) +
-        "&chunkSize=" + std::to_string(chunkSize) + "&low=" + lowString;
+        "&chunkSize=" + std::to_string(chunkSize) + "&low=" + basics::StringUtils::encodeURIComponent(lowString);
 
     syncer.setProgress(std::string("fetching keys chunk ") +
                        std::to_string(chunkId) + " from " + url);
@@ -249,6 +249,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                       " Chunk: " + std::to_string(chunkId));
   }
   TRI_ASSERT(numKeys > 0);
+  
+  // this will be very verbose, so intentionally not active
+  // LOG_TOPIC("3c002", TRACE, Logger::REPLICATION) << "received chunk: " << responseBody.toJson();
 
   // state for RocksDBCollection insert/replace/remove
   ManagedDocumentResult mdr, previous;
@@ -380,17 +383,17 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     return numUnique;
   }();
 
-  LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
-      << "will refetch " << toFetch.size() << " documents for this chunk";
-
   keyBuilder->clear();
   keyBuilder->openArray(false);
   for (auto const& it : toFetch) {
     keyBuilder->add(VPackValue(it));
   }
   keyBuilder->close();
-
+  
   std::string const keyJsonString(keyBuilder->slice().toJson());
+  // this will be very verbose, so intentionally not active
+  // LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
+  //     << "will refetch " << toFetch.size() << " documents for this chunk: " << keyJsonString;
 
   size_t offsetInChunk = 0;
 
@@ -400,7 +403,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     {
       std::string const url =
           baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(chunkId) +
-          "&chunkSize=" + std::to_string(chunkSize) + "&low=" + lowString +
+          "&chunkSize=" + std::to_string(chunkSize) + "&low=" + basics::StringUtils::encodeURIComponent(lowString) +
           "&offset=" + std::to_string(offsetInChunk);
 
       syncer.setProgress(std::string("fetching documents chunk ") +
@@ -444,6 +447,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         syncer._state.master.endpoint +
                         ": response is no array");
     }
+  
+    // this will be very verbose, so intentionally not active
+    // LOG_TOPIC("e7ddf", TRACE, Logger::REPLICATION)
+    //     << "received documents chunk: " << slice.toJson();
 
     syncer.setProgress(std::string("applying documents chunk ") +
                        std::to_string(chunkId) + " (" + std::to_string(toFetch.size()) +
@@ -520,6 +527,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
           // persisted document count later!!
         }
         options.indexOperationMode = Index::OperationMode::internal;
+    
+        // this will be very verbose, so intentionally not active
+        // LOG_TOPIC("8cbd1", TRACE, Logger::REPLICATION)
+        //    << "handled document key '" << keySlice.copyString() << "', mustInsert: " << mustInsert << ", res: " << res.errorMessage();
 
         if (res.ok()) {
           // all good, we can exit the retry loop now!
@@ -545,7 +556,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       }
     }
     stats.waitedForInsertions += TRI_microtime() - t;
-
+      
     if (foundLength >= toFetch.size()) {
       break;
     }
@@ -654,9 +665,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                         syncer.vocbase()),
                                     *col, AccessMode::Type::EXCLUSIVE);
 
-    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
     // turn on intermediate commits as the number of operations can be huge here
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    // TODO: check if we need to remove the below line!
+    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
 
