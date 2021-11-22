@@ -97,7 +97,7 @@ class ApplicationFeature {
   }
 
   // names of features required to be enabled for this feature to be enabled
-  std::vector<std::type_index> const& requires() const { return _requires; }
+  std::vector<std::type_index> const& dependsOn() const { return _requires; }
 
   // register whether the feature requires elevated privileges
   void requiresElevatedPrivileges(bool value) {
@@ -180,7 +180,7 @@ class ApplicationFeature {
   void setOptional(bool value) { _optional = value; }
 
   // note that this feature requires another to be present
-  void requires(std::type_index other) { _requires.emplace_back(other); }
+  void dependsOn(std::type_index other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
   template <typename T>
