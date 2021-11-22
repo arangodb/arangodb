@@ -6,7 +6,7 @@ v3.8.4 (XXXX-XX-XX)
   in the response with a value "(non-representable type none)".
 
 * Improved sync protocol to commit after each chunk and get rid of
-  potentially dangereous NO_INDEXING optimization.
+  potentially dangerous NO_INDEXING optimization.
 
 
 v3.8.3 (2021-11-17)
