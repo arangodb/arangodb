@@ -258,6 +258,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                       " Chunk: " + std::to_string(chunkId));
   }
   TRI_ASSERT(numKeys > 0);
+  
+  // this will be very verbose, so intentionally not active
+  // LOG_TOPIC("3c002", TRACE, Logger::REPLICATION) << "received chunk: " << responseBody.toJson();
 
   // state for RocksDBCollection insert/replace/remove
   ManagedDocumentResult mdr, previous;
@@ -388,17 +391,17 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   }();
 
 
-  LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
-      << "will refetch " << toFetch.size() << " documents for this chunk";
-
   keyBuilder->clear();
   keyBuilder->openArray(false);
   for (auto const& it : toFetch) {
     keyBuilder->add(VPackValue(it));
   }
   keyBuilder->close();
-
+  
   std::string const keyJsonString(keyBuilder->slice().toJson());
+  // this will be very verbose, so intentionally not active
+  // LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
+  //     << "will refetch " << toFetch.size() << " documents for this chunk: " << keyJsonString;
 
   size_t offsetInChunk = 0;
   while (true) {
@@ -449,6 +452,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         "got invalid response from leader at ",
                         syncer._state.leader.endpoint, ": ", r.errorMessage()));
     }
+  
+    // this will be very verbose, so intentionally not active
+    // LOG_TOPIC("e7ddf", TRACE, Logger::REPLICATION)
+    //     << "received documents chunk: " << slice.toJson();
 
     VPackSlice const slice = docsBuilder->slice();
     if (!slice.isArray()) {
@@ -542,7 +549,11 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         }
         
         options.indexOperationMode = arangodb::IndexOperationMode::internal;
-        
+
+        // this will be very verbose, so intentionally not active
+        // LOG_TOPIC("8cbd1", TRACE, Logger::REPLICATION)
+        //    << "handled document key '" << keySlice.copyString() << "', mustInsert: " << mustInsert << ", res: " << res.errorMessage();
+ 
         if (res.ok()) {
           // all good, we can exit the retry loop now!
           break;
@@ -569,7 +580,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       }
     }
     stats.waitedForInsertions += TRI_microtime() - t;
-
+      
     if (foundLength >= toFetch.size()) {
       break;
     }
@@ -686,9 +697,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                         syncer.vocbase()),
                                     *col, AccessMode::Type::EXCLUSIVE);
 
-    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
     // turn on intermediate commits as the number of operations can be huge here
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    // TODO: check if we need to remove the below line!
+    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
 
     Result res = trx.begin();
 
