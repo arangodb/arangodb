@@ -215,17 +215,6 @@ namespace iresearch {
 
 using namespace std::literals;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct MaintenanceState
-////////////////////////////////////////////////////////////////////////////////
-struct MaintenanceState {
-  std::atomic<size_t> pendingCommits{0};
-  std::atomic<size_t> nonEmptyCommits{0};
-  std::atomic<size_t> pendingConsolidations{0};
-  std::atomic<size_t> noopConsolidationCount{0};
-  std::atomic<size_t> noopCommitCount{0};
-};
-
 AsyncLinkHandle::AsyncLinkHandle(IResearchDataStore* link)
   : _link(link) {
   ++LinksCount;
@@ -239,6 +228,17 @@ void AsyncLinkHandle::reset() {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
   _link.reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct MaintenanceState
+////////////////////////////////////////////////////////////////////////////////
+struct MaintenanceState {
+  std::atomic<size_t> pendingCommits{0};
+  std::atomic<size_t> nonEmptyCommits{0};
+  std::atomic<size_t> pendingConsolidations{0};
+  std::atomic<size_t> noopConsolidationCount{0};
+  std::atomic<size_t> noopCommitCount{0};
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct CommitTask
@@ -328,7 +328,7 @@ void CommitTask::operator()() {
 
   IResearchDataStore::CommitResult code = IResearchDataStore::CommitResult::UNDEFINED;
 
-  auto reschedule = scopeGuard([&code, link = linkPtr.get(), this]() noexcept{
+  auto reschedule = scopeGuard([&code, link = linkPtr.get(), this]() noexcept {
     try {
       finalize(link, code);
     } catch (std::exception const& ex) {
@@ -468,7 +468,7 @@ void ConsolidationTask::operator()() {
 
   auto reschedule = scopeGuard([this]() noexcept {
     try {
-      for (auto count = state->pendingConsolidations.load(); count < 1; ) {
+      for (auto count = state->pendingConsolidations.load(); count < 1;) {
         if (state->pendingConsolidations.compare_exchange_weak(count, count + 1)) {
           schedule(consolidationIntervalMsec);
           break;
@@ -544,7 +544,6 @@ void ConsolidationTask::operator()() {
   }
 }
 
-
 IResearchDataStore::IResearchDataStore(IndexId iid, LogicalCollection& collection) : 
       _collection(collection),
       _engine(nullptr),
@@ -597,9 +596,9 @@ IResearchDataStore::IResearchDataStore(IndexId iid, LogicalCollection& collectio
  
 IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
   // '_dataStore' can be asynchronously modified
-  auto lock = _asyncSelf->lock();
+  auto link = _asyncSelf->lock();
 
-  if (!_asyncSelf.get()) {
+  if (!link) {
     LOG_TOPIC("f42dc", WARN, iresearch::TOPIC)
         << "failed to lock arangosearch link while retrieving snapshot from "
            "arangosearch link '"
@@ -610,8 +609,8 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
 
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
-  return Snapshot(std::move(lock),
-                  irs::directory_reader(_dataStore._reader));  // return a copy of the current reader
+  return Snapshot(std::move(link),
+                  irs::directory_reader(_dataStore._reader));
 }
 
 
@@ -863,17 +862,20 @@ Result IResearchDataStore::deleteDataStore() {
   bool exists;
 
   // remove persisted data store directory if present
-  if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str()) ||
-      (exists && !irs::file_utils::remove(_dataStore._path.c_str()))) {
-    return {TRI_ERROR_INTERNAL, "failed to remove arangosearch data store'" +
-            std::to_string(id().id()) + "'"};
+  if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str())
+      || (exists && !irs::file_utils::remove(_dataStore._path.c_str()))) {
+    return {TRI_ERROR_INTERNAL, "failed to remove arangosearch link '" +
+                                    std::to_string(id().id()) + "'"};
   }
   return {};
 }
 
-Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint32_t version, bool sorted,
-                                    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-                                    irs::type_info::type_id primarySortCompression) {
+Result IResearchDataStore::initDataStore(
+    InitCallback const& initCallback,
+    uint32_t version,
+    bool sorted,
+    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
+    irs::type_info::type_id primarySortCompression) {
   std::atomic_store(&_flushSubscription, {});  // reset together with '_asyncSelf'
   _asyncSelf->reset();  // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
@@ -909,8 +911,9 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
 
   // must manually ensure that the data store directory exists (since not using
   // a lockfile)
-  if (irs::file_utils::exists_directory(pathExists, _dataStore._path.c_str()) && !pathExists &&
-      !irs::file_utils::mkdir(_dataStore._path.c_str(), true)) {
+  if (irs::file_utils::exists_directory(pathExists, _dataStore._path.c_str())
+	  && !pathExists
+      && !irs::file_utils::mkdir(_dataStore._path.c_str(), true)) {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
             "failed to create data store directory with path '" +
                 _dataStore._path.u8string() + "' while initializing link '" +
@@ -931,9 +934,9 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
   }
 
   switch (_engine->recoveryState()) {
-    case RecoveryState::BEFORE:       // link is being opened before recovery
-    case RecoveryState::DONE: {       // link is being created after recovery
-      _dataStore._inRecovery = true;  // will be adjusted in post-recovery callback
+    case RecoveryState::BEFORE: // link is being opened before recovery
+    case RecoveryState::DONE: { // link is being created after recovery
+      _dataStore._inRecovery = true; // will be adjusted in post-recovery callback
       _dataStore._recoveryTick = _engine->recoveryTick();
       break;
     }
@@ -1000,10 +1003,10 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
     }
   }
   // setup columnstore compression/encryption if requested by storage engine
-  auto const encrypt =
-      (nullptr != _dataStore._directory->attributes().encryption());
-  options.column_info = [encrypt, comprMap = std::move(compressionMap),
-                         primarySortCompression](const irs::string_ref& name) -> irs::column_info {
+  auto const encrypt = (nullptr != _dataStore._directory->attributes().encryption());
+  options.column_info =
+    [encrypt, comprMap = std::move(compressionMap), primarySortCompression](
+        const irs::string_ref& name) -> irs::column_info {
     if (name.null()) {
       return {primarySortCompression(), {}, encrypt};
     }
@@ -1021,8 +1024,7 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback, uint3
     openFlags |= irs::OM_CREATE;
   }
 
-  _dataStore._writer =
-      irs::index_writer::make(*(_dataStore._directory), format, openFlags, options);
+  _dataStore._writer = irs::index_writer::make(*(_dataStore._directory), format, openFlags, options);
 
   if (!_dataStore._writer) {
     return {TRI_ERROR_INTERNAL,
@@ -1510,7 +1512,7 @@ void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
 /// @brief compute the data path to user for iresearch data store
 ///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
 ///        the path is hardcoded to reside under:
-///        <DatabasePath>/<IResearchLink::type()>-<link id>
+///        <DatabasePath>/<IResearchDataStore::type()>-<link id>
 ///        similar to the data path calculation for collections
 ////////////////////////////////////////////////////////////////////////////////
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
