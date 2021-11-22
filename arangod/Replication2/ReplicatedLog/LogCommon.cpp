@@ -36,10 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-auto LogIndex::operator<=(LogIndex other) const -> bool {
-  return value <= other.value;
-}
-
 auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
   return LogIndex(this->value + delta);
 }
@@ -186,10 +182,6 @@ auto LogEntryView::clonePayload() const -> LogPayload {
   return LogPayload::createFromSlice(_payload);
 }
 
-auto LogTerm::operator<=(LogTerm other) const -> bool {
-  return value <= other.value;
-}
-
 LogTerm::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
@@ -255,17 +247,6 @@ auto replication2::to_string(LogTerm term) -> std::string {
 
 auto replication2::to_string(LogIndex index) -> std::string {
   return std::to_string(index.value);
-}
-
-auto replication2::operator<=(replication2::TermIndexPair left,
-                              replication2::TermIndexPair right) noexcept -> bool {
-  if (left.term < right.term) {
-    return true;
-  } else if (left.term == right.term) {
-    return left.index <= right.index;
-  } else {
-    return false;
-  }
 }
 
 void replication2::TermIndexPair::toVelocyPack(velocypack::Builder& builder) const {

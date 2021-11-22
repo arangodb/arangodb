@@ -575,13 +575,17 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
   auto collection =
       std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
 
+  return persistCollection(collection);
+}
+
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::persistCollection(std::shared_ptr<arangodb::LogicalCollection>& collection){
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   // reserve room for the new collection
   arangodb::containers::Helpers::reserveSpace(_collections, 8);
   arangodb::containers::Helpers::reserveSpace(_deadCollections, 8);
 
-  auto it = _dataSourceByName.find(name);
+  auto it = _dataSourceByName.find(collection->name());
 
   if (it != _dataSourceByName.end()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
@@ -725,6 +729,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* colle
                                         false);  // always a full-update
 
       if (!res.ok()) {
+        // TODO: Here we're only returning the errorNumber. The errorMessage is being ignored here. Needs refactor.
         events::DropCollection(dbName, colName, res.errorNumber());
         return res.errorNumber();
       }

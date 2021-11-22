@@ -1,6 +1,45 @@
 devel
 -----
 
+* Make the `--version` and `--version-json` commands usable in arangobackup
+  when no positional argument (operation type) was specified. Previously,
+  arangobackup insisted on specifying the operation type alongside the
+  `--version` or `--version-json` commands.
+
+* Removed the following deprecated arangobench testcases:
+  * aqltrx
+  * aqlv8
+  * counttrx
+  * deadlocktrx
+  * multi-collection
+  * multitrx
+  * random-shapes
+  * shapes
+  * shapes-append
+  * skiplist
+  * stream-cursor
+
+* Renamed arangobench testcase "hash" to "persistent-index".
+
+* Fixed an issue in old incremental sync protocol with document keys that
+  contained special characters (`%`). These keys could be send unencoded in
+  the incremental sync protocol, leading to wrong key ranges being transfered
+  between leader and follower, and thus causing follow-up errors and preventing
+  getting in sync.
+
+* APM-209: Histogram displaying is now switched off by default. For displaying
+  it, the new flag `histogram.generate` must be set to true. Its default value
+  is false for compatibility with other versions and also for complying with the
+  histogram not being displayed by default. If this flag is not set to true, but
+  other histogram flags are addressed, e.g. `--histogram.interval-size 500`,
+  everything will still run normally, but a warning message will be displayed
+  saying that the histogram is switched off and setting this flag would not be
+  of use. When the flag is set to true, the histogram is displayed before the
+  summary in the output.
+
+* Extend Windows minidumps with memory regions referenced from CPU registers or
+  the stack to provide more contextual information in case of crashes.
+
 * Add option to content-transfer encode gzip Foxx replies.
 
 * Simplify internal request compression/decompression handling code.
@@ -9,11 +48,22 @@ devel
   also contains the current followers. This means that from now on also active
   follower servers can be nominated as the leading server for that specific
   shard.
-  
+
 * Fix issues during rolling upgrades from 3.8.0 to 3.8.x (x >= 1) and from
   3.7.x (x <= 12) to 3.8.3. The problem was that older versions did not handle
   following term ids that are sent from newer versions during synchronous
   replication operations.
+
+* Added Enterprise Sharded Graphs Simulation: Now it is possible to test
+  SmartGraphs and SatelliteGraphs on a single server instance and then to port
+  them to a cluster with multiple servers. All existing types of SmartGraphs
+  are eligible to this procedure: SmartGraphs themselves, Disjoint SmartGraphs,
+  Hybrid SmartGraphs and Hybrid Disjoint SmartGraphs. One can create a graph of
+  any of those types in the usual way, e.g., using `arangosh`, but on a single
+  server, then dump it, start a cluster (with multiple servers) and restore the
+  graph in the cluster. The graph and the collections will keep all properties
+  that are kept when the graph is already created in a cluster. This feature is
+  only available in the Enterprise Edition.
 
 * Close a potential gap during shard synchronization when moving from the
   initial sync step to the WAL tailing step. In this small gap the leader 

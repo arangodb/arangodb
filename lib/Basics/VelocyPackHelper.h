@@ -228,7 +228,7 @@ class VelocyPackHelper {
   template <typename T, typename NumberType = T, typename NameType>
   static T getNumericValue(VPackSlice const& slice, NameType const& name, T defaultValue);
 
-  /// @brief returns a boolean sub-element, or a default if it does not exist
+  /// @brief returns a boolean sub-element, or a default if it does not exist or is not boolean
   template <typename NameType>
   static bool getBooleanValue(VPackSlice const& slice, NameType const& name, bool defaultValue) {
     if (slice.isObject()) {

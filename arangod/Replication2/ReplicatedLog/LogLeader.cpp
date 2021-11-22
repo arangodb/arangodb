@@ -283,22 +283,14 @@ auto replicated_log::LogLeader::construct(
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
   auto const lastIndex = log.getLastTermIndexPair();
-  if (lastIndex.term != term) {
-    // Immediately append an empty log entry in the new term. This is necessary
-    // because we must not commit entries of older terms, but do not want to
-    // wait with committing until the next insert.
+  TRI_ASSERT(lastIndex.term != term);
 
-    // Also make sure that this entry is written with waitForSync = true to
-    // ensure that entries of the previous term are synced as well.
-    log.appendInPlace(logContext,
-                      InMemoryLogEntry(PersistingLogEntry(term, lastIndex.index + 1, std::nullopt),
-                                       true));
-    // Note that we do still want to use the unchanged lastIndex to initialize
-    // our followers with, as none of them can possibly have this entry.
-    // This is particularly important for the LocalFollower, which blindly
-    // accepts appendEntriesRequests, and we would thus forget persisting this
-    // entry on the leader!
-  }
+  // Note that although we add an entry to establish our leadership
+  // we do still want to use the unchanged lastIndex to initialize
+  // our followers with, as none of them can possibly have this entry.
+  // This is particularly important for the LocalFollower, which blindly
+  // accepts appendEntriesRequests, and we would thus forget persisting this
+  // entry on the leader!
 
   auto commonLogContext =
       logContext.with<logContextKeyTerm>(term).with<logContextKeyLeaderId>(id);
@@ -310,14 +302,16 @@ auto replicated_log::LogLeader::construct(
       *leader, commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore), lastIndex);
 
-  auto leaderDataGuard = leader->acquireMutex();
+  {
+    auto leaderDataGuard = leader->acquireMutex();
 
-  leaderDataGuard->_follower =
-      instantiateFollowers(commonLogContext, followers, localFollower, lastIndex);
-  leader->_localFollower = std::move(localFollower);
+    leaderDataGuard->_follower =
+        instantiateFollowers(commonLogContext, followers, localFollower, lastIndex);
+    leader->_localFollower = std::move(localFollower);
+    TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern);
+  }
 
-  TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern);
-
+  leader->establishLeadership();
   return leader;
 }
 
@@ -389,6 +383,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.term = term;
     status.largestCommonIndex = leaderData._largestCommonIndex;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
+    status.leadershipEstablished = leaderData._leadershipEstablished;
     for (FollowerInfo const& f : leaderData._follower) {
       auto lastRequestLatencyMS =
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f._lastRequestLatency);
@@ -424,24 +419,29 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync) -> 
   return index;
 }
 
-auto replicated_log::LogLeader::insert(LogPayload payload, [[maybe_unused]] bool waitForSync,
+auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
                                        DoNotTriggerAsyncReplication) -> LogIndex {
-  // TODO Handle waitForSync!
   auto const insertTp = InMemoryLogEntry::clock::now();
   // Currently we use a mutex. Is this the only valid semantic?
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leaderData) {
-    if (leaderData._didResign) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-    }
-    auto const index = leaderData._inMemoryLog.getNextIndex();
-    auto const payloadSize = payload.byteSize();
-    auto logEntry =
-        InMemoryLogEntry(PersistingLogEntry(_currentTerm, index, std::move(payload)), waitForSync);
-    logEntry.setInsertTp(insertTp);
-    leaderData._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
-    _logMetrics->replicatedLogInsertsBytes->count(payloadSize);
-    return index;
+    return leaderData.insertInternal(std::move(payload), waitForSync, insertTp);
   });
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
+    std::optional<LogPayload> payload, bool waitForSync,
+    std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex {
+  if (this->_didResign) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+  }
+  auto const index = this->_inMemoryLog.getNextIndex();
+  auto const payloadSize = payload.has_value() ? payload->byteSize() : 0;
+  auto logEntry =
+      InMemoryLogEntry(PersistingLogEntry(_self._currentTerm, index, std::move(payload)), waitForSync);
+  logEntry.setInsertTp(insertTp.has_value() ? *insertTp : InMemoryLogEntry::clock::now());
+  this->_inMemoryLog.appendInPlace(_self._logContext, std::move(logEntry));
+  _self._logMetrics->replicatedLogInsertsBytes->count(payloadSize);
+  return index;
 }
 
 auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
@@ -608,7 +608,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       transientEntries.push_back(InMemoryLogEntry(*entry));
       sizeCounter += entry->entry().approxByteSize();
 
-      if (sizeCounter >= _self._options->_maxNetworkBatchSize) {
+      if (sizeCounter >= _self._options->_thresholdNetworkBatchSize) {
         break;
       }
     }
@@ -892,7 +892,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   return waitFor(index).thenValue([this, self = shared_from_this(),
                                    index](auto&& quorum) -> WaitForIteratorFuture {
     auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
-        [&](GuardedLeaderData& leaderData) -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
+        [index](GuardedLeaderData& leaderData) -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
           TRI_ASSERT(index <= leaderData._commitIndex);
 
           /*
@@ -901,23 +901,23 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
            * next entry containing payload.
            */
 
-          auto actualIndex = index;
-          while (actualIndex <= leaderData._commitIndex) {
-            auto memtry = leaderData._inMemoryLog.getEntryByIndex(actualIndex);
+          auto testIndex = index;
+          while (testIndex <= leaderData._commitIndex) {
+            auto memtry = leaderData._inMemoryLog.getEntryByIndex(testIndex);
             if (!memtry.has_value()) {
               break;
             }
             if (memtry->entry().logPayload().has_value()) {
               break;
             }
-            actualIndex = actualIndex + 1;
+            testIndex = testIndex + 1;
           }
 
-          if (actualIndex > leaderData._commitIndex) {
-            return std::make_pair(actualIndex, nullptr);
+          if (testIndex > leaderData._commitIndex) {
+            return std::make_pair(testIndex, nullptr);
           }
 
-          return std::make_pair(actualIndex, leaderData.getCommittedLogIterator(actualIndex));
+          return std::make_pair(testIndex, leaderData.getCommittedLogIterator(testIndex));
         });
 
     // call here, otherwise we deadlock with waitFor
@@ -1026,6 +1026,43 @@ auto replicated_log::LogLeader::LocalFollower::resign() && noexcept
         << "local follower asked to resign but log core already gone, term = "
         << _leader._currentTerm;
     return logCore;
+  });
+}
+
+auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept -> bool {
+  return _guardedLeaderData.getLockedGuard()->_leadershipEstablished;
+}
+
+void replicated_log::LogLeader::establishLeadership() {
+  LOG_CTX("f3aa8", INFO, _logContext) << "trying to establish leadership";
+  auto waitForIndex = _guardedLeaderData.doUnderLock([](GuardedLeaderData& data) {
+    auto const lastIndex = data._inMemoryLog.getLastTermIndexPair();
+    TRI_ASSERT(lastIndex.term != data._self._currentTerm);
+    // Immediately append an empty log entry in the new term. This is necessary
+    // because we must not commit entries of older terms, but do not want to
+    // wait with committing until the next insert.
+
+    // Also make sure that this entry is written with waitForSync = true to
+    // ensure that entries of the previous term are synced as well.
+    auto firstIndex = data.insertInternal(std::nullopt, true, std::nullopt);
+    TRI_ASSERT(firstIndex == lastIndex.index + 1);
+    return firstIndex;
+  });
+
+  waitFor(waitForIndex).thenFinal([weak = weak_from_this()](futures::Try<WaitForResult>&& result) noexcept {
+    if (auto self = weak.lock(); self) {
+      try {
+        result.throwIfFailed();
+        self->_guardedLeaderData.getLockedGuard()->_leadershipEstablished = true;
+        LOG_CTX("536f4", INFO, self->_logContext) << "leadership established";
+      } catch (std::exception const& err) {
+        LOG_CTX("5ceda", FATAL, self->_logContext)
+            << "failed to establish leadership: " << err.what();
+      }
+    } else {
+      LOG_TOPIC("94696", TRACE, Logger::REPLICATION2)
+          << "leader is already gone, no leadership was established";
+    }
   });
 }
 
