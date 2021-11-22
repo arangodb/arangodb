@@ -53,7 +53,7 @@ void NeighborsEnumerator::setStartVertex(arangodb::velocypack::StringRef startVe
   _toPrune.clear();
   _searchDepth = 0;
 
-  _allFound.insert(startVertex);
+  _allFound.emplace(startVertex);
   _currentDepth.insert(startVertex);
   _iterator = _currentDepth.begin();
 }
@@ -130,7 +130,7 @@ bool NeighborsEnumerator::next() {
 
         arangodb::velocypack::StringRef v(vertex);
 
-        if (_allFound.find(v) == _allFound.end()) {
+        if (!_allFound.contains(v)) {
           v = _opts->cache()->persistString(v);
 
           if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
