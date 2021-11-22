@@ -46,7 +46,6 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, 
 void insertDistributeInputCalculation(ExecutionPlan& plan);
 
 void enableAsyncPrefetching(ExecutionPlan& plan);
-void enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan);
 void activateCallstackSplit(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
