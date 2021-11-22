@@ -839,3 +839,67 @@ TEST_F(IResearchInvertedIndexConditionTest, sort_support) {
   auto expected = arangodb::Index::SortCosts::zeroCosts(2);
   estimateSortCondition(queryString, fields, expected, &ctx);
 }
+
+TEST_F(IResearchInvertedIndexConditionTest, sort_support_subset) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN " + collection().name()
+                            +" FILTER  d.a == {a:1, b:2} SORT d.a ASC RETURN d ";
+  std::vector<std::pair<std::string,bool>> fields = {{"a", true}, {"b", false}};
+  auto expected = arangodb::Index::SortCosts::zeroCosts(1);
+  estimateSortCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, sort_support_invalid_direct) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN " + collection().name()
+                            +" FILTER  d.a == {a:1, b:2} SORT d.a ASC, d.b DESC RETURN d ";
+  std::vector<std::pair<std::string,bool>> fields = {{"a", true}, {"b", true}};
+  auto expected = arangodb::Index::SortCosts::defaultCosts(0);
+  estimateSortCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, sort_support_invalid_direct2) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN " + collection().name()
+                            +" FILTER  d.a == {a:1, b:2} SORT d.a ASC, d.b DESC RETURN d ";
+  std::vector<std::pair<std::string,bool>> fields = {{"a", false}, {"b", false}};
+  auto expected = arangodb::Index::SortCosts::defaultCosts(0);
+  estimateSortCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, sort_support_invalid_field) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN " + collection().name()
+                            +" FILTER  d.a == {a:1, b:2} SORT d.a ASC, d.b DESC RETURN d ";
+  std::vector<std::pair<std::string,bool>> fields = {{"c", true}, {"b", false}};
+  auto expected = arangodb::Index::SortCosts::defaultCosts(0);
+  estimateSortCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, sort_support_invalid_field2) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN " + collection().name()
+                            +" FILTER  d.a == {a:1, b:2} SORT d.a ASC, d.b DESC RETURN d ";
+  std::vector<std::pair<std::string,bool>> fields = {{"a", true}, {"c", false}};
+  auto expected = arangodb::Index::SortCosts::defaultCosts(0);
+  estimateSortCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, sort_support_invalid_order) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN " + collection().name()
+                            +" FILTER  d.a == {a:1, b:2} SORT d.b DESC, d.a ASC RETURN d ";
+  std::vector<std::pair<std::string,bool>> fields = {{"a", true}, {"b", false}};
+  auto expected = arangodb::Index::SortCosts::defaultCosts(0);
+  estimateSortCondition(queryString, fields, expected, &ctx);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest, sort_support_not_all) {
+  ExpressionContextMock ctx;
+  std::string queryString = "FOR d IN " + collection().name()
+                            +" FILTER  d.a == {a:1, b:2} SORT d.a ASC, d.b DESC, d.c ASC RETURN d ";
+  std::vector<std::pair<std::string,bool>> fields = {{"a", true}, {"b", false}};
+  auto expected = arangodb::Index::SortCosts::defaultCosts(0);
+  estimateSortCondition(queryString, fields, expected, &ctx);
+}
+
