@@ -49,15 +49,15 @@ function readOwnWritesSuite () {
     
     testNonCollectionForLoop : function () {
       const query = `FOR i IN 1..3 RETURN i`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(0, fors.length);
     },
     
     testNestedForLoops : function () {
       const query = `FOR doc1 IN ${cn} FOR doc2 IN ${cn} FILTER doc2._key == doc1._key RETURN doc1`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(2, fors.length);
       assertEqual("IndexNode", fors[0].type);
       assertEqual("IndexNode", fors[1].type);
@@ -68,8 +68,8 @@ function readOwnWritesSuite () {
     
     testForLoopFullScan : function () {
       const query = `FOR doc IN ${cn} RETURN doc`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(1, fors.length);
       assertEqual("EnumerateCollectionNode", fors[0].type);
       
@@ -78,8 +78,8 @@ function readOwnWritesSuite () {
 
     testForLoopFullScanAttribute : function () {
       const query = `FOR doc IN ${cn} RETURN doc.value`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(1, fors.length);
       assertEqual("EnumerateCollectionNode", fors[0].type);
       
@@ -89,8 +89,8 @@ function readOwnWritesSuite () {
     testIndexForLoop : function () {
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
       const query = `FOR doc IN ${cn} RETURN doc.value`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(1, fors.length);
       assertEqual("IndexNode", fors[0].type);
       
@@ -100,8 +100,8 @@ function readOwnWritesSuite () {
     testIndexForLoopSort : function () {
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
       const query = `FOR doc IN ${cn} SORT doc.value RETURN doc.value`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(1, fors.length);
       assertEqual("IndexNode", fors[0].type);
       
@@ -111,8 +111,8 @@ function readOwnWritesSuite () {
     testIndexForLoopFilter : function () {
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
       const query = `FOR doc IN ${cn} FILTER doc.value == 123 RETURN doc.value`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(1, fors.length);
       assertEqual("IndexNode", fors[0].type);
       
@@ -121,8 +121,8 @@ function readOwnWritesSuite () {
     
     testUpsert : function () {
       const query = `UPSERT {} INSERT {} UPDATE {} IN ${cn}`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(1, fors.length);
       assertEqual("EnumerateCollectionNode", fors[0].type);
       
@@ -131,8 +131,8 @@ function readOwnWritesSuite () {
     
     testUpsertFiltered : function () {
       const query = `UPSERT {value: 123} INSERT {} UPDATE {} IN ${cn}`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(1, fors.length);
       assertEqual("EnumerateCollectionNode", fors[0].type);
       
@@ -142,8 +142,8 @@ function readOwnWritesSuite () {
     testUpsertIndex : function () {
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
       const query = `UPSERT {value: 123} INSERT {} UPDATE {} IN ${cn}`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(1, fors.length);
       assertEqual("IndexNode", fors[0].type);
       
@@ -153,8 +153,8 @@ function readOwnWritesSuite () {
     testUpsertIndexForLoop : function () {
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
       const query = `FOR doc IN ${cn} UPSERT {value: 123} INSERT {} UPDATE {} IN ${cn}`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let fors = getForLoops(nodes);
+      const nodes = AQL_EXPLAIN(query).plan.nodes;
+      const fors = getForLoops(nodes);
       assertEqual(2, fors.length);
       assertEqual("IndexNode", fors[0].type);
       assertEqual("IndexNode", fors[1].type);
