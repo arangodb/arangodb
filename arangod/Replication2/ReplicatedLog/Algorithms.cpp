@@ -287,8 +287,8 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
   }
 }
 
-auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
-                                     RebootId rebootId, LogId logId,
+auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
+                                     RebootId myRebootId, LogId logId,
                                      agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result {
   return basics::catchToResult([&]() -> Result {
@@ -301,16 +301,16 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
     auto& leader = spec->currentTerm->leader;
     auto log = ctx.ensureReplicatedLog(logId);
 
-    if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
+    if (leader.has_value() && leader->serverId == myServerId && leader->rebootId == myRebootId) {
       auto followers =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
-        if (participant != serverId) {
+        if (participant != myServerId) {
           followers.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
         }
       }
 
-      auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
+      auto newLeader = log->becomeLeader(spec->currentTerm->config, myServerId,
                                          spec->currentTerm->term, followers);
       newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
     } else {
@@ -319,7 +319,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
         leaderString = spec->currentTerm->leader->serverId;
       }
 
-      std::ignore = log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
+      std::ignore = log->becomeFollower(myServerId, spec->currentTerm->term, leaderString);
     }
 
     return {};

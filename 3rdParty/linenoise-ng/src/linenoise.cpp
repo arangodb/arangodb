@@ -139,7 +139,7 @@ using std::vector;
 using std::unique_ptr;
 using namespace linenoise_ng;
 
-typedef unsigned char char8_t;
+//typedef unsigned char char8_t; -- now part of c++20
 
 static ConversionResult copyString8to32(char32_t* dst, size_t dstSize,
                                         size_t& dstCount, const char* src) {
@@ -3345,7 +3345,7 @@ int linenoiseHistorySave(const char* filename) {
 
   for (int j = 0; j < historyLen; ++j) {
     if (history[j][0] != '\0') {
-      fprintf(fp, "%s\n", history[j]);
+      fprintf(fp, "%s\n", (const char*) history[j]);
     }
   }
   fclose(fp);
