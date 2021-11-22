@@ -916,8 +916,8 @@ Result IResearchDataStore::initDataStore(
       && !irs::file_utils::mkdir(_dataStore._path.c_str(), true)) {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
             "failed to create data store directory with path '" +
-                _dataStore._path.u8string() + "' while initializing link '" +
-                std::to_string(_id.id()) + "'"};
+                _dataStore._path.string() + "' while initializing link '" +
+                std::to_string(id().id()) + "'"};
   }
 
   if (initCallback) {
@@ -929,7 +929,7 @@ Result IResearchDataStore::initDataStore(
   if (!_dataStore._directory) {
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store directory with path '" +
-                _dataStore._path.u8string() + "' while initializing link '" +
+                _dataStore._path.string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
@@ -1029,7 +1029,7 @@ Result IResearchDataStore::initDataStore(
   if (!_dataStore._writer) {
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store writer with path '" +
-                _dataStore._path.u8string() + "' while initializing link '" +
+                _dataStore._path.string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 
@@ -1043,7 +1043,7 @@ Result IResearchDataStore::initDataStore(
 
     return {TRI_ERROR_INTERNAL,
             "failed to instantiate data store reader with path '" +
-                _dataStore._path.u8string() + "' while initializing link '" +
+                _dataStore._path.string() + "' while initializing link '" +
                 std::to_string(_id.id()) + "'"};
   }
 

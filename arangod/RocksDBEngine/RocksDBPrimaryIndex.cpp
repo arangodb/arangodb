@@ -156,7 +156,8 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     LocalDocumentId documentId =
         _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()), canReadOwnWrites());
     if (documentId.isSet()) {
-      cb(documentId, &SliceArrayCoveringData(_key->slice()));
+      auto data = SliceArrayCoveringData(_key->slice());
+      cb(documentId, &data);
     }
     return false;
   }
@@ -258,7 +259,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
       LocalDocumentId documentId =
           _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator), ReadOwnWrites::no);
       if (documentId.isSet()) {
-        cb(documentId, &SliceArrayCoveringData(*_iterator));
+        auto data = SliceArrayCoveringData(*_iterator);
+        cb(documentId, &data);
         --limit;
       }
 
@@ -378,7 +380,8 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
       builder->clear();
       builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-      cb(documentId, &SliceArrayCoveringData(builder->slice()));
+      auto data = SliceArrayCoveringData(builder->slice());
+      cb(documentId, &data);
 
       --limit;
       if constexpr (reverse) {

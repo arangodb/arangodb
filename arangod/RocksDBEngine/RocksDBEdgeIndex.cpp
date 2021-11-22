@@ -143,7 +143,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       coveringBuilder->add(_lastKey);
       coveringBuilder->add(fromTo);
       coveringBuilder->close();
-      cb(docId, &SliceArrayCoveringData(coveringBuilder->slice()));
+      auto data = SliceArrayCoveringData(coveringBuilder->slice());
+      cb(docId, &data);
     }, limit);
   }
 

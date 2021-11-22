@@ -535,7 +535,7 @@ template<typename Visitor>
 bool visitAllAttributeAccess(aql::AstNode const* node,
                              aql::Variable const& ref,
                              QueryContext const& ctx,
-                             Visitor& visitor) {
+                             Visitor const& visitor) {
   if (!node) {
     return false;
   }
