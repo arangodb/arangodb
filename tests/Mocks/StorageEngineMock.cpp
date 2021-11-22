@@ -727,7 +727,8 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
 
   bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     while (limit && _begin != _end) {
-      cb(_begin->first, &SliceArrayCoveringData(_begin->second.slice()));
+      auto data = SliceArrayCoveringData(_begin->second.slice());
+      cb(_begin->first, &data);
       ++_begin;
       --limit;
     }

@@ -725,13 +725,12 @@ Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   auto fields = storedFields(_meta);
-  Index::SortCosts res;
   if ( !sortCondition->onlyUsesNonNullSortAttributes(fields)||  // we are sparse, so can't help sort null values
        !sortCondition->isOnlyAttributeAccess() || // we don't have pre-computed fields so only direct access
         fields.size() < sortCondition->numAttributes() ||
         sortCondition->numAttributes() > sortCondition->coveredAttributes(reference, fields)) {
     // no need to check has expansion as we don't support expansion for stored values
-    return res;
+    return Index::SortCosts::defaultCosts(itemsInIndex);
   }
 
   auto const numCovered = sortCondition->numAttributes();
@@ -739,14 +738,10 @@ Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
   for (size_t i = 0; i < numCovered; ++i) {
     if (std::get<2>(sortCondition->field(i)) != _meta._sort.direction(i)) {
       // index is sorted in different order than requested in SORT condition
-      return res;
+      return Index::SortCosts::defaultCosts(itemsInIndex);
     }
   }
-
-  res.coveredAttributes = numCovered;
-  res.supportsCondition = true;
-  res.estimatedCosts = 0; // data is alredy sorted. Just let it go
-  return res;
+  return Index::SortCosts::zeroCosts(numCovered);
 }
 
 Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
