@@ -26,9 +26,11 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Aql/Projections.h"
+#include "Aql/SortNode.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchInvertedIndex.h"
@@ -45,7 +47,10 @@
 
 namespace {
 std::vector<std::vector<std::string>> EMPTY_STORED_FIELDS{};
+std::vector<std::pair<std::string, bool>> EMPTY_SORTED_FIELDS{};
 }
+
+using namespace arangodb::aql;
 
 class IResearchInvertedIndexConditionTest
     : public ::testing::Test,
@@ -70,7 +75,8 @@ class IResearchInvertedIndexConditionTest
   }
   VPackBuilder getPropertiesSlice(arangodb::IndexId iid,
                                   std::vector<std::string> const& fields,
-                                  std::vector<std::vector<std::string>> const& storedFields = EMPTY_STORED_FIELDS) {
+                                  std::vector<std::vector<std::string>> const& storedFields = EMPTY_STORED_FIELDS,
+                                  std::vector<std::pair<std::string, bool>> const& sortedFields = EMPTY_SORTED_FIELDS) {
     VPackBuilder vpack;
     {
       VPackObjectBuilder obj(&vpack);
@@ -97,6 +103,15 @@ class IResearchInvertedIndexConditionTest
           }
         }
       }
+
+      if (!sortedFields.empty()) {
+        VPackArrayBuilder arraySort(&vpack, "primarySort");
+        for (auto const& f : sortedFields) {
+          VPackObjectBuilder field(&vpack);
+          vpack.add("name", VPackValue(f.first));
+          vpack.add("direction", VPackValue(f.second? "asc" : "desc"));
+        }
+      }
     }
     return vpack;
   }
@@ -108,8 +123,8 @@ class IResearchInvertedIndexConditionTest
   void assertProjectionsCoverageSuccess(
     std::vector<std::vector<std::string>> const& storedFields,
     std::vector<arangodb::aql::AttributeNamePath> const& attributes,
-    arangodb::aql::Projections const& expected) {
-    arangodb::aql::Projections projections(attributes);
+    Projections const& expected) {
+    Projections projections(attributes);
     arangodb::IndexId id(1);
     arangodb::iresearch::InvertedIndexFieldMeta meta;
     std::string errorField;
@@ -130,7 +145,7 @@ class IResearchInvertedIndexConditionTest
   void estimateFilterCondition(
       std::string const& queryString, std::vector<std::string> const& fields,
       arangodb::Index::FilterCosts const& expectedCosts,
-      arangodb::aql::ExpressionContext* exprCtx = nullptr,
+      ExpressionContext* exprCtx = nullptr,
       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
       std::string const& refName = "d") {
     SCOPED_TRACE(testing::Message("estimateFilterCondition failed for query:<")
@@ -144,8 +159,7 @@ class IResearchInvertedIndexConditionTest
 
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
-    auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
-                                              bindVars);
+    auto query = Query::create(ctx, QueryString(queryString), bindVars);
 
     ASSERT_NE(query.get(), nullptr);
     auto const parseResult = query->parse();
@@ -158,12 +172,12 @@ class IResearchInvertedIndexConditionTest
     ASSERT_TRUE(root);
 
     // find first FILTER node
-    arangodb::aql::AstNode* filterNode = nullptr;
+    AstNode* filterNode = nullptr;
     for (size_t i = 0; i < root->numMembers(); ++i) {
       auto* node = root->getMemberUnchecked(i);
       ASSERT_TRUE(node);
 
-      if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+      if (NODE_TYPE_FILTER == node->type) {
         filterNode = node;
         break;
       }
@@ -173,7 +187,7 @@ class IResearchInvertedIndexConditionTest
     // find referenced variable
     auto* allVars = ast->variables();
     ASSERT_TRUE(allVars);
-    arangodb::aql::Variable* ref = nullptr;
+    Variable* ref = nullptr;
     for (auto entry : allVars->variables(true)) {
       if (entry.second == refName) {
         ref = allVars->getVariable(entry.first);
@@ -193,6 +207,110 @@ class IResearchInvertedIndexConditionTest
 
       arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, mockCtx, nullptr, ref};
       auto costs = Index.supportsFilterCondition(id, indexFields, {}, filterNode, ref, 0);
+      ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
+    }
+    // runtime is not intended - we must decide during optimize time!
+  }
+
+  void estimateSortCondition(
+      std::string const& queryString, std::vector<std::pair<std::string, bool>> const& fields,
+      arangodb::Index::SortCosts const& expectedCosts,
+      ExpressionContext* exprCtx = nullptr,
+      std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+      std::string const& refName = "d") {
+    SCOPED_TRACE(testing::Message("estimateSortCondition failed for query:<")
+      << queryString << "> Expected support:" << expectedCosts.supportsCondition);
+    arangodb::IndexId id(1);
+    arangodb::iresearch::InvertedIndexFieldMeta meta;
+    std::string errorField;
+    meta.init(server.server(), getPropertiesSlice(id, {}, EMPTY_STORED_FIELDS, fields).slice(),
+              false, errorField, _vocbase->name());
+    auto indexFields = arangodb::iresearch::IResearchInvertedIndex::fields(meta);
+    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
+
+
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
+    auto query = Query::create(ctx, QueryString(queryString),
+                                                bindVars);
+
+    ASSERT_NE(query.get(), nullptr);
+    auto const parseResult = query->parse();
+    ASSERT_TRUE(parseResult.result.ok());
+
+    auto* ast = query->ast();
+    ASSERT_TRUE(ast);
+
+    auto* root = ast->root();
+    ASSERT_TRUE(root);
+
+    //// find first FILTER node
+    //arangodb::aql::AstNode* sortNode = nullptr;
+    //for (size_t i = 0; i < root->numMembers(); ++i) {
+    //  auto* node = root->getMemberUnchecked(i);
+    //  ASSERT_TRUE(node);
+
+    //  if (arangodb::aql::NODE_TYPE_SORT == node->type) {
+    //    sortNode = node;
+    //    break;
+    //  }
+    //}
+    //ASSERT_TRUE(sortNode);
+
+    auto plan = query->plan();
+    ASSERT_TRUE(plan);
+    {
+      std::vector<std::pair<Variable const*, bool>> sorts;
+      arangodb::containers::SmallVector<ExecutionNode*> sortNodes;
+      plan->findNodesOfType(sortNodes, {ExecutionNode::SORT}, false);
+      for (auto s : sortNodes) {
+        auto sortNode =
+            arangodb::aql::ExecutionNode::castTo<SortNode*>(s);
+
+        for (auto& it : sortNode->elements()) {
+          sorts.emplace_back(it.var, it.ascending);
+        }
+      }
+    }
+
+    std::unordered_map<VariableId, AstNode const*> variableDefinitions;
+    {
+      arangodb::containers::SmallVector<ExecutionNode*> setNodes;
+      plan->findNodesOfType(setNodes, {ExecutionNode::CALCULATION}, false);
+      for (auto n : setNodes) {
+        auto en =  ExecutionNode::castTo<CalculationNode const*>(n);
+        variableDefinitions.try_emplace(en->outVariable()->id, en->expression()->node());
+      }
+    }
+
+
+    // find referenced variable
+    auto* allVars = ast->variables();
+    ASSERT_TRUE(allVars);
+    arangodb::aql::Variable* ref = nullptr;
+    for (auto entry : allVars->variables(true)) {
+      if (entry.second == refName) {
+        ref = allVars->getVariable(entry.first);
+        break;
+      }
+    }
+    ASSERT_TRUE(ref);
+
+    std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
+    arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> nonNullAttributes;
+    // optimization time
+    {
+      arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
+                                          {}, {}, {}, arangodb::transaction::Options());
+      auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+      if (mockCtx) {
+        mockCtx->setTrx(&trx);
+      }
+
+      arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, mockCtx, nullptr, ref};
+
+      SortCondition sortCondition(query->plan(), sorts, constAttributes,
+                                                 nonNullAttributes, variableDefinitions);
+      auto costs = Index.supportsSortCondition(&sortCondition, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
