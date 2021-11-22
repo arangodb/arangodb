@@ -1,6 +1,9 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Improved sync protocol to commit after each chunk and get rid of
+  potentially dangereous NO_INDEXING optimization.
+
 * Fixed an issue in old incremental sync protocol with document keys that
   contained special characters (`%`). These keys could be send unencoded in the
   incremental sync protocol, leading to wrong key ranges being transfered
