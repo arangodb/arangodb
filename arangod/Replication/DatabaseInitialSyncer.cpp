@@ -1773,11 +1773,11 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   // -------------------------------------------------------------------------------------
 
   if (phase == PHASE_DROP_CREATE) {
-    auto* col = resolveCollection(vocbase(), parameters).get();
+    auto col = resolveCollection(vocbase(), parameters);
 
     if (col == nullptr) {
       // not found...
-      col = vocbase().lookupCollection(leaderName).get();
+      col = vocbase().lookupCollection(leaderName);
 
       if (col != nullptr && (col->name() != leaderName ||
                              (!leaderUuid.empty() && col->guid() != leaderUuid))) {
@@ -1866,9 +1866,10 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
         // collection is already present
         _config.progress.set("checking/changing parameters of " + collectionMsg);
-        return changeCollection(col, parameters);
+        return changeCollection(col.get(), parameters);
       }
     }
+    // When we get here, col is a nullptr anyway!
 
     std::string msg = "creating " + collectionMsg;
     if (_config.applier._skipCreateDrop) {
@@ -1881,7 +1882,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     LOG_TOPIC("7093d", DEBUG, Logger::REPLICATION)
         << "Dump is creating collection " << parameters.toJson();
 
-    auto r = createCollection(vocbase(), parameters, &col);
+    LogicalCollection* col2 = nullptr;
+    auto r = createCollection(vocbase(), parameters, &col2);
 
     if (r.fail()) {
       return Result(r.errorNumber(), concatT("unable to create ", collectionMsg,
@@ -1898,7 +1900,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   else if (phase == PHASE_DUMP) {
     _config.progress.set("dumping data for " + collectionMsg);
 
-    auto* col = resolveCollection(vocbase(), parameters).get();
+    std::shared_ptr<LogicalCollection> col
+        = resolveCollection(vocbase(), parameters);
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -1909,8 +1912,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const& leaderColl =
         !leaderUuid.empty() ? leaderUuid : itoa(leaderCid.id());
     auto res = incremental && hasDocuments(*col)
-                   ? fetchCollectionSync(col, leaderColl, _config.leader.lastLogTick)
-                   : fetchCollectionDump(col, leaderColl, _config.leader.lastLogTick);
+                   ? fetchCollectionSync(col.get(), leaderColl, _config.leader.lastLogTick)
+                   : fetchCollectionDump(col.get(), leaderColl, _config.leader.lastLogTick);
 
     if (!res.ok()) {
       return res;
