@@ -2196,13 +2196,19 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
-  auto bogus = std::make_shared<VPackBuilder>();
-  { VPackArrayBuilder trxs(bogus.get());
-    { VPackArrayBuilder trx(bogus.get());
-      { VPackObjectBuilder op(bogus.get());
-        bogus->add("a", VPackValue(12)); }}}
+  VPackBuilder bogus;
+  { 
+    VPackArrayBuilder trxs(&bogus);
+    { 
+      VPackArrayBuilder trx(&bogus);
+      {
+        VPackObjectBuilder op(&bogus);
+        bogus.add("a", VPackValue(12)); 
+      }
+    }
+  }
   server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
-    bogus);
+    bogus.slice());
 
   arangodb::network::ConnectionPool::Config poolConfig(server.server().getFeature<arangodb::MetricsFeature>());
   poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
@@ -2323,7 +2329,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     newServer.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
-      bogus);
+      bogus.slice());
 
     // add analyzer
     {
@@ -2395,7 +2401,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     }
 
     newServer.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
-      bogus);
+      bogus.slice());
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

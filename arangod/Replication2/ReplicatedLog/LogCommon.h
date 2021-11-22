@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <chrono>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -81,14 +82,14 @@ struct implement_compare {
   }
 };
 
-struct LogIndex : implement_compare<LogIndex> {
+struct LogIndex {
   constexpr LogIndex() noexcept : value{0} {}
   constexpr explicit LogIndex(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
 
   [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept -> LogIndex;
 
-  [[nodiscard]] auto operator<=(LogIndex) const -> bool;
+  friend auto operator<=>(LogIndex const&, LogIndex const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> LogIndex;
 
@@ -99,12 +100,11 @@ struct LogIndex : implement_compare<LogIndex> {
 
 auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
 
-struct LogTerm : implement_compare<LogTerm> {
+struct LogTerm {
   constexpr LogTerm() noexcept : value{0} {}
   constexpr explicit LogTerm(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
-  [[nodiscard]] auto operator<=(LogTerm) const -> bool;
-
+  friend auto operator<=>(LogTerm const&, LogTerm const&) = default;
   friend auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
@@ -115,11 +115,9 @@ auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 [[nodiscard]] auto to_string(LogTerm term) -> std::string;
 [[nodiscard]] auto to_string(LogIndex index) -> std::string;
 
-struct TermIndexPair : implement_compare<TermIndexPair> {
+struct TermIndexPair {
   LogTerm term{};
   LogIndex index{};
-
-  friend auto operator<=(TermIndexPair, TermIndexPair) noexcept -> bool;
 
   TermIndexPair(LogTerm term, LogIndex index) noexcept;
   TermIndexPair() = default;
@@ -127,6 +125,7 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
 
+  friend auto operator<=>(TermIndexPair const&, TermIndexPair const&) = default;
   friend auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 };
 
@@ -332,14 +331,14 @@ struct LogConfig {
 // These settings are initialised by the ReplicatedLogFeature based on command line arguments
 struct ReplicatedLogGlobalSettings {
  public:
-  static inline constexpr std::size_t defaultMaxNetworkBatchSize{1024 * 1024};
-  static inline constexpr std::size_t minNetworkBatchSize{1024 * 1024};
+  static inline constexpr std::size_t defaultThresholdNetworkBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minThresholdNetworkBatchSize{1024 * 1024};
 
-  static inline constexpr std::size_t defaultMaxRocksDBWriteBatchSize{1024 * 1024};
-  static inline constexpr std::size_t minRocksDBWriteBatchSize{1024 * 1024};
+  static inline constexpr std::size_t defaultThresholdRocksDBWriteBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minThresholdRocksDBWriteBatchSize{1024 * 1024};
 
-  std::size_t _maxNetworkBatchSize{defaultMaxNetworkBatchSize};
-  std::size_t _maxRocksDBWriteBatchSize{defaultMaxRocksDBWriteBatchSize};
+  std::size_t _thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
+  std::size_t _thresholdRocksDBWriteBatchSize{defaultThresholdRocksDBWriteBatchSize};
 };
 
 
