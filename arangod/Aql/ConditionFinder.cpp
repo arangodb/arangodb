@@ -162,10 +162,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
               // if the enumerate collection node had the counting flag
               // set, we can copy it over to the index node as well
               idx->copyCountFlag(node);
-              if (node->canReadOwnWrites() == ReadOwnWrites::yes) {
-                // copy over the read-own-writes flag from EnumerateCollectionNode to IndexNode
-                idx->setCanReadOwnWrites(ReadOwnWrites::yes);
-              }
+              // copy over the read-own-writes flag from EnumerateCollectionNode to IndexNode
+              idx->setCanReadOwnWrites(node->canReadOwnWrites());
               return idx;
             })
         );
