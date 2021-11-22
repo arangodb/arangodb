@@ -291,14 +291,15 @@ AstNode* Ast::createNodeExample(AstNode const* variable, AstNode const* example)
 /// @brief create subquery node
 AstNode* Ast::createNodeSubquery() { return createNode(NODE_TYPE_SUBQUERY); }
 
-/// @brief create an AST for (non-view) node
-AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
-                            AstNode const* expression, bool isUserDefinedVariable) {
+/// @brief create an AST for node as part of an UPSERT
+AstNode* Ast::createNodeForUpsert(char const* variableName, size_t nameLength,
+                                  AstNode const* expression, bool isUserDefinedVariable) {
   if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
+  node->setFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
   node->reserve(3);
 
   AstNode* variable = createNodeVariable(variableName, nameLength, isUserDefinedVariable);

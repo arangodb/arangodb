@@ -8083,62 +8083,6 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-void arangodb::aql::enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan) {
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan.findNodesOfType(nodes, EN::UPSERT, true);
-
-  // An upsert is roughly translated to the following:
-  //   LET #x = ( <subquery> )
-  //   LET $OLD = #x[0]
-  //   UPSERT $OLD INSERT ... UPDATE ... IN col
-  //
-  // The subquery is always of the form
-  //   FOR #y IN col FILTER <#y matches sample> LIMIT 0, 1 RETURN #y.
-  // This subquery is optimized like every other; whether it can use any
-  // indexes depends on the FILTER condition.
-  // So what we do here is for each UPSERT get the input variable's setter
-  // (CalculationNode). The calculation expression is always an indexed access
-  // with a reference to the subquery. From the subquery end we simply search
-  // upwards until we find the subquery's FOR node (which must be either an
-  // IndexNode or EnumerateCollectionNode), so we can set the read-own-writes
-  // flag.
-
-  for (auto n : nodes) {
-    auto node = ExecutionNode::castTo<UpsertNode const*>(n);
-    auto inputVar = node->inDocVariable();
-    auto setter = plan.getVarSetBy(inputVar->id);
-    if (setter == nullptr) {
-      continue;
-    }
-    TRI_ASSERT(setter->getType() == EN::CALCULATION);
-    auto* exprNode = ExecutionNode::castTo<CalculationNode const*>(setter)->expression()->node();
-    TRI_ASSERT(exprNode->type == NODE_TYPE_INDEXED_ACCESS);
-    TRI_ASSERT(exprNode->getMember(0)->type == NODE_TYPE_REFERENCE);
-    Variable const* v = static_cast<Variable const*>(exprNode->getMember(0)->getData());
-    auto current = plan.getVarSetBy(v->id);
-    TRI_ASSERT(current->getType() == EN::SUBQUERY_END || current->getType() == EN::SUBQUERY);
-    if (current->getType() == EN::SUBQUERY) {
-      current = ExecutionNode::castTo<SubqueryNode*>(current)->getSubquery();
-    }
-    
-    while (current != nullptr) {
-      if (current->getType() == EN::SUBQUERY_START) {
-        // we reached the subquery start without finding an Index or Enumerate node
-        // that should never happen!
-        TRI_ASSERT(false);
-        break;
-      }
-      if (current->getType() == EN::INDEX || current->getType() == EN::ENUMERATE_COLLECTION) {
-        ExecutionNode::castTo<DocumentProducingNode*>(current)->setCanReadOwnWrites(ReadOwnWrites::yes);
-        break;
-      }
-      current = current->getFirstDependency();
-    }
-    TRI_ASSERT(current != nullptr);
-  }
-}
-
 namespace {
 
 void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,

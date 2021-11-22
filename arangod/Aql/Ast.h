@@ -160,9 +160,9 @@ class Ast {
   /// @brief create an AST subquery node
   AstNode* createNodeSubquery();
 
-  /// @brief create an AST for node
-  AstNode* createNodeFor(char const* variableName, size_t nameLength,
-                         AstNode const* expression, bool isUserDefinedVariable);
+  /// @brief create an AST for node as part of an UPSERT
+  AstNode* createNodeForUpsert(char const* variableName, size_t nameLength,
+                               AstNode const* expression, bool isUserDefinedVariable);
 
   /// @brief create an AST for (non-view) node, using an existing output
   /// variable

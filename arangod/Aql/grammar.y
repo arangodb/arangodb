@@ -32,6 +32,7 @@
 #include "Graph/ShortestPathType.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
+
 %}
 
 %union {
@@ -1306,7 +1307,7 @@ upsert_statement:
 
       scopes->start(arangodb::aql::AQL_SCOPE_FOR);
       std::string const variableName = parser->ast()->variables()->nextName();
-      auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), parser->ast()->createNodeArray(), false);
+      auto forNode = parser->ast()->createNodeForUpsert(variableName.c_str(), variableName.size(), parser->ast()->createNodeArray(), false);
       parser->ast()->addOperation(forNode);
 
       auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $3);
@@ -1337,7 +1338,6 @@ upsert_statement:
     } T_INSERT expression update_or_replace expression in_or_into_collection options {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, $9);
-
       if (!parser->configureWriteQuery($9, $10)) {
         YYABORT;
       }

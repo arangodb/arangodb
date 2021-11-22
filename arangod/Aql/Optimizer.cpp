@@ -375,8 +375,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 void Optimizer::finalizePlans() {
   for (auto& plan : _plans.list) {
     insertDistributeInputCalculation(*plan.first);
-    enableReadOwnWritesForUpsertSubquery(*plan.first);
-
     plan.first->findVarUsage();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
