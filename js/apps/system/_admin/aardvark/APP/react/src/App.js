@@ -11,6 +11,7 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 
 // import new react views
 // require('./views/shards/ShardsReactView');
+require('./views/dataloader/DataloaderReactView');
 require('./views/analyzers/AnalyzersReactView');
 
 // old libraries

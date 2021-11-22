@@ -21,6 +21,7 @@
       'dashboard': 'dashboard',
       'replication': 'replication',
       'replication/applier/:endpoint/:database': 'applier',
+      'dataloader': 'dataloader',
       'collections': 'collections',
       'analyzers': 'analyzers',
       'new': 'newCollection',
@@ -330,6 +331,13 @@
         self.handleResize();
       });
 
+    },
+
+    dataloader: function () {
+      this.checkUser();
+
+      this.init.then(() => ReactDOM.render(React.createElement(window.DataloaderReactView),
+        document.getElementById('content')));
     },
 
     analyzers: function () {
