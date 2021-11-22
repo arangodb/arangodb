@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improved sync protocol to commit after each chunk and get rid of
+  potentially dangereous NO_INDEXING optimization.
+
 * Make the `--version` and `--version-json` commands usable in arangobackup
   when no positional argument (operation type) was specified. Previously,
   arangobackup insisted on specifying the operation type alongside the
