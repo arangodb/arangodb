@@ -52,7 +52,8 @@ struct LogPlanTermSpecification {
   LogPlanTermSpecification(from_velocypack_t, VPackSlice);
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, LogConfig config, std::optional<Leader>, std::unordered_map<ParticipantId, Participant> participants);
+  LogPlanTermSpecification(LogTerm term, LogConfig config, std::optional<Leader>,
+                           std::unordered_map<ParticipantId, Participant> participants);
 };
 
 struct LogPlanSpecification {
@@ -77,7 +78,6 @@ struct LogCurrentLocalState {
   LogCurrentLocalState(from_velocypack_t, VPackSlice);
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
 };
-
 
 struct LogCurrentSupervisionElection {
   enum class ErrorCode {
@@ -122,6 +122,12 @@ struct LogCurrentSupervision {
 struct LogCurrent {
   std::unordered_map<ParticipantId, LogCurrentLocalState> localState;
   std::optional<LogCurrentSupervision> supervision;
+
+  struct Leader {
+    LogTerm term;
+  };
+
+  std::optional<Leader> leader;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrent(from_velocypack_t, VPackSlice);

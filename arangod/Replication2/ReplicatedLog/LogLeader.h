@@ -139,6 +139,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
   [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog;
 
+  // Returns true if the leader has established its leadership: at least one
+  // entry within its term has been committed.
+  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
+
  protected:
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
@@ -266,6 +270,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     [[nodiscard]] auto calculateCommitLag() const noexcept
         -> std::chrono::duration<double, std::milli>;
 
+    auto insertInternal(std::optional<LogPayload>, bool waitForSync,
+                        std::optional<InMemoryLogEntry::clock::time_point> insertTp)
+        -> LogIndex;
+
+
     LogLeader& _self;
     InMemoryLog _inMemoryLog;
     std::vector<FollowerInfo> _follower{};
@@ -275,6 +284,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     LogIndex _largestCommonIndex{0};
     LogIndex _releaseIndex{0};
     bool _didResign{false};
+    bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
   };
 
@@ -289,6 +299,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // make this thread safe in the most simple way possible, wrap everything in
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
+
+  void establishLeadership();
 
   [[nodiscard]] static auto instantiateFollowers(
       LoggerContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,

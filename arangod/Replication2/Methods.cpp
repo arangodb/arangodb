@@ -320,7 +320,44 @@ struct ReplicatedLogMethodsCoordinator final
 
   auto insert(LogId id, TypedLogIterator<LogPayload>& iter) const
       -> futures::Future<std::pair<std::vector<LogIndex>, replicated_log::WaitForResult>> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    auto path = basics::StringUtils::joinT("/", "_api/log", id, "multi-insert");
+
+    std::size_t payloadSize{0};
+    VPackBuilder builder{};
+    {
+      VPackArrayBuilder arrayBuilder{&builder};
+      while (auto const payload = iter.next()) {
+        builder.add(payload->slice());
+        ++payloadSize;
+      }
+    }
+
+    network::RequestOptions opts;
+    opts.database = vocbase.name();
+    return network::sendRequest(pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Post, path, builder.bufferRef(), opts)
+        .thenValue([payloadSize](network::Response&& resp) {
+          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+          }
+          auto result = resp.slice().get("result");
+          auto waitResult = result.get("result");
+
+          auto quorum = std::make_shared<replication2::replicated_log::QuorumData const>(
+              waitResult.get("quorum"));
+          auto commitIndex = waitResult.get("commitIndex").extract<LogIndex>();
+
+          std::vector<LogIndex> indexes;
+          indexes.reserve(payloadSize);
+          auto indexIter = velocypack::ArrayIterator(result.get("indexes"));
+          std::transform(indexIter.begin(), indexIter.end(),
+                        std::back_inserter(indexes), [](auto const& it) {
+                           return it.template extract<LogIndex>();
+                         });
+          return std::make_pair(
+              std::move(indexes),
+              replicated_log::WaitForResult(commitIndex, std::move(quorum)));
+        });
   }
 
   auto release(LogId id, LogIndex index) const -> futures::Future<Result> override {

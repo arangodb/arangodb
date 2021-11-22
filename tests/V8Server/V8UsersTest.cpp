@@ -25,6 +25,8 @@
 
 #include "Mocks/Servers.h"  // this must be first because windows
 
+#include "src/objects/objects.h"
+
 #include "gtest/gtest.h"
 
 #include "velocypack/Builder.h"
