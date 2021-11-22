@@ -661,25 +661,24 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(
-                                        syncer.vocbase()),
-                                    *col, AccessMode::Type::EXCLUSIVE);
+    // Create on heap since we want to do controlled commits for each chunk:
+    std::unique_ptr<SingleCollectionTransaction> trx;
 
-    // turn on intermediate commits as the number of operations can be huge here
-    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-    // TODO: check if we need to remove the below line!
-    trx.addHint(transaction::Hints::Hint::NO_INDEXING);
+    auto startTrx = [&]() -> Result {
+      trx = std::make_unique<SingleCollectionTransaction>(
+          transaction::StandaloneContext::Create(syncer.vocbase()),
+            *col, AccessMode::Type::EXCLUSIVE);
+      return trx->begin();
+    };
 
-    Result res = trx.begin();
-
+    Result res = startTrx();
     if (!res.ok()) {
       return Result(res.errorNumber(),
                     std::string("unable to start transaction: ") + res.errorMessage());
     }
 
     // We do not take responsibility for the index.
-    // The LogicalCollection is protected by trx.
-    // Neither it nor its indexes can be invalidated
+    // The LogicalCollection is protected by the shared_ptr.
 
     RocksDBCollection* physical = static_cast<RocksDBCollection*>(col->getPhysical());
     size_t currentChunkId = 0;
@@ -750,7 +749,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             tempBuilder.add(VPackValue(docKey));
 
             ManagedDocumentResult previous;
-            auto r = physical->remove(trx, tempBuilder.slice(), previous, options);
+            auto r = physical->remove(*trx, tempBuilder.slice(), previous, options);
 
             if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
               // ignore not found, we remove conflicting docs ahead of time
@@ -805,7 +804,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
           if (nextChunk) {  // we are out of range, see next chunk
             if (rangeUnequal && currentChunkId < numChunks) {
-              Result res = syncChunkRocksDB(syncer, &trx, stats, keysId,
+              Result res = syncChunkRocksDB(syncer, trx.get(), stats, keysId,
                                             currentChunkId, lowKey, highKey, markers);
               if (!res.ok()) {
                 THROW_ARANGO_EXCEPTION(res);
@@ -823,7 +822,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         };  // compare chunk - end
 
     uint64_t documentsFound = 0;
-    auto iterator = createPrimaryIndexIterator(&trx, col);
+    auto iterator = createPrimaryIndexIterator(trx.get(), col);
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           ++documentsFound;
@@ -832,7 +831,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
             // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(rocksValue);  // we want probably to do this instead
-            col->readDocumentWithCallback(&trx, documentId,
+            col->readDocumentWithCallback(trx.get(), documentId,
                                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
                                             docRev = TRI_ExtractRevisionId(doc);
                                             return true;
@@ -845,7 +844,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     // we might have missed chunks, if the keys don't exist at all locally
     while (currentChunkId < numChunks) {
-      Result res = syncChunkRocksDB(syncer, &trx, stats, keysId, currentChunkId,
+      Result res = syncChunkRocksDB(syncer, trx.get(), stats, keysId, currentChunkId,
                                     lowKey, highKey, markers);
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
@@ -853,6 +852,14 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       currentChunkId++;
       if (currentChunkId < numChunks) {
         resetChunk();
+        res = trx->commit();
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+        res = startTrx();
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
     }
 
@@ -861,7 +868,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           documentsFound + stats.numDocsInserted -
           (stats.numDocsRemoved - numberDocumentsRemovedBeforeStart);
       uint64_t numberDocumentsDueToCounter =
-          col->numberDocuments(&trx, transaction::CountType::Normal);
+          col->numberDocuments(trx.get(), transaction::CountType::Normal);
       syncer.setProgress(
           std::string("number of remaining documents in collection '") +
           col->name() + "': " + std::to_string(numberDocumentsAfterSync) +
@@ -880,12 +887,12 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
         auto seq = rocksutils::latestSequenceNumber();
-        static_cast<RocksDBCollection*>(trx.documentCollection()->getPhysical())
+        static_cast<RocksDBCollection*>(trx->documentCollection()->getPhysical())
             ->meta().adjustNumberDocuments(seq, /*revId*/0, diff);
       }
     }
 
-    res = trx.commit();
+    res = trx->commit();
 
     if (res.fail()) {
       return res;
