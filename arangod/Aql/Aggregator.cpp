@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Functions.h"
+#include "Containers/FlatHashSet.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -609,7 +610,7 @@ struct AggregatorUnique : public Aggregator {
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
-    if (seen.find(s) != seen.end()) {
+    if (seen.contains(s)) {
       // already saw the same value
       return;
     }
@@ -635,7 +636,7 @@ struct AggregatorUnique : public Aggregator {
   }
 
   MemoryBlockAllocator allocator;
-  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  containers::FlatHashSet<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
   mutable arangodb::velocypack::Builder builder;
 };
 
@@ -654,7 +655,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
     }
 
     for (VPackSlice it : VPackArrayIterator(s)) {
-      if (seen.find(it) != seen.end()) {
+      if (seen.contains(it)) {
         // already saw the same value
         return;
       }
@@ -762,7 +763,7 @@ struct AggregatorCountDistinct : public Aggregator {
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
-    if (seen.find(s) != seen.end()) {
+    if (seen.contains(s)) {
       // already saw the same value
       return;
     }
@@ -777,7 +778,7 @@ struct AggregatorCountDistinct : public Aggregator {
   }
 
   MemoryBlockAllocator allocator;
-  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  containers::FlatHashSet<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
 };
 
 template <class T>

@@ -121,3 +121,10 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast
   return result;
 }
 
+NonConstExpressionContainer::NonConstExpressionContainer(
+    std::vector<std::unique_ptr<NonConstExpression>> expressions,
+    std::vector<std::pair<VariableId, RegisterId>> varToRegisterMapping,
+    bool hasV8Expression)
+    : _expressions(std::move(expressions)),
+      _varToRegisterMapping(std::move(varToRegisterMapping)),
+      _hasV8Expression(hasV8Expression) {}

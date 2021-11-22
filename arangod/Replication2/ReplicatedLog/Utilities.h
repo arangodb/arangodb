@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,19 +17,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "testcases/AqlInsertTest.h"
-#include "testcases/CustomQueryTest.h"
-#include "testcases/CollectionCreationTest.h"
-#include "testcases/DocumentCreationTest.h"
-#include "testcases/DocumentCrudAppendTest.h"
-#include "testcases/DocumentCrudTest.h"
-#include "testcases/DocumentCrudWriteReadTest.h"
-#include "testcases/DocumentImportTest.h"
-#include "testcases/EdgeCrudTest.h"
-#include "testcases/PersistentIndexTest.h"
-#include "testcases/VersionTest.h"
+namespace arangodb::velocypack {
+class ArrayIterator;
+}
+
+namespace arangodb::replication2::replicated_log {
+
+class VPackArrayToLogPayloadIterator : public TypedLogIterator<LogPayload> {
+ public:
+  auto next() -> std::optional<LogPayload> override {
+    if (_iter.valid()) {
+      return LogPayload::createFromSlice(*_iter++);
+    }
+
+    return std::nullopt;
+  }
+
+  explicit VPackArrayToLogPayloadIterator(VPackSlice slice) : _iter(slice) {}
+
+ private:
+  velocypack::ArrayIterator _iter;
+};
+
+}
