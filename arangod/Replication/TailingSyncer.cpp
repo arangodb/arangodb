@@ -390,7 +390,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* coll = resolveCollection(*vocbase, slice).get();
+  auto coll = resolveCollection(*vocbase, slice);
 
   if (coll == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -465,7 +465,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
     std::string conflictingDocumentKey;
-    Result r = applyCollectionDumpMarker(*trx, coll, type, applySlice, conflictingDocumentKey);
+    Result r = applyCollectionDumpMarker(*trx, coll.get(), type, applySlice, conflictingDocumentKey);
     TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
@@ -501,7 +501,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
       // intentionally ignore the return code here, as the operation will be followed
       // by yet another insert/replace
-      removeSingleDocument(coll, conflictDocumentKey);
+      removeSingleDocument(coll.get(), conflictDocumentKey);
       conflictDocumentKey.clear();
     }
     
@@ -524,7 +524,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                         "unable to create replication transaction: ", res.errorMessage()));
     }
 
-    res = applyCollectionDumpMarker(trx, coll, type, applySlice, conflictDocumentKey);
+    res = applyCollectionDumpMarker(trx, coll.get(), type, applySlice, conflictDocumentKey);
 
     TRI_ASSERT(res.is(TRI_ERROR_ARANGO_TRY_AGAIN) == !conflictDocumentKey.empty());
 
@@ -733,16 +733,16 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  arangodb::LogicalCollection* col = nullptr;
+  std::shared_ptr<arangodb::LogicalCollection> col;
 
   if (slice.hasKey("cuid")) {
-    col = resolveCollection(*vocbase, slice).get();
+    col = resolveCollection(*vocbase, slice);
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown cuid");
     }
   } else if (collection.hasKey("oldName")) {
-    col = vocbase->lookupCollection(collection.get("oldName").copyString()).get();
+    col = vocbase->lookupCollection(collection.get("oldName").copyString());
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -822,7 +822,7 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  auto* col = resolveCollection(*vocbase, slice).get();
+  auto col = resolveCollection(*vocbase, slice);
   if (col == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
