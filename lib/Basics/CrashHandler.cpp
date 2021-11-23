@@ -691,11 +691,11 @@ void CrashHandler::crash(char const* context) {
 
 #ifdef _WIN32
   if (!::killHard.load(std::memory_order_relaxed)) {
-    if (IsDebuggerPresent()) {
-      DebugBreak();
-    } else {
+    //if (IsDebuggerPresent()) {
+    //  DebugBreak();
+    //} //else {
       createMiniDump(nullptr);
-    }
+   // }
   }
 #endif
 
