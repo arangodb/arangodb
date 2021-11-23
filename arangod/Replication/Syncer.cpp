@@ -745,7 +745,7 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* col = resolveCollection(*vocbase, slice).get();
+  auto col = resolveCollection(*vocbase, slice);
 
   if (col == nullptr) {
     if (reportError) {

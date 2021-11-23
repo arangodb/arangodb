@@ -4,6 +4,9 @@ v3.8.4 (XXXX-XX-XX)
 * Removed an invalid assertion that could be triggered during chaos testing in
   maintainer mode.
 
+* Improved sync protocol to commit after each chunk and get rid of
+  potentially dangerous NO_INDEXING optimization.
+
 * Do not expose "parallelism" key in responses to Pregel control job requests
   when parallelism is not set. This avoids returning a "parallelism" attribute
   in the response with a value "(non-representable type none)".
