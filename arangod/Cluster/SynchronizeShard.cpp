@@ -1044,7 +1044,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   
   // we should not yet have an upper bound for WAL tailing.
   // the next call to startReadLockOnLeader may set it if the leader already implements
-  // it (ArangoDB 3.8.3 and higher)
+  // it (ArangoDB 3.7.16 and higher or 3.8.3 and higher)
   TRI_ASSERT(_tailingUpperBoundTick == 0);
 
   Result res = startReadLockOnLeader(ep, database, collection.name(), clientId,
