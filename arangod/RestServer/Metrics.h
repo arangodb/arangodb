@@ -46,6 +46,12 @@ class Metric {
   std::string const& name() const;
   std::string const& labels() const;
   virtual std::string type() const = 0;
+  virtual void toPrometheusBegin(std::string& result, std::string_view name) const {
+    result.append("# HELP ").append(name).append(" ").append(help()).append(
+        "\n");
+    result.append("# TYPE ").append(name).append(" ").append(type()).append(
+        "\n");
+  }
   virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName = std::string()) const = 0;
   void header(std::string& result) const;
  protected:
@@ -169,7 +175,11 @@ template<typename T> class Gauge : public Metric {
     _g.store(t, std::memory_order_relaxed);
     return *this;
   }
-  
+
+  void store(T value, std::memory_order mo) noexcept {
+    return _g.store(value, mo);
+  }
+
   T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
   
   void toPrometheus(std::string& result, std::string const& globalLabels, std::string const& alternativeName) const override {
@@ -190,6 +200,39 @@ template<typename T> class Gauge : public Metric {
   }
  private:
   std::atomic<T> _g;
+};
+
+template <typename T>
+class GuardMetric final : public Metric {
+ public:
+  GuardMetric(T&& metric, std::string const& name, std::string const& help,
+              std::string const& labels)
+      : Metric(name, help, labels), _metric{std::move(metric)} {}
+
+  std::string type() const final { return "untyped"; }
+
+  void toPrometheusBegin(std::string& result, std::string_view name) const final {
+    std::lock_guard guard{_m};
+    _metric.needName();
+  }
+  void toPrometheus(std::string& result, std::string const& globals,
+                    std::string const&) const final {
+    load().toPrometheus(result, globals, labels());
+  }
+
+  void store(T&& metric) {
+    std::lock_guard guard{_m};
+    _metric = std::move(metric);
+  }
+
+ private:
+  T load() const {
+    std::lock_guard guard{_m};
+    return _metric;
+  }
+
+  mutable std::mutex _m;
+  T _metric;
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);

@@ -27,7 +27,7 @@
 
 namespace arangodb {
 
-LocalDocumentId::LocalDocumentId(RevisionId const& id) noexcept
+LocalDocumentId::LocalDocumentId(RevisionId id) noexcept
     : Identifier(id.id()) {}
 
 bool LocalDocumentId::isSet() const noexcept { return id() != 0; }
@@ -40,11 +40,11 @@ LocalDocumentId LocalDocumentId::create() {
 }
 
 /// @brief create a document id from an existing revision id
-LocalDocumentId LocalDocumentId::create(RevisionId const& rid) {
+LocalDocumentId LocalDocumentId::create(RevisionId rid) {
   return LocalDocumentId{rid.id()};
 }
 
-void LocalDocumentId::track(LocalDocumentId const& id) {
+void LocalDocumentId::track(LocalDocumentId id) {
   TRI_HybridLogicalClock(id.id());
 }
 
