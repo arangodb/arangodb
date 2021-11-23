@@ -1,6 +1,9 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Improved sync protocol to commit after each chunk and get rid of potentially
+  dangerous NO_INDEXING optimization.
+
 * Removed an invalid assertion that could be triggered during chaos testing in
   maintainer mode.
 
@@ -124,7 +127,6 @@ v3.9.0 (XXXX-XX-XX)
 
 * Fixed SEARCH-260: Fix invalid sorting order of stored features in presence of
   primary sort (ArangoSearch).
-
 
 * Change error message for queries that use too much memory from "resource limit
   exceeded" to "query would use more memory than allowed".
