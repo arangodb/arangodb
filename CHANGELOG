@@ -5626,6 +5626,7 @@ devel
 
 * Fixed an agency bug found in Windows tests.
 
+* Changed Foxx service generator output to use static variable names
 
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
