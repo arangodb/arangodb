@@ -783,9 +783,6 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }
-  if (hasSmartGraphAttribute()) {
-    result.add(StaticStrings::GraphSmartGraphAttribute, VPackValue(_smartGraphAttribute));
-  }
 
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
