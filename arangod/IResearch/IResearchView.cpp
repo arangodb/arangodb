@@ -1043,28 +1043,17 @@ Result IResearchView::updateProperties(
     // ...........................................................................
 
     std::unordered_set<DataSourceId> collections;
-
-    if (partialUpdate) {
-      mtx.unlock(); // release lock
-
-      auto lock = irs::make_lock_guard(_updateLinksLock);
-
-      return IResearchLinkHelper::updateLinks(
-        collections, *this, links, getDefaultVersion(isUserRequest));
-    }
-
     std::unordered_set<DataSourceId> stale;
-
-    for (auto& entry: _links) {
-      stale.emplace(entry.first);
+    if (!partialUpdate) {
+      for (auto& entry : _links) {
+        stale.emplace(entry.first);
+      }
     }
-
-    mtx.unlock(); // release lock
+    mtx.unlock();  // release lock
 
     auto lock = irs::make_lock_guard(_updateLinksLock);
-
-    return IResearchLinkHelper::updateLinks(
-      collections, *this, links, getDefaultVersion(isUserRequest), stale);
+    return IResearchLinkHelper::updateLinks(collections, *this, links,
+                                            getDefaultVersion(isUserRequest), stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("74705", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
