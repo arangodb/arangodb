@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded bundled version of RocksDB to 6.27.
+
 * Updated immer to version 0.7.0.
 
 * Improved sync protocol to commit after each chunk and get rid of
