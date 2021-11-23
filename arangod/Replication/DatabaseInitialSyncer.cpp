@@ -156,6 +156,11 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
   }
 }
 
+/// @brief return information about the leader
+replutils::MasterInfo DatabaseInitialSyncer::leaderInfo() const {
+  return _config.master;
+}
+
 /// @brief run method, performs a full synchronization
 Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory,
                                                char const* context) {
@@ -175,6 +180,12 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
 
     LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting master state to dump " << vocbase().name();
+    
+    auto batchCancelation = scopeGuard([this]() {
+      if (!_config.isChild()) {
+        batchFinish();
+      }
+    });
 
     Result r = sendFlush();
     if (r.fail()) {
@@ -253,10 +264,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     auto pair = rocksutils::stripObjectIds(collections);
     r = handleCollectionsAndViews(pair.first, views, incremental);
 
-    if (!_config.isChild()) {
-      batchFinish();
-    }
-
     if (r.fail()) {
       LOG_TOPIC("12556", DEBUG, Logger::REPLICATION)
           << "Error during initial sync: " << r.errorMessage();
@@ -267,21 +274,15 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
         << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: "
         << (r.errorMessage().empty() ? "all good" : r.errorMessage());
 
+    if (r.ok() && _onSuccess) {
+      r = _onSuccess(*this);
+    }
+
     return r;
   } catch (arangodb::basics::Exception const& ex) {
-    if (!_config.isChild()) {
-      batchFinish();
-    }
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    if (!_config.isChild()) {
-      batchFinish();
-    }
     return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    if (!_config.isChild()) {
-      batchFinish();
-    }
     return Result(TRI_ERROR_NO_ERROR, "an unknown exception occurred");
   }
 }
@@ -548,7 +549,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       url += "&flush=false";
     } else {
       // only flush WAL once
-      url += "&flush=true&flushWait=180";
+      url += "&flush=true";
       _config.flushed = true;
     }
 

@@ -209,6 +209,25 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
       ++it;
     }
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC("239fb", DEBUG, Logger::REPLICATION)
+      << "replication progress tracker has " << _clients.size() << " clients left";
+
+  if (!_clients.empty()) {
+    for (auto const& it : _clients) {
+      ReplicationClientProgress const& value = it.second;
+
+      LOG_TOPIC("81d72", TRACE, Logger::REPLICATION)
+          << "replication progress tracker entry: "
+          << "server: " << value.clientId.id() 
+          << ", syncer: " << value.syncerId.toString() 
+          << ", lastServed: " << value.lastServedTick 
+          << ", lastSeen: " << value.lastSeenStamp 
+          << ", expire: " << value.expireStamp;
+    }
+  }
+#endif
 }
 
 /// @brief return the lowest lastServedTick value for all clients

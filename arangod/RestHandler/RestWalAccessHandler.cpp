@@ -268,6 +268,17 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
+  if (_request->parsedValue("trackOnly", false)) {
+    // only track this client as a future WAL tailer, so that we do not purge the
+    // WAL files it will need for tailing soon
+    server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+      vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
+                                         replutils::BatchInfo::DefaultTimeoutForTailing);
+    });
+    generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    return;
+  } 
+
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId =
       _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));

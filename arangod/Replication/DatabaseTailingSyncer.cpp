@@ -64,7 +64,9 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
     : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick,
                     useTick, barrierId),
       _vocbase(&vocbase),
-      _queriedTranslations(false) {
+      _toTick(0),
+      _queriedTranslations(false),
+      _unregisteredFromLeader(false) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
   if (configuration._database.empty()) {
@@ -81,21 +83,175 @@ Result DatabaseTailingSyncer::saveApplierState() {
   return rv;
 }
 
+Result DatabaseTailingSyncer::syncCollectionCatchup(std::string const& collectionName,
+                                                    TRI_voc_tick_t fromTick, double timeout,
+                                                    TRI_voc_tick_t& until, bool& didTimeout, 
+                                                    std::string const& context) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+  TRI_ASSERT(!_unregisteredFromLeader);
+
+  try {
+    // always start from _initialTick
+    _initialTick = fromTick;
+    Result res = syncCollectionCatchupInternal(collectionName, timeout, false, until, didTimeout, context);
+    if (res.fail()) {
+      // if we failed, we can already unregister ourselves on the leader, so that
+      // we don't block WAL pruning
+      unregisterFromLeader();
+    }
+    return res;
+  } catch (std::exception const& ex) {
+    // when we leave this method, we must unregister ourselves from the leader,
+    // otherwise the leader may keep WAL logs around for us for too long
+    unregisterFromLeader();
+    return {TRI_ERROR_INTERNAL, ex.what()};
+  }
+}
+
+Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName, 
+                                                     TRI_voc_tick_t fromTick, TRI_voc_tick_t toTick,
+                                                     std::string const& context) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+  TRI_ASSERT(!_unregisteredFromLeader);
+
+  try {
+    // always start from _initialTick
+    _initialTick = fromTick;
+    _toTick = 0;
+    if (toTick > 0) {
+      _toTick = toTick;
+    }
+ 
+    // timeouts will be ignored by syncCollectionCatchupInternal if we set
+    // "hard" to true.
+    TRI_voc_tick_t dummy = 0;
+    bool dummyDidTimeout = false;
+    double dummyTimeout = 300.0;
+    Result res = syncCollectionCatchupInternal(collectionName, dummyTimeout, /*hard*/ true,
+                                               dummy, dummyDidTimeout, context);
+
+    if (res.ok()) {
+      // now do a final sync-to-disk call. note that this can fail
+      auto& engine = vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+      res = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+    }
+
+    if (res.fail()) {
+      LOG_TOPIC("53048", DEBUG, Logger::REPLICATION)
+          << "syncCollectionFinalize failed for collection '" << collectionName << "': " << res.errorMessage();
+    }
+
+    // always unregister our tailer, because syncCollectionFinalize is at
+    // the end of the sync progress
+    unregisterFromLeader();
+
+    return res;
+  } catch (std::exception const& ex) {
+    // when we leave this method, we must unregister ourselves from the leader,
+    // otherwise the leader may keep WAL logs around for us for too long
+    unregisterFromLeader();
+    return {TRI_ERROR_INTERNAL, ex.what()};
+  }
+}
+
+Result DatabaseTailingSyncer::inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer) {
+  replutils::MasterInfo const& leaderInfo = syncer.leaderInfo();
+
+  TRI_ASSERT(!leaderInfo.endpoint.empty());
+  TRI_ASSERT(leaderInfo.endpoint == _state.master.endpoint);
+  TRI_ASSERT(leaderInfo.serverId.isSet());
+  TRI_ASSERT(!leaderInfo.engine.empty());
+
+  _state.master.serverId = leaderInfo.serverId;;
+  _state.master.engine = leaderInfo.engine;
+  _state.master.majorVersion = leaderInfo.majorVersion;
+  _state.master.minorVersion = leaderInfo.minorVersion;
+  
+  _initialTick = syncer.getLastLogTick();
+
+  return registerOnLeader();
+}
+
+Result DatabaseTailingSyncer::registerOnLeader() {
+  std::string const url = tailingBaseUrl("tail") +
+                          "chunkSize=1024" +
+                          "&from=" + StringUtils::itoa(_initialTick) +
+                          "&trackOnly=true" + 
+                          "&serverId=" + _state.localServerIdString +
+                          "&syncerId=" + syncerId().toString();
+  LOG_TOPIC("41510", DEBUG, Logger::REPLICATION) 
+      << "registering tailing syncer on leader, url: " << url;
+
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  // register ourselves on leader once - using a small WAL tail attempt
+  _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+
+    // simply send the request, but don't care about the response. if it
+    // fails, there is not much we can do from here.
+    response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+  });
+    
+  if (replutils::hasFailed(response.get())) {
+    return replutils::buildHttpError(response.get(), url, _state.connection);
+  }
+  return {};
+}
+
+void DatabaseTailingSyncer::unregisterFromLeader() {
+  if (!_unregisteredFromLeader) {
+    try {
+      _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        std::unique_ptr<httpclient::SimpleHttpResult> response;
+        std::string const url = tailingBaseUrl("tail") +
+                                "serverId=" + _state.localServerIdString +
+                                "&syncerId=" + syncerId().toString();
+        LOG_TOPIC("22640", DEBUG, Logger::REPLICATION) 
+            << "unregistering tailing syncer from leader, url: " << url;
+
+        // simply send the request, but don't care about the response. if it
+        // fails, there is not much we can do from here.
+        response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+        _unregisteredFromLeader = true;
+      });
+    } catch (...) {
+      // this must be exception-safe, but if an exception occurs, there is not
+      // much we can do
+    }
+  }
+}
+
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
 Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& collectionName,
                                                             double timeout, bool hard,
                                                             TRI_voc_tick_t& until,
-                                                            bool& didTimeout,
-                                                            char const* context) {
+                                                            bool& didTimeout, std::string const& context) {
   didTimeout = false;
 
   setAborted(false);
-  // fetch master state just once
-  Result r = _state.master.getState(_state.connection, _state.isChildSyncer, context);
-  if (r.fail()) {
-    return r;
+
+  TRI_ASSERT(!_state.isChildSyncer);
+  TRI_ASSERT(!_state.master.endpoint.empty());
+  
+  Result r;
+
+  if (_state.master.engine.empty()) {
+    // fetch leader state only if we need to. this should not be needed, normally
+    TRI_ASSERT(false);
+
+    r = _state.master.getState(_state.connection, /*_state.isChildSyncer*/ false, context.c_str());
+    if (r.fail()) {
+      return r;
+    }
+  } else {
+    LOG_TOPIC("6c922", DEBUG, arangodb::Logger::REPLICATION)
+      << "connected to leader at " << _state.master.endpoint 
+      << ", version " << _state.master.majorVersion << "." << _state.master.minorVersion 
+      << ", context: " << context;
   }
+  
+  TRI_ASSERT(_state.master.serverId.isSet());
+  TRI_ASSERT(!_state.master.engine.empty());
 
   // print extra info for debugging
   _state.applier._verbose = true;
@@ -106,32 +262,14 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
   TRI_voc_tick_t lastScannedTick = fromTick;
 
   if (hard) {
-    LOG_TOPIC("0e15c", DEBUG, Logger::REPLICATION) << "starting syncCollectionFinalize: " << collectionName
-                                          << ", fromTick " << fromTick;
+    LOG_TOPIC("0e15c", DEBUG, Logger::REPLICATION) 
+        << "starting syncCollectionFinalize: " << collectionName
+        << ", fromTick " << fromTick << ", toTick: " << (_toTick > 0 ? std::to_string(_toTick) : "");
   } else {
-    LOG_TOPIC("70711", DEBUG, Logger::REPLICATION) << "starting syncCollectionCatchup: " << collectionName
-                                          << ", fromTick " << fromTick;
+    LOG_TOPIC("70711", DEBUG, Logger::REPLICATION) 
+        << "starting syncCollectionCatchup: " << collectionName
+        << ", fromTick " << fromTick;
   }
-  // when we leave this method, we must unregister ourselves from the leader,
-  // otherwise the leader may keep WAL logs around for us for too long
-  auto unregister = scopeGuard([&]() noexcept {
-    if (ServerState::instance()->isRunningInCluster()) {
-      try {
-        _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-          std::unique_ptr<httpclient::SimpleHttpResult> response;
-          std::string const url = tailingBaseUrl("tail") +
-                                  "serverId=" + _state.localServerIdString +
-                                  "&syncerId=" + syncerId().toString();
-          // simply send the request, but don't care about the response. if it
-          // fails, there is not much we can do from here.
-          response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0));
-        });
-      } catch (...) {
-        // this must be exception-safe, but if an exception occurs, there is not
-        // much we can do
-      }
-    }
-  });
 
   auto clock = std::chrono::steady_clock();
   auto startTime = clock.now();
@@ -142,17 +280,27 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     }
 
     std::string url = tailingBaseUrl("tail") +
-                            "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
-                            "&from=" + StringUtils::itoa(fromTick) +
+                            "collection=" + StringUtils::urlEncode(collectionName) +
                             "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
                             "&serverId=" + _state.localServerIdString +
-                            "&collection=" + StringUtils::urlEncode(collectionName);
+                            "&chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
+                            "&from=" + StringUtils::itoa(fromTick) +
+                            "&serverId=" + _state.localServerIdString;
 
     if (syncerId().value > 0) {
       // we must only send the syncerId along if it is != 0, otherwise we will
       // trigger an error on the leader
       url += "&syncerId=" + syncerId().toString();
     }
+    
+    // optional upper bound for tailing (used to stop tailing if we have the exclusive
+    // lock on the leader and can be sure that no writes can happen on the leader)
+    if (_toTick > 0) {
+      url += "&to=" + StringUtils::itoa(_toTick);
+    }
+
+    LOG_TOPIC("066a8", DEBUG, Logger::REPLICATION)
+        << "tailing WAL for collection '" << collectionName << "', url: " << url;
 
     // send request
     std::unique_ptr<httpclient::SimpleHttpResult> response;
@@ -168,10 +316,6 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     if (response->getHttpReturnCode() == 204) {
       // HTTP 204 No content: this means we are done
       TRI_ASSERT(r.ok());
-      if (hard) {
-        // now do a final sync-to-disk call. note that this can fail
-        r = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
-      }
       until = fromTick;
       return r;
     }
@@ -260,16 +404,21 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     if (!checkMore) {
       // done!
       TRI_ASSERT(r.ok());
-      if (hard) {
-        // now do a final sync-to-disk call. note that this can fail
-        r = EngineSelectorFeature::ENGINE->flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
-      }
       until = fromTick;
+
+      LOG_TOPIC("942ff", DEBUG, Logger::REPLICATION) 
+          << "finished syncCollection" << (hard ? "Finalize" : "Catchup") 
+          << ": " << collectionName
+          << ", initialTick " << _initialTick 
+          << ", last fromTick: " << fromTick  
+          << ", toTick: " << (_toTick > 0 ? std::to_string(_toTick) : "");
+
       return r;
     }
 
-    LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
-                                          << ", lastScannedTick: " << lastScannedTick;
+    LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION) 
+        << "Fetching more data, fromTick: " << fromTick
+        << ", lastScannedTick: " << lastScannedTick;
   }
 }
 

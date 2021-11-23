@@ -155,6 +155,13 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
   /// @brief fetch the server's inventory, public method
   Result getInventory(arangodb::velocypack::Builder& builder);
+  
+  /// @brief return information about the leader
+  replutils::MasterInfo leaderInfo() const;
+
+  void setOnSuccessCallback(std::function<Result(DatabaseInitialSyncer&)> const& cb) {
+    _onSuccess = cb;
+  }
 
  private:
   /// @brief order a new chunk from the /dump API
@@ -237,6 +244,8 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result batchFinish();
 
   Configuration _config;
+
+  std::function<Result(DatabaseInitialSyncer&)> _onSuccess;
 
   /// @brief whether or not we are a coordinator/dbserver
   bool const _isClusterRole;
