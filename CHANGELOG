@@ -1,6 +1,8 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Upgraded bundled version of RocksDB to 6.27.
+
 * Improved sync protocol to commit after each chunk and get rid of potentially
   dangerous NO_INDEXING optimization.
 
