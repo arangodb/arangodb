@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improved sync protocol to commit after each chunk and get rid of
+  potentially dangerous NO_INDEXING optimization.
+
 * Removed an invalid assertion that could be triggered during chaos testing in
   maintainer mode.
 
