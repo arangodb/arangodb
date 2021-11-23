@@ -1,8 +1,16 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
-* Improved sync protocol to commit after each chunk and get rid of
-  potentially dangerous NO_INDEXING optimization.
+* Improved sync protocol to commit after each chunk and get rid of potentially
+  dangerous NO_INDEXING optimization.
+
+* Removed an invalid assertion that could be triggered during chaos testing in
+  maintainer mode.
+
+* Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
+  "read-own-writes" flag. Previously the tagging only happened after all query
+  optimizations were completed, making the tag unavailable to the optimizer.
+  Now the tag is set early on, so it is accessible by the query optimizer.
 
 * APM-187: The "Rebalance Shards" button now is displayed in a new tab, and it
   is displayed for any database in cluster mode. There is also a new flag for

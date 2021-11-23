@@ -375,7 +375,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 void Optimizer::finalizePlans() {
   for (auto& plan : _plans.list) {
     insertDistributeInputCalculation(*plan.first);
-    enableReadOwnWritesForUpsertSubquery(*plan.first);
     activateCallstackSplit(*plan.first);
     if (plan.first->isAsyncPrefetchEnabled()) {
       enableAsyncPrefetching(*plan.first);
