@@ -1,0 +1,69 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:tests_organization Declaring and organizing tests]
+
+If you look at many legacy test modules, big chance is that it's implemented as one big test function that
+consists of a mixture of check and output statements. Is there anything wrong with it? Yes. There are various
+disadvantages in single test function approach:
+
+* One big function tends to become really difficult to manage if the number of checks exceeds a reasonable limit
+  (true for any large function). What is tested and where - who knows?
+* Many checks require similar preparations. This results in code repetitions within the test function.
+* If a fatal error or an exception is caused by any checks within the test function the rest of tests are
+  skipped and there is no way to prevent this.
+* No way to perform only checks for a particular subsystem of the tested unit.
+* No summary of how different subsystems of the tested unit performed under in the test.
+
+The above points should make it clear that it's preferable to split a [link ref_test_module test module] into smaller *units*.
+These units are the *test cases*, the *test suites* and the *fixtures*.
+
+[variablelist Subjects covered by this section
+  [
+    [Declaration]
+    [The __UTF__ supports several methods for declaring a [link boost_test.tests_organization.test_cases test case].
+    Test cases can be implemented using free function like syntax or based on actual free function, function object,
+    that can be defined with or without parameters/data, or as template functions to be run against various types. ]
+  ]
+  [
+    [Organization]
+    [The __UTF__ provides facilities to group several test cases into [link boost_test.tests_organization.test_tree.test_suite test suites].
+    The test suites can be nested, and the set of test suites and test cases defines the [link boost_test.tests_organization.test_tree test tree],
+    where the leaves are the test cases.
+    Besides hierarchical structure the __UTF__ allows you to organize the test tree using [link boost_test.tests_organization.tests_grouping logical grouping]
+    and [link boost_test.tests_organization.tests_dependencies dependencies]
+    and provides you with controls to utilize the defined test tree organization the way you want (eg. from command line).
+    ]
+  ]
+  [
+    [Attributes]
+    [It is possible to specify test unit /attributes/ by using [link boost_test.tests_organization.decorators decorators].
+     Attributes are used for a fine grained control over various aspects of test module execution, such as /logical grouping/,
+    /dependencies/, /expected failures/, etc.]
+  ]
+  [
+    [Setup/teardown test unit actions]
+    [When several tests shares the same set-up (environment, test data preparation, etc.), the preparation and cleanup code
+     may be factorized in [link boost_test.tests_organization.fixtures fixtures].
+     In the __UTF__, fixtures can be associated to test cases, test suites or globally to the test module.
+    ]
+  ]
+]
+
+[include test_cases.qbk]
+[include test_tree.qbk]
+[include decorators.qbk]
+[include fixtures.qbk]
+[include managing_tests_dependencies.qbk]
+[include logical_grouping.qbk]
+[include test_enabling_disabling.qbk]
+[include semantic.qbk]
+[include testorg_summary.qbk]
+
+[endsect] [/ test organization]
+
+[/EOF]

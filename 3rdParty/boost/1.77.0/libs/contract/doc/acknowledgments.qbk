@@ -1,0 +1,34 @@
+
+[/ Copyright (C) 2008-2018 Lorenzo Caminiti]
+[/ Distributed under the Boost Software License, Version 1.0 (see accompanying]
+[/ file LICENSE_1_0.txt or a copy at http://www.boost.org/LICENSE_1_0.txt).]
+[/ See: http://www.boost.org/doc/libs/release/libs/contract/doc/html/index.html]
+
+[section Acknowledgments]
+
+This section tries to recognize the contributions of all the different people that participated directly or indirectly to the design and development of this library.
+
+Sincere thanks to my parents for their support with my education and my studies in computer science.
+
+Many thanks to Andrzej Krzemienski for reviewing early versions of this library providing valuable insights and exchanging early ideas on assertion requirements.
+
+Many thanks to Vicente J. Botet Escriba for reviewing earlier versions of this library providing valuable insights and for suggesting to use a dedicated trait to copy old values.
+
+Thanks to Steven Watanabe for providing valuable insights on C++, SFINAE, and introspection.
+
+Thanks to Dave Abrahams for moderating the Boost review of this library.
+
+Thanks to Daniel James for his help with incorporating this library files into the Boost Git repository.
+
+Thanks to James E. King III for integrating this library with Boost's Continuous Integration (CI).
+
+Thanks to David Maley for sharing source code form his inspiring work on emulating contract programming and subcontracting in C++ in __Maley99__.
+
+Many thanks to Thorsten Ottosen for his work on the __N1962__ proposal (and its previous revisions) and for clarifying the proposal requirements directly with the library authors when needed.
+
+Many thanks to Bertrand Meyer for his pioneering and thorough work on contract programming in __Meyer97__.
+
+Finally, many thanks to the entire Boost community and [@http://lists.boost.org mailing list] for providing valuable comments on this library and great insights on the C++ programming language.
+
+[endsect]
+

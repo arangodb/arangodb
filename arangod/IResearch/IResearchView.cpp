@@ -115,7 +115,7 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
 
 void ViewTrxState::add(arangodb::DataSourceId cid,
                        arangodb::iresearch::IResearchLink::Snapshot&& snapshot) {
-  auto& reader = static_cast<irs::index_reader const&>(snapshot);
+  auto& reader = snapshot.getDirectoryReader();
   for (auto& entry : reader) {
     _subReaders.emplace_back(std::piecewise_construct, std::forward_as_tuple(cid),
                              std::forward_as_tuple(&entry));
@@ -876,7 +876,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
         snapshot = link->snapshot();
       }
 
-      if (!static_cast<irs::directory_reader const&>(snapshot)) {
+      if (!snapshot.getDirectoryReader()) {
         LOG_TOPIC("e76eb", ERR, arangodb::iresearch::TOPIC)
             << "failed to get snaphot of arangosearch link in collection '"
             << cid << "' for arangosearch view '" << name() << "', skipping it";

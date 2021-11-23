@@ -1,0 +1,134 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright (c) 2013-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+# Copyright (c) 2018-2019 Mateusz Loskot <mateusz@loskot.net>
+# Copyright (c) 2018 Dmitry Arkhipov
+# Copyright (c) 2007-2015 Andrey Semashev
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import ../../config/checks/config : requires ;
+import os ;
+import path ;
+import regex ;
+import sequence ;
+import testing ;
+
+# Avoid warnings flood from CI builds
+if ! [ os.environ CI ] && ! [ os.environ AGENT_JOBSTATUS ] && ! [ os.environ GITHUB_ACTIONS ]
+{
+  DEVELOPMENT_EXTRA_WARNINGS =
+    <toolset>msvc:<cxxflags>"-W4"
+    <toolset>gcc:<cxxflags>"-pedantic -Wextra -Wcast-align -Wconversion -Wfloat-equal -Wshadow -Wsign-promo -Wstrict-aliasing -Wunused-parameter"
+    <toolset>clang,<variant>debug:<cxxflags>"-pedantic -Wextra -Wcast-align -Wconversion -Wfloat-equal -Wshadow -Wsign-promo -Wstrict-aliasing -Wunused-parameter -Wsign-conversion"
+    <toolset>clang,<variant>release:<cxxflags>"-pedantic -Wextra -Wcast-align -Wconversion -Wfloat-equal -Wshadow -Wsign-promo -Wstrict-aliasing -Wunused-parameter -Wsign-conversion"
+    <toolset>darwin:<cxxflags>"-pedantic -Wextra -Wcast-align -Wconversion -Wfloat-equal -Wshadow -Wsign-promo -Wstrict-aliasing -Wunused-parameter"
+    ;
+}
+else
+{
+  DEVELOPMENT_EXTRA_WARNINGS =
+    <toolset>msvc:<cxxflags>"-W1"
+    ;
+}
+
+project
+  :
+  requirements
+    <include>.
+    # TODO: Enable concepts check for all, not just test/core
+    #<define>BOOST_GIL_USE_CONCEPT_CHECK=1
+    <toolset>msvc:<cxxflags>"-bigobj"
+    <toolset>msvc:<asynch-exceptions>on
+    <toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
+    <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
+    <toolset>msvc:<define>_CRT_NONSTDC_NO_DEPRECATE
+    <toolset>msvc:<define>NOMINMAX
+    <toolset>intel:<debug-symbols>off
+    <toolset>gcc:<cxxflags>"-fstrict-aliasing"
+    <toolset>darwin:<cxxflags>"-fstrict-aliasing"
+    # variant filter for clang is necessary to allow ubsan_*
+    # custom variants declare distinct set of <cxxflags>
+    <toolset>clang,<variant>debug:<cxxflags>"-fstrict-aliasing"
+    <toolset>clang,<variant>release:<cxxflags>"-fstrict-aliasing"
+    $(DEVELOPMENT_EXTRA_WARNINGS)
+    [ requires
+        cxx11_constexpr
+        cxx11_defaulted_functions
+        cxx11_template_aliases
+        cxx11_trailing_result_types  # implies decltype and auto
+        cxx11_variadic_templates
+    ]
+  ;
+
+variant gil_ubsan_integer
+    : release
+    :
+    <cxxflags>"-Wno-unused -fstrict-aliasing -fno-omit-frame-pointer -fsanitize=integer -fno-sanitize-recover=integer -fsanitize-blacklist=libs/gil/.ci/blacklist.supp"
+    <linkflags>"-fsanitize=integer"
+    <debug-symbols>on
+    <define>BOOST_USE_ASAN=1
+    ;
+
+variant gil_ubsan_nullability
+    : release
+    :
+    <cxxflags>"-Wno-unused -fstrict-aliasing -fno-omit-frame-pointer -fsanitize=nullability -fno-sanitize-recover=nullability -fsanitize-blacklist=libs/gil/.ci/blacklist.supp"
+    <linkflags>"-fsanitize=nullability"
+    <debug-symbols>on
+    <define>BOOST_USE_ASAN=1
+    ;
+
+variant gil_ubsan_undefined
+    : release
+    :
+    <cxxflags>"-Wno-unused -fstrict-aliasing -fno-omit-frame-pointer -fsanitize=undefined -fno-sanitize-recover=undefined -fsanitize-blacklist=libs/gil/.ci/blacklist.supp"
+    <linkflags>"-fsanitize=undefined"
+    <debug-symbols>on
+    <define>BOOST_USE_ASAN=1
+    ;
+
+rule generate_self_contained_headers ( headers_subpath * : exclude_subpaths * )
+{
+    # On CI services, test the self-contained headers on-demand only to avoid build timeouts
+    # CI environment is common for Travis CI, AppVeyor, CircleCI, etc.
+    # For example:
+    # if ! [ os.environ CI ] || [ os.environ TEST_HEADERS ] {
+    #    alias self_contained_headers : [ generate_self_contained_headers ] ;
+    # }
+
+    local targets ;
+
+    # NOTE: All '/' in test names are replaced with '-' because apparently
+    #       test scripts have a problem with test names containing slashes.
+
+    local top_headers_path = [ path.make $(BOOST_ROOT)/libs/gil/include/boost/gil ] ;
+    local headers_path = $(top_headers_path) ;
+    if $(headers_subpath)
+    {
+        headers_path = $(top_headers_path)/$(headers_subpath) ;
+    }
+
+    for local file in [ path.glob-tree $(headers_path) : *.hpp : $(exclude_subpaths) ]
+    {
+        local target_no = [ sequence.length $(targets) ] ;
+        local rel_file = [ path.relative-to $(top_headers_path) $(file) ] ;
+        local target_name = [ regex.replace h/$(target_no)/$(rel_file) "/" "-" ] ;
+        local target_name = [ regex.replace $(target_name) "\.hpp" "" ] ;
+        targets += [
+            compile $(BOOST_ROOT)/libs/gil/test/header/main.cpp
+            : <define>"BOOST_GIL_TEST_HEADER=$(rel_file)" <dependency>$(file)
+            : $(target_name)
+        ] ;
+    }
+
+    return $(targets) ;
+}
+
+run test_utility_output_stream.cpp ;
+
+build-project core ;
+build-project legacy ;
+build-project extension ;

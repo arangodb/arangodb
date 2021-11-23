@@ -1,0 +1,17 @@
+{
+    "key": "static_assert",
+    "name": "Static Assert",
+    "authors": [
+        "John Maddock"
+    ],
+    "description": "Static assertions (compile time assertions).",
+    "category": [
+        "Correctness",
+        "Generic",
+        "Metaprogramming"
+    ],
+    "maintainers": [
+        "John Maddock <john -at- johnmaddock.co.uk>"
+    ],
+    "cxxstd": "03"
+}

@@ -1,0 +1,53 @@
+project
+  : requirements
+    <address-model>32:<dll-path>C:/vcpkg/installed/x86-windows/bin
+    <address-model>64:<dll-path>C:/vcpkg/installed/x64-windows/bin
+  ;
+
+using libjpeg
+  :
+  : <include>C:/vcpkg/installed/x86-windows/include <search>C:/vcpkg/installed/x86-windows/lib
+  : <address-model>32
+  ;
+
+using libjpeg
+  :
+  : <include>C:/vcpkg/installed/x64-windows/include <search>C:/vcpkg/installed/x64-windows/lib
+  : <address-model>64
+  ;
+
+using libpng
+  :
+  : <include>C:/vcpkg/installed/x86-windows/include <search>C:/vcpkg/installed/x86-windows/lib
+  : <address-model>32
+  ;
+
+using libpng
+  :
+  : <include>C:/vcpkg/installed/x64-windows/include <search>C:/vcpkg/installed/x64-windows/lib
+  : <address-model>64
+  ;
+
+using libtiff
+  :
+  : <include>C:/vcpkg/installed/x86-windows/include <search>C:/vcpkg/installed/x86-windows/lib
+  : <address-model>32
+  ;
+
+using libtiff
+  :
+  : <include>C:/vcpkg/installed/x64-windows/include <search>C:/vcpkg/installed/x64-windows/lib
+  : <address-model>64
+  ;
+
+using zlib
+  :
+  : <include>C:/vcpkg/installed/x86-windows/include <search>C:/vcpkg/installed/x86-windows/lib
+  : <address-model>32
+  ;
+
+using zlib
+  :
+  : <include>C:/vcpkg/installed/x64-windows/include <search>C:/vcpkg/installed/x64-windows/lib
+  : <address-model>64
+  ;

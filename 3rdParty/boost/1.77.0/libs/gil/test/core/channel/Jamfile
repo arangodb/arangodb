@@ -1,0 +1,23 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright (c) 2018-2020 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+compile is_channel_integral.cpp ;
+
+run concepts.cpp ;
+run channel_traits.cpp ;
+run test_fixture.cpp ;
+run packed_channel_value.cpp ;
+run scoped_channel_value.cpp ;
+
+run algorithm_channel_arithmetic.cpp ;
+run algorithm_channel_convert.cpp ;
+run algorithm_channel_invert.cpp ;
+run algorithm_channel_multiply.cpp ;
+run algorithm_channel_relation.cpp ;
