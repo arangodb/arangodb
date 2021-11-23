@@ -399,7 +399,7 @@ void processJob(arangodb::httpclient::SimpleHttpClient& client, arangodb::DumpFe
 [[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) {
   bool isOldStyleName = 
       arangodb::DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, 
-                                                     arangodb::velocypack::StringRef(databaseName));
+                                                     std::string_view(databaseName));
   return isOldStyleName ? databaseName : id;
 }
 

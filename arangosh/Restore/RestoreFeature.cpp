@@ -27,12 +27,12 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <chrono>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <unordered_set>
 
@@ -165,14 +165,14 @@ uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
 void makeAttributesUnique(arangodb::velocypack::Builder& builder,
                           arangodb::velocypack::Slice slice) {
   if (slice.isObject()) {
-    std::unordered_set<arangodb::velocypack::StringRef> keys;
+    std::unordered_set<std::string_view> keys;
 
     builder.openObject();
 
     auto it = arangodb::velocypack::ObjectIterator(slice, true);
 
     while (it.valid()) {
-      if (!keys.emplace(it.key().stringRef()).second) {
+      if (!keys.emplace(it.key().stringView()).second) {
         // duplicate key
         it.next();
         continue;
