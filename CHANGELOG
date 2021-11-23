@@ -3,6 +3,11 @@ devel
 
 * Updated immer to version 0.7.0.
 
+* Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
+  "read-own-writes" flag. Previously the tagging only happened after all query
+  optimizations were completed, making the tag unavailable to the optimizer.
+  Now the tag is set early on, so it is accessible by the query optimizer.
+
 * Make the `--version` and `--version-json` commands usable in arangobackup
   when no positional argument (operation type) was specified. Previously,
   arangobackup insisted on specifying the operation type alongside the

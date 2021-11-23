@@ -89,9 +89,31 @@ function ReplicatedLogsWriteSuite () {
       let log = db._replicatedLog(logId);
       let index = 0;
       for (let i = 0; i < 100; i++) {
-        let next = log.insert({foo: i}).index;
+        let result = log.insert({foo: i});
+        assertTrue('quorum' in result.result &&
+            'commitIndex' in result.result);
+        let next = result.index;
         assertTrue(next > index);
         index = next;
+      }
+      let status = log.status();
+      assertTrue(status.local.commitIndex >= index);
+    },
+
+    testMultiInsert : function() {
+      let log = db._replicatedLog(logId);
+      let index = 0;
+      for (let i = 0; i < 100; i += 3) {
+        let result = log.multiInsert([{foo0: i}, {foo1: i + 1}, {foo2: i + 2}]);
+        assertTrue('quorum' in result.result &&
+            'commitIndex' in result.result);
+        let indexes = result.indexes;
+        assertTrue(Array.isArray(indexes));
+        assertTrue(indexes.length === 3);
+        assertTrue(index < indexes[0] &&
+            indexes[0] < indexes[1] &&
+            indexes[1] < indexes[2]);
+        index = indexes[indexes.length - 1];
       }
       let status = log.status();
       assertTrue(status.local.commitIndex >= index);

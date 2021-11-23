@@ -128,6 +128,9 @@ LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
   if (auto ss = slice.get("supervision"); !ss.isNone()) {
     supervision = LogCurrentSupervision{from_velocypack, ss};
   }
+  if (auto ls = slice.get("leader"); !ls.isNone()) {
+    leader.emplace(Leader{ls.get("term").extract<LogTerm>()});
+  }
 }
 
 LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t, VPackSlice slice) {
@@ -156,6 +159,10 @@ auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
   if (supervision.has_value()) {
     builder.add(VPackValue("supervision"));
     supervision->toVelocyPack(builder);
+  }
+  if (leader.has_value()) {
+    VPackObjectBuilder ob(&builder, "leader");
+    builder.add("term", VPackValue(leader->term));
   }
 }
 

@@ -33,6 +33,7 @@
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 
+#include <velocypack/StringRef.h>
 
 %}
 
@@ -1333,7 +1334,7 @@ upsert_statement:
 
       scopes->start(arangodb::aql::AQL_SCOPE_FOR);
       std::string const variableName = parser->ast()->variables()->nextName();
-      auto forNode = parser->ast()->createNodeFor(variableName.c_str(), variableName.size(), parser->ast()->createNodeArray(), false);
+      auto forNode = parser->ast()->createNodeForUpsert(variableName.c_str(), variableName.size(), parser->ast()->createNodeArray(), false);
       parser->ast()->addOperation(forNode);
 
       auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), $3);
@@ -1370,7 +1371,7 @@ upsert_statement:
         for (size_t i = 0; i < $10->numMembers(); ++i) {
           auto nodeMember = $10->getMember(i);
           if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
-            std::string nodeMemberName = nodeMember->getString();
+            arangodb::velocypack::StringRef nodeMemberName = nodeMember->getStringRef();
             if (nodeMemberName == "indexHint" || nodeMemberName == "forceIndexHint") {
               forOptionsNode->addMember(nodeMember);
             } else {
