@@ -405,13 +405,9 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.largestCommonIndex = leaderData._largestCommonIndex;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
-<<<<<<< HEAD
     status.acceptedParticipantConfig = *leaderData.activeParticipantConfig;
     status.committedParticipantConfig = *leaderData.committedParticipantConfig;
     for (auto const& [pid, f] : leaderData._follower) {
-=======
-    for (FollowerInfo const& f : leaderData._follower) {
->>>>>>> origin/devel
       auto lastRequestLatencyMS =
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f->_lastRequestLatency);
       auto state = std::invoke([&, &f = f] {
@@ -464,12 +460,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
   auto const index = this->_inMemoryLog.getNextIndex();
   auto const payloadSize = payload.has_value() ? payload->byteSize() : 0;
   auto logEntry =
-<<<<<<< HEAD
       InMemoryLogEntry(PersistingLogEntry(_self._currentTerm, index, std::move(payload)),
                        waitForSync);
-=======
-      InMemoryLogEntry(PersistingLogEntry(_self._currentTerm, index, std::move(payload)), waitForSync);
->>>>>>> origin/devel
   logEntry.setInsertTp(insertTp.has_value() ? *insertTp : InMemoryLogEntry::clock::now());
   this->_inMemoryLog.appendInPlace(_self._logContext, std::move(logEntry));
   _self._logMetrics->replicatedLogInsertsBytes->count(payloadSize);
@@ -1114,7 +1106,6 @@ void replicated_log::LogLeader::establishLeadership() {
   });
 }
 
-<<<<<<< HEAD
 void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config) {
   LOG_CTX("ac277", DEBUG, _logContext)
       << "updating configuration to generation " << config->generation;
@@ -1179,8 +1170,6 @@ auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
   });
 }
 
-=======
->>>>>>> origin/devel
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const -> Result {
   auto res = _guardedLogCore.doUnderLock([&](auto& core) {
     LOG_CTX("23745", DEBUG, _logContext)
