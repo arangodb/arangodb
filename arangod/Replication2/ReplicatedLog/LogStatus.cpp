@@ -73,6 +73,7 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(StaticStrings::Term, VPackValue(term.value));
   builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
   builder.add("commitLagMS", VPackValue(commitLagMS.count()));
+  builder.add("leadershipEstablished", VPackValue(leadershipEstablished));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
   builder.add(VPackValue("lastCommitStatus"));
@@ -92,6 +93,7 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
   status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
+  status.leadershipEstablished = slice.get("leadershipEstablished").isTrue();
   status.commitLagMS = std::chrono::duration<double, std::milli>{
       slice.get("commitLagMS").extract<double>()};
   status.lastCommitStatus =

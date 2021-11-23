@@ -1489,6 +1489,29 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
             std::shared_ptr<LocalStatus const> localStatus() const {
               return LocalStatus::make_shared(shared_from_this());
             }
+
+            class Leader : public StaticComponent<Leader, Log> {
+             public:
+              constexpr char const* component() const noexcept { return "leader"; }
+
+              using BaseType::StaticComponent;
+
+              class Term : public StaticComponent<Term, Leader> {
+               public:
+                constexpr char const* component() const noexcept { return "term"; }
+
+                using BaseType::StaticComponent;
+              };
+
+              std::shared_ptr<Term const> term() const {
+                return Term::make_shared(shared_from_this());
+              }
+
+            };
+
+            std::shared_ptr<Leader const> leader() const {
+              return Leader::make_shared(shared_from_this());
+            }
           };
 
           std::shared_ptr<Log const> log(std::string value) const {
