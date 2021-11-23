@@ -215,7 +215,11 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 ## IMMER
 ################################################################################
 
-set(IMMER_VERSION "0.6.2")
+set(IMMER_VERSION "0.7.0")
+set(immer_BUILD_EXAMPLES    OFF CACHE BOOL "don't build examples")
+set(immer_BUILD_EXTRAS    OFF CACHE BOOL "don't build extras")
+set(immer_BUILD_TESTS OFF CACHE BOOL "don't build tests")
+set(immer_BUILD_DOCS OFF CACHE BOOL "don't docs")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
 
 ################################################################################
