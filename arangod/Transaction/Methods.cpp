@@ -2807,4 +2807,10 @@ ErrorCode Methods::validateSmartJoinAttribute(LogicalCollection const&,
                                               arangodb::velocypack::Slice) {
   return TRI_ERROR_NO_ERROR;
 }
+
+ErrorCode Methods::validateSmartJoinAttribute(LogicalCollection const&,
+                                              arangodb::velocypack::Slice,
+                                              arangodb::velocypack::StringRef const& generatedKey) {
+  return TRI_ERROR_NO_ERROR;
+}
 #endif
