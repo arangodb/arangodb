@@ -383,12 +383,14 @@ auto replicated_log::CommitFailReason::withNothingToCommit() noexcept -> CommitF
   return CommitFailReason(std::in_place, NothingToCommit{});
 }
 
-auto replicated_log::CommitFailReason::withQuorumSizeNotReached() noexcept -> CommitFailReason {
-  return CommitFailReason(std::in_place, QuorumSizeNotReached{});
+auto replicated_log::CommitFailReason::withQuorumSizeNotReached(ParticipantId who) noexcept
+    -> CommitFailReason {
+  return CommitFailReason(std::in_place, QuorumSizeNotReached{std::move(who)});
 }
 
-auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum() noexcept -> CommitFailReason {
-  return CommitFailReason(std::in_place, ForcedParticipantNotInQuorum{});
+auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum(ParticipantId who) noexcept
+    -> CommitFailReason {
+  return CommitFailReason(std::in_place, ForcedParticipantNotInQuorum{std::move(who)});
 }
 
 namespace {
@@ -398,6 +400,7 @@ inline constexpr std::string_view QuorumSizeNotReachedEnum =
     "QuorumSizeNotReached";
 inline constexpr std::string_view ForcedParticipantNotInQuorumEnum =
     "ForcedParticipantNotInQuorum";
+inline constexpr std::string_view WhoFieldName = "who";
 }  // namespace
 
 auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(velocypack::Slice s)
@@ -421,12 +424,15 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(velo
   TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(QuorumSizeNotReachedEnum)))
       << "Expected string `" << QuorumSizeNotReachedEnum
       << "`, found: " << s.stringView();
-  return {};
+  TRI_ASSERT(s.get(WhoFieldName).isString())
+      << "Expected string, found: " << s.toJson();
+  return {s.get(WhoFieldName).toString()};
 }
 
 void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
   builder.add(VPackStringRef(ReasonFieldName), VPackValue(QuorumSizeNotReachedEnum));
+  builder.add(VPackStringRef(WhoFieldName), VPackValue(who));
 }
 
 auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::fromVelocyPack(velocypack::Slice s)
@@ -436,15 +442,16 @@ auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::fromVelocyP
   TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(ForcedParticipantNotInQuorumEnum)))
       << "Expected string `" << ForcedParticipantNotInQuorumEnum
       << "`, found: " << s.stringView();
-  return {};
+  TRI_ASSERT(s.get(WhoFieldName).isString())
+      << "Expected string, found: " << s.toJson();
+  return {s.get(WhoFieldName).toString()};
 }
 
 void replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
   builder.add(VPackStringRef(ReasonFieldName), VPackValue(ForcedParticipantNotInQuorumEnum));
+  builder.add(VPackStringRef(WhoFieldName), VPackValue(who));
 }
-
-
 
 auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> CommitFailReason {
   auto reason = s.get(ReasonFieldName).stringView();
@@ -471,11 +478,13 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     auto operator()(CommitFailReason::NothingToCommit const&) -> std::string {
       return "Nothing to commit";
     }
-    auto operator()(CommitFailReason::QuorumSizeNotReached const&) -> std::string {
-      return "Required quorum size not yet reached";
+    auto operator()(CommitFailReason::QuorumSizeNotReached const& reason)
+        -> std::string {
+      return "Required quorum size not yet reached. Participant " + reason.who;
     }
-    auto operator()(CommitFailReason::ForcedParticipantNotInQuorum const&) -> std::string {
-      return "Forced participant not in quorum";
+    auto operator()(CommitFailReason::ForcedParticipantNotInQuorum const& reason)
+        -> std::string {
+      return "Forced participant not in quorum. Participant " + reason.who;
     }
   };
 
@@ -513,14 +522,4 @@ auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s) -> Pa
     config.participants.emplace(std::move(id), flags);
   }
   return config;
-}
-
-auto replicated_log::operator==(CommitFailReason const& left,
-                                CommitFailReason const& right) noexcept -> bool {
-  return left.value.index() == right.value.index();
-}
-
-auto replicated_log::operator!=(CommitFailReason const& left,
-                                CommitFailReason const& right) noexcept -> bool {
-  return !(left == right);
 }

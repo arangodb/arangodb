@@ -427,10 +427,12 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
   // if there are no forced participants, this component is just
   // the spearhead (the furthest we could commit to)
   auto minForcedCommitIndex = spearhead;
+  auto minForcedParticipantId = std::optional<ParticipantId>{};
   for (auto const& pt : indexes) {
     if (pt.isForced()) {
       if (pt.index < minForcedCommitIndex) {
         minForcedCommitIndex = pt.index;
+        minForcedParticipantId = pt.id;
       }
     }
   }
@@ -464,13 +466,22 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
     if (spearhead == commitIndex) {
       return {commitIndex, CommitFailReason::withNothingToCommit(), quorum};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
-      return {commitIndex, CommitFailReason::withForcedParticipantNotInQuorum(), {}};
+      TRI_ASSERT(minForcedParticipantId.has_value());
+      return {commitIndex,
+              CommitFailReason::withForcedParticipantNotInQuorum(minForcedParticipantId.value()),
+              {}};
     } else {
-      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(), quorum};
+      // Report the participant whose id is the furthest away from the spearhead
+      auto const& who = nth->id;
+      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(who), quorum};
     }
   }
 
-  // This case happens when all servers are either excluded or failed;
-  // this certainly means we could not reach a quorum
-  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(), {}};
+  // This happens when all servers are either excluded or failed;
+  // this certainly means we could not reach a quorum;
+  // indexes cannot be empty because this particular case would've been handled
+  // above by comparing actualWriteConcern to 0;
+  TRI_ASSERT(!indexes.empty());
+  auto const& who = indexes.front().id;
+  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(who), {}};
 }
