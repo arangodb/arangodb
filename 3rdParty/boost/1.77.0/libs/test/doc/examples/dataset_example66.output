@@ -1,0 +1,8 @@
+//[example_output
+> dataset_example66
+Running 2 test cases...
+test 1: 0, cat
+test 1: 1, dog
+
+*** No errors detected
+//]

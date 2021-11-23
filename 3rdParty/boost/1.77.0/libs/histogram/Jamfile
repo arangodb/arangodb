@@ -1,0 +1,37 @@
+# Copyright Mateusz Loskot 2018 <mateusz@loskot.net>
+# Copyright Klemens David Morgenstern, Hans P. Dembinski 2016-2017
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# Special builds for Boost Histogram:
+#
+#   Generate coverage data:            b2 cxxstd=latest coverage=on test//all
+#   Test without exceptions and rtti:  b2 cxxstd=latest exception-handling=off rtti=off test//minimal
+#   Test with sanitizers:              b2 toolset=clang cxxstd=latest histogram_ubasan test
+
+import common ;
+
+project
+    : requirements
+    <implicit-dependency>/boost//headers
+    <include>$(BOOST_ROOT)
+    <toolset>clang:<cxxflags>"-pedantic -Wextra -Wsign-compare -Wstrict-aliasing -fstrict-aliasing -Wvexing-parse -Wfloat-conversion"
+    <toolset>gcc:<cxxflags>"-pedantic -Wextra -Wsign-compare -Wstrict-aliasing -fstrict-aliasing -Wfloat-conversion"
+    <toolset>msvc:<cxxflags>"/bigobj"
+    <toolset>intel-win:<cxxflags>"/bigobj"
+    : default-build
+    <warnings>all
+    ;
+
+path-constant THIS_PATH : . ;
+
+# only works with clang because of -fsanitize-blacklist
+variant histogram_ubasan : debug :
+    <cxxflags>"-fno-omit-frame-pointer -O0 -fno-inline -fsanitize=address,leak,undefined -fno-sanitize-recover=all -fsanitize-blacklist=$(THIS_PATH)/tools/blacklist.supp"
+    <linkflags>"-fsanitize=address,leak,undefined"
+    ;
+
+build-project test ;
+build-project examples ;

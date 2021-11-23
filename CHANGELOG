@@ -21,6 +21,8 @@ devel
   arangobackup insisted on specifying the operation type alongside the
   `--version` or `--version-json` commands.
 
+* Updated boost to version 1.77.0.
+
 * Removed the following deprecated arangobench testcases:
   * aqltrx
   * aqlv8

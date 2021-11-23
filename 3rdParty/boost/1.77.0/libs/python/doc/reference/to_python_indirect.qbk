@@ -1,0 +1,65 @@
+[section boost/python/to_python_indirect.hpp]
+[section Introduction]
+ <boost/python/to_python_indirect.hpp> supplies a way to construct new Python objects that hold wrapped C++ class instances via a pointer or smart pointer.
+ [endsect]
+[section Class `to_python_indirect`]
+Class template `to_python_indirect` converts objects of its first argument type to python as extension class instances, using the ownership policy provided by its 2nd argument.
+[table
+[[Parameter][Requirements][Description]]
+ [[T][Either `U cv&` (where cv is any optional cv-qualification) or a [link concepts.dereferenceable Dereferenceable] type such that `*x` is convertible to `U const&`, where `U` is a class type. ][`A` type deferencing a C++ class exposed to Python using class template [link high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel `class_`]. ]]
+[[MakeHolder][`h = MakeHolder::execute(p);` ][A class whose static `execute()` creates an `instance_holder`. ]]
+ ]
+Instantiations of to_python_indirect are models of [link concepts.resultconverter `ResultConverter`]. 
+``
+namespace boost { namespace python
+{
+  template <class T, class MakeHolder>
+  struct to_python_indirect
+  {
+     static bool convertible();
+     PyObject* operator()(T ptr_or_reference) const;
+   private:
+     static PyTypeObject* type();
+  };
+}}
+``
+[endsect]
+[section Class `to_python_indirect` observers]
+``PyObject* operator()(T x) const;``
+[variablelist
+[[Requires][`x` refers to an object (if it is a pointer type, it is non-null). `convertible() == true`.]]
+[[Effects][Creates an appropriately-typed Boost.Python extension class instance, uses MakeHolder to create an instance_holder from x, installs the instance_holder in the new extension class instance, and returns a pointer to it.]]
+]
+[endsect]
+[section Class `to_python_indirect` statics]
+``bool convertible()``
+[variablelist
+[[Effects][Returns true iff any module has registered a Python type corresponding to U. ]]
+]
+[endsect]
+[endsect]
+[section Example]
+This example replicates the functionality of [link function_invocation_and_creation.models_of_resultconvertergenerat.boost_python_reference_existing_.class_reference_existing_object `reference_existing_object`], but without some of the compile-time error checking. 
+``
+struct make_reference_holder
+{
+   typedef boost::python::objects::instance_holder* result_type;
+   template <class T>
+   static result_type execute(T* p)
+   {
+      return new boost::python::objects::pointer_holder<T*, T>(p);
+   }
+};
+
+struct reference_existing_object
+{
+   // metafunction returning the ResultConverter
+   template <class T>
+   struct apply
+   {
+      typedef boost::python::to_python_indirect<T,make_reference_holder> type;
+   };
+};
+``
+[endsect]
+[endsect]

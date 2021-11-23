@@ -1,0 +1,18 @@
+{
+    "key": "static_string",
+    "name": "Static String",
+    "authors": [
+        "Krystian Stasiowski",
+        "Vinnie Falco"
+    ],
+    "description": "A fixed capacity dynamically sized string.",
+    "category": [
+        "Container",
+        "String"
+    ],
+    "maintainers": [
+        "Krystian Stasiowski <sdkrystian@gmail.com>",
+        "Vinnie Falco <vinnie.falco@gmail.com>"
+    ],
+    "cxxstd": "11"
+}
