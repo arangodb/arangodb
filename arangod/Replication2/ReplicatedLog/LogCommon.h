@@ -294,6 +294,42 @@ struct TypedLogIterator {
   // The returned view is guaranteed to stay valid until a successive next()
   // call (only).
   virtual auto next() -> std::optional<T> = 0;
+
+  struct IteratorEndSentinel {};
+
+  struct Iterator {
+    explicit Iterator(TypedLogIterator& ref) : _ref(ref), _value(ref.next()) {}
+    Iterator(Iterator const&) = delete;
+    Iterator& operator=(Iterator const&) = delete;
+    Iterator(Iterator&&) noexcept = default;
+    Iterator& operator=(Iterator&&) noexcept = default;
+
+    auto operator*() const noexcept -> std::optional<T> const& {
+      return _value;
+    }
+    auto operator->() const noexcept -> std::optional<T> const& {
+      return _value;
+    }
+    auto operator++() noexcept -> Iterator& {
+      _value = _ref.next();
+      return *this;
+    }
+
+    friend auto operator==(Iterator const& lhs, IteratorEndSentinel const& rhs) noexcept -> bool {
+      return !lhs._value.has_value();
+    }
+    friend auto operator!=(Iterator const& lhs, IteratorEndSentinel const& rhs) noexcept -> bool {
+      return !(lhs == rhs);
+    }
+
+   private:
+    TypedLogIterator& _ref;
+    std::optional<T> _value;
+  };
+
+  // Note that calling begin consumes the first element of the iterator.
+  auto begin() -> Iterator { return Iterator{*this}; }
+  auto end() const noexcept -> IteratorEndSentinel { return {}; }
 };
 
 template <typename T>
@@ -341,7 +377,6 @@ struct ReplicatedLogGlobalSettings {
   std::size_t _thresholdRocksDBWriteBatchSize{defaultThresholdRocksDBWriteBatchSize};
 };
 
-
 namespace replicated_log {
 struct CommitFailReason {
   CommitFailReason() = default;
@@ -349,8 +384,8 @@ struct CommitFailReason {
   struct NothingToCommit {
     static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
     void toVelocyPack(velocypack::Builder& builder) const;
-    friend auto operator==(NothingToCommit const& left,
-                           NothingToCommit const& right) -> bool = default;
+    friend auto operator==(NothingToCommit const& left, NothingToCommit const& right)
+        -> bool = default;
   };
   struct QuorumSizeNotReached {
     static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
@@ -375,8 +410,8 @@ struct CommitFailReason {
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
 
-  friend auto operator==(CommitFailReason const& left,
-                         CommitFailReason const& right)-> bool = default;
+  friend auto operator==(CommitFailReason const& left, CommitFailReason const& right)
+      -> bool = default;
 
  private:
   template <typename... Args>
@@ -385,7 +420,6 @@ struct CommitFailReason {
 
 auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log
-
 
 }  // namespace arangodb::replication2
 
