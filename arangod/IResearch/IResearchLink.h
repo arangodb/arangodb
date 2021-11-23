@@ -340,6 +340,12 @@ class IResearchLink {
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get index stats for current snapshot
+  /// @note Unsafe, can only be called as in the stats()
+  ////////////////////////////////////////////////////////////////////////////////
+  LinkStats statsUnsafe() const;
+
   friend struct CommitTask;
   friend struct ConsolidationTask;
 

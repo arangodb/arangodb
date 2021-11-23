@@ -923,7 +923,7 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
     _dataStore._reader = reader;
 
     // update stats of the link
-    _linkStats->store(stats());
+    _linkStats->store(statsUnsafe());
 
     // update last committed tick
     impl.tick(_lastCommittedTick);
@@ -2018,37 +2018,36 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) cons
 }
 
 IResearchLink::LinkStats IResearchLink::stats() const {
-  LinkStats stats;
-
   // '_dataStore' can be asynchronously modified
   auto lock = _asyncSelf->lock();
+  return statsUnsafe();
+}
 
-  if (_dataStore) {
-    stats.numBufferedDocs = _dataStore._writer->buffered_docs();
+IResearchLink::LinkStats IResearchLink::statsUnsafe() const {
+  LinkStats stats;
+  if (!_dataStore) {
+    return {};
+  }
+  stats.numBufferedDocs = _dataStore._writer->buffered_docs();
 
-    // copy of 'reader' is important to hold
-    // reference to the current snapshot
-    auto reader = _dataStore._reader;
-
-    if (!reader) {
-      return {};
-    }
-
-    stats.numSegments = reader->size();
-    stats.numDocs = reader->docs_count();
-    stats.numLiveDocs = reader->live_docs_count();
-    stats.numFiles = 1;  // +1 for segments file
-
-    auto visitor = [&stats](std::string const& /*name*/,
-                            irs::segment_meta const& segment) noexcept {
-      stats.indexSize += segment.size;
-      stats.numFiles += segment.files.size();
-      return true;
-    };
-
-    reader->meta().meta.visit_segments(visitor);
+  // copy of 'reader' is important to hold reference to the current snapshot
+  auto reader = _dataStore._reader;
+  if (!reader) {
+    return {};
   }
 
+  stats.numSegments = reader->size();
+  stats.numDocs = reader->docs_count();
+  stats.numLiveDocs = reader->live_docs_count();
+  stats.numFiles = 1;  // +1 for segments file
+
+  auto visitor = [&stats](std::string const& /*name*/, irs::segment_meta const& segment) noexcept {
+    stats.indexSize += segment.size;
+    stats.numFiles += segment.files.size();
+    return true;
+  };
+
+  reader->meta().meta.visit_segments(visitor);
   return stats;
 }
 
