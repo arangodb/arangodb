@@ -282,7 +282,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   argsArray->addMember(accessNodeLon);
   argsArray->addMember(params.latitude);
   argsArray->addMember(params.longitude);
-  auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray, true);
+  auto* funDist = ast->createNodeFunctionCall("DISTANCE", 8, argsArray, true);
 
   AstNode* expressionAst = funDist;
 
@@ -351,7 +351,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
     argsArrayMerge->addMember(obj);
 
     auto* funMerge =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"), argsArrayMerge, true);
+        ast->createNodeFunctionCall("MERGE", 5, argsArrayMerge, true);
 
     Variable* calcMergeOutVariable = ast->variables()->createTemporaryVariable();
     auto calcMergeExpr = std::make_unique<Expression>(ast, funMerge);

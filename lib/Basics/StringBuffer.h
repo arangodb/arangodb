@@ -28,6 +28,7 @@
 #include <cstring>
 #include <iosfwd>
 #include <sstream>
+#include <string_view>
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -410,17 +411,17 @@ class StringBuffer {
   }
 
   /// @brief appends characters
-  StringBuffer& appendText(char const* str) {
-    TRI_AppendString2StringBuffer(&_buffer, str, strlen(str));
+  StringBuffer& appendText(std::string_view str) {
+    TRI_AppendString2StringBuffer(&_buffer, str.data(), str.size());
     return *this;
   }
-
+/*
   /// @brief appends string
   StringBuffer& appendText(std::string const& str) {
     TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
     return *this;
   }
-
+*/
   void appendTextUnsafe(std::string const& str) {
     TRI_AppendStringUnsafeStringBuffer(&_buffer, str.c_str(), str.length());
   }

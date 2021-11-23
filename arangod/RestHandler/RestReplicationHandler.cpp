@@ -1136,8 +1136,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
         _vocbase.isOneShard()) {
       auto const isSatellite =
-          VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
-                                         velocypack::StringRef{""}) == StaticStrings::Satellite;
+          VelocyPackHelper::getStringView(parameters, StaticStrings::ReplicationFactor,
+                                          std::string_view()) == StaticStrings::Satellite;
 
       // force one shard, and force distributeShardsLike to be "_graphs"
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
@@ -1441,7 +1441,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
 
   bool const isUsersCollection = collectionName == StaticStrings::UsersCollection;
 
-  VPackStringRef bodyStr = _request->rawPayload();
+  std::string_view bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
   

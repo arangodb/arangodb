@@ -832,7 +832,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       // avoid double freeing
       TRI_StealStringBuffer(dump.stringBuffer());
     } else {
-      _response->addRawPayload(VPackStringRef(dump.data(), dump.length()));
+      _response->addRawPayload(std::string_view(dump.data(), dump.length()));
       _response->setGenerateBody(true);
     }
   }

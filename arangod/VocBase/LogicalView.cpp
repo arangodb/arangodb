@@ -56,8 +56,8 @@ namespace arangodb {
 // is relevant for this view
 LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
     : LogicalDataSource(LogicalView::category(),
-                        LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringRef(
-                            definition, StaticStrings::DataSourceType, VPackStringRef())),
+                        LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringView(
+                            definition, StaticStrings::DataSourceType, std::string_view())),
                         vocbase, definition) {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
@@ -127,9 +127,8 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
   }
   auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
-  auto type = basics::VelocyPackHelper::getStringRef(
-    definition, StaticStrings::DataSourceType,
-    VPackStringRef(nullptr, 0));
+  auto type = basics::VelocyPackHelper::getStringView(
+    definition, StaticStrings::DataSourceType, std::string_view());
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.create(view, vocbase, definition, isUserRequest);
@@ -202,8 +201,8 @@ Result LogicalView::drop() {
   auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
   auto type =
-      basics::VelocyPackHelper::getStringRef(definition, StaticStrings::DataSourceType,
-                                             velocypack::StringRef(nullptr, 0));
+      basics::VelocyPackHelper::getStringView(definition, StaticStrings::DataSourceType,
+                                              std::string_view());
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.instantiate(view, vocbase, definition);

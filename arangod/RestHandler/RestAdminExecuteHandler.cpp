@@ -59,7 +59,7 @@ RestStatus RestAdminExecuteHandler::execute() {
 
   TRI_ASSERT(server().getFeature<V8DealerFeature>().allowAdminExecute());
 
-  arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
+  std::string_view bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();
   size_t bodySize = bodyStr.size();
 
@@ -141,7 +141,7 @@ RestStatus RestAdminExecuteHandler::execute() {
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
             _response->setContentType(rest::ContentType::TEXT);
-            _response->addRawPayload(VPackStringRef(errorMessage));
+            _response->addRawPayload(std::string_view(errorMessage));
             break;
           }
           case Endpoint::TransportType::VST: {

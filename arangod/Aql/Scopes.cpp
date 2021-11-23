@@ -102,9 +102,9 @@ Variable const* Scope::getVariable(char const* name, size_t nameLength, bool all
     // variable does not exist
     // now try variable aliases OLD (= $OLD) and NEW (= $NEW)
     if (strcmp(name, "OLD") == 0) {
-      variable = getVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD));
+      variable = getVariable(Variable::NAME_OLD, std::strlen(Variable::NAME_OLD));
     } else if (strcmp(name, "NEW") == 0) {
-      variable = getVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW));
+      variable = getVariable(Variable::NAME_NEW, std::strlen(Variable::NAME_NEW));
     }
   }
 

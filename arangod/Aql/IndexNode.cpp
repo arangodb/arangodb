@@ -260,10 +260,10 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node) cons
     if (idx->sparse() || idx->isSorted()) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
-      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array, true);
+      return ast->createNodeFunctionCall("SORTED_UNIQUE", 13, array, true);
     }
     // a regular UNIQUE will do
-    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array, true);
+    return ast->createNodeFunctionCall("UNIQUE", 6, array, true);
   }
 
   // presumably an array with no or a single member

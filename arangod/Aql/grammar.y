@@ -1323,7 +1323,7 @@ upsert_statement:
     T_UPSERT {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
-      parser->pushStack(parser->ast()->createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), true));
+      parser->pushStack(parser->ast()->createNodeVariable(Variable::NAME_OLD, std::strlen(Variable::NAME_OLD), true));
     } expression {
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
 
@@ -1385,7 +1385,7 @@ upsert_statement:
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), $6, $8, $9, upsertOptionsNode);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($7), parser->ast()->createNodeReference(Variable::NAME_OLD, std::strlen(Variable::NAME_OLD)), $6, $8, $9, upsertOptionsNode);
       parser->ast()->addOperation(node);
     }
   ;
@@ -1470,7 +1470,7 @@ function_call:
       parser->pushStack(node);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), list, false);
+      $$ = parser->ast()->createNodeFunctionCall("LIKE", 4, list, false);
     }
   ;
 
@@ -1536,39 +1536,39 @@ operator_binary:
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
+      AstNode* expression = parser->ast()->createNodeFunctionCall("LIKE", 4, arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
   | expression T_NOT T_REGEX_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
+      AstNode* expression = parser->ast()->createNodeFunctionCall("REGEX_TEST", 10, arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
   | expression T_NOT T_REGEX_NON_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
+      $$ = parser->ast()->createNodeFunctionCall("REGEX_TEST", 10, arguments, false);
     }
   | expression T_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
+      $$ = parser->ast()->createNodeFunctionCall("LIKE", 4, arguments, false);
     }
   | expression T_REGEX_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
+      $$ = parser->ast()->createNodeFunctionCall("REGEX_TEST", 10, arguments, false);
     }
   | expression T_REGEX_NON_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      AstNode* node = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
+      AstNode* node = parser->ast()->createNodeFunctionCall("REGEX_TEST", 10, arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
   | expression quantifier T_EQ expression {

@@ -1004,7 +1004,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       auto args = ast->createNodeArray();
       args->addMember(rhs);
       auto sorted =
-          ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
+          ast->createNodeFunctionCall("SORTED_UNIQUE", 13, args, true);
       inNode->changeMember(1, sorted);
       modified = true;
       continue;
@@ -1100,7 +1100,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     auto args = ast->createNodeArray();
     args->addMember(originalArg);
     auto sorted =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
+        ast->createNodeFunctionCall("SORTED_UNIQUE", 13, args, true);
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(ast, sorted);
@@ -6779,7 +6779,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 
     addLocationArg(args);
     AstNode* func =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args, true);
+        ast->createNodeFunctionCall("GEO_DISTANCE", 12, args, true);
 
     TRI_ASSERT(info.maxDistanceExpr || info.minDistanceExpr || info.sorted);
     if (info.minDistanceExpr != nullptr) {
@@ -8313,31 +8313,30 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         }
         auto flags = ast->createNodeObject();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("allowSpecifiedKeys"),
+            "allowSpecifiedKeys", 18,
             ast->createNodeValueBool(allowSpecifiedKeys)));
         flags->addMember(
-            ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+            ast->createNodeObjectElement("ignoreErrors", 12,
                                          ast->createNodeValueBool(ignoreErrors)));
         auto const& collectionName = collection->name();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("collection"),
+            "collection", 10,
             ast->createNodeValueString(collectionName.c_str(), collectionName.length())));
-        // args->addMember(ast->createNodeValueString(collectionName.c_str(), collectionName.length()));
 
         args->addMember(flags);
       } else {
         function = "MAKE_DISTRIBUTE_INPUT";
         auto flags = ast->createNodeObject();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("allowKeyConversionToObject"),
+            "allowKeyConversionToObject", 26,
             ast->createNodeValueBool(allowKeyConversionToObject)));
         flags->addMember(
-            ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+            ast->createNodeObjectElement("ignoreErrors", 12,
                                          ast->createNodeValueBool(ignoreErrors)));
         bool canUseCustomKey = collection->getCollection()->usesDefaultShardKeys() ||
                                allowSpecifiedKeys;
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("canUseCustomKey"), ast->createNodeValueBool(canUseCustomKey)));
+            "canUseCustomKey", 15, ast->createNodeValueBool(canUseCustomKey)));
 
         args->addMember(flags);
       }

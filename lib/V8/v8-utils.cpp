@@ -51,6 +51,8 @@
 #include <iostream>
 #include <memory>
 #include <set>
+#include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
@@ -115,7 +117,6 @@
 #include <unistd.h>
 #endif
 
-#include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -1065,7 +1066,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         try {
           std::string json;
           basics::StringBuffer const& sb = response->getBody();
-          arangodb::velocypack::StringRef body(sb.c_str(), sb.length());
+          std::string_view body(sb.c_str(), sb.length());
 
           bool found = false;
           std::string content =
@@ -1079,7 +1080,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
             velocypack::Validator validator(&validationOptions);
             validator.validate(sb.data(), sb.length());  // throws on error
             json.assign(VPackSlice(reinterpret_cast<uint8_t const*>(sb.data())).toJson());
-            body = arangodb::velocypack::StringRef(json);
+            body = std::string_view(json);
           }
 
           if (outfile.size() > 0) {
@@ -5145,7 +5146,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::set<std::string> wordList;
 
-  if (!Utf8Helper::DefaultUtf8Helper.tokenize(wordList, arangodb::velocypack::StringRef(stringToTokenize),
+  if (!Utf8Helper::DefaultUtf8Helper.tokenize(wordList, std::string_view(stringToTokenize),
                                               minLength, maxLength, lowerCase)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "SplitWordlist failed!");
   }
@@ -5641,7 +5642,7 @@ static void JS_IsAllowedDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& 
 
   auto databaseName = TRI_ObjectToString(isolate, args[0]);
   bool isExtendedName = TRI_ObjectToBoolean(isolate, args[1]);
-  bool result = arangodb::DatabaseNameValidator::isAllowedName(true, isExtendedName, arangodb::velocypack::StringRef(databaseName));
+  bool result = arangodb::DatabaseNameValidator::isAllowedName(true, isExtendedName, std::string_view(databaseName));
 
   TRI_V8_RETURN_BOOL(result);
   TRI_V8_TRY_CATCH_END

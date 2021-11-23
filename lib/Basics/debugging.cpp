@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <set>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -40,7 +41,6 @@
 #include "Logger/LoggerStream.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -52,32 +52,32 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
-/// @brief custom comparer for failure points. this allows an implicit
-/// conversion from char const* to arangodb::velocypack::StringRef in order to avoid memory
+/// @brief custom comparator for failure points. this allows an implicit
+/// conversion from char const* to std::string_view in order to avoid memory
 /// allocations for temporary string values
-struct Comparer {
+struct Comparator {
   using is_transparent = std::true_type;
   // implement comparison functions for various types
-  inline bool operator()(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) const noexcept {
-    return lhs < arangodb::velocypack::StringRef(rhs);
+  inline bool operator()(std::string_view const& lhs, std::string const& rhs) const noexcept {
+    return lhs < std::string_view(rhs);
   }
-  inline bool operator()(std::string const& lhs, arangodb::velocypack::StringRef const& rhs) const noexcept {
-    return arangodb::velocypack::StringRef(lhs) < rhs;
+  inline bool operator()(std::string const& lhs, std::string_view const& rhs) const noexcept {
+    return std::string_view(lhs) < rhs;
   }
   inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
     return lhs < rhs;
   }
 };
 
-/// @brief custom comparer for failure points. allows avoiding memory allocations
+/// @brief custom comparator for failure points. allows avoiding memory allocations
 /// for temporary string objects
-Comparer const comparer;
+Comparator const comparator;
 
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
 /// @brief a global set containing the currently registered failure points
-std::set<std::string, ::Comparer> failurePoints(comparer);
+std::set<std::string, ::Comparator> failurePoints(comparator);
 }  // namespace
 
 /// @brief intentionally cause a segmentation violation or other failures
@@ -88,7 +88,7 @@ void TRI_TerminateDebugging(char const* message) {
 
   // there are some reserved crash messages we use in testing the
   // crash handler
-  velocypack::StringRef const s(message);
+  std::string_view const s(message);
   if (s == "CRASH-HANDLER-TEST-ABORT") {
     // intentionally crashes the program!
     std::abort();
@@ -131,7 +131,7 @@ void TRI_TerminateDebugging(char const* message) {
 /// @brief check whether we should fail at a specific failure point
 bool TRI_ShouldFailDebugging(char const* value) {
   READ_LOCKER(readLocker, ::failurePointsLock);
-  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
+  return ::failurePoints.find(std::string_view(value)) != ::failurePoints.end();
 }
 
 /// @brief add a failure point

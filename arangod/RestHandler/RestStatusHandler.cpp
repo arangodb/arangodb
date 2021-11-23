@@ -306,7 +306,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
       resetResponse(rest::ResponseCode::OK);
 
       _response->setContentType(rest::ContentType::TEXT);
-      _response->addRawPayload(velocypack::StringRef(content));
+      _response->addRawPayload(std::string_view(content));
     } catch (...) {
       TRI_UnlinkFile(f);
       throw;

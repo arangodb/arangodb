@@ -513,13 +513,13 @@ void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> 
         << this->_connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
-    VPackStringRef body = req->rawPayload();
+    std::string_view body = req->rawPayload();
     this->_generalServerFeature.countHttp2Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)
           << "\"h2-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(body.toString()) << "\"";
+          << StringUtils::escapeUnicode(std::string(body)) << "\"";
     }
   }
 

@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <type_traits>
 
@@ -167,20 +168,12 @@ class VelocyPackHelper {
     arangodb::velocypack::Slice const* rhsBase;
   };
 
-  struct AttributeSorterUTF8 {
-    bool operator()(std::string const& l, std::string const& r) const;
+  struct AttributeSorterUTF8StringView {
+    bool operator()(std::string_view l, std::string_view r) const;
   };
 
-  struct AttributeSorterUTF8StringRef {
-    bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const;
-  };
-
-  struct AttributeSorterBinary {
-    bool operator()(std::string const& l, std::string const& r) const noexcept;
-  };
-
-  struct AttributeSorterBinaryStringRef {
-    bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const noexcept;
+  struct AttributeSorterBinaryStringView {
+    bool operator()(std::string_view l, std::string_view r) const noexcept;
   };
 
 
@@ -267,8 +260,38 @@ class VelocyPackHelper {
     }
     return sub.getNumericValue<T>();
   }
+  
+  /// @return string view, or the defaultValue if slice is not a string
+  static std::string_view getStringView(
+      arangodb::velocypack::Slice slice,
+      std::string_view defaultValue) noexcept {
+    if (slice.isExternal()) {
+      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
+    }
+
+    if (slice.isString()) {
+      return slice.stringView();
+    }
+    return defaultValue;
+  }
+
+  /// @return string view, or the defaultValue if slice[key] is not a string
+  template <typename T>
+  static std::string_view getStringView(
+      arangodb::velocypack::Slice slice, T const& key,
+      std::string_view defaultValue) noexcept {
+    if (slice.isExternal()) {
+      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
+    }
+
+    if (slice.isObject()) {
+      return getStringView(slice.get(key), defaultValue);
+    }
+    return defaultValue;
+  }
 
   /// @return string ref, or the defaultValue if slice is not a string
+  /// this is deprecated. do not use this anymore for new code
   static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice,
       arangodb::velocypack::StringRef const& defaultValue) noexcept {
@@ -277,12 +300,13 @@ class VelocyPackHelper {
     }
 
     if (slice.isString()) {
-      return arangodb::velocypack::StringRef(slice);
+      return slice.stringRef();
     }
     return defaultValue;
   }
 
   /// @return string ref, or the defaultValue if slice[key] is not a string
+  /// this is deprecated. do not use this anymore for new code
   template <typename T>
   static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice, T const& key,

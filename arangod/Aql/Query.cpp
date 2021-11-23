@@ -1150,16 +1150,16 @@ uint64_t Query::calculateHash() const {
   // handle "fullCount" option. if this option is set, the query result will
   // be different to when it is not set!
   if (_queryOptions.fullCount) {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:true"), hashval);
+    hashval = fasthash64("fullcount:true", 14, hashval);
   } else {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:false"), hashval);
+    hashval = fasthash64("fullcount:false", 15, hashval);
   }
 
   // handle "count" option
   if (_queryOptions.count) {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("count:true"), hashval);
+    hashval = fasthash64("count:true", 10, hashval);
   } else {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hashval);
+    hashval = fasthash64("count:false", 11, hashval);
   }
 
   // also hash "optimizer.rules" options

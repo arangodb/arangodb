@@ -59,7 +59,7 @@ namespace {
 /// @brief the _key attribute, which, when used in an index, will implictly make it unique
 /// (note that we must not refer to StaticStrings::KeyString here to avoid an init-order-fiasco
 std::vector<arangodb::basics::AttributeName> const KeyAttribute{
-    arangodb::basics::AttributeName("_key", false)};
+    arangodb::basics::AttributeName(std::string_view("_key"), false)};
 
 bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
   for (auto const& it : fields) {
@@ -105,7 +105,7 @@ bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* a
     // a.b
     // now check if the accessed attribute is _key, _rev or _id.
     // all of these cannot be null
-    auto attributeName = access->getStringRef();
+    auto attributeName = access->getStringView();
     if (attributeName == arangodb::StaticStrings::KeyString ||
         attributeName == arangodb::StaticStrings::IdString ||
         attributeName == arangodb::StaticStrings::RevString) {
@@ -1023,7 +1023,7 @@ double Index::getTimestamp(arangodb::velocypack::Slice const& doc,
   if (value.isString()) {
     // string value. we expect it to be YYYY-MM-DD etc.
     tp_sys_clock_ms tp;
-    if (basics::parseDateTime(value.stringRef(), tp)) {
+    if (basics::parseDateTime(value.stringView(), tp)) {
       return static_cast<double>(
           std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch())
               .count());

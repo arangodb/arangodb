@@ -415,8 +415,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   // extract "tid"
-  arangodb::velocypack::StringRef const transactionId =
-      VelocyPackHelper::getStringRef(slice, "tid", VPackStringRef());
+  std::string_view const transactionId =
+      VelocyPackHelper::getStringView(slice, "tid", std::string_view());
   TransactionId tid = TransactionId::none();
   if (!transactionId.empty()) {
     // operation is part of a transaction

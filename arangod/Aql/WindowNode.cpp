@@ -93,7 +93,7 @@ WindowBounds::WindowBounds(Type type,
     if (preceding.isString() || following.isString()) {
       _rangeType = RangeType::Date;
       if (preceding.isString()) {
-        if (!basics::parseIsoDuration(preceding.slice().stringRef(), _precedingDuration)) {
+        if (!basics::parseIsoDuration(preceding.slice().stringView(), _precedingDuration)) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                          "WINDOW range spec is invalid; 'preceding' is not a "
                                          "valid ISO 8601 duration string");
@@ -103,7 +103,7 @@ WindowBounds::WindowBounds(Type type,
       }
 
       if (following.isString()) {
-        if (!basics::parseIsoDuration(following.slice().stringRef(), _followingDuration)) {
+        if (!basics::parseIsoDuration(following.slice().stringView(), _followingDuration)) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                          "WINDOW range spec is invalid; 'following' is not a "
                                          "valid ISO 8601 duration string");
@@ -177,7 +177,7 @@ bool parameterToTimePoint(AqlValue const& value, QueryWarnings& warnings,
   }
   // TODO is there a way to properly support ISO datestrings ?
   /*else if (value.isString()) {
-    if (!basics::parseDateTime(value.slice().stringRef(), tp)) {
+    if (!basics::parseDateTime(value.slice().stringView(), tp)) {
       q.warnings().registerWarning(TRI_ERROR_QUERY_INVALID_DATE_VALUE,
                                    "range value is not a valid ISO 8601 date
   time string"); return false;

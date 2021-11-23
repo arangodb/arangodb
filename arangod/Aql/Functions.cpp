@@ -492,7 +492,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
 
 AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionContext,
                                                tp_sys_clock_ms const& tp,
-                                               arangodb::velocypack::StringRef duration,
+                                               std::string_view duration,
                                                char const* AFN, bool isSubtract) {
   date::year_month_day ymd{floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
@@ -547,7 +547,7 @@ bool parameterToTimePoint(ExpressionContext* expressionContext,
   }
 
   if (value.isString()) {
-    if (!basics::parseDateTime(value.slice().stringRef(), tp)) {
+    if (!basics::parseDateTime(value.slice().stringView(), tp)) {
       aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
@@ -1460,7 +1460,7 @@ AqlValue Functions::Typename(ExpressionContext*, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   char const* type = value.getTypeString();
 
-  return AqlValue(TRI_CHAR_LENGTH_PAIR(type));
+  return AqlValue(type, std::strlen(type));
 }
 
 /// @brief function TO_NUMBER
@@ -3535,7 +3535,7 @@ AqlValue Functions::IsDatestring(ExpressionContext*, AstNode const&,
 
   if (value.isString()) {
     tp_sys_clock_ms tp;  // unused
-    isValid = basics::parseDateTime(value.slice().stringRef(), tp);
+    isValid = basics::parseDateTime(value.slice().stringView(), tp);
   }
 
   return AqlValue(AqlValueHintBool(isValid));
@@ -4020,7 +4020,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, AstNode const&
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp,
-                                                   isoDuration.slice().stringRef(),
+                                                   isoDuration.slice().stringView(),
                                                    AFN, false);
   }
 }
@@ -4063,7 +4063,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp,
-                                                   isoDuration.slice().stringRef(),
+                                                   isoDuration.slice().stringView(),
                                                    AFN, true);
   }
 }
@@ -4528,14 +4528,14 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   if (doSort) {
-    std::set<std::string, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8> keys;
+    std::set<std::string_view, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8StringView> keys;
 
     VPackCollection::keys(slice, keys);
     transaction::BuilderLeaser builder(trx);
     builder->openArray();
     for (auto const& it : keys) {
       TRI_ASSERT(!it.empty());
-      if (removeInternal && !it.empty() && it.at(0) == '_') {
+      if (removeInternal && !it.empty() && it.front() == '_') {
         continue;
       }
       builder->add(VPackValue(it));
@@ -4545,13 +4545,13 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
     return AqlValue(builder->slice(), builder->size());
   }
 
-  std::unordered_set<std::string> keys;
+  std::unordered_set<std::string_view> keys;
   VPackCollection::keys(slice, keys);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
   for (auto const& it : keys) {
-    if (removeInternal && !it.empty() && it.at(0) == '_') {
+    if (removeInternal && !it.empty() && it.front() == '_') {
       continue;
     }
     builder->add(VPackValue(it));

@@ -46,8 +46,8 @@ namespace {
 
 // The primary indexes do not have `_id` in the _fields instance variable
 std::vector<std::vector<arangodb::basics::AttributeName>> const primaryIndexAttributes{
-    {arangodb::basics::AttributeName("_id", false)},
-    {arangodb::basics::AttributeName("_key", false)}};
+    {arangodb::basics::AttributeName(std::string_view("_id"), false)},
+    {arangodb::basics::AttributeName(std::string_view("_key"), false)}};
 
 };  // namespace
 

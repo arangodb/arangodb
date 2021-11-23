@@ -31,6 +31,7 @@
 #include <ratio>
 #include <regex>
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -41,8 +42,6 @@
 #include "Basics/datetime.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-
-#include <velocypack/StringRef.h>
 
 namespace {
 using namespace date;
@@ -592,7 +591,7 @@ struct ParsedDateTime {
 };
 
 /// @brief parses a number value, and returns its length
-int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
+int parseNumber(std::string_view dateTime, int& result) {
   char const* p = dateTime.data();
   char const* e = p + dateTime.size();
 
@@ -608,8 +607,7 @@ int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
   return static_cast<int>(p - dateTime.data());
 }
 
-bool parseDateTime(arangodb::velocypack::StringRef dateTime,
-                   ParsedDateTime& result) {
+bool parseDateTime(std::string_view dateTime, ParsedDateTime& result) {
   // trim input string
   while (!dateTime.empty()) {
     char c = dateTime.front();
@@ -634,7 +632,7 @@ bool parseDateTime(arangodb::velocypack::StringRef dateTime,
     if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
       break;
     }
-    dateTime.pop_back();
+    dateTime.remove_suffix(1);
   }
 
   // year
@@ -769,7 +767,7 @@ bool parseDateTime(arangodb::velocypack::StringRef dateTime,
 
 }  // namespace
 
-bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
+bool arangodb::basics::parseDateTime(std::string_view dateTime,
                                      arangodb::tp_sys_clock_ms& date_tp) {
   ::ParsedDateTime result;
   if (!::parseDateTime(dateTime, result)) {
@@ -813,7 +811,7 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
   return true;
 }
 
-bool arangodb::basics::regexIsoDuration(arangodb::velocypack::StringRef isoDuration,
+bool arangodb::basics::regexIsoDuration(std::string_view isoDuration,
                                         std::match_results<char const*>& durationParts) {
   if (isoDuration.length() <= 1) {
     return false;
@@ -827,7 +825,7 @@ std::string arangodb::basics::formatDate(std::string const& formatString,
   return ::executeDateFormatRegex(formatString, dateValue);
 }
 
-bool arangodb::basics::parseIsoDuration(arangodb::velocypack::StringRef duration,
+bool arangodb::basics::parseIsoDuration(std::string_view duration,
                                         arangodb::basics::ParsedDuration& ret) {
   using namespace arangodb;
 

@@ -21,10 +21,10 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string_view>
 #include <type_traits>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ClusterNodes.h"
@@ -65,9 +65,9 @@ using namespace arangodb::aql;
 
 namespace {
 
-arangodb::velocypack::StringRef const SortModeUnset("unset");
-arangodb::velocypack::StringRef const SortModeMinElement("minelement");
-arangodb::velocypack::StringRef const SortModeHeap("heap");
+std::string_view const SortModeUnset("unset");
+std::string_view const SortModeMinElement("minelement");
+std::string_view const SortModeHeap("heap");
 
 char const* toString(GatherNode::Parallelism value) {
   switch (value) {
@@ -90,12 +90,12 @@ GatherNode::Parallelism parallelismFromString(std::string const& value) {
   return GatherNode::Parallelism::Undefined;
 }
 
-std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
+std::map<std::string_view, GatherNode::SortMode> const NameToValue{
     {SortModeMinElement, GatherNode::SortMode::MinElement},
     {SortModeHeap, GatherNode::SortMode::Heap},
     {SortModeUnset, GatherNode::SortMode::Default}};
 
-bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode& mode) noexcept {
+bool toSortMode(std::string_view str, GatherNode::SortMode& mode) noexcept {
   // std::map ~25-30% faster than std::unordered_map for small number of elements
   auto const it = NameToValue.find(str);
 
@@ -108,7 +108,7 @@ bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode
   return true;
 }
 
-arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
+std::string_view toString(GatherNode::SortMode mode) noexcept {
   switch (mode) {
     case GatherNode::SortMode::MinElement:
       return SortModeMinElement;
@@ -431,7 +431,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
 
-    if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, VPackStringRef()), _sortmode)) {
+    if (!toSortMode(VelocyPackHelper::getStringView(sortModeSlice, std::string_view()), _sortmode)) {
       LOG_TOPIC("2c6f3", ERR, Logger::AQL)
           << "invalid sort mode detected while "
              "creating 'GatherNode' from vpack";

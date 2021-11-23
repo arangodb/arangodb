@@ -23,7 +23,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Ast.h"
@@ -88,8 +87,8 @@ auto doNothingVisitor = [](AstNode const*) {};
  */
 LogicalDataSource::Category const* injectDataSourceInQuery(
     Ast& ast, arangodb::CollectionNameResolver const& resolver, AccessMode::Type accessType,
-    bool failIfDoesNotExist, arangodb::velocypack::StringRef& nameRef) {
-  std::string const name = nameRef.toString();
+    bool failIfDoesNotExist, std::string_view& nameRef) {
+  std::string const name = std::string(nameRef);
   // NOTE The name may be modified if a numeric collection ID is given instead
   // of a collection Name. Afterwards it will contain the name.
   auto const dataSource = resolver.getDataSource(name);
@@ -117,9 +116,9 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
 
   if (nameRef != name) {
     // name has changed by the lookup, so we need to reserve the collection
-    // name on the heap and update our arangodb::velocypack::StringRef
+    // name on the heap and update our std::string_view
     char* p = ast.resources().registerString(dataSourceName.data(), dataSourceName.size());
-    nameRef = arangodb::velocypack::StringRef(p, dataSourceName.size());
+    nameRef = std::string_view(p, dataSourceName.size());
   }
 
   if (dataSource->category() == LogicalCollection::category()) {
@@ -129,7 +128,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     if (ServerState::instance()->isDBServer()) {
       hint = aql::Collection::Hint::Shard;
     }
-    ast.query().collections().add(nameRef.toString(), accessType, hint);
+    ast.query().collections().add(std::string(nameRef), accessType, hint);
     if (nameRef != name) {
       ast.query().collections().add(name, accessType, hint);  // Add collection by ID as well
     }
@@ -137,7 +136,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     // it's a view!
     // add views to the collection list
     // to register them with transaction as well
-    ast.query().collections().add(nameRef.toString(), accessType, aql::Collection::Hint::None);
+    ast.query().collections().add(std::string(nameRef), accessType, aql::Collection::Hint::None);
 
     ast.query().addDataSource(dataSource);
 
@@ -455,7 +454,7 @@ AstNode* Ast::createNodeRemove(AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
-  node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
+  node->addMember(createNodeVariable(Variable::NAME_OLD, std::strlen(Variable::NAME_OLD), false));
 
   return node;
 }
@@ -480,9 +479,9 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
-  node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
+  node->addMember(createNodeVariable(Variable::NAME_NEW, std::strlen(Variable::NAME_NEW), false));
   if (returnOld) {
-    node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
+    node->addMember(createNodeVariable(Variable::NAME_OLD, std::strlen(Variable::NAME_OLD), false));
   }
 
   return node;
@@ -509,8 +508,8 @@ AstNode* Ast::createNodeUpdate(AstNode const* keyExpression, AstNode const* docE
     node->addMember(&_specialNodes.NopNode);
   }
 
-  node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
-  node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
+  node->addMember(createNodeVariable(Variable::NAME_OLD, std::strlen(Variable::NAME_OLD), false));
+  node->addMember(createNodeVariable(Variable::NAME_NEW, std::strlen(Variable::NAME_NEW), false));
 
   return node;
 }
@@ -536,8 +535,8 @@ AstNode* Ast::createNodeReplace(AstNode const* keyExpression, AstNode const* doc
     node->addMember(&_specialNodes.NopNode);
   }
 
-  node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
-  node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
+  node->addMember(createNodeVariable(Variable::NAME_OLD, std::strlen(Variable::NAME_OLD), false));
+  node->addMember(createNodeVariable(Variable::NAME_NEW, std::strlen(Variable::NAME_NEW), false));
 
   return node;
 }
@@ -563,7 +562,7 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
   node->addMember(updateExpression);
 
   node->addMember(createNodeReference(Variable::NAME_OLD));
-  node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
+  node->addMember(createNodeVariable(Variable::NAME_NEW, std::strlen(Variable::NAME_NEW), false));
 
   this->setContainsUpsertNode();
 
@@ -723,7 +722,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
                                    char const* name, size_t nameLength,
                                    AccessMode::Type accessType,
                                    bool validateName, bool failIfDoesNotExist) {
-  arangodb::velocypack::StringRef nameRef(name, nameLength);
+  std::string_view nameRef(name, nameLength);
 
   // will throw if validation fails
   validateDataSourceName(nameRef, validateName);
@@ -750,7 +749,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
 AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resolver,
                                    char const* name, size_t nameLength,
                                    AccessMode::Type accessType) {
-  arangodb::velocypack::StringRef nameRef(name, nameLength);
+  std::string_view nameRef(name, nameLength);
 
   // will throw if validation fails
   validateDataSourceName(nameRef, true);
@@ -760,13 +759,13 @@ AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resol
 
   if (category == LogicalCollection::category()) {
     // add collection to query
-    _query.collections().add(nameRef.toString(), accessType, Collection::Hint::Collection);
+    _query.collections().add(std::string(nameRef), accessType, Collection::Hint::Collection);
 
     // call private function after validation
     return createNodeCollectionNoValidation(nameRef, accessType);
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-                                 nameRef.toString() +
+                                 std::string(nameRef) +
                                      " is required to be a collection.");
 }
 
@@ -1323,7 +1322,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
     if (c->isStringValue()) {
       std::string const name = c->getString();
       // this call may update nameRef
-      arangodb::velocypack::StringRef nameRef(name);
+      std::string_view nameRef(name);
       LogicalDataSource::Category const* category =
           injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
@@ -1339,7 +1338,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
             auto names = coll->realNames();
 
             for (auto const& n : names) {
-              arangodb::velocypack::StringRef shardsNameRef(n);
+              std::string_view shardsNameRef(n);
               LogicalDataSource::Category const* shardsCategory =
                   injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
                                           false, shardsNameRef);
@@ -1370,7 +1369,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
 
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
-    arangodb::velocypack::StringRef nameRef(name);
+    std::string_view nameRef(name);
     LogicalDataSource::Category const* category =
         injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
@@ -1381,7 +1380,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
           auto const& names = c->realNames();
 
           for (auto const& n : names) {
-            arangodb::velocypack::StringRef shardsNameRef(n);
+            std::string_view shardsNameRef(n);
             LogicalDataSource::Category const* shardsCategory =
                 injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
                                         false, shardsNameRef);
@@ -1391,7 +1390,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-                                     nameRef.toString() +
+                                     std::string(nameRef) +
                                          " is required to be a collection.");
     }
   };
@@ -1749,23 +1748,19 @@ void Ast::injectBindParameters(BindParameters& parameters,
           // check if the collection was used in a data-modification query
           bool isWriteCollection = false;
 
-          arangodb::velocypack::StringRef paramRef(param);
-          arangodb::velocypack::StringRef nameRef(name, l);
+          std::string_view paramRef(param);
+          std::string_view nameRef(name, l);
 
           AstNode* newNode = nullptr;
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
-            if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
-                                                            c->getStringLength())) {
+            if (c->type == NODE_TYPE_PARAMETER_DATASOURCE && paramRef == c->getStringView()) {
               // bind parameter still present in _writeCollections
               TRI_ASSERT(newNode == nullptr);
               isWriteCollection = true;
               break;
-            } else if (c->type == NODE_TYPE_COLLECTION &&
-                nameRef == arangodb::velocypack::StringRef(c->getStringValue(),
-                                                           c->getStringLength())) {
+            } else if (c->type == NODE_TYPE_COLLECTION && nameRef == c->getStringView()) {
               // bind parameter was already replaced with a proper collection node 
               // in _writeCollections
               TRI_ASSERT(newNode == nullptr);
@@ -1790,9 +1785,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
               for (auto& it : _writeCollections) {
                 auto& c = it.first;
 
-                if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                    paramRef == arangodb::velocypack::StringRef(c->getStringValue(),
-                                                                c->getStringLength())) {
+                if (c->type == NODE_TYPE_PARAMETER_DATASOURCE && paramRef == c->getStringView()) {
                   c = newNode;
                   // no break here. replace all occurrences
                 }
@@ -1900,7 +1893,7 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
     return node;
   }
 
-  std::vector<arangodb::velocypack::StringRef> attributePath;
+  std::vector<std::string_view> attributePath;
 
   auto visitor = [&](AstNode* node) -> AstNode* {
     if (node == nullptr) {
@@ -1915,7 +1908,7 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
     AstNode* origNode = node;
 
     while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attributePath.emplace_back(node->getStringValue(), node->getStringLength());
+      attributePath.emplace_back(node->getStringView());
       node = node->getMember(0);
     }
 
@@ -2033,7 +2026,7 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
       if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
         continue;
       }
-      auto const name = member->getStringRef();
+      auto const name = member->getStringView();
       auto value = member->getMember(0);
       TRI_ASSERT(value->isConstant());
 
@@ -2818,7 +2811,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   }
 
   AstNode* result = nullptr;
-  ::arangodb::containers::SmallVectorWithArena<arangodb::velocypack::StringRef> attributeParts;
+  ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeParts;
 
   std::function<void(AstNode const*)> createCondition = [&](AstNode const* object) -> void {
     TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
@@ -2833,7 +2826,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
             "expecting object literal with literal attribute names in example");
       }
 
-      attributeParts.emplace_back(member->getStringRef());
+      attributeParts.emplace_back(member->getStringView());
 
       auto value = member->getMember(0);
 
@@ -3375,7 +3368,7 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
         auto countArgs = createNodeArray();
         countArgs->addMember(createNodeValueString(arg->getStringValue(),
                                                    arg->getStringLength()));
-        return createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("COLLECTION_COUNT"), countArgs, true);
+        return createNodeFunctionCall("COLLECTION_COUNT", 16, countArgs, true);
       }
     }
   } else if (func->name == "IS_NULL") {
@@ -3524,8 +3517,7 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
     // found a string value (e.g. a['foo']). now turn this into
     // an attribute access (e.g. a.foo) in order to make the node qualify
     // for being turned into an index range later
-    arangodb::velocypack::StringRef indexValue(index->getStringValue(),
-                                               index->getStringLength());
+    std::string_view indexValue(index->getStringView());
 
     if (!indexValue.empty() && (indexValue[0] < '0' || indexValue[0] > '9')) {
       // we have to be careful with numeric values here...
@@ -3755,11 +3747,10 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node, bool& isVal
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   AstNode const* original = node;
 
-  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef> attributeNames{a};
+  ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeNames;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attributeNames.push_back(node->getStringRef());
+    attributeNames.push_back(node->getStringView());
     node = node->getMember(0);
   }
 
@@ -3779,7 +3770,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node, bool& isVal
 
     if (node->type == NODE_TYPE_OBJECT) {
       TRI_ASSERT(which > 0);
-      arangodb::velocypack::StringRef const& attributeName = attributeNames[which - 1];
+      std::string_view attributeName = attributeNames[which - 1];
       --which;
 
       size_t const n = node->numMembers();
@@ -3787,8 +3778,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node, bool& isVal
         auto member = node->getMemberUnchecked(i);
 
         if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-            arangodb::velocypack::StringRef(member->getStringValue(),
-                                            member->getStringLength()) == attributeName) {
+            member->getStringView() == attributeName) {
           // found the attribute
           node = member->getMember(0);
           if (which == 0) {
@@ -3948,7 +3938,7 @@ AstNode* Ast::createNode(AstNodeType type) {
 
 /// @brief validate the name of the given datasource
 /// in case validation fails, will throw an exception
-void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
+void Ast::validateDataSourceName(std::string_view name,
                                  bool validateStrict) {
   bool extendedNames = _query.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
@@ -3968,13 +3958,13 @@ void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name,
 
 /// @brief create an AST collection node
 /// private function, does no validation
-AstNode* Ast::createNodeCollectionNoValidation(arangodb::velocypack::StringRef const& name,
+AstNode* Ast::createNodeCollectionNoValidation(std::string_view name,
                                                AccessMode::Type accessType) {
   if (ServerState::instance()->isCoordinator()) {
     auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
-    auto coll = ci.getCollectionNT(_query.vocbase().name(), name.toString());
+    auto coll = ci.getCollectionNT(_query.vocbase().name(), std::string(name));
     if (coll != nullptr && coll->isSmart()) {
       // add names of underlying smart-edge collections
       for (auto const& n : coll->realNames()) {
