@@ -242,7 +242,8 @@ struct AstNode {
   std::string getString() const;
 
   /// @brief return the string value of a node, as a arangodb::velocypack::StringRef
-  arangodb::velocypack::StringRef getStringRef() const noexcept;
+  /// this is deprecated. do not use this anymore for new code
+  [[deprecated]] arangodb::velocypack::StringRef getStringRef() const noexcept;
   
   /// @brief return the string value of a node
   std::string_view getStringView() const noexcept;

@@ -415,13 +415,7 @@ class StringBuffer {
     TRI_AppendString2StringBuffer(&_buffer, str.data(), str.size());
     return *this;
   }
-/*
-  /// @brief appends string
-  StringBuffer& appendText(std::string const& str) {
-    TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
-    return *this;
-  }
-*/
+  
   void appendTextUnsafe(std::string const& str) {
     TRI_AppendStringUnsafeStringBuffer(&_buffer, str.c_str(), str.length());
   }

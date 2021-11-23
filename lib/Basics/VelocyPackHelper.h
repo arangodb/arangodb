@@ -292,7 +292,7 @@ class VelocyPackHelper {
 
   /// @return string ref, or the defaultValue if slice is not a string
   /// this is deprecated. do not use this anymore for new code
-  static arangodb::velocypack::StringRef getStringRef(
+  [[deprecated]] static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice,
       arangodb::velocypack::StringRef const& defaultValue) noexcept {
     if (slice.isExternal()) {
@@ -308,7 +308,7 @@ class VelocyPackHelper {
   /// @return string ref, or the defaultValue if slice[key] is not a string
   /// this is deprecated. do not use this anymore for new code
   template <typename T>
-  static arangodb::velocypack::StringRef getStringRef(
+  [[deprecated]] static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice, T const& key,
       arangodb::velocypack::StringRef const& defaultValue) noexcept {
     if (slice.isExternal()) {
