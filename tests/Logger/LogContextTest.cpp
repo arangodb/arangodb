@@ -46,7 +46,7 @@ TEST_F(LogContextTest, visit_visits_values_in_order_they_are_added) {
   ScopedValue v1(LogContext::makeValue().with<LogKey1>(1).with<LogKey2>(2u).with<LogKey3>(std::int8_t(3)));
   ScopedValue v2(LogContext::makeValue().with<LogKey4>(std::uint8_t(4)).with<LogKey5>(5.0f).with<LogKey6>("blubb"));
   unsigned cnt = 0;
-  LogContext::OverloadVisitor visitor(overload{
+  auto overloads = overload{
     [&cnt](std::string_view key, std::int64_t value) {
       if (cnt == 0) {
         EXPECT_EQ(1, value);
@@ -75,7 +75,8 @@ TEST_F(LogContextTest, visit_visits_values_in_order_they_are_added) {
       EXPECT_EQ("blubb", value) << "value: " << value;
       EXPECT_EQ(5, cnt++);
     },
-  });
+  };
+  LogContext::OverloadVisitor visitor(std::move(overloads));
   LogContext::current().visit(visitor);
   EXPECT_EQ(cnt, 6);
 }
