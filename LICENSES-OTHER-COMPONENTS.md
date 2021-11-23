@@ -352,7 +352,7 @@ _Enterprise Edition only_
 * Version: 0.7.0
 * Date: 2021-11-08 17:27:00 UTC
 * Project Home: https://github.com/arximboldi/immer
-* License: https://github.com/arximboldi/immer/blob/v0.6.2/LICENSE
+* License: https://github.com/arximboldi/immer/blob/v0.7.0/LICENSE
 * License Name: Boost Software License 1.0
 
 ### jemalloc
