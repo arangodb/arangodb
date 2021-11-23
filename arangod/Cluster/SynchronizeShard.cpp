@@ -447,7 +447,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     body.add(TTL, VPackValue(timeout));
     body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
-    // the following attribute was added in 3.8.3:
+    // the following attribute was added in 3.7.16, 3.8.3 and higher:
     // with this, the follower indicates to the leader that it is 
     // capable of handling following term ids correctly.
     bool sendWantFollowingTerm = true;
