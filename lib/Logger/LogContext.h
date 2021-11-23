@@ -32,6 +32,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <type_traits>
 #include <utility>
 
@@ -380,6 +381,9 @@ struct LogContext::Accessor::ScopedValue {
     appendEntry(V(std::move(v._vals)));
   }
 
+  ScopedValue(ScopedValue const&) = delete;
+  ScopedValue& operator=(ScopedValue const&) = delete;
+  
   ~ScopedValue();
   
   template <const char Key[], class Val>
@@ -398,6 +402,7 @@ struct LogContext::Accessor::ScopedValue {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Entry* _oldTail = nullptr;
+  std::thread::id _owningThread = std::this_thread::get_id();
 #endif
 };
 
@@ -433,6 +438,7 @@ inline LogContext::Accessor::ScopedValue::~ScopedValue() {
   auto& local = LogContext::controlBlock();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_oldTail == local._logContext._tail);
+  TRI_ASSERT(_owningThread == std::this_thread::get_id());
 #endif
   local._logContext.popTail(local._entryCache);
 }
