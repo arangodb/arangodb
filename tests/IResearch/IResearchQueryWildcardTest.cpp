@@ -58,7 +58,7 @@ TEST_P(IResearchQuerWildcardTest, test) {
     resource /= std::string_view("simple_sequential.json");
 
     auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 

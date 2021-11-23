@@ -355,7 +355,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     std::string dataPath =
         (((irs::utf8_path() /= server.testFilesystemPath()) /=
           std::string("databases")) /= std::string("arangosearch-123"))
-            .u8string();
+            .string();
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(

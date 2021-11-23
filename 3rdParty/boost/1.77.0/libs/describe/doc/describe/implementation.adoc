@@ -1,0 +1,37 @@
+////
+Copyright 2020 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+[#implementation]
+# Implementation Features
+:idprefix: implementation_
+
+## Dependencies
+
+https://boost.org/libs/mp11[Boost.Mp11].
+
+## Supported Compilers
+
+* GCC 5 or later with `-std=c++14` or above
+* Clang 3.6 or later with `-std=c++14` or above
+* Visual Studio 2015, 2017, 2019
+
+Tested on https://travis-ci.org/github/pdimov/describe[Travis] and
+https://ci.appveyor.com/project/pdimov/describe[Appveyor].
+
+## Limitations
+
+This implementation has the following limitations:
+
+* Up to 52 elements are supported in the lists of enumerators,
+  bases, and members.
+* Protected base classes cannot be distinguished from private
+  base classes when the described class is final, and are considered
+  private.
+* Bitfields are not supported. It's not possible to form a pointer
+  to member to a bitfield.
+* Reference members are not supported. It's not possible to form a
+  pointer to member to a reference.
+* Anonymous unions are not supported.

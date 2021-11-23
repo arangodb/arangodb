@@ -1,0 +1,474 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:map Roadmap]
+
+[section:hist History]
+
+[h4 Multiprecision-4.0.1 (Boost-1.77)]
+
+* Much improved Karatsuba sqrt for cpp_int/cpp_bin_float.
+* Added C++11 compatible `to_string` free function.
+* Fixed bug in Lehmer GCD code, see [@https://github.com/boostorg/multiprecision/issues/322 #322]. 
+* Fixed debug_adaptor/logged_adaptor to work better with complex, rational and interval types, see [@https://github.com/boostorg/multiprecision/issues/329 #329].
+* Big update to mixed-variable precision arithmetic code with better options and thread safety, see [link boost_multiprecision.tut.variable docs].
+* Fixed up hashing of bools and enums when creating hash values.
+* Improved conversions to and from enum types.
+* Restricted use of Intel intrinsics to when we really are building for Intel even though the header may be available, see [@https://github.com/boostorg/multiprecision/issues/321 #321].
+* Tidied up Lanczos approximation usage, in conjunction with Boost.Math this improves the reliability and accuracy of many special functions.
+* Fix use of libtommath deprecated features.
+* Fixed missing sqrt overload, see [@https://github.com/boostorg/multiprecision/issues/319 #319].
+* Added Karatsuba multiplication to cpp_dec_float to bring it into line with the other types in this library.
+* Added some minor optimizations to mpfr comparison operators.
+
+
+[h4 Multiprecision-4.0.0 (Boost-1.76)]
+
+* [*BREAKING CHANGE]: Massive refactoring and code simpification makes C++11 an absolute requirement.
+* Use BOOST_TRY/CATCH in headers so code can be use din s=exception-free environments.
+* Correct corner case in pow, fixes [@https://github.com/boostorg/multiprecision/issues/277 #277]. 
+* Correct exception type thrown to match docs in lsb/msb: fixes [@https://github.com/boostorg/multiprecision/issues/257 #257].
+* Allow moves and operators between related but different types (ie types with the same allocator), fixes [@https://github.com/boostorg/multiprecision/issues/278 #278].
+
+[h4 Multiprecision-3.2.5 (Boost-1.75)]
+
+* Much improved gcd and modulus operations for __cpp_int.
+* Improved addition/subtraction routines for __cpp_int via Intel's intrinsics.
+* __gmp_int: add better conversion routines for `long long` and `__int128`.
+* __mpfr_float_backend: Fix `log1p` corner case.
+* Improve accuracy of complex tan/tanh.
+* Improve accuracy of trig functions for __cpp_bin_float.
+
+[h4 Multiprecision-3.2.4 (Boost-1.73)]
+
+* IMPORTANT: Mark C++03 support as deprecated and due for removal in 2021.
+* Big update to __cpp_int adds faster Karatsuba and Coomba multiplication routines.
+* Fix conversion of __gmp_rational to `long double` and `__float128`, fixes [@https://github.com/boostorg/multiprecision/issues/178 #178].
+* Fix up libtommath support to function with the latest libtom releases.
+* Fix up some incompatibilities with the latest Intel C++ compiler.
+* Fix up `constexpr` arithmetic support for forthcoming MSVC release.
+
+[h4 Multiprecision-3.2.3 (Boost-1.72)]
+
+* Big `constexpr` update allows __cpp_int and __float128__ arithmetic to be fully `constexpr` with gcc and clang 9 or later,
+or any compiler supporting `std::is_constant_evaluated()`.
+
+[h4 Multiprecision-3.1.3 (Boost-1.71)]
+
+* Support hexfloat io-formatting for float128.
+* Fix various bugs in variable precision interconversions.
+* Respect uppercase for '0x' prefix outputs.
+* Incorporate some unit tests from the Etherium project.
+* Fix some gcc warnings.
+
+[h4 Multiprecision-3.1.2 (Boost-1.70)]
+
+* Fix various conversion issues in the traits classes, check for compatibility with Boost.Optional.
+* Prevent instantiation of `std::numeric_limits` on any old type when checking for convertibility.  See [@https://github.com/boostorg/multiprecision/issues/98 #98].
+* Update variable precision code to accound for arbitrary precision integers.  See [@https://github.com/boostorg/multiprecision/issues/103 #103].
+* Add support for XML serialization archives.
+* Fix bug in fixed precision iostream formatting in `mpf_float` and `mpfr_float`.  See [@https://github.com/boostorg/multiprecision/issues/113 #113].
+* Add more overloads for special functions which are better handled natively by MPFR.
+* Fixed bug in generic `exp` implementation which could cause invariant failure.
+* Fixed generic conversion from float to integer to avoid undefined behaviour.  See [@https://github.com/boostorg/multiprecision/issues/110 #110].
+
+[h4 Multiprecision-3.1.1 (Boost-1.69)]
+
+* Big update to better support variable precision types so that the precision of the result
+is always the largest of all the arguments.
+* Add support for allocators that are `final` in __cpp_int.
+* Removed use of deprecated Boost.Endian in favour of Predef.
+* Add support for `std::string_view`.
+* Fixed minor bug in constant initialization.  See [@https://github.com/boostorg/multiprecision/issues/67 #67].
+* Make assignment of non-finite value to `cpp_int` a runtime errors.  See [@https://github.com/boostorg/multiprecision/issues/58 #58].
+* Added typedefs for `cpp_bin_float_oct` and `cpp_complex_oct`.
+
+[h4 Multiprecision-3.1.0 (Boost-1.68)]
+
+* Support added for complex multiprecision numbers.
+* Changed conversion to unsigned integer types to be truncating to match standard defined behaviour.
+* Correct bug in MPFR string formatting.
+* Fix undefined behaviour in cpp_dec_float conversion from long long.
+* Add support for Eigen interoperability.
+* float128.hpp: Fix Intel on Windows build.
+* Fix type used in temporaries when expanding expression templates containing mixed expressions.
+* Fix infinite loop in gmp_float to fixed-point string conversion.
+* Update the expression templates to issue static_asserts with better error messages when you try and do something unsupported.
+* Fix bug in cpp_int where incrementing to zero doesn't set the sign correctly.
+* Remove erroneous use of std::move, and rely on NVRO instead.
+* Fix up support for changes to MPIR-3.0.
+* Fix various conversion errors in cpp_bin_float when the exponent type is a `long long`, or else we're converting to
+an integer that is wider than we are.
+* Fix compatibility issue with GCC-8 caused by the introduction of `std::byte`.
+
+[h4 Multiprecision-3.0.0 (Boost-1.67)]
+
+* [*Breaking Change:] When converting a multiprecision integer to a narrower type, if the value is too large (or negative) to
+fit in the smaller type, then the result is either the maximum (or minimum) value of the target type.  This was always the intended
+behaviour, but was somewhat haphazardly enforced before.  If you really do want just the low order N bits of a value, then you will
+need to mask these out prior to the case, for example: `static_cast<unsigned>(~static_cast<unsigned>(0) & my_value)`.  Note that
+technically (to avoid undefined behaviour) you should do the same thing with __fundamental integer types too.
+See [@https://svn.boost.org/trac/boost/ticket/13109 #13109].
+* Fix bug in conversion of decimal to rational types (zero needs special handling), see [@https://svn.boost.org/trac/boost/ticket/13148 #13148].
+* Fix conversion from cpp_bin_float to a wider __fundamental integer type, see [@https://svn.boost.org/trac/boost/ticket/13301 #13301].
+* Improve performance heurists used in cpp_bin_float exp function.
+* Fix bug in floor/ceil and cpp_bin_float when the exponent type is wider than an int, see [@https://svn.boost.org/trac/boost/ticket/13264 #13264].
+* Disable explicit conversion operator when the target type is already constructible from this type, see  [@https://github.com/boostorg/multiprecision/issues/30 #30].
+* Fix support for changes new to MPIR-3.0, see [@https://svn.boost.org/trac/boost/ticket/13124 #13124].
+
+[h4 Multiprecision-2.3.2 (Boost-1.65)]
+
+* Updated expression templates to store arithmetic literals directly in the expression template to prevent dangling references, see [@https://github.com/boostorg/multiprecision/issues/19 #19].
+* Fix various issues with huge values and overflow in the trig, pow and exp functions, see [@https://github.com/boostorg/multiprecision/issues/24 #24].
+* Fix error handling of checked cpp_int multiply that could cause some overflows to be missed.
+
+[h4 Multiprecision-2.3.1 (Boost-1.64)]
+
+* In `cpp_bin_float` prevent double rounding when converting to a denormalized float.  See [@https://svn.boost.org/trac/boost/ticket/12527 #12527].
+* Fix bug in integer sqrt for very small integers.  See [@https://svn.boost.org/trac/boost/ticket/12559 #12559].
+* Fix conversion to signed-zero in `cpp_bin_float`.
+* Change `cpp_bin_float` rounding code to round at arbitrary location so we can use it for conversions, see [@https://svn.boost.org/trac/boost/ticket/12527 #12527].
+* Improve performance of 128-bit bit-scan operations.
+* Fix subtraction of very small quantities in `cpp_bin_float`.  See: [@https://svn.boost.org/trac/boost/ticket/12580 #12580].
+* Bring error handling into line with C99 Annex F.  See [@https://svn.boost.org/trac/boost/ticket/12581 #12581].
+* Fix bitwise export of trivial `cpp_int`'s, see [@https://svn.boost.org/trac/boost/ticket/12627 #12627].
+* Fix `ilogb` (and code that uses it) to consistently return the smallest value of the exponent type when the argument is zero, see [@https://svn.boost.org/trac/boost/ticket/12625 #12625].
+* Allow conversion from `__float128__` to `cpp_bin_float`.
+* Fix bug in left shift of `cpp_int` which would result in bit-loss, see [@https://svn.boost.org/trac/boost/ticket/12790 #12790].
+* Fixed bugs in bounded but variable precision `cpp_int`'s caused by over-aggressive constexpr optimization, see [@https://svn.boost.org/trac/boost/ticket/12798 #12798].
+
+
+[h4 Multiprecision-2.3.0 (Boost-1.63)]
+
+* Added support for all the C99 math functions.
+* Extended generic-interconversions to handle narrowing cases as well, changed convert_to member function and hence explicit
+conversion operators to use the same conversion code as the explicit constructors.
+* Fix IO stream parsing error, see [@https://svn.boost.org/trac/boost/ticket/12488 #12488].
+* Make default constructed floating point types all zero for consistency, see [@https://svn.boost.org/trac/boost/ticket/12500 #12500].
+* Fix conversion of cpp_bin_float to float/double/long double when the exponent value would overflow an int, see [@https://svn.boost.org/trac/boost/ticket/12512 #12512].
+* Fix cpp_bin_float subtractions that yield signed-zeros, see [@https://svn.boost.org/trac/boost/ticket/12524 #12524].
+* Fix ceil/trunc/round applied to cpp_bin_float and yielding a signed zero, see [@https://svn.boost.org/trac/boost/ticket/12525 #12525].
+
+[h4 Multiprecision-2.2.8 (Boost-1.62)]
+
+* Added support for hashing via `Boost.Hash` or `std::hash`.
+* Fixed some arithmetic operations in cpp_bin_float and cpp_dec_float that should generate a NaN, see [@https://svn.boost.org/trac/boost/ticket/12157 #12157].
+* Prevent inadvertant instantiation of variable-precision `mpfr_float_backend` with fixed allocation.
+* Fixed division over/underflow in cpp_bin_float, see [@https://svn.boost.org/trac/boost/ticket/12167 #12167].
+* Added support for signed-zeros throughout the library, including support for `signbit` and `copysign`, mpfr, float128, and cpp_bin_float types
+should now respect signed-zeros correctly.
+* Fixed bug in conversion of cpp_bin_float infinities to double etc, see [@https://svn.boost.org/trac/boost/ticket/12196 #12196].
+* Fix add and subtract of cpp_bin_float when the exponents would overflow., see [@https://svn.boost.org/trac/boost/ticket/12198 #12198].
+* Improve variable-precision support in mpfr and mpf backends, allow these types to be used with Boost.Math.
+* Fixed bug in subtraction of signed infinities in cpp_bin_float, see [@https://svn.boost.org/trac/boost/ticket/12209 #12209].
+* Fix result of sqrt(infinity) in cpp_bin_float (result should be infinity), see [@https://svn.boost.org/trac/boost/ticket/12227 #12227].
+* Added workaround in gmp.hpp for recent MPIR releases which are not quite source-compatible with GMP on Windows x64.
+* Allow `cpp_int` code to be used with /RTCc with MSVC.
+* Fix conversion of `cpp_int` to signed integer when the result is INT_MIN, see [@https://svn.boost.org/trac/boost/ticket/12343 #12343].
+* Update uBlas support to match latest uBlas code.
+* Fix some errors present when building on big-endian machines (not all `cpp_int` constructors are available on non-little-endian machines).
+* Fix fencepost error in rational to float conversion routines, see [@https://svn.boost.org/trac/boost/ticket/12327 #12327].
+* Fix some Oracle C++ compiler compatibility issues.
+* Add modf support to complete C90 compatibility.
+* Fix self assignment bug in expression template code for expressions such as `a = a * a * a`, see [@https://svn.boost.org/trac/boost/ticket/12408 #12408].
+* Fixed some compiler errors that occur when converting from `cpp_int` to `cpp_bin_float`.
+
+[h4 Multiprecision-2.2.7 (Boost-1.61)]
+
+* Fixed bug in stream input for integer types, see [@https://svn.boost.org/trac/boost/ticket/11857 #11857].
+* Fixed some ambiguous conversions involving expression templates see [@https://svn.boost.org/trac/boost/ticket/11922 #11922].
+* Add expression template aware min/max overloads see [@https://svn.boost.org/trac/boost/ticket/11149 #11149].
+* Fix bug in right shifting negative small integers in cpp_int see [@https://svn.boost.org/trac/boost/ticket/11999 #11999].
+* Use memmove for bitshifts in cpp_int when possible see [@https://svn.boost.org/trac/boost/ticket/9233 #9233].
+* Use memcpy for data import into cpp_int where possible, see [@https://svn.boost.org/trac/boost/ticket/9235 #9235].
+* Changed `cpp_bin_float.convert_to<double>()` to a function template rather than proceding via `long double` to avoid
+double-rounding bug, see [@https://svn.boost.org/trac/boost/ticket/12039 #12039].
+* Fixed conversions from NaNs and Infinities, see [@https://svn.boost.org/trac/boost/ticket/12112 #12112].
+* Enabled better support for Clang on Windows.
+* Fixed handling of NaNs and Infinities in basic arithmetic for cpp_dec_float and cpp_bin_float, see [@https://svn.boost.org/trac/boost/ticket/12090 #12090].
+* Fixed fencepost error in cpp_bin_float subtraction.
+* Fixed double-rounding in conversion to float routines for cpp_bin_float, see [@https://svn.boost.org/trac/boost/ticket/12039 #12039].
+* Make float128 denorm aware, see [@https://svn.boost.org/trac/boost/ticket/12075 #12075].
+* Allow the library and tests to be used without exception handling support, see [@https://svn.boost.org/trac/boost/ticket/12070 #12070].
+* Fixed buggy comparison operator overloads for boost::rational.
+* Added some workarounds for Oracle C++.
+* Fixed some missing typecasts for cases where cpp_int's limb_type is wider than unsigned.
+
+
+[h4 Multiprecision-2.2.6 (Boost-1.60)]
+
+* Fixed result of Miller Rabin primality test for value 2, see [@https://svn.boost.org/trac/boost/ticket/11495 #11495].
+* Improved initialization of cpp_int from very large strings of hex or octal digits, see [@https://svn.boost.org/trac/boost/ticket/11590 #11590].
+* Fixed fmod behaviour for negative divisors, see [@https://svn.boost.org/trac/boost/ticket/11641 #11641].
+* Fixed infinite division loop in cpp_int special case, see [@https://svn.boost.org/trac/boost/ticket/11648 #11648].
+* Patched missing return statement in [@https://svn.boost.org/trac/boost/ticket/11762 #11762].
+* Fixed mixed mode arithmetic compiler error in [@https://svn.boost.org/trac/boost/ticket/11764 #11764].
+* Fixed over-aggressive use of noexcept in [@https://svn.boost.org/trac/boost/ticket/11826 #11826].
+
+
+[h4 Multiprecision-2.2.5 (Boost-1.59)]
+
+* Depricated boost/multiprecision/random.hpp as it's no longer needed, updated random examples to match.
+* Fixed a bug in `cpp_int` right shift operator when shifting negative values - semantics now gives the
+same values as shifting 2's compliment integers, though not the same bit pattern.
+* Fixed support for GCC-4.6.4 in C++0x mode by disabling conditional noexcept suppoprt for that compiler
+see [@https://svn.boost.org/trac/boost/ticket/11402 #11402].
+* Suppressed numerous compiler warnings.
+
+[h4 Multiprecision-2.2.4 (Boost-1.58)]
+
+* Changed `frexp` to always be non-expression template generating, see: [@https://svn.boost.org/trac/boost/ticket/10993 10993].
+* Improved support of cpp_dec_float on Cygwin and other platforms with missing long double support, see [@https://svn.boost.org/trac/boost/ticket/10924 10924].
+* Improved noexcept support and added some more tests, see [@https://svn.boost.org/trac/boost/ticket/10990 10990].
+* Various workarounds applied for Intel-15.0 and Solaris-12.4 compilers.
+
+[h4 Multiprecision-2.2.3 (Boost-1.57)]
+
+* Changed rational to float conversions to exactly round to nearest, see [@https://svn.boost.org/trac/boost/ticket/10085 10085].
+* Added improved generic float to rational conversions.
+* Fixed rare bug in exponent function for __cpp_bin_float.
+* Fixed various minor documentation issues.
+
+[h4 Multiprecision-2.2.2 (Boost-1.56)]
+
+* Change floating-point to rational conversions to be implicit, see [@https://svn.boost.org/trac/boost/ticket/10082 10082].
+* Fix definition of checked_cpp_rational typedef.
+
+[h4 Multiprecision-2.2.1]
+
+* Fix bug in assignment from string in cpp_int, see [@https://svn.boost.org/trac/boost/ticket/9936 9936].
+
+[h4 Multiprecision-2.2.0]
+
+* Moved to Boost.Multiprecision specific version number - we have one breaking change in Boost-1.54
+which makes this major version 2, plus two releases with new features since then.
+* Added new __cpp_bin_float backend for binary floating-point.
+* Added MSVC-specific #include for compiler intrinsics, see [@https://svn.boost.org/trac/boost/ticket/9336 9336].
+* Fixed various typos in docs, see [@https://svn.boost.org/trac/boost/ticket/9432 9432].
+* Fixed __gmp_rational to allow move-copy from an already copied-from object, see [@https://svn.boost.org/trac/boost/ticket/9497 9497].
+* Added list of values for numeric_limits.
+
+[h4 Boost-1.55]
+
+* Added support for Boost.Serialization.
+* Suppressed some GCC warnings.  See [@https://svn.boost.org/trac/boost/ticket/8872 8872].
+* Fixed bug in pow for large integer arguments.  See [@https://svn.boost.org/trac/boost/ticket/8809 8809].
+* Fixed bug in pow for calculation of 0[super N].  See [@https://svn.boost.org/trac/boost/ticket/8798 8798].
+* Fixed bug in fixed precision cpp_int IO code that causes conversion to string to fail when the
+bit count is very small (less than CHAR_BIT).  See [@https://svn.boost.org/trac/boost/ticket/8745 8745].
+* Fixed bug in cpp_int that causes left shift to fail when a fixed precision type would overflow.
+See [@https://svn.boost.org/trac/boost/ticket/8741 8741].
+* Fixed some cosmetic warnings from cpp_int.  See [@https://svn.boost.org/trac/boost/ticket/8748 8748].
+* Fixed calls to functions which are required to be macros in C99.  See [@https://svn.boost.org/trac/boost/ticket/8732 8732].
+* Fixed bug that causes construction from INT_MIN, LONG_MIN etc to fail in cpp_int.  See [@https://svn.boost.org/trac/boost/ticket/8711 8711].
+
+[h4 1.54]
+
+* [*Breaking change] renamed `rational_adapter` to `rational_adaptor`.
+* Add support for [mpfi].
+* Add logged_adaptor.
+* Add support for 128-bit floats via GCC's `__float128` or Intel's `_Quad` data types.
+* Add support for user-defined literals in cpp_int, improve `constexpr` support.
+* Fixed bug in integer division of `cpp_int` that results in incorrect sign of `cpp_int` when both arguments are small enough
+to fit in a `double_limb_type`.  See [@https://svn.boost.org/trac/boost/ticket/8126 8126].
+* Fixed bug in subtraction of a single limb in `cpp_int` that results in incorrect value when the result should have a 0
+in the last limb: [@https://svn.boost.org/trac/boost/ticket/8133 8133].
+* Fixed bug in `cpp_int` where division of 0 by something doesn't get zero in the result: [@https://svn.boost.org/trac/boost/ticket/8160 8160].
+* Fixed bug in some transcendental functions that caused incorrect return values when variables are reused, for example with
+`a = pow(a, b)`.  See [@https://svn.boost.org/trac/boost/ticket/8326 8326].
+* Fixed some assignment operations in the mpfr and gmp backends to be safe if the target has been moved from: [@https://svn.boost.org/trac/boost/ticket/8326 8667].
+* Fixed bug in `cpp_int` that gives incorrect answer for 0%N for large N: [@https://svn.boost.org/trac/boost/ticket/8670 8670].
+* Fixed set_precision in mpfr backend so it doesn't trample over an existing value: [@https://svn.boost.org/trac/boost/ticket/8692 8692].
+
+[h4 1.53]
+
+* First Release.
+* Fix bug in [@https://svn.boost.org/trac/boost/ticket/7878 cpp_int division].
+* Fix issue [@https://svn.boost.org/trac/boost/ticket/7806 #7806].
+
+[h4 Post review changes]
+
+* Non-expression template operators further optimised with rvalue reference support.
+* Many functions made `constexp`.
+* Differentiate between explicit and implicit conversions in the number constructor.
+* Removed "mp_" prefix from types.
+* Allowed mixed precision arithmetic.
+* Changed ExpressionTemplates parameter to class `number` to use enumerated values rather than true/false.
+* Changed ExpressionTemplate parameter default value to use a traits class so that the default value depends on the backend used.
+* Added support for fused-multiply-add/subtract with GMP support.
+* Tweaked expression template unpacking to use fewer temporaries when the LHS also appears in the RHS.
+* Refactored `cpp_int_backend` based on review comments with new template parameter structure.
+* Added additional template parameter to `mpfr_float_backend` to allow stack-based allocation.
+* Added section on mixed precision arithmetic, and added support for operations yielding a higher precision result
+than either of the arguments.
+* Added overloads of integer-specific functions for __fundamental integer types.
+
+[h4 Pre-review history]
+
+*2011-2012, John Maddock adds an expression template enabled front-end to Christopher's code,
+and adds support for other backends.
+* 2011, Christopher Kormanyos publishes the decimal floating-point code under the Boost
+Software Licence.  The code is published as: [@http://doi.acm.org/10.1145/1916461.1916469
+"Algorithm 910: A Portable C++ Multiple-Precision
+System for Special-Function Calculations"], in ACM TOMS, {VOL 37, ISSUE 4, (February 2011)} (C) ACM,
+2011.
+* 2002-2011, Christopher Kormanyos develops the all C++ decimal arithmetic floating-point code.
+
+[endsect] [/section:hist History]
+
+
+[section:todo TODO]
+
+More a list of what ['could] be done, rather than what ['should] be done (which may be a much smaller list!).
+
+* Add back-end support for libdecNumber.
+* Add an adaptor back-end for complex number types.
+* Add better multiplication routines (Karatsuba, FFT etc) to cpp_int_backend.
+* Add assembly level routines to cpp_int_backend.
+* Can ring types (exact floating-point types) be supported?  The answer should be yes, but someone needs to write it,
+the hard part is IO and binary-decimal conversion.
+* Should there be a choice of rounding mode (probably MPFR specific)?
+* We can reuse temporaries in multiple subtrees (temporary caching).
+* cpp_dec_float should round to nearest.
+* A 2's complement fixed precision int that uses exactly N bits and no more.
+
+Things requested in review:
+
+* The performances of mp_number<a_trivial_adaptor<float>, false>respect to
+float and mp_number<a_trivial_adaptor<int>, false> and int should be
+given to show the cost of using the generic interface (Mostly done, just need to update docs to the latest results).
+* Should we provide min/max overloads for expression templates?  (Not done - we can't overload functions declared in the std namespace :-( ).
+* The rounding applied when converting must be documented (Done).
+* Document why we don't abstract out addition/multiplication algorithms etc. (done - FAQ)
+* Document why we don't use proto (compile times)  (Done).
+* We can reuse temporaries in multiple subtrees (temporary caching)  Moved to TODO list.
+* Emphasise in the docs that ET's may reorder operations (done 2012/10/31).
+* Document what happens to small fixed precision cpp_int's (done 2012/10/31).
+* The use of bool in template parameters could be improved by the use of
+an enum class which will be more explicit. E.g `enum class expression_template {disabled, enabled};
+enum class sign {unsigned, signed};`  (Partly done 2012/09/15, done 2012/10/31).
+* Each back-end should document the requirements it satisfies (not currently scheduled for inclusion: it's
+deliberately an implementation detail, and "optional" requirements are optimisations which can't be detected
+by the user).  Not done: this is an implementation detail, the exact list of requirements satisfied is purely
+an optimization, not something the user can detect.
+* A backend for an overflow aware integers (done 2012/10/31).
+* IIUC convert_to is used to emulate in c++98 compilers C++11 explicit
+conversions. Could the explicit conversion operator be added on
+compilers supporting it?  (Done 2012/09/15).
+* The front-end should make the differences between implicit and explicit
+construction (Done 2012/09/15).
+* The tutorial should add more examples concerning implicit or explicit
+conversions. (Done 2012/09/15).
+* The documentation must explain how move semantics helps in this domain
+and what the backend needs to do to profit from this optimization. (Done 2012/09/15).
+* The documentation should contain Throws specification on the mp_number
+and backend requirements operations. (Done 2012/09/15).
+* The library interface should use the noexcept (noexcept, ...)
+facilities (Done 2012/09/15).
+* It is unfortunate that the generic mp_number front end can not make use
+constexpr as not all the backends can ensure this (done - we can go quite a way).
+* literals: The library doesn't provide some kind of literals. I think that the
+mp_number class should provide a way to create literals if the backend
+is able to.  (Done 2012/09/15).
+* The ExpresionTemplate parameter could be defaulted to a traits class for more sensible defaults (done 2012/09/20).
+* In a = exp1 op exp2 where a occurs inside one of exp1 or exp2 then we can optimise and eliminate one more temporary (done 2012/09/20).
+
+
+[h4 Pre-Review Comments]
+
+* Make fixed precision orthogonal to Allocator type in cpp_int.  Possible solution - add an additional MaxBits
+template argument that defaults to 0 (meaning keep going till no more space/memory).  Done.
+* Can ring types (exact floating-point types) be supported?  The answer should be yes, but someone needs to write it (Moved to TODO list).
+* Should there be a choice of rounding mode (probably MPFR specific)?  Moved to TODO list.
+* Make the exponent type for cpp_dec_float a template parameter, maybe include support for big-integer exponents.
+Open question - what should be the default - int32_t or int64_t?  (done 2012/09/06)
+* Document the size requirements of fixed precision ints (done 2012/09/15).
+* Document std lib function accuracy (done 2012/09/15).
+* Be a bit clearer on the effects of sign-magnitude representation of cpp_int - min == -max etc - done.
+* Document cpp_dec_float precision, rounding, and exponent size (done 2012/09/06).
+* Can we be clearer in the docs that mixed arithmetic doesn't work (no longer applicable as of 2012/09/06)?
+* Document round functions behaviour better (they behave as in C++11) (added note 2012/09/06).
+* Document limits on size of cpp_dec_float (done 2012/09/06).
+* Add support for fused multiply add (and subtract).  GMP mpz_t could use this (done 2012/09/20).
+
+[endsect] [/section:todo TODO]
+
+[section:faq FAQ]
+
+[variablelist
+[[Why do I get compiler errors when passing a `number` to a template function?]
+   [Most likely you are actually passing an expression template type to the function and
+   template-argument-deduction deduces the "wrong" type.  Try casting the arguments
+   involving expressions to the actual number type, or as a last resort turning off
+   expression template support in the number type you are using.]]
+[[When is expression template support a performance gain?]
+   [As a general rule, expression template support adds a small runtime overhead
+   creating and unpacking the expression templates, but greatly reduces the number of
+   temporaries created.  So it's most effective in improving performance when the cost
+   of creating a temporary is high: for example when creating a temporary involves a memory
+   allocation.  It is least effective (and may even be a dis-optimisation) when temporaries
+   are cheap: for example if the number type is basically a thin wrapper around a native
+   arithmetic type.  In addition, since the library makes extensive use of thin inline wrapper
+   functions, turning on compiler optimization is essential to achieving high performance.]]
+[[Do expression templates reorder operations?]
+   [Yes they do, sometimes quite radically so, if this is a concern then they should be turned
+   off for the number type you are using.]]
+[[I can't construct my number type from ['some other type], but the docs indicate that the conversion should be allowed, what's up?]
+   [Some conversions are ['explicit], that includes construction from a string, or constructing from any type
+   that may result in loss of precision (for example constructing an integer type from a float).]]
+[[Why do I get an exception thrown (or the program crash due to an uncaught exception) when using the bitwise operators on a checked `cpp_int`?]
+   [Bitwise operations on negative values (or indeed any signed integer type) are unspecified by the standard.  As a result
+   any attempt to carry out a bitwise operation on a negative checked-integer will result in a `std::range_error` being thrown.]]
+[[Why do I get compiler errors when trying to use the complement operator?]
+   [Use of the complement operator on signed types is problematic as the result is unspecified by the standard, and is further
+   complicated by the fact that most extended precision integer types use a sign-magnitude representation rather than the 2's
+   complement one favored by most native integer types.  As a result the complement operator is deliberately disabled for
+   checked `cpp_int`'s.  Unchecked `cpp_int`'s give the same valued result as a 2's complement type would, but not the same bit-pattern.]]
+[[Why can't I negate an unsigned type?]
+   [The unary negation operator is deliberately disabled for unsigned integer types as its use would almost always be a programming error.]]
+[[Why doesn't the library use proto?]
+   [A very early version of the library did use proto, but compile times became too slow
+   for the library to be usable.  Since the library only required a tiny fraction of what
+   proto has to offer anyway, a lightweight expression template mechanism was used instead.
+   Compile times are still too slow...]]
+[[Why not abstract out addition/multiplication algorithms?]
+   [This was deemed not to be practical: these algorithms are intimately
+   tied to the actual data representation used.]]
+ [[How do I choose between Boost.Multiprecision `cpp_bin_50` and `cpp_dec_50`?]
+   [Unless you have a specific reason to choose `cpp_dec_`, then the default choice should be `cpp_bin_`, 
+   for example using the convenience `typedefs` like `boost::multiprecision::cpp_bin_50` or `boost::multiprecision::cpp_bin_100`.
+
+  In general, both work well and give the same results and at roughly the same speed with `cpp_dec_50` sometimes faster.
+
+  `cpp_dec_` was developed first paving the way for `cpp_bin_`. 
+  `cpp_dec_` has several guard digits and is not rounded at all, using 'brute force' to get the promised number of decimal digits correct,
+  but making it difficult to reason about precision and computational uncertainty, for example see [*https://svn.boost.org/trac10/ticket/12133].
+  It also has a fast but imprecise division operator giving surprising results sometimes, see [*https://svn.boost.org/trac10/ticket/11178].
+
+  `cpp_bin_` is correctly/exactly rounded making it possible to reason about both the precision and rounding of the results.]]
+] [/variablelist]
+
+[endsect] [/section:faq FAQ]
+
+[section:ack Acknowledgements]
+
+This library would not have happened without:
+
+* Christopher Kormanyos' C++ decimal number code.
+* Paul Bristow for patiently testing, and commenting on the library.
+* All the folks at GMP, MPFR and libtommath, for providing the "guts" that makes this library work.
+* [@http://www-cs-faculty.stanford.edu/~uno/taocp.html "The Art Of Computer Programming"],
+Donald E. Knuth, Volume 2: Seminumerical Algorithms, Third Edition
+(Reading, Massachusetts: Addison-Wesley, 1997), xiv+762pp. ISBN 0-201-89684-2
+
+[endsect] [/section:ack Acknowledgements]
+
+
+[endsect] [/section: Roadmap]

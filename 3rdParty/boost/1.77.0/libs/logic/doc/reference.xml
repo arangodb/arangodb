@@ -1,0 +1,212 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference><header name="boost/logic/tribool.hpp">
+<namespace name="boost">
+<namespace name="logic">
+<class name="tribool"><purpose>A 3-state boolean type. </purpose><description><para>3-state boolean values are either true, false, or indeterminate. </para></description><enum name="value_t"><enumvalue name="false_value"/><enumvalue name="true_value"/><enumvalue name="indeterminate_value"/><description><para>The actual stored value in this 3-state boolean, which may be false, true, or indeterminate. </para></description></enum>
+<data-member name="value"><type>enum boost::logic::tribool::value_t</type></data-member>
+<method-group name="public member functions">
+<method name="operator bool" cv="const noexcept" specifiers="explicit"><type>BOOST_CONSTEXPR</type><description><para>Use a 3-state boolean in a boolean context. Will evaluate true in a boolean context only when the 3-state boolean is definitely true.</para><para>
+
+</para></description><returns><para>true if the 3-state boolean is true, false otherwise </para>
+</returns><throws><simpara>Will not throw.</simpara></throws></method>
+</method-group>
+<constructor cv="noexcept"><description><para>Construct a new 3-state boolean value with the value 'false'.</para><para>
+</para></description><throws><simpara>Will not throw.</simpara></throws></constructor>
+<constructor cv="noexcept"><parameter name="initial_value"><paramtype>bool</paramtype></parameter><description><para>Construct a new 3-state boolean value with the given boolean value, which may be <computeroutput>true</computeroutput> or <computeroutput>false</computeroutput>.</para><para>
+</para></description><throws><simpara>Will not throw.</simpara></throws></constructor>
+<constructor cv="noexcept"><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter><description><para>Construct a new 3-state boolean value with an indeterminate value.</para><para>
+</para></description><throws><simpara>Will not throw.</simpara></throws></constructor>
+</class><function name="indeterminate"><type>BOOST_CONSTEXPR bool</type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="dummy"><paramtype><emphasis>unspecified</emphasis></paramtype><default><emphasis>unspecified</emphasis></default></parameter><purpose>Keyword and test function for the indeterminate tribool value. </purpose><description><para>The <computeroutput>indeterminate</computeroutput> function has a dual role. It's first role is as a unary function that tells whether the tribool value is in the "indeterminate" state. It's second role is as a keyword representing the indeterminate (just like "true" and "false" represent the true and false states). If you do not like the name "indeterminate", and would prefer to use a different name, see the macro <computeroutput>BOOST_TRIBOOL_THIRD_STATE</computeroutput>.</para><para>
+
+</para></description><returns><para><computeroutput>x.value == tribool::indeterminate_value</computeroutput> </para>
+</returns><throws><simpara>Will not throw.</simpara></throws></function>
+<function name="operator!"><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><purpose>Computes the logical negation of a tribool. </purpose><description><para>
+
+</para></description><returns><para>the logical negation of the tribool, according to the table: <informaltable><tgroup cols="2"><tbody><row>
+<entry valign="middle" align="center"><emphasis role="bold"><computeroutput>!</computeroutput></emphasis></entry><entry><emphasis role="bold"/></entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center">true</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center">false</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry><entry valign="middle" align="center">indeterminate</entry></row>
+</tbody></tgroup></informaltable>
+</para>
+</returns><throws><simpara>Will not throw.</simpara></throws></function>
+<overloaded-function name="operator&amp;&amp;"><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="y"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="y"><paramtype>bool</paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype>bool</paramtype></parameter><parameter name="y"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter></signature><purpose>Computes the logical conjunction of two tribools. </purpose><description><para>
+
+</para></description><returns><para>the result of logically ANDing the two tribool values, according to the following table: <informaltable><tgroup cols="4"><tbody><row>
+<entry valign="middle" align="center"><emphasis role="bold"><computeroutput>&amp;&amp;</computeroutput></emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">false</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">indeterminate</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">indeterminate</entry><entry valign="middle" align="center">indeterminate</entry></row>
+</tbody></tgroup></informaltable>
+</para>
+</returns><throws><simpara>Will not throw.</simpara></throws></overloaded-function>
+
+
+
+
+<overloaded-function name="operator||"><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="y"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="y"><paramtype>bool</paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype>bool</paramtype></parameter><parameter name="y"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter></signature><purpose>Computes the logical disjunction of two tribools. </purpose><description><para>
+
+</para></description><returns><para>the result of logically ORing the two tribool values, according to the following table: <informaltable><tgroup cols="4"><tbody><row>
+<entry valign="middle" align="center"><emphasis role="bold"><computeroutput>||</computeroutput></emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">indeterminate</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">true</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry><entry valign="middle" align="center">indeterminate</entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">indeterminate</entry></row>
+</tbody></tgroup></informaltable>
+</para>
+</returns><throws><simpara>Will not throw.</simpara></throws></overloaded-function>
+
+
+
+
+<overloaded-function name="operator=="><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="y"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="y"><paramtype>bool</paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype>bool</paramtype></parameter><parameter name="y"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter></signature><purpose>Compare tribools for equality. </purpose><description><para>
+
+</para></description><returns><para>the result of comparing two tribool values, according to the following table: <informaltable><tgroup cols="4"><tbody><row>
+<entry valign="middle" align="center"><emphasis role="bold"><computeroutput>==</computeroutput></emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">indeterminate</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">indeterminate</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry><entry valign="middle" align="center">indeterminate</entry><entry valign="middle" align="center">indeterminate</entry><entry valign="middle" align="center">indeterminate</entry></row>
+</tbody></tgroup></informaltable>
+</para>
+</returns><throws><simpara>Will not throw.</simpara></throws></overloaded-function>
+
+
+
+
+<overloaded-function name="operator!="><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="y"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name="y"><paramtype>bool</paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype>bool</paramtype></parameter><parameter name="y"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter></signature><signature><type>BOOST_CONSTEXPR <classname>tribool</classname></type><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><parameter name=""><paramtype>indeterminate_keyword_t</paramtype></parameter></signature><purpose>Compare tribools for inequality. </purpose><description><para>
+
+</para></description><returns><para>the result of comparing two tribool values for inequality, according to the following table: <informaltable><tgroup cols="4"><tbody><row>
+<entry valign="middle" align="center"><emphasis role="bold"><computeroutput>!=</computeroutput></emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">false</emphasis></entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">indeterminate</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">true</emphasis></entry><entry valign="middle" align="center">true</entry><entry valign="middle" align="center">false</entry><entry valign="middle" align="center">indeterminate</entry></row>
+<row>
+<entry valign="middle" align="center"><emphasis role="bold">indeterminate</emphasis></entry><entry valign="middle" align="center">indeterminate</entry><entry valign="middle" align="center">indeterminate</entry><entry valign="middle" align="center">indeterminate</entry></row>
+</tbody></tgroup></informaltable>
+</para>
+</returns><throws><simpara>Will not throw.</simpara></throws></overloaded-function>
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+<macro name="BOOST_TRIBOOL_THIRD_STATE" kind="functionlike"><macro-parameter name="Name"/><purpose>Declare a new name for the third state of a tribool. </purpose><description><para>Use this macro to declare a new name for the third state of a tribool. This state can have any number of new names (in addition to <computeroutput>indeterminate</computeroutput>), all of which will be equivalent. The new name will be placed in the namespace in which the macro is expanded.</para><para>Example: BOOST_TRIBOOL_THIRD_STATE(true_or_false)</para><para>tribool x(true_or_false); // potentially set x if (true_or_false(x)) { // don't know what x is } </para></description></macro>
+</header>
+<header name="boost/logic/tribool_fwd.hpp">
+<namespace name="boost">
+<namespace name="logic">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/logic/tribool_io.hpp">
+<namespace name="boost">
+<namespace name="logic">
+<class name="indeterminate_name"><template>
+      <template-type-parameter name="CharT"/>
+    </template><inherit access="public">facet</inherit><inherit access="private">noncopyable</inherit><purpose>A locale facet specifying the name of the indeterminate value of a tribool. </purpose><description><para>The facet is used to perform I/O on tribool values when <computeroutput>std::boolalpha</computeroutput> has been specified. This class template is only available if the C++ standard library implementation supports locales. </para></description><typedef name="char_type"><type>CharT</type></typedef>
+<typedef name="string_type"><type>std::basic_string&lt; CharT &gt;</type></typedef>
+<data-member name="id" specifiers="static"><type>std::locale::id</type><purpose>Uniquily identifies this facet with the locale. </purpose></data-member>
+<method-group name="public member functions">
+<method name="name" cv="const"><type>string_type</type><purpose>Returns the name for the indeterminate value. </purpose></method>
+</method-group>
+<constructor><purpose>Construct the facet with the default name. </purpose></constructor>
+<constructor specifiers="explicit"><parameter name="initial_name"><paramtype>const string_type &amp;</paramtype></parameter><purpose>Construct the facet with the given name for the indeterminate value. </purpose></constructor>
+</class>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<function name="get_default_indeterminate_name"><type>std::basic_string&lt; T &gt;</type><template>
+          <template-type-parameter name="T"/>
+        </template><purpose>Returns a string containing the default name for the indeterminate value of a tribool with the given character type T. </purpose><description><para>This routine is used by the input and output streaming operators for tribool when there is no locale support or the stream's locale does not contain the <classname alt="boost::logic::indeterminate_name">indeterminate_name</classname> facet. </para></description></function>
+<function name="get_default_indeterminate_name&lt;char &gt;"><type>std::basic_string&lt; char &gt;</type><template>
+        </template><purpose>Returns the character string "indeterminate". </purpose></function>
+<function name="get_default_indeterminate_name&lt;wchar_t &gt;"><type>std::basic_string&lt; wchar_t &gt;</type><template>
+        </template><purpose>Returns the wide character string L"indeterminate". </purpose></function>
+<function name="operator&lt;&lt;"><type>std::basic_ostream&lt; CharT, Traits &gt; &amp;</type><template>
+          <template-type-parameter name="CharT"/>
+          <template-type-parameter name="Traits"/>
+        </template><parameter name="out"><paramtype>std::basic_ostream&lt; CharT, Traits &gt; &amp;</paramtype></parameter><parameter name="x"><paramtype><classname>tribool</classname></paramtype></parameter><purpose>Writes the value of a tribool to a stream. </purpose><description><para>When the value of <computeroutput>x</computeroutput> is either <computeroutput>true</computeroutput> or <computeroutput>false</computeroutput>, this routine is semantically equivalent to: <programlisting language="c++">out &lt;&lt; static_cast&lt;bool&gt;(x); 
+</programlisting></para><para>When <computeroutput>x</computeroutput> has an indeterminate value, it outputs either the integer value 2 (if <computeroutput>(out.flags() &amp; std::ios_base::boolalpha) == 0</computeroutput>) or the name of the indeterminate value. The name of the indeterminate value comes from the <classname alt="boost::logic::indeterminate_name">indeterminate_name</classname> facet (if it is defined in the output stream's locale), or from the get_default_indeterminate_name function (if it is not defined in the locale or if the C++ standard library implementation does not support locales).</para><para>
+</para></description><returns><para><computeroutput>out</computeroutput> </para>
+</returns></function>
+<function name="operator&lt;&lt;"><type>std::basic_ostream&lt; CharT, Traits &gt; &amp;</type><template>
+          <template-type-parameter name="CharT"/>
+          <template-type-parameter name="Traits"/>
+        </template><parameter name="out"><paramtype>std::basic_ostream&lt; CharT, Traits &gt; &amp;</paramtype></parameter><parameter name=""><paramtype><emphasis>unspecified</emphasis></paramtype></parameter><purpose>Writes the indeterminate tribool value to a stream. </purpose><description><para>This routine outputs either the integer value 2 (if <computeroutput>(out.flags() &amp; std::ios_base::boolalpha) == 0</computeroutput>) or the name of the indeterminate value. The name of the indeterminate value comes from the <classname alt="boost::logic::indeterminate_name">indeterminate_name</classname> facet (if it is defined in the output stream's locale), or from the get_default_indeterminate_name function (if it is not defined in the locale or if the C++ standard library implementation does not support locales).</para><para>
+</para></description><returns><para><computeroutput>out</computeroutput> </para>
+</returns></function>
+<function name="operator&gt;&gt;"><type>std::basic_istream&lt; CharT, Traits &gt; &amp;</type><template>
+          <template-type-parameter name="CharT"/>
+          <template-type-parameter name="Traits"/>
+        </template><parameter name="in"><paramtype>std::basic_istream&lt; CharT, Traits &gt; &amp;</paramtype></parameter><parameter name="x"><paramtype><classname>tribool</classname> &amp;</paramtype></parameter><purpose>Reads a tribool value from a stream. </purpose><description><para>When <computeroutput>(out.flags() &amp; std::ios_base::boolalpha) == 0</computeroutput>, this function reads a <computeroutput>long</computeroutput> value from the input stream <computeroutput>in</computeroutput> and converts that value to a tribool. If that value is 0, <computeroutput>x</computeroutput> becomes <computeroutput>false</computeroutput>; if it is 1, <computeroutput>x</computeroutput> becomes <computeroutput>true</computeroutput>; if it is 2, <computeroutput>becomes</computeroutput> <computeroutput>indetermine</computeroutput>; otherwise, the operation fails (and the fail bit is set on the input stream <computeroutput>in</computeroutput>).</para><para>When <computeroutput>(out.flags() &amp; std::ios_base::boolalpha) != 0</computeroutput>, this function first determines the names of the false, true, and indeterminate values. The false and true names are extracted from the <computeroutput>std::numpunct</computeroutput> facet of the input stream's locale (if the C++ standard library implementation supports locales), or from the <computeroutput>default_false_name</computeroutput> and <computeroutput>default_true_name</computeroutput> functions (if there is no locale support). The indeterminate name is extracted from the appropriate <computeroutput><classname alt="boost::logic::indeterminate_name">indeterminate_name</classname></computeroutput> facet (if it is available in the input stream's locale), or from the <computeroutput>get_default_indeterminate_name</computeroutput> function (if the C++ standard library implementation does not support locales, or the <computeroutput><classname alt="boost::logic::indeterminate_name">indeterminate_name</classname></computeroutput> facet is not specified for this locale object). The input is then matched to each of these names, and the tribool <computeroutput>x</computeroutput> is assigned the value corresponding to the longest name that matched. If no name is matched or all names are empty, the operation fails (and the fail bit is set on the input stream <computeroutput>in</computeroutput>).</para><para>
+</para></description><returns><para><computeroutput>in</computeroutput> </para>
+</returns></function>
+</namespace>
+</namespace>
+</header>
+</library-reference>

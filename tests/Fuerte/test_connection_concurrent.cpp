@@ -132,7 +132,7 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel){
   std::vector<std::thread> joins;
   for (size_t t = 0; t < threads(); t++) {
     wg.add(repeat());
-    joins.emplace_back([=]{
+    joins.emplace_back([=, this]{
       for (size_t i = 0; i < repeat(); i++) {
         auto request = fu::createRequest(fu::RestVerb::Post, "/_api/document/concurrent");
         request->addVPack(builder.slice());

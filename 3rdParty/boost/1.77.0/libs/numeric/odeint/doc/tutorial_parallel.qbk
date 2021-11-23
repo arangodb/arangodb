@@ -1,0 +1,266 @@
+[/============================================================================
+  Boost.odeint
+
+  Copyright 2013 Karsten Ahnert
+  Copyright 2013 Pascal Germroth
+  Copyright 2013 Mario Mulansky
+
+  Use, modification and distribution is subject to the Boost Software License,
+  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================/]
+
+
+[section Parallel computation with OpenMP and MPI]
+
+Parallelization is a key feature for modern numerical libraries due to the vast
+availability of many cores nowadays, even on Laptops.
+odeint currently supports parallelization with OpenMP and MPI, as described in
+the following sections.
+However, it should be made clear from the beginning that the difficulty of
+efficiently distributing ODE integration on many cores/machines lies in the
+parallelization of the system function, which is still the user's
+responsibility.
+Simply using a parallel odeint backend without parallelizing the system function
+will bring you almost no performance gains.
+
+[section OpenMP]
+
+[import ../examples/openmp/phase_chain.cpp]
+
+odeint's OpenMP support is implemented as an external backend, which needs to be
+manually included. Depending on the compiler some additional flags may be
+needed, i.e. [^-fopenmp] for GCC.
+[phase_chain_openmp_header]
+
+In the easiest parallelization approach with OpenMP we use a standard `vector`
+as the state type:
+[phase_chain_vector_state]
+
+We initialize the state with some random data:
+[phase_chain_init]
+
+Now we have to configure the stepper to use the OpenMP backend.
+This is done by explicitly providing the `openmp_range_algebra` as a template
+parameter to the stepper.
+This algebra requires the state type to be a model of Random Access Range and
+will be used from multiple threads by the algebra.
+[phase_chain_stepper]
+
+Additional to providing the stepper with OpenMP parallelization we also need
+a parallelized system function to exploit the available cores.
+Here this is shown for a simple one-dimensional chain of phase oscillators with
+nearest neighbor coupling:
+[phase_chain_rhs]
+
+[note In the OpenMP backends the system function will always be called
+sequentially from the thread used to start the integration.]
+
+Finally, we perform the integration by using one of the integrate functions from
+odeint.
+As you can see, the parallelization is completely hidden in the stepper and the
+system function.
+OpenMP will take care of distributing the work among the threads and join them
+automatically.
+[phase_chain_integrate]
+
+After integrating, the data can be accessed immediately and be processed
+further.
+Note, that you can specify the OpenMP scheduling by calling `omp_set_schedule`
+in the beginning of your program:
+[phase_chain_scheduling]
+
+See [github_link examples/openmp/phase_chain.cpp
+openmp/phase_chain.cpp] for the complete example.
+
+[heading Split state]
+
+[import ../examples/openmp/phase_chain_omp_state.cpp]
+
+For advanced cases odeint offers another approach to use OpenMP that allows for
+a more exact control of the parallelization.
+For example, for odd-sized data where OpenMP's thread boundaries don't match
+cache lines and hurt performance it might be advisable to copy the data from the
+continuous `vector<T>` into separate, individually aligned, vectors.
+For this, odeint provides the `openmp_state<T>` type, essentially an alias for
+`vector<vector<T>>`.
+
+Here, the initialization is done with a `vector<double>`, but then we use
+odeint's `split` function to fill an `openmp_state`.
+The splitting is done such that the sizes of the individual regions differ at
+most by 1 to make the computation as uniform as possible.
+[phase_chain_state_init]
+
+Of course, the system function has to be changed to deal with the
+`openmp_state`.
+Note that each sub-region of the state is computed in a single task, but at the
+borders read access to the neighbouring regions is required.
+[phase_chain_state_rhs]
+
+Using the `openmp_state<T>` state type automatically selects `openmp_algebra`
+which executes odeint's internal computations on parallel regions.
+Hence, no manual configuration of the stepper is necessary.
+At the end of the integration, we use `unsplit` to concatenate the sub-regions
+back together into a single vector.
+[phase_chain_state_integrate]
+
+[note You don't actually need to use `openmp_state<T>` for advanced use cases,
+`openmp_algebra` is simply an alias for `openmp_nested_algebra<range_algebra>`
+and supports any model of Random Access Range as the outer, parallel state type,
+and will use the given algebra on its elements.]
+
+See [github_link examples/openmp/phase_chain_omp_state.cpp
+openmp/phase_chain_omp_state.cpp] for the complete example.
+
+[endsect]
+
+[section MPI]
+
+[import ../examples/mpi/phase_chain.cpp]
+
+To expand the parallel computation across multiple machines we can use MPI.
+
+The system function implementation is similar to the OpenMP variant with split
+data, the main difference being that while OpenMP uses a spawn/join model where
+everything not explicitly paralleled is only executed in the main thread, in
+MPI's model each node enters the `main()` method independently, diverging based
+on its rank and synchronizing through message-passing and explicit barriers.
+
+odeint's MPI support is implemented as an external backend, too.
+Depending on the MPI implementation the code might need to be compiled with i.e.
+[^mpic++].
+[phase_chain_mpi_header]
+
+Instead of reading another thread's data, we asynchronously send and receive the
+relevant data from neighbouring nodes, performing some computation in the interim
+to hide the latency.
+[phase_chain_mpi_rhs]
+
+Analogous to `openmp_state<T>` we use `mpi_state< InnerState<T> >`, which
+automatically selects `mpi_nested_algebra` and the appropriate MPI-oblivious
+inner algebra (since our inner state is a `vector`, the inner algebra will be
+`range_algebra` as in the OpenMP example).
+[phase_chain_state]
+
+In the main program we construct a `communicator` which tells us the `size` of
+the cluster and the current node's `rank` within that.
+We generate the input data on the master node only, avoiding unnecessary work on
+the other nodes.
+Instead of simply copying chunks, `split` acts as a MPI collective function here
+and sends/receives regions from master to each slave.
+The input argument is ignored on the slaves, but the master node receives
+a region in its output and will participate in the computation.
+[phase_chain_mpi_init]
+
+Now that `x_split` contains (only) the local chunk for each node, we start the
+integration.
+
+To print the result on the master node, we send the processed data back using
+`unsplit`.
+[phase_chain_mpi_integrate]
+
+[note `mpi_nested_algebra::for_each`[~N] doesn't use any MPI constructs, it
+simply calls the inner algebra on the local chunk and the system function is not
+guarded by any barriers either, so if you don't manually place any (for example
+in parameter studies cases where the elements are completely independent) you
+might see the nodes diverging, returning from this call at different times.]
+
+See [github_link examples/mpi/phase_chain.cpp
+mpi/phase_chain.cpp] for the complete example.
+
+[endsect]
+
+[section Concepts]
+
+[section MPI State]
+As used by `mpi_nested_algebra`.
+[heading Notation]
+[variablelist
+    [[`InnerState`] [The inner state type]]
+    [[`State`] [The MPI-state type]]
+    [[`state`] [Object of type `State`]]
+    [[`world`] [Object of type `boost::mpi::communicator`]]
+]
+[heading Valid Expressions]
+[table
+    [[Name] [Expression] [Type] [Semantics]]
+    [[Construct a state with a communicator]
+     [`State(world)`] [`State`] [Constructs the State.]]
+    [[Construct a state with the default communicator]
+     [`State()`] [`State`] [Constructs the State.]]
+    [[Get the current node's inner state]
+     [`state()`] [`InnerState`] [Returns a (const) reference.]]
+    [[Get the communicator]
+     [`state.world`] [`boost::mpi::communicator`] [See __boost_mpi.]]
+]
+[heading Models]
+* `mpi_state<InnerState>`
+
+[endsect]
+
+[section OpenMP Split State]
+As used by `openmp_nested_algebra`, essentially a Random Access Container with
+`ValueType = InnerState`.
+[heading Notation]
+[variablelist
+    [[`InnerState`] [The inner state type]]
+    [[`State`] [The split state type]]
+    [[`state`] [Object of type `State`]]
+]
+[heading Valid Expressions]
+[table
+    [[Name] [Expression] [Type] [Semantics]]
+    [[Construct a state for `n` chunks]
+     [`State(n)`] [`State`] [Constructs underlying `vector`.]]
+    [[Get a chunk]
+     [`state[i]`] [`InnerState`] [Accesses underlying `vector`.]]
+    [[Get the number of chunks]
+     [`state.size()`] [`size_type`] [Returns size of underlying `vector`.]]
+]
+[heading Models]
+* `openmp_state<ValueType>` with `InnerState = vector<ValueType>`
+
+[endsect]
+
+[section Splitter]
+[heading Notation]
+[variablelist
+    [[`Container1`] [The continuous-data container type]]
+    [[`x`] [Object of type `Container1`]]
+    [[`Container2`] [The chunked-data container type]]
+    [[`y`] [Object of type `Container2`]]
+]
+[heading Valid Expressions]
+[table
+    [[Name] [Expression] [Type] [Semantics]]
+    [[Copy chunks of input to output elements]
+     [`split(x, y)`] [`void`]
+     [Calls `split_impl<Container1, Container2>::split(x, y)`, splits `x` into
+     `y.size()` chunks.]]
+    [[Join chunks of input elements to output]
+     [`unsplit(y, x)`] [`void`]
+     [Calls `unsplit_impl<Container2, Container1>::unsplit(y, x)`, assumes `x`
+      is of the correct size ['__sigma `y[i].size()`], does not resize `x`.]]
+]
+[heading Models]
+* defined for `Container1` = __boost_range and `Container2 = openmp_state`
+* and `Container2 = mpi_state`.
+
+To implement splitters for containers incompatible with __boost_range,
+specialize the `split_impl` and `unsplit_impl` types:
+```
+template< class Container1, class Container2 , class Enabler = void >
+struct split_impl {
+    static void split( const Container1 &from , Container2 &to );
+};
+
+template< class Container2, class Container1 , class Enabler = void >
+struct unsplit_impl {
+    static void unsplit( const Container2 &from , Container1 &to );
+};
+```
+[endsect]
+
+[endsect]
+
+[endsect]

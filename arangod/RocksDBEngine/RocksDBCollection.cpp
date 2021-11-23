@@ -1450,14 +1450,6 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (performPreflightChecks) {
-    rocksdb::PinnableSlice val;
-    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val, ReadOwnWrites::yes);
-    TRI_ASSERT(s.IsNotFound() || !s.ok());
-  }
-#endif
-
   TRI_IF_FAILURE("RocksDBCollection::insertFail1") {
     if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
       return res.reset(TRI_ERROR_DEBUG);
@@ -1552,14 +1544,6 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    rocksdb::PinnableSlice val;
-    rocksdb::Status s = mthds->Get(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents), key->string(), &val, ReadOwnWrites::yes);
-    TRI_ASSERT(s.ok());
-  }
-#endif
-  
   TRI_IF_FAILURE("RocksDBCollection::removeFail1") {
     if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
       return res.reset(TRI_ERROR_DEBUG);

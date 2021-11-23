@@ -1,0 +1,7 @@
+//[example_output
+> example
+Running 1 test case...
+test.cpp(15): error in "test": check output.is_equal( "i=3" ) has failed. Output content: "i=2"
+
+*** 1 failures is detected in test suite "example"
+//]
