@@ -1,6 +1,9 @@
 v3.8.4 (XXXX-XX-XX)
 -------------------
 
+* Removed an invalid assertion that could be triggered during chaos testing in
+  maintainer mode.
+
 * Improved sync protocol to commit after each chunk and get rid of
   potentially dangerous NO_INDEXING optimization.
 
