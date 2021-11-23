@@ -166,13 +166,29 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
   return makeIdFromCustom(resolver, id, key);
 }
 
-void transaction::helpers::extractSmartGraphIds(VPackSlice const doc,
-                                                      arangodb::velocypack::StringRef& left,
-                                                      arangodb::velocypack::StringRef& right) {
-  arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(doc));
-  left = key.substr(0, key.find(':'));
-  key = key.substr(key.find(':') + 1);
-  right = key.substr(key.find(':') + 1);
+auto transaction::helpers::extractSmartGraphIds(VPackSlice const doc) -> ResultT<SmartGraphEdgeToFrom> {
+  auto key = transaction::helpers::extractKeyPart(doc);
+
+  auto pos = key.find(':');
+  if (pos == std::string::npos) {
+    return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
+  }
+  auto from = key.substr(0, pos);
+  if (from.empty()) {
+    return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
+  }
+  key = key.substr(pos + 1);
+
+  pos = key.find(':');
+  if (pos == std::string::npos) {
+    return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
+  }
+
+  auto to = key.substr(pos + 1);
+  if (to.empty()) {
+    return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
+  }
+  return SmartGraphEdgeToFrom{from, to};
 }
 
 /// @brief quick access to the _id attribute in a database document
