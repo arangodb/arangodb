@@ -1244,7 +1244,7 @@ static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::Leade
       replication2::agency::LogCurrent::Leader leader;
       leader.term = status.term;
       leader.committedParticipantsConfig = status.acceptedParticipantConfig;
-      return std::move(leader);
+      return leader;
     }
   }
 
@@ -1831,7 +1831,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
   std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
   std::string const& serverId, MaintenanceFeature& feature,
   MaintenanceFeature::ShardActionMap const& shardActionMap,
-  std::unordered_set<std::string>& makeDirty) {
+  std::unordered_set<std::string>& makeDirty,
+  std::unordered_set<std::string> const& failedServers) {
 
   for (auto const& dbname : dirty) {
 
@@ -1947,7 +1948,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         bool ok = feature.lockShard(shardName, description);
         TRI_ASSERT(ok);
         try {
-          Result res = feature.addAction(std::move(description), false);
+          Result res = feature.addAction(description, false);
           if (res.fail()) {
             feature.unlockShard(shardName);
           }
@@ -1964,14 +1965,14 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo(
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& cur,
-  uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
-  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogStatusMapByDatabase const& localLogs) {
-
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& cur,
+    uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    std::string const& serverId, MaintenanceFeature& feature,
+    VPackBuilder& report, MaintenanceFeature::ShardActionMap const& shardActionMap,
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    std::unordered_set<std::string> const& failedServers) {
   auto start = std::chrono::steady_clock::now();
 
   MaintenanceFeature::errors_t allErrors;
@@ -2004,7 +2005,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       VPackObjectBuilder agency(&report);
       try {
         std::unordered_set<std::string> makeDirty;
-        syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId, feature, shardActionMap, makeDirty);
+        syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId, feature, shardActionMap, makeDirty, failedServers);
         feature.addDirty(makeDirty, false);
       } catch (std::exception const& e) {
         LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)
