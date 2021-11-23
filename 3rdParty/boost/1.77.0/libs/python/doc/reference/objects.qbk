@@ -1,0 +1,11 @@
+[chapter Object Wrappers
+    [quickbook 1.7]
+]
+
+[include dict.qbk]
+[include list.qbk]
+[include long.qbk]
+[include object.qbk]
+[include str.qbk]
+[include slice.qbk]
+[include tuple.qbk]

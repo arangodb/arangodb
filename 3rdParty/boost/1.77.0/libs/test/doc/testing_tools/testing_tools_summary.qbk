@@ -1,0 +1,190 @@
+[/
+ / Copyright (c) 2015 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:summary Summary of the API for writing tests]
+
+[table
+  [
+    [Assertions]
+    [Short description]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_TEST__, __BOOST_TEST_LEVEL__]
+    [General purpose assertion macro.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL__]
+    [Simple validation of a boolean predicate value.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_BITWISE_EQUAL__]
+    [Bitwise equality test of two elements.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_EQUAL__]
+    [Equality test of two elements.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_EQUAL_COLLECTIONS__]
+    [Element-wise equality test of two collections.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_CLOSE__]
+    [Floating point comparison using a percentage of deviation.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_CLOSE_FRACTION__]
+    [Floating point comparison using the fraction of the compared operands.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_EXCEPTION__]
+    [Exception detection and validation check.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_GE__]
+    [Comparison of two values (with convenient reporting).]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_GT__]
+    [Comparison of two values (with convenient reporting).]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_LE__]
+    [Comparison of two values (with convenient reporting).]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_LT__]
+    [Comparison of two values (with convenient reporting).]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_MESSAGE__]
+    [Same as __BOOST_LEVEL__ with a custom message in case of failure.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_NE__]
+    [Comparison of two values (with convenient reporting).]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_NO_THROW__]
+    [Checks an expression does not throw any exception.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_PREDICATE__]
+    [Checks a list of arguments against a predicate functor.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_SMALL__]
+    [Checks a value is small according to a tolerance.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_LEVEL_THROW__]
+    [Checks an expression throws a specific type of expression.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES__]
+    [Indicates the number of expected failures for a test case]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_ERROR__]
+    [Logs an error message, fails but does not abort the current test.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_FAIL__]
+    [Logs an error message, fails and aborts the current test.]
+  ]
+
+  [/ ###############################################################################################]
+  [
+    [__BOOST_IS_DEFINED__]
+    [Checks at runtime whether or not the supplied preprocessor symbol is defined.]
+  ]
+]
+
+
+[table
+  [
+    [Decorators]
+    [Short description]
+  ]
+
+  [
+    [__decorator_expected_failures__]
+    [Indicates the expected failures of a test unit.]
+  ]
+
+  [
+    [__decorator_timeout__]
+    [Sets the maximum amount of time a test unit should take.]
+  ]
+
+  [
+    [__decorator_tolerance__]
+    [Sets the floating point comparison tolerance for a test unit.]
+  ]
+]
+
+[table
+  [
+    [Control macros]
+    [Short description]
+  ]
+
+  [
+    [__BOOST_TEST_TOOLS_UNDER_DEBUGGER__]
+    [When defined, test assertions are compiled in debugger-friendly mode.]
+  ]
+
+  [
+    [__BOOST_TEST_TOOLS_DEBUGGABLE__]
+    [When defined, test assertions are compiled in two modes (debugger-friendly and full-featured), and the version is selected at run-time.]
+  ]
+
+]
+
+[endsect] [/ testing tools]

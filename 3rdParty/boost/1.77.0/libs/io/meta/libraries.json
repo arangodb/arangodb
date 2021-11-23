@@ -1,0 +1,18 @@
+{
+    "key": "io",
+    "name": "IO",
+    "authors": [
+        "Daryle Walker",
+        "Beman Dawes",
+        "Glen Fernandes"
+    ],
+    "description": "Utilities for the standard I/O library.",
+    "documentation": "doc/html/io.html",
+    "category": [
+        "IO"
+    ],
+    "maintainers": [
+        "Glen Fernandes <glenjofe -at- gmail.com>"
+    ],
+    "cxxstd": "03"
+}

@@ -1,0 +1,32 @@
+# Boost.GIL (Generic Image Library) - IO tests
+#
+# Copyright (c) 2012 Christian Henning
+# Copyright (c) 2017 Stefan Seefeld
+# Copyright (c) 2012-2020 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import ac ;
+import testing ;
+
+using zlib ;
+using libpng : : : : true ;
+
+# TODO: Download PNG test suite images and build with BOOST_GIL_IO_USE_PNG_FILEFORMAT_TEST_SUITE_IMAGES
+
+project
+   : requirements
+      <define>BOOST_GIL_IO_TEST_ALLOW_READING_IMAGES
+      <define>BOOST_GIL_IO_TEST_ALLOW_WRITING_IMAGES
+      <library>/boost/filesystem//boost_filesystem
+      [ ac.check-library /zlib//zlib : <library>/zlib//zlib : <build>no ]
+      [ ac.check-library /libpng//libpng : <library>/libpng//libpng : <build>no ]
+   ;
+
+run png_test.cpp ;
+run png_file_format_test.cpp ;
+run png_read_test.cpp ;
+
+run png_old_test.cpp ;

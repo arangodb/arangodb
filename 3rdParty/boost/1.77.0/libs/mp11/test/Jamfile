@@ -1,0 +1,234 @@
+#  Boost.Mp11 Library Test Jamfile
+#
+#  Copyright 2015-2019 Peter Dimov
+#
+#  Distributed under the Boost Software License, Version 1.0.
+#  See accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt
+
+import testing ;
+import ../../config/checks/config : requires ;
+
+project
+  : requirements
+
+    [ requires cxx11_variadic_templates cxx11_template_aliases cxx11_decltype cxx11_hdr_tuple ]
+
+    <warnings>extra
+
+    <toolset>msvc:<warnings-as-errors>on
+    <toolset>gcc:<warnings-as-errors>on
+    <toolset>clang:<warnings-as-errors>on
+  ;
+
+# include-only
+compile mp11.cpp ;
+
+# list
+run mp_size.cpp ;
+run mp_empty.cpp ;
+run mp_front.cpp ;
+run mp_pop_front.cpp ;
+run mp_second.cpp ;
+run mp_third.cpp ;
+run mp_push_front.cpp ;
+run mp_push_back.cpp ;
+run mp_rename.cpp ;
+run mp_append.cpp ;
+run mp_append_2.cpp ;
+run mp_append_sf.cpp ;
+run mp_replace_front.cpp ;
+run mp_replace_second.cpp ;
+run mp_replace_third.cpp ;
+run mp_apply_q.cpp ;
+run mp_is_list.cpp ;
+run mp_list_c.cpp ;
+run mp_transform_front.cpp ;
+run mp_transform_second.cpp ;
+run mp_transform_third.cpp ;
+
+# algorithm
+run mp_assign.cpp ;
+run mp_clear.cpp ;
+run mp_transform.cpp ;
+run mp_transform_q.cpp ;
+run mp_transform_sf.cpp ;
+run mp_transform_if.cpp ;
+run mp_transform_if_q.cpp ;
+run mp_filter.cpp ;
+run mp_fill.cpp ;
+run mp_count.cpp ;
+run mp_count_if.cpp ;
+run mp_count_if_q.cpp ;
+run mp_contains.cpp ;
+run mp_starts_with.cpp ;
+run mp_starts_with_sf.cpp ;
+run mp_repeat.cpp ;
+run mp_product.cpp ;
+run mp_drop.cpp ;
+run mp_iota.cpp ;
+run mp_at.cpp ;
+run mp_at_sf.cpp : : : <toolset>gcc-4.7:<warnings>all ;
+run mp_take.cpp ;
+run mp_replace.cpp ;
+run mp_replace_if.cpp ;
+run mp_replace_if_q.cpp ;
+run mp_copy_if.cpp ;
+run mp_copy_if_q.cpp ;
+run mp_remove.cpp ;
+run mp_remove_if.cpp ;
+run mp_remove_if_q.cpp ;
+run mp_partition.cpp ;
+run mp_partition_q.cpp ;
+run mp_sort.cpp ;
+run mp_sort_q.cpp ;
+run mp_find.cpp ;
+run mp_find_if.cpp ;
+run mp_find_if_q.cpp ;
+run mp_reverse.cpp ;
+run mp_fold.cpp ;
+run mp_fold_q.cpp ;
+run mp_reverse_fold.cpp ;
+run mp_reverse_fold_q.cpp ;
+run mp_unique.cpp ;
+run mp_unique_if.cpp ;
+run mp_unique_if_q.cpp ;
+run mp_all_of.cpp ;
+run mp_all_of_q.cpp ;
+run mp_any_of.cpp ;
+run mp_any_of_q.cpp ;
+run mp_none_of.cpp ;
+run mp_none_of_q.cpp ;
+run mp_replace_at.cpp ;
+run mp_replace_at_c.cpp ;
+run mp_for_each.cpp ;
+run mp_insert.cpp ;
+run mp_erase.cpp ;
+run mp_with_index.cpp ;
+run mp_with_index_cx.cpp ;
+run mp_from_sequence.cpp ;
+run mp_min_element.cpp ;
+run mp_min_element_q.cpp ;
+run mp_max_element.cpp ;
+run mp_max_element_q.cpp ;
+run mp_nth_element.cpp ;
+run mp_nth_element_q.cpp ;
+run mp_back.cpp ;
+run mp_pop_back.cpp ;
+run mp_flatten.cpp ;
+run mp_rotate_left.cpp ;
+run mp_rotate_right.cpp ;
+run mp_power_set.cpp ;
+run mp_partial_sum.cpp ;
+run mp_iterate.cpp ;
+run mp_pairwise_fold.cpp ;
+run mp_pairwise_fold_q.cpp ;
+run mp_intersperse.cpp ;
+run mp_split.cpp ;
+run mp_join.cpp ;
+
+# integral
+run integral.cpp ;
+
+# utility
+run mp_identity.cpp ;
+run mp_inherit.cpp ;
+run mp_if.cpp ;
+run mp_if_sf.cpp ;
+run mp_eval_if.cpp ;
+run mp_eval_if_sf.cpp ;
+run mp_valid.cpp ;
+run mp_defer.cpp ;
+run mp_quote.cpp ;
+run mp_invoke_q.cpp ;
+run mp_invoke_q_sf.cpp ;
+run mp_quote_trait.cpp ;
+run mp_cond.cpp ;
+run mp_cond_sf.cpp ;
+run mp_not_fn.cpp ;
+run mp_eval_if_not.cpp ;
+run mp_eval_or.cpp ;
+run mp_compose.cpp ;
+
+# integer_sequence
+run integer_sequence.cpp ;
+
+# tuple
+run tuple_for_each.cpp ;
+compile tuple_for_each_cx.cpp ;
+run tuple_apply.cpp ;
+compile tuple_apply_cx.cpp ;
+run construct_from_tuple.cpp ;
+compile construct_from_tuple_cx.cpp ;
+run tuple_transform.cpp ;
+run tuple_transform_2.cpp ;
+compile tuple_transform_cx.cpp ;
+
+# set
+run mp_set_contains.cpp ;
+run mp_set_push_back.cpp ;
+run mp_set_push_front.cpp ;
+run mp_is_set.cpp ;
+run mp_set_union.cpp ;
+run mp_set_union_sf.cpp ;
+run mp_set_difference.cpp ;
+run mp_set_difference_sf.cpp ;
+run mp_set_intersection.cpp ;
+run mp_set_intersection_sf.cpp ;
+
+# function
+run mp_all.cpp ;
+run mp_all_2.cpp ;
+run mp_and.cpp ;
+run mp_any.cpp ;
+run mp_any_2.cpp ;
+run mp_or.cpp ;
+run mp_same.cpp ;
+run mp_plus.cpp ;
+run mp_less.cpp ;
+run mp_min.cpp ;
+run mp_max.cpp ;
+run mp_similar.cpp ;
+
+# map
+run mp_map_find.cpp ;
+run mp_map_find_2.cpp ;
+run mp_map_find_3.cpp ;
+run mp_map_contains.cpp ;
+run mp_map_insert.cpp ;
+run mp_map_replace.cpp ;
+run mp_map_erase.cpp ;
+run mp_map_update.cpp ;
+run mp_map_update_q.cpp ;
+run mp_map_keys.cpp ;
+run mp_is_map.cpp ;
+
+# bind
+run mp_bind.cpp ;
+run mp_bind_q.cpp ;
+run mp_bind_front.cpp ;
+run mp_bind_back.cpp ;
+
+# mpl
+run mpl.cpp : ;
+run mpl_list.cpp : ;
+run mpl_tuple.cpp : ;
+
+# version
+run version.cpp ;
+run mp11_version.cpp ;
+run list_version.cpp ;
+run algorithm_version.cpp ;
+run integral_version.cpp ;
+run utility_version.cpp ;
+run function_version.cpp ;
+run map_version.cpp ;
+run set_version.cpp ;
+run bind_version.cpp ;
+run integer_sequence_version.cpp ;
+run tuple_version.cpp ;
+run mpl_version.cpp ;
+
+# quick (for CI)
+alias quick : mp11 mp_size ;
+explicit quick ;

@@ -31,6 +31,7 @@
 #include "GeneralServer/SslServerFeature.h"
 
 #include <mutex>
+#include <map>
 
 namespace arangodb {
 namespace application_features {

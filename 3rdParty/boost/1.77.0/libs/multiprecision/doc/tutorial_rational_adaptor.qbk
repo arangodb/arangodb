@@ -1,0 +1,33 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:rational_adaptor rational_adaptor]
+
+   namespace boost{ namespace multiprecision{
+
+   template <class IntBackend>
+   class rational_adpater;
+
+   }}
+
+The class template `rational_adaptor` is a back-end for `number` which converts any existing integer back-end
+into a rational-number back-end.
+
+So for example, given an integer back-end type `MyIntegerBackend`, the use would be something like:
+
+   typedef number<MyIntegerBackend>                    MyInt;
+   typedef number<rational_adaptor<MyIntegerBackend> > MyRational;
+
+   MyRational r = 2;
+   r /= 3;
+   MyInt i = numerator(r);
+   assert(i == 2);
+
+[endsect] [/section:rational_adaptor rational_adaptor]

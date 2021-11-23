@@ -1,0 +1,620 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[heading Compiler/platform feature detection macros]
+
+Asio automatically defines preprocessor macros corresponding to the detected
+available features on a particular compiler and target platform. These macros
+are named with the prefix `BOOST_ASIO_HAS_`, and are listed in the table below.
+
+Many of these macros also have a corresponding `BOOST_ASIO_DISABLE_` macro that
+may be used to explicitly disable the feature.
+
+In general, `BOOST_ASIO_HAS_` macros should not be explicitly defined by the
+user, except when absolutely required as a workaround for the latest version of
+a compiler or platform. For older compiler/platform combinations where a
+specific `BOOST_ASIO_HAS_` macro is not automatically defined, testing may have
+shown that a claimed feature isn't sufficiently conformant to be compatible
+with Boost.Asio's needs.
+
+[table
+  [[Macro][Description][Macro to disable feature]]
+  [
+    [`BOOST_ASIO_HAS_ALIAS_TEMPLATES`]
+    [
+      Support alias templates on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_ALIAS_TEMPLATES`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_ALIGNED_NEW`]
+    [
+      Support for operator new with alignment argument.
+    ]
+    [`BOOST_ASIO_DISABLE_ALIGNED_NEW`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_ALIGNOF`]
+    [
+      Support for the alignof operator.
+    ]
+    [`BOOST_ASIO_DISABLE_ALIGNOF`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_ALIGN`]
+    [
+      Boost align library.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_ALIGN`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_ARRAY`]
+    [
+      Boost array library.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_ARRAY`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_ASSERT`]
+    [
+      Boost assert macro.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_ASSERT`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_BIND`]
+    [
+      Boost bind function.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_BIND`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_CHRONO`]
+    [
+      Boost support for chrono.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_CHRONO`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_CONFIG`]
+    [
+      
+    ]
+    []
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_DATE_TIME`]
+    [
+      Boost support for the DateTime library.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_DATE_TIME`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_LIMITS`]
+    [
+      Boost limits header.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_LIMITS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_REGEX`]
+    [
+      Boost regex library.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_REGEX`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_THROW_EXCEPTION`]
+    [
+      Boost throw_exception function.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_THROW_EXCEPTION`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_BOOST_WORKAROUND`]
+    [
+      Boost's BOOST_WORKAROUND macro.
+    ]
+    [`BOOST_ASIO_DISABLE_BOOST_WORKAROUND`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_CHRONO`]
+    [
+      Some form of chrono library is available.
+    ]
+    []
+  ]
+  [
+    [`BOOST_ASIO_HAS_CLANG_LIBCXX`]
+    [
+      Clang / libc++ detection.
+    ]
+    []
+  ]
+  [
+    [`BOOST_ASIO_HAS_CONCEPTS`]
+    [
+      Support concepts on compilers known to allow them.
+    ]
+    [`BOOST_ASIO_DISABLE_CONCEPTS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_CONSTANT_EXPRESSION_SFINAE`]
+    [
+      Support SFINAE use of constant expressions on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_CONSTANT_EXPRESSION_SFINAE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_CONSTEXPR`]
+    [
+      Support constexpr on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_CONSTEXPR`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_CO_AWAIT`]
+    [
+      Support the co_await keyword on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_CO_AWAIT`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_CSTDINT`]
+    [
+      Standard library support for the cstdint header.
+    ]
+    [`BOOST_ASIO_DISABLE_CSTDINT`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_CXX11_ALLOCATORS`]
+    [
+      Standard library support for the C++11 allocator additions.
+    ]
+    [`BOOST_ASIO_DISABLE_CXX11_ALLOCATORS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_DECLTYPE`]
+    [
+      Support automatic type deduction on compilers known to support it.
+    ]
+    [`BOOST_ASIO_DISABLE_DECLTYPE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS`]
+    [
+      Support default function template arguments on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_DEV_POLL`]
+    [
+      Solaris: /dev/poll.
+    ]
+    [`BOOST_ASIO_DISABLE_DEV_POLL`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_EPOLL`]
+    [
+      Linux: epoll, eventfd and timerfd.
+    ]
+    [`BOOST_ASIO_DISABLE_EPOLL`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_EVENTFD`]
+    [
+      Linux: epoll, eventfd and timerfd.
+    ]
+    [`BOOST_ASIO_DISABLE_EVENTFD`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_GETADDRINFO`]
+    [
+      Can use getaddrinfo() and getnameinfo().
+    ]
+    [`BOOST_ASIO_DISABLE_GETADDRINFO`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_HANDLER_HOOKS`]
+    [
+      Handler hooking. Disabled for ancient Borland C++ and gcc compilers.
+    ]
+    [`BOOST_ASIO_DISABLE_HANDLER_HOOKS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_IOCP`]
+    [
+      Windows: IO Completion Ports.
+    ]
+    [`BOOST_ASIO_DISABLE_IOCP`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_KQUEUE`]
+    [
+      Mac OS X, FreeBSD, NetBSD, OpenBSD: kqueue.
+    ]
+    [`BOOST_ASIO_DISABLE_KQUEUE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_LOCAL_SOCKETS`]
+    [
+      UNIX domain sockets.
+    ]
+    [`BOOST_ASIO_DISABLE_LOCAL_SOCKETS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_MOVE`]
+    [
+      Support move construction and assignment on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_MOVE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_MSG_NOSIGNAL`]
+    [
+      Kernel support for MSG_NOSIGNAL.
+    ]
+    []
+  ]
+  [
+    [`BOOST_ASIO_HAS_NOEXCEPT`]
+    [
+      Support noexcept on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_NOEXCEPT`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_NULLPTR`]
+    [
+      Standard library support for the nullptr_t type.
+    ]
+    [`BOOST_ASIO_DISABLE_NULLPTR`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_POSIX_STREAM_DESCRIPTOR`]
+    [
+      POSIX: stream-oriented file descriptors.
+    ]
+    [`BOOST_ASIO_DISABLE_POSIX_STREAM_DESCRIPTOR`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_PTHREADS`]
+    [
+      POSIX threads.
+    ]
+    []
+  ]
+  [
+    [`BOOST_ASIO_HAS_REF_QUALIFIED_FUNCTIONS`]
+    [
+      Support ref-qualified functions on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_REF_QUALIFIED_FUNCTIONS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_RETURN_TYPE_DEDUCTION`]
+    [
+      Support return type deduction on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_RETURN_TYPE_DEDUCTION`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_SECURE_RTL`]
+    [
+      Microsoft Visual C++'s secure C runtime library.
+    ]
+    [`BOOST_ASIO_DISABLE_SECURE_RTL`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_SERIAL_PORT`]
+    [
+      Serial ports.
+    ]
+    [`BOOST_ASIO_DISABLE_SERIAL_PORT`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_SFINAE_VARIABLE_TEMPLATES`]
+    [
+      Support SFINAEd template variables on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_SFINAE_VARIABLE_TEMPLATES`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_SIGACTION`]
+    [
+      Can use sigaction() instead of signal().
+    ]
+    [`BOOST_ASIO_DISABLE_SIGACTION`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_SIGNAL`]
+    [
+      Can use signal().
+    ]
+    [`BOOST_ASIO_DISABLE_SIGNAL`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_SOURCE_LOCATION`]
+    [
+      Standard library has a source_location that we can use.
+    ]
+    [`BOOST_ASIO_DISABLE_SOURCE_LOCATION`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_SSIZE_T`]
+    [
+      Support for POSIX ssize_t typedef.
+    ]
+    [`BOOST_ASIO_DISABLE_SSIZE_T`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_ADDRESSOF`]
+    [
+      Standard library support for addressof.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_ADDRESSOF`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_ALLOCATOR_ARG`]
+    [
+      Standard library support for allocator_arg_t.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_ALLOCATOR_ARG`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_ANY`]
+    [
+      Standard library support for std::any.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_ANY`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_ARRAY`]
+    [
+      Standard library support for arrays.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_ARRAY`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_ATOMIC`]
+    [
+      Standard library support for atomic operations.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_ATOMIC`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_CALL_ONCE`]
+    [
+      Standard library support for the call_once function.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_CALL_ONCE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_CHRONO`]
+    [
+      Standard library support for chrono. Some standard libraries (such as the
+      libstdc++ shipped with gcc 4.6) provide monotonic_clock as per early C++0x
+      drafts, rather than the eventually standardised name of steady_clock.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_CHRONO`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_CHRONO_MONOTONIC_CLOCK`]
+    [
+      Standard library support for chrono. Some standard libraries (such as the
+      libstdc++ shipped with gcc 4.6) provide monotonic_clock as per early C++0x
+      drafts, rather than the eventually standardised name of steady_clock.
+    ]
+    []
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_COROUTINE`]
+    [
+      Standard library support for coroutines.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_COROUTINE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_EXCEPTION_PTR`]
+    [
+      Standard library support for std::exception_ptr and std::current_exception.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_EXCEPTION_PTR`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_EXPERIMENTAL_SOURCE_LOCATION`]
+    [
+      Standard library support for std::experimental::source_location.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_EXPERIMENTAL_SOURCE_LOCATION`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_EXPERIMENTAL_STRING_VIEW`]
+    [
+      Standard library support for std::experimental::string_view.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_FUNCTION`]
+    [
+      Standard library support for the function class.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_FUNCTION`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_FUTURE`]
+    [
+      Standard library support for futures.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_FUTURE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_HASH`]
+    [
+      Standard library support for std::hash.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_HASH`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_INVOKE_RESULT`]
+    [
+      Standard library has invoke_result (which supersedes result_of).
+    ]
+    [`BOOST_ASIO_DISABLE_STD_INVOKE_RESULT`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_IOSTREAM_MOVE`]
+    [
+      Standard library support for iostream move construction and assignment.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_IOSTREAM_MOVE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_MUTEX_AND_CONDVAR`]
+    [
+      Standard library support for the mutex and condition variable classes.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_MUTEX_AND_CONDVAR`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_NESTED_EXCEPTION`]
+    [
+      Standard library support for std::nested_exception.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_NESTED_EXCEPTION`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_REFERENCE_WRAPPER`]
+    [
+      Standard library support for the reference_wrapper class.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_REFERENCE_WRAPPER`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_SHARED_PTR`]
+    [
+      Standard library support for shared_ptr and weak_ptr.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_SHARED_PTR`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_STRING_VIEW`]
+    [
+      Standard library support for std::string_view.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_STRING_VIEW`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_SYSTEM_ERROR`]
+    [
+      Standard library support for system errors.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_SYSTEM_ERROR`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_THREAD`]
+    [
+      Standard library support for the thread class.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_THREAD`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STD_TYPE_TRAITS`]
+    [
+      Standard library support for type traits.
+    ]
+    [`BOOST_ASIO_DISABLE_STD_TYPE_TRAITS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_STRING_VIEW`]
+    [
+      Standard library has a string_view that we can use.
+    ]
+    [`BOOST_ASIO_DISABLE_STRING_VIEW`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_THREADS`]
+    [
+      Threads.
+    ]
+    [`BOOST_ASIO_DISABLE_THREADS`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_THREAD_KEYWORD_EXTENSION`]
+    [
+      Support for the __thread keyword extension.
+    ]
+    [`BOOST_ASIO_DISABLE_THREAD_KEYWORD_EXTENSION`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_TIMERFD`]
+    [
+      Linux: epoll, eventfd and timerfd.
+    ]
+    []
+  ]
+  [
+    [`BOOST_ASIO_HAS_UNISTD_H`]
+    [
+      On POSIX (and POSIX-like) platforms we need to include unistd.h in order to
+      get access to the various platform feature macros, e.g. to be able to test
+      for threads support.
+    ]
+    []
+  ]
+  [
+    [`BOOST_ASIO_HAS_VARIABLE_TEMPLATES`]
+    [
+      Support template variables on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_VARIABLE_TEMPLATES`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_VARIADIC_TEMPLATES`]
+    [
+      Support variadic templates on compilers known to allow it.
+    ]
+    [`BOOST_ASIO_DISABLE_VARIADIC_TEMPLATES`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_WINDOWS_OBJECT_HANDLE`]
+    [
+      Windows: object handles.
+    ]
+    [`BOOST_ASIO_DISABLE_WINDOWS_OBJECT_HANDLE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_WINDOWS_OVERLAPPED_PTR`]
+    [
+      Windows: OVERLAPPED wrapper.
+    ]
+    [`BOOST_ASIO_DISABLE_WINDOWS_OVERLAPPED_PTR`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_WINDOWS_RANDOM_ACCESS_HANDLE`]
+    [
+      Windows: random access handles.
+    ]
+    [`BOOST_ASIO_DISABLE_WINDOWS_RANDOM_ACCESS_HANDLE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE`]
+    [
+      Windows: stream handles.
+    ]
+    [`BOOST_ASIO_DISABLE_WINDOWS_STREAM_HANDLE`]
+  ]
+  [
+    [`BOOST_ASIO_HAS_WORKING_EXPRESSION_SFINAE`]
+    [
+      Enable workarounds for lack of working expression SFINAE.
+    ]
+    [`BOOST_ASIO_DISABLE_WORKING_EXPRESSION_SFINAE`]
+  ]
+]
