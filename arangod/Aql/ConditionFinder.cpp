@@ -140,7 +140,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
           // index cannot be used for filtering, but only for sorting
           // remove the condition now
           TRI_ASSERT(sorting);
-          condition.reset(new Condition(_plan->getAst()));
+          condition = std::make_unique<Condition>(_plan->getAst());
           condition->normalize(_plan);
         }
 
@@ -164,6 +164,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
               // if the enumerate collection node had the counting flag
               // set, we can copy it over to the index node as well
               idx->copyCountFlag(node);
+              // copy over the read-own-writes flag from EnumerateCollectionNode to IndexNode
+              idx->setCanReadOwnWrites(node->canReadOwnWrites());
               return idx;
             })
         );
