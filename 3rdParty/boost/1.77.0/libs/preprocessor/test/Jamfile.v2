@@ -1,0 +1,282 @@
+#~ Copyright Rene Rivera 2008
+#~ Distributed under the Boost Software License, Version 1.0.
+#~ (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+import cast ;
+
+project preprocessor_tests : requirements <warnings>on
+                                          <toolset>gcc-4.3.0:<warnings>all
+                                          <toolset>gcc-4.3.0:<cxxflags>-Wno-variadic-macros
+                                          <toolset>gcc-4.4.0:<warnings>all
+                                          <toolset>gcc-4.4.0:<cxxflags>-Wno-variadic-macros 
+                                          <toolset>gcc-4.5.0:<warnings>all
+                                          <toolset>gcc-4.5.0:<cxxflags>-Wno-variadic-macros
+                                          <toolset>gcc-4.5.0:<linkflags>"-Wl,--enable-auto-import"
+                                          <toolset>gcc-4.5.2:<warnings>all
+                                          <toolset>gcc-4.5.2:<cxxflags>-Wno-variadic-macros
+                                          <toolset>msvc:<warnings>all
+                                          ;
+
+alias preprocessor : : 
+        <toolset>gcc
+        <toolset-gcc:version>3.4
+    ;
+
+alias preprocessor : : 
+        <toolset>gcc
+        <toolset-gcc:version>4.1
+    ;
+
+alias preprocessor : : 
+        <toolset>gcc
+        <toolset-gcc:version>4.2
+    ;
+
+alias preprocessor
+   :   
+        [ compile arithmetic.cpp ]
+        [ compile array.cpp ]
+        [ compile comparison.cpp ]
+        [ compile control.cpp ]
+        [ compile debug.cpp ]
+        [ compile facilities.cpp ]
+        [ compile iteration.cpp ]
+        [ compile list.cpp ]
+        [ compile logical.cpp ]
+        [ compile punctuation.cpp ]
+        [ compile repetition.cpp ]
+        [ compile selection.cpp ]
+        [ compile seq.cpp ]
+        [ compile slot.cpp ]
+        [ compile stringize.cpp ]
+        [ compile tuple.cpp ]
+        [ compile variadic.cpp ]
+  ;
+
+alias preprocessor_number_512
+   :   
+        [ compile arithmetic.cpp : <define>BOOST_PP_LIMIT_MAG=512 : arithmetic_num_512 ]
+        [ compile array.cpp : <define>BOOST_PP_LIMIT_MAG=512 : array_num_512 ]
+        [ compile comparison.cpp : <define>BOOST_PP_LIMIT_MAG=512 : comparison_num_512 ]
+        [ compile control.cpp : <define>BOOST_PP_LIMIT_MAG=512 : control_num_512 ]
+        [ compile debug.cpp : <define>BOOST_PP_LIMIT_MAG=512 : debug_num_512 ]
+        [ compile facilities.cpp : <define>BOOST_PP_LIMIT_MAG=512 : facilities_num_512 ]
+        [ compile iteration.cpp : <define>BOOST_PP_LIMIT_MAG=512 <define>BOOST_PP_LIMIT_ITERATION=512 : iteration_num_512 ]
+        [ compile list.cpp : <define>BOOST_PP_LIMIT_MAG=512 <define>BOOST_PP_LIMIT_FOR=512 : list_num_512 ]
+        [ compile logical.cpp : <define>BOOST_PP_LIMIT_MAG=512 : logical_num_512 ]
+        [ compile repetition.cpp : <define>BOOST_PP_LIMIT_MAG=512 : repetition_num_512 ]
+        [ compile selection.cpp : <define>BOOST_PP_LIMIT_MAG=512 : selection_num_512 ]
+        [ compile seq.cpp : <define>BOOST_PP_LIMIT_MAG=512 <define>BOOST_PP_LIMIT_SEQ=512 : seq_num_512 ]
+        [ compile slot.cpp : <define>BOOST_PP_LIMIT_MAG=512 : slot_num_512 ]
+        [ compile stringize.cpp : <define>BOOST_PP_LIMIT_MAG=512 : stringize_num_512 ]
+        [ compile tuple.cpp : <define>BOOST_PP_LIMIT_MAG=512 : tuple_num_512 ]
+        [ compile variadic.cpp : <define>BOOST_PP_LIMIT_MAG=512 : variadic_num_512 ]
+  ;
+
+alias preprocessor_number_1024
+   :   
+        [ compile arithmetic.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : arithmetic_num_1024 ]
+        [ compile array.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : array_num_1024 ]
+        [ compile comparison.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : comparison_num_1024 ]
+        [ compile control.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : control_num_1024 ]
+        [ compile debug.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : debug_num_1024 ]
+        [ compile facilities.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : facilities_num_1024 ]
+        [ compile iteration.cpp : <define>BOOST_PP_LIMIT_MAG=1024 <define>BOOST_PP_LIMIT_ITERATION=1024 : iteration_num_1024 ]
+        [ compile list.cpp : <define>BOOST_PP_LIMIT_MAG=1024 <define>BOOST_PP_LIMIT_FOR=1024 : list_num_1024 ]
+        [ compile logical.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : logical_num_1024 ]
+        [ compile repetition.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : repetition_num_1024 ]
+        [ compile selection.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : selection_num_1024 ]
+        [ compile seq.cpp : <define>BOOST_PP_LIMIT_MAG=1024 <define>BOOST_PP_LIMIT_SEQ=1024 : seq_num_1024 ]
+        [ compile slot.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : slot_num_1024 ]
+        [ compile stringize.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : stringize_num_1024 ]
+        [ compile tuple.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : tuple_num_1024 ]
+        [ compile variadic.cpp : <define>BOOST_PP_LIMIT_MAG=1024 : variadic_num_1024 ]
+  ;
+
+alias preprocessor_v_128
+   :   
+        [ compile array.cpp : <define>BOOST_PP_LIMIT_TUPLE=128 : array_v_128 ]
+        [ compile tuple.cpp : <define>BOOST_PP_LIMIT_TUPLE=128 : tuple_v_128 ]
+        [ compile variadic.cpp : <define>BOOST_PP_LIMIT_VARIADIC=128 <define>BOOST_PP_LIMIT_TUPLE=128 : variadic_v_128 ]
+  ;
+
+alias preprocessor_v_256
+   :   
+        [ compile array.cpp : <define>BOOST_PP_LIMIT_TUPLE=256 : array_v_256 ]
+        [ compile tuple.cpp : <define>BOOST_PP_LIMIT_TUPLE=256 : tuple_v_256 ]
+        [ compile variadic.cpp : <define>BOOST_PP_LIMIT_VARIADIC=256 <define>BOOST_PP_LIMIT_TUPLE=256 : variadic_v_256 ]
+  ;
+  
+alias preprocessor_c
+   :   
+        [ compile arithmetic.c 
+          : 
+          : arithmetic_c 
+        ]
+        [ compile array.c 
+          : 
+          : array_c 
+        ]
+        [ compile comparison.c 
+          : 
+          : comparison_c 
+        ]
+        [ compile control.c 
+          : 
+          : control_c 
+        ]
+        [ compile debug.c 
+          : 
+          : debug_c 
+        ]
+        [ compile facilities.c 
+          : 
+          : facilities_c 
+        ]
+        [ compile list.c 
+          : 
+          : list_c 
+        ]
+        [ compile logical.c 
+          : 
+          : logical_c 
+        ]
+        [ compile punctuation.c 
+          : 
+          : punctuation_c 
+        ]
+        [ compile selection.c 
+          : 
+          : selection_c 
+        ]
+        [ compile seq.c 
+          : 
+          : seq_c 
+        ]
+        [ compile slot.c 
+          : 
+          : slot_c 
+        ]
+        [ compile stringize.c 
+          : 
+          : stringize_c 
+        ]
+        [ compile tuple.c 
+          : 
+          : tuple_c 
+        ]
+        [ compile variadic.c 
+          : 
+          : variadic_c 
+        ]
+  ;
+
+alias preprocessor_number_rep_512
+   :   
+        [ compile repetition.cpp : 
+          <define>BOOST_PP_LIMIT_MAG=512 
+          <define>BOOST_PP_LIMIT_REPEAT=512 
+          <define>BOOST_PP_LIMIT_FOR=512 
+          : repetition_rep_num_512 
+        ]
+  ;
+  
+alias preprocessor_number_rep_1024
+   :   
+        [ compile repetition.cpp : 
+          <define>BOOST_PP_LIMIT_MAG=1024 
+          <define>BOOST_PP_LIMIT_REPEAT=1024 
+          <define>BOOST_PP_LIMIT_FOR=1024 
+          : repetition_rep_num_1024
+        ]
+  ;
+  
+alias preprocessor_isempty : : 
+        <toolset>gcc
+        <toolset-gcc:version>3.4
+    ;
+
+alias preprocessor_isempty : : 
+        <toolset>gcc
+        <toolset-gcc:version>4.1
+    ;
+
+alias preprocessor_isempty : : 
+        <toolset>gcc
+        <toolset-gcc:version>4.2
+    ;
+
+alias preprocessor_isempty
+  :   
+       [ compile isempty.cpp ]
+       [ compile checkempty.cpp ]
+       [ compile-fail isempty_variadic_standard_failure.cpp ]
+       [ compile-fail isempty_variadic_standard_failure2.cpp ]
+       [ compile vaopt.cpp ]
+ ; 
+
+alias preprocessor_isempty_c
+  :   
+       [ compile isempty.c 
+         : 
+         : isempty_c 
+       ]
+       [ compile-fail isempty_variadic_standard_failure.c 
+         : 
+         : isempty_variadic_standard_failure_c 
+       ]
+       [ compile-fail isempty_variadic_standard_failure2.c 
+         : 
+         : isempty_variadic_standard_failure2_c 
+       ]
+ ;
+
+alias preprocessor_config
+   :   
+        [ run config_info.cpp ]
+  ;
+  
+explicit preprocessor_number_512 ;
+explicit preprocessor_number_1024 ;
+explicit preprocessor_v_128 ;
+explicit preprocessor_v_256 ;
+explicit preprocessor_number_rep_512 ;
+explicit preprocessor_number_rep_1024 ;
+
+alias preprocessor_128 : preprocessor_v_128 ;
+alias preprocessor_256 : preprocessor_v_256 ;
+alias preprocessor_512 : preprocessor_number_512 preprocessor_number_rep_512 ;
+alias preprocessor_1024 : preprocessor_number_1024 preprocessor_number_rep_1024 ;
+alias preprocessor_tup : preprocessor_128 preprocessor_256 ;
+alias preprocessor_num : preprocessor_512 preprocessor_1024 ;
+alias preprocessor_limits : preprocessor_tup preprocessor_num ;
+
+explicit preprocessor_128 ;
+explicit preprocessor_256 ;
+explicit preprocessor_512 ;
+explicit preprocessor_1024 ;
+explicit preprocessor_tup ;
+explicit preprocessor_num ;
+explicit preprocessor_limits ;
+  
+alias test_clang_cuda
+   :   
+        [ compile [ cast _ cpp : clang_cuda.cu ]
+          : <cxxflags>-nocudalib
+            <cxxflags>-nocudainc
+            <cxxflags>"-x cuda"
+          : clang_cuda_cu
+        ]
+  ;
+
+explicit test_clang_cuda ;
+
+alias test_iso
+   :   
+        [ run cpp_standard.cpp ]
+  ;
+
+explicit test_iso ;
+
+explicit compile quick.cpp ; # "Quick" test (for CI)

@@ -1,0 +1,16 @@
+{
+    "key": "asio",
+    "name": "Asio",
+    "authors": [
+        "Chris Kohlhoff"
+    ],
+    "description": "Portable networking and other low-level I/O, including sockets, timers, hostname resolution, socket iostreams, serial ports, file descriptors and Windows HANDLEs.",
+    "category": [
+        "Concurrent",
+        "IO"
+    ],
+    "maintainers": [
+        "Chris Kohlhoff <chris -at- kohlhoff.com>"
+    ],
+    "cxxstd": "03"
+}

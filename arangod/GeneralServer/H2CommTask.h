@@ -30,6 +30,7 @@
 #include <velocypack/StringRef.h>
 #include <boost/lockfree/queue.hpp>
 #include <memory>
+#include <map>
 
 namespace arangodb {
 class HttpRequest;

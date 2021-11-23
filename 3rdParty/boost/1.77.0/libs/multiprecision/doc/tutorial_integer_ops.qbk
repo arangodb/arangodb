@@ -1,0 +1,107 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:gen_int Generic Integer Operations]
+
+All of the [link boost_multiprecision.ref.number.integer_functions non-member integer operations] are overloaded for the
+__fundamental integer types in
+`<boost/multiprecision/integer.hpp>`.
+Where these operations require a temporary increase in precision (such as for `powm`), then
+if no __fundamental type is available, a __cpp_int of appropriate precision will be used.
+
+Some of these functions are trivial, others use compiler intrinsics (where available) to ensure optimal evaluation.
+
+The overloaded functions are:
+
+   template <class Integer, class I2>
+   Integer& multiply(Integer& result, const I2& a, const I2& b);
+
+Multiplies two `I2` values, to produce a wider `Integer` result.
+
+Returns `result = a * b` without overflow or loss of precision in the multiplication.
+
+   template <class Integer, class I2>
+   Integer& add(Integer& result, const I2& a, const I2& b);
+
+Adds two `I2` values, to produce a wider `Integer` result.
+
+Returns `result = a + b` without overflow or loss of precision in the addition.
+
+   template <class Integer, class I2>
+   Integer& subtract(Integer& result, const I2& a, const I2& b);
+
+Subtracts two `I2` values, to produce a wider `Integer` result.
+
+Returns `result = a - b` without overflow or loss of precision in the subtraction.
+
+   template <class Integer>
+   Integer powm(const Integer& b, const Integer& p, const Integer& m);
+
+Returns b[super p] % m.
+
+   template <class Integer>
+   void divide_qr(const Integer& x, const Integer& y, Integer& q, Integer& r);
+
+Sets `q = x / y` and `r = x % y`.
+
+   template <class Integer1, class Integer2>
+   Integer2 integer_modulus(const Integer1& x, Integer2 val);
+
+Returns x % val;
+
+   template <class Integer>
+   unsigned lsb(const Integer& x);
+
+Returns the (zero-based) index of the least significant bit of `x`.
+
+Throws a `std::domain_error` if `x <= 0`.
+
+   template <class Integer>
+   unsigned msb(const Integer& x);
+
+Returns the (zero-based) index of the most significant bit of `x`.
+
+Throws a `std::domain_error` if `x <= 0`.
+
+   template <class Integer>
+   bool bit_test(const Integer& val, unsigned index);
+
+Returns `true` if bit `index` is set in `val`.
+
+   template <class Integer>
+   Integer& bit_set(Integer& val, unsigned index);
+
+Sets the `index` bit in `val`.
+
+   template <class Integer>
+   Integer& bit_unset(Integer& val, unsigned index);
+
+Unsets the `index` bit in `val`.
+
+   template <class Integer>
+   Integer& bit_flip(Integer& val, unsigned index);
+
+Flips the `index` bit in `val`.
+
+   template <class Integer>
+   Integer sqrt(const Integer& x);
+   template <class Integer>
+   Integer sqrt(const Integer& x, Integer& r);
+
+Returns the integer square root `s` of x and sets `r` to the remainder ['x - s[super 2]].
+
+   template <class Engine>
+   bool miller_rabin_test(const number-or-expression-template-type& n, unsigned trials, Engine& gen);
+   bool miller_rabin_test(const number-or-expression-template-type& n, unsigned trials);
+
+The regular Miller-Rabin functions in `<boost/multiprecision/miller_rabin.hpp>` are defined in terms of the above
+generic operations, and so function equally well for __fundamental_types and multiprecision types.
+
+[endsect] [/section:gen_int Generic Integer Operations]

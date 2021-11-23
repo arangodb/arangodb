@@ -1,0 +1,76 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+ 
+[section:param_test Parametrized test cases]
+
+[caution the functionalities presented on this page have been superseded by the 
+ [link boost_test.tests_organization.test_cases.test_case_generation Data-driven test case] facility.]
+
+
+Some tests are required to be repeated for a series of different input parameters. One way to achieve this is
+manually register a test case for each parameter as in the previous examples. You can also invoke a test function with
+all parameters manually from within your test case, like this:
+
+``
+void single_test( int i )
+{
+  BOOST_CHECK( /* test assertion */ );
+}
+
+void combined_test()
+{
+  int params[] = { 1, 2, 3, 4, 5 };
+  std::for_each( params, params+5, &single_test );
+}
+``
+
+The __UTF__ presents a better solution for this problem: the unary function based test case, also referred as
+['parametrized test case]. The unary test function can be a free function, unary functor (for example created
+with `boost::bind`) or unary method of a class with bound test class instance). The test function is converted
+into test case using the macro `BOOST_PARAM_TEST_CASE`. The macro expects a collection of parameters (passed as
+two input iterators) and an unary test function:
+
+``
+  BOOST_PARAM_TEST_CASE(test_function, params_begin, params_end);
+``
+ 
+
+`BOOST_PARAM_TEST_CASE` creates an instance of the test case generator. When passed to the method 
+[memberref boost::unit_test::test_suite::add `test_suite::add`], the generator produces a separate sub test case
+for each parameter in the parameters collection and registers it immediately in a test suite. 
+Each test case is based on a test function with the parameter bound by value,
+even if the test function expects a parameter by reference. The fact that parameter value is stored along with
+bound test function releases you from necessity to manage parameters lifetime. For example, they can be defined
+in the test module initialization function scope.
+
+All sub test case names are deduced from the macro argument `test_function`. If you prefer to assign different
+names, you have to use the underlying [headerref boost/test/parameterized_test.hpp `make_test_case`] interface instead. Both test cases creation and
+registration are performed in the test module initialization function.
+
+The parametrized test case facility is preferable to the approach in the example above, since execution of
+each sub test case is guarded and counted independently. It produces a better test log/results report (in
+example above in case of failure you can't say which parameter is at fault) and allows you to test against
+all parameters even if one of them causes termination a particular sub test case.
+
+In comparison with a manual test case registration for each parameter approach the parametrized test case
+facility is more concise and easily extensible.
+
+In following simple example the same test, implemented in `free_test_function`, is
+performed for 5 different parameters. The parameters are defined in the test module initialization function
+scope. The master test suite contains 5 independent test cases.
+
+[bt_example example07..Unary free function based test case..run-fail]
+
+Next example is similar, but instead of a free function it uses a method of a class. Even though parameters are
+passed into test method by reference you can still define them in the test module initialization function scope.
+This example employs the alternative test module initialization function specification.
+
+[bt_example example08..Unary class method based test case..run-fail]
+
+[endsect] [/test case with arity]
+
+[/EOF]

@@ -4,10 +4,27 @@ devel
 * Changed "arangosh" directory name to "client-tools", because the directory 
   contains the code for all client tools and not just arangosh.
 
-* Make the `--version` and `--version-json` commands usable in arangobackup
+* Upgraded bundled version of RocksDB to 6.27.
+
+* Updated immer to version 0.7.0.
+
+* Improved sync protocol to commit after each chunk and get rid of
+  potentially dangerous NO_INDEXING optimization.
+
+* Removed an invalid assertion that could be triggered during chaos testing in
+  maintainer mode.
+
+* Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
+  "read-own-writes" flag. Previously the tagging only happened after all query
+  optimizations were completed, making the tag unavailable to the optimizer.
+  Now the tag is set early on, so it is accessible by the query optimizer.
+
+* Made the `--version` and `--version-json` commands usable in arangobackup
   when no positional argument (operation type) was specified. Previously,
   arangobackup insisted on specifying the operation type alongside the
   `--version` or `--version-json` commands.
+
+* Updated boost to version 1.77.0.
 
 * Removed the following deprecated arangobench testcases:
   * aqltrx

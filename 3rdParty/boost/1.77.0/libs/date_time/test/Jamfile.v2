@@ -1,0 +1,168 @@
+import os ;
+import path ;
+import regex ;
+import testing ;
+
+local DATE_TIME_DYNAMIC_PROPERTIES = <define>BOOST_ALL_DYN_LINK <runtime-link>shared <define>BOOST_DATE_TIME_POSIX_TIME_STD_CONFIG <define>BOOST_ALL_NO_LIB ;
+local DATE_TIME_PROPERTIES = <define>BOOST_DATE_TIME_POSIX_TIME_STD_CONFIG
+  # FIXME 
+  #std::locale-support 
+  <define>BOOST_ALL_NO_LIB ;
+
+# core stuff
+run testint_adapter.cpp ;
+run testtime_resolution_traits.cpp ;
+run testwrapping_int.cpp ;
+run testconstrained_value.cpp ;
+run testgregorian_calendar.cpp ;
+run testgeneric_period.cpp ;
+# the library dependence below is just to test that the
+# stub library will build, it's completely uneeded not that
+# date-time is all inline
+run testmisc.cpp
+    ../build//boost_date_time/<link>static
+    : : : <define>BOOST_DATE_TIME_POSIX_TIME_STD_CONFIG
+    : testmisc_std_cfg ;
+
+###  gregorian
+
+run gregorian/testdate.cpp ;
+run gregorian/testdate_duration.cpp ;
+run gregorian/testdate_facet_new.cpp ;
+run gregorian/testdate_input_facet.cpp ;
+run gregorian/testdate_iterator.cpp ;
+
+run gregorian/testgenerators.cpp ;
+run gregorian/testgreg_cal.cpp ;
+run gregorian/testgreg_day.cpp ;
+run gregorian/testgreg_durations.cpp ;
+run gregorian/testgreg_month.cpp ;
+run gregorian/testgreg_year.cpp ;
+run gregorian/testformatters.cpp ;
+run gregorian/testparse_date.cpp ;
+run gregorian/testperiod.cpp ;
+
+run gregorian/testgreg_serialize.cpp
+     ../../serialization/build//boost_serialization
+     : : : <define>DATE_TIME_XML_SERIALIZE
+     : testgreg_serialize_xml ;
+
+run gregorian/testgreg_serialize.cpp
+    ../../serialization/build//boost_serialization
+    : : :
+    : testgreg_serialize ;
+
+run posix_time/testfiletime_functions.cpp ;
+run posix_time/testlocal_adjustor.cpp ;
+run posix_time/testc_local_adjustor.cpp ;
+run posix_time/testclock.cpp ;
+run posix_time/testdst_rules.cpp ;
+run posix_time/testduration.cpp ;
+run posix_time/testiterator.cpp ;
+run posix_time/testparse_time.cpp ;
+run posix_time/testtime_period.cpp ;
+run posix_time/testtime.cpp ;
+run posix_time/testmicrosec_time_clock.cpp ;
+run posix_time/testgreg_duration_operators.cpp ;
+run posix_time/testtime_facet.cpp ;
+run posix_time/testtime_input_facet.cpp 
+    : : : <define>BOOST_DATE_TIME_POSIX_TIME_STD_CONFIG
+    : testtime_input_facet ;
+
+run posix_time/testtime_formatters.cpp
+    : : : <define>BOOST_DATE_TIME_POSIX_TIME_STD_CONFIG
+    : testtime_formatters ;
+
+# text archive tests
+run posix_time/testtime_serialize.cpp
+    ../../serialization/build//boost_serialization
+    : : :
+    : testtime_serialize ;
+
+run posix_time/testtime_serialize.cpp
+    ../../serialization/build//boost_serialization
+    : : : <define>BOOST_DATE_TIME_POSIX_TIME_STD_CONFIG
+    : testtime_serialize_std_config ;
+
+# xml archive tests
+run posix_time/testtime_serialize.cpp
+    ../../serialization/build//boost_serialization
+    : : :  <define>DATE_TIME_XML_SERIALIZE <define>BOOST_DATE_TIME_POSIX_TIME_STD_CONFIG
+    : testtime_serialize_xml_std_config ;
+
+run posix_time/testtime_serialize.cpp
+    ../../serialization/build//boost_serialization
+    : : : <define>DATE_TIME_XML_SERIALIZE
+    : testtime_serialize_xml ;
+
+# versioning tests
+run posix_time/testtime_serialize_versioning.cpp
+    ../../serialization/build//boost_serialization
+    : : testtime_serialize_versioning_prev 
+    : <define>BOOST_DATE_TIME_POSIX_TIME_STD_CONFIG
+    : testtime_serialize_versioning_curr ;
+
+run posix_time/testtime_serialize_versioning.cpp
+    ../../serialization/build//boost_serialization
+    : : :  <define>BOOST_DATE_TIME_POSIX_TIME_DURATION_VERSION=0
+    : testtime_serialize_versioning_prev ;
+
+
+
+
+compile-fail posix_time/compile_fail/hours_special_value.cpp ;
+compile-fail posix_time/compile_fail/minutes_special_value.cpp ;
+compile-fail posix_time/compile_fail/seconds_special_value.cpp ;
+compile-fail posix_time/compile_fail/millisec_special_value.cpp ;
+
+run local_time/testdst_transition_day_rule.cpp ;
+run local_time/testcustom_time_zone.cpp ;
+run local_time/testposix_time_zone.cpp ;
+run local_time/testwcustom_time_zone.cpp ;
+run local_time/testwposix_time_zone.cpp ;
+run local_time/testlocal_time.cpp ;
+run local_time/testlocal_time_iterator.cpp ;
+run local_time/testlocal_time_period.cpp ;
+
+run local_time/testtz_database.cpp 
+     : : ../data/date_time_zonespec.csv local_time/poorly_formed_zonespec.csv
+     :  ;
+run local_time/testlocal_time_facet.cpp
+    : : ../data/date_time_zonespec.csv : ;
+run local_time/testclocks.cpp ;
+
+
+#todo
+#if ! [ os.environ UBSAN_OPTIONS ]
+#{
+#  local DATE_TIME_PROPERTIES = <define>BOOST_ALL_NO_LIB  <define>USE_DATE_TIME_PRE_1_33_FACET_IO
+#    # FIXME
+#    # std::locale-support toolset::require-boost-spirit-support 
+#    ;
+
+# Iterate over all public headers and generate a self-contained header test to check for any missing includes
+# and basic syntax errors.
+if ! [ os.environ BOOST_DATE_TIME_TEST_WITHOUT_SELF_CONTAINED_HEADER_TESTS ]
+{
+    local headers_path = [ path.make $(BOOST_ROOT)/libs/date_time/include/boost ] ;
+    for file in [ path.glob-tree $(headers_path) : *.hpp ]
+    {
+        local rel_file = [ path.relative-to $(headers_path) $(file) ] ;
+        # Note: The test name starts with '~' in order to group these tests in the test report table, preferably at the end.
+        #       All '/' are replaced with '-' because apparently test scripts have a problem with test names containing slashes.
+        local test_name = [ regex.replace ~hdr/$(rel_file) "/" "-" ] ;
+        #ECHO $(rel_file) ;
+        compile self_contained_header.cpp : <define>"BOOST_DATE_TIME_TEST_HEADER=$(rel_file)" <dependency>$(file) : $(test_name) ;
+    }
+}
+
+
+# Copyright (c) 2000-2020
+# CrystalClear Software, Inc.
+# Subject to the Boost Software License, Version 1.0. 
+# (See accompanying file LICENSE_1_0.txt or 
+# http://www.boost.org/LICENSE_1_0.txt)
+
+
+
+

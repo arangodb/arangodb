@@ -1,0 +1,17 @@
+//[example_output
+> ./boost_test_strings
+Running 2 test cases...
+test.cpp:17: error: in "test_pointers": check pa == pb has failed [0x7fff54f9dea4 != 0x7fff54f9dea0]
+test.cpp:25: error: in "test_strings": check a == b has failed [test1 != test2]
+test.cpp:27: error: in "test_strings": check std::string("test1") == b has failed [test1 != test2]
+test.cpp:28: error: in "test_strings": check std::string("test1") < a has failed
+Mismatch at position 0: 't' >= 't'.
+Mismatch at position 1: 'e' >= 'e'.
+Mismatch at position 2: 's' >= 's'.
+Mismatch at position 3: 't' >= 't'.
+Mismatch at position 4: '1' >= '1'.
+test.cpp:29: error: in "test_strings": check b < a has failed
+Failure at position 4: '2' >= '1'.
+
+*** 5 failures are detected in the test module "boost_test_strings"
+//]

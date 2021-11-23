@@ -1,0 +1,40 @@
+# Copyright (C) 2019-2019 Alexander Grund
+# Distributed under the Boost Software License, Version 1.0
+# (see accompanying file LICENSE or a copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+using doxygen ;
+import doxygen ;
+import path ;
+import os ;
+
+path-constant here : . ;
+
+.doxygen = [ doxygen.name ] ;
+.doxygen ?= doxygen ;
+
+local sources = [ path.glob-tree ../include/boost/nowide : *.hpp : detail ] main.dox changelog.dox ;
+
+make html : ./Doxyfile : @make-html : <dependency>$(sources) ;
+
+if [ os.name ] = NT
+{
+    RMDIR = rmdir /s /q ;
+}
+else
+{
+    RMDIR = rm -rf ;
+}
+
+actions make-html {
+  cd $(here)
+  $(RMDIR) html
+  "$(.doxygen)"
+}
+
+alias reference : html ;
+
+alias boostdoc ;
+explicit boostdoc ;
+alias boostrelease : html ;
+explicit boostrelease ;
