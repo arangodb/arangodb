@@ -1,0 +1,55 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:complex128 complex128]
+
+`#include <boost/multiprecision/complex128.hpp>`
+
+   namespace boost{ namespace multiprecision{
+
+   class complex128_backend;
+
+   typedef number<complex128_backend, et_off>    complex128;
+
+   }} // namespaces
+
+The `complex128` number type is a very thin wrapper around GCC's `__float128` or Intel's `_Quad` data types
+and provides a complex-number type that is a drop-in replacement for the native C++ floating-point types, but with
+a 113 bit mantissa, and compatible with FORTRAN's 128-bit QUAD real.
+
+All the usual standard library functions are available, performance should be equivalent
+to the underlying native types.
+
+As well as the usual conversions from arithmetic and string types, instances of `float128` are
+copy constructible and assignable from GCC's `__float128` and Intel's `_Quad` data types.
+
+Things you should know when using this type:
+
+* Default constructed `complex128`s have the value zero.
+* This backend supports rvalue-references and is move-aware, making instantiations of `number` on this backend move aware.
+* It is not possible to round-trip objects of this type to and from a string and get back
+exactly the same value when compiled with Intel's C++ compiler and using `_Quad` as the underlying type: this is a current limitation of
+our code.  Round tripping when using `__float128` as the underlying type is possible (both for GCC and Intel).
+* Conversion from a string results in a `std::runtime_error` being thrown if the string can not be interpreted
+as a valid floating-point number.
+* Division by zero results in an infinity being produced.
+* When using the Intel compiler, the underlying type defaults to `__float128` if it's available and `_Quad` if not.  You can override
+the default by defining either `BOOST_MP_USE_FLOAT128` or `BOOST_MP_USE_QUAD`.
+* When the underlying type is Intel's `_Quad` type, the code must be compiled with the compiler option `-Qoption,cpp,--extended_float_type`.
+
+[h5 complex128 example:]
+
+[complex128_eg]
+
+Which results in the output:
+
+[complex128_out]
+
+[endsect] [/section:complex128 complex128]

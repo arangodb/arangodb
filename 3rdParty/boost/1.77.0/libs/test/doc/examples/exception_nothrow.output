@@ -1,0 +1,9 @@
+//[example_output
+> example
+Running 1 test case...
+../doc/examples/exception_nothrow.run-fail.cpp:18: error: in "test": exception thrown by some_func(-1)
+../doc/examples/exception_nothrow.run-fail.cpp:24: error: in "test": exception thrown by do { int i(-2); some_func(i);
+ } while(0)
+
+*** 2 failures are detected in the test module "example"
+//]

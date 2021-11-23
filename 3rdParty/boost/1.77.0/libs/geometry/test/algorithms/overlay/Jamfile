@@ -1,0 +1,41 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2007-2015 Barend Gehrels, Amsterdam, the Netherlands.
+# Copyright (c) 2008-2015 Bruno Lalande, Paris, France.
+# Copyright (c) 2009-2015 Mateusz Loskot, London, UK.
+#
+# This file was modified by Oracle on 2014, 2015, 2016, 2017.
+# Modifications copyright (c) 2014-2017 Oracle and/or its affiliates.
+#
+# Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-algorithms-overlay
+    : 
+    [ run assemble.cpp                     : : : : algorithms_assemble ]
+    [ run copy_segment_point.cpp           : : : : algorithms_copy_segment_point ]
+    [ run get_clusters.cpp                 : : : : algorithms_get_clusters ]
+    [ run get_ring.cpp                     : : : : algorithms_get_ring ]
+    [ run get_turn_info.cpp                : : : : algorithms_get_turn_info ]
+    [ run get_turns.cpp                    : : : : algorithms_get_turns ]
+    [ run get_turns_areal_areal.cpp        : : : : algorithms_get_turns_areal_areal ]
+    [ run get_turns_areal_areal_sph.cpp    : : : : algorithms_get_turns_areal_areal_sph ]
+    [ run get_turns_linear_areal.cpp       : : : : algorithms_get_turns_linear_areal ]
+    [ run get_turns_linear_areal_sph.cpp   : : : : algorithms_get_turns_linear_areal_sph ]
+    [ run get_turns_linear_linear.cpp      : : : : algorithms_get_turns_linear_linear ]
+    [ run get_turns_linear_linear_geo.cpp  : : : : algorithms_get_turns_linear_linear_geo ]
+    [ run get_turns_linear_linear_sph.cpp  : : : : algorithms_get_turns_linear_linear_sph ]
+    [ run overlay.cpp                      : : : : algorithms_overlay ]
+    [ run sort_by_side_basic.cpp           : : : : algorithms_sort_by_side_basic ]
+    [ run sort_by_side.cpp                 : : : : algorithms_sort_by_side ]
+    #[ run handle_touch.cpp                : : : : algorithms_handle_touch ]
+    [ run relative_order.cpp               : : : : algorithms_relative_order ]
+    [ run select_rings.cpp                 : : : : algorithms_select_rings ]
+    [ run self_intersection_points.cpp     : : : : algorithms_self_intersection_points ]
+    #[ run traverse.cpp                    : : : : algorithms_traverse ]
+    #[ run traverse_ccw.cpp                : : : : algorithms_traverse_ccw ]
+    #[ run traverse_multi.cpp              : : : : algorithms_traverse_multi ]
+     ;

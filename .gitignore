@@ -120,3 +120,5 @@ perf*
 callgrind*
 
 Documentation/Metrics/allMetrics.yaml
+
+cmake-build*/

@@ -1,0 +1,18 @@
+//[example_output
+> decorator_10
+Running 2 test cases...
+test.cpp(11): error: in "suite1/test1": check false has failed
+test.cpp(12): error: in "suite1/test1": check false has failed
+test.cpp(17): error: in "suite1/test2": check false has failed
+test.cpp(18): error: in "suite1/test2": check false has failed
+
+*** 4 failures are detected (3 failures are expected) in the test module "decorator_10"
+
+
+> decorator_10 --run_test=suite1/test1
+Running 1 test case...
+test.cpp(11): error: in "suite1/test1": check false has failed
+test.cpp(12): error: in "suite1/test1": check false has failed
+
+*** No errors detected
+//]

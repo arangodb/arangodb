@@ -1,0 +1,34 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:IoControlCommand I/O control command requirements]
+
+A type `X` meets the `IoControlCommand` requirements if it satisfies the
+requirements listed below.
+
+In the table below, `a` denotes a (possibly const) value of type `X`, and `b`
+denotes a value of type `X`.
+
+[table IoControlCommand requirements for extensible implementations
+  [[expression] [type] [assertion/note[br]pre/post-conditions]]
+  [
+    [`a.name()`]
+    [`int`]
+    [
+      Returns a value suitable for passing as the /request/ argument to
+      __POSIX__ __ioctl__ (or equivalent).
+    ]
+  ]
+  [
+    [`b.data()`]
+    [`void*`]
+    [
+    ]
+  ]
+]
+
+[endsect]
