@@ -232,7 +232,7 @@ struct LogContext::ValuesImpl final : Values {
   template <std::size_t Idx, const char K[], const char... Ks[]>
   void doVisit(Visitor const& visitor) const {
     visitor.visit(K, toVisitorType(std::get<Idx>(_values)));
-    if constexpr (Idx + 1 < std::tuple_size<Vals>()) {
+    if constexpr (Idx + 1 < std::tuple_size<Vals>{}()) {
       doVisit<Idx + 1, Ks...>(visitor);
     }
   }
