@@ -725,10 +725,14 @@ Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   auto fields = storedFields(_meta);
-  if ( !sortCondition->onlyUsesNonNullSortAttributes(fields)||  // we are sparse, so can't help sort null values
-       !sortCondition->isOnlyAttributeAccess() || // we don't have pre-computed fields so only direct access
-        fields.size() < sortCondition->numAttributes() ||
-        sortCondition->numAttributes() > sortCondition->coveredAttributes(reference, fields)) {
+  
+  // FIXME: We store null slice in case of missing attribute - so do we really need onlyUsesNonNullSortAttributes ?
+  // !sortCondition->onlyUsesNonNullSortAttributes(fields)||  // we are sparse, so can't help sort null values
+   
+  // FIXME: We should support sort only if we support filter! Check that having sparse = true is enough!
+  if (!sortCondition->isOnlyAttributeAccess() || // we don't have pre-computed fields so only direct access
+      fields.size() < sortCondition->numAttributes() ||
+      sortCondition->numAttributes() > sortCondition->coveredAttributes(reference, fields)) {
     // no need to check has expansion as we don't support expansion for stored values
     return Index::SortCosts::defaultCosts(itemsInIndex);
   }
