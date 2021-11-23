@@ -31,7 +31,6 @@
 #include "VocBase/voc-types.h"
 
 #include <chrono>
-#include <functional>
 #include <memory>
 
 namespace arangodb {
