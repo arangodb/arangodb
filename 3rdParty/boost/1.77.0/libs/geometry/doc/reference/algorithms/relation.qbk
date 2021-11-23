@@ -1,0 +1,24 @@
+[/============================================================================
+  Boost.Geometry (aka GGL, Generic Geometry Library)
+
+  Copyright (c) 2015, Oracle and/or its affiliates.
+
+  Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+
+  Licensed under the Boost Software License version 1.0.
+  http://www.boost.org/users/license.html
+=============================================================================/]
+
+[def __this_function__ relation]
+
+[heading Conformance]
+This function is additional and not described in the OGC standard.
+The spatial relation is represented by DE-9IM matrix.
+
+[heading Example]
+[relation]
+[relation_output]
+
+[heading See also]
+* [link geometry.reference.de9im.de9im_matrix de9im::matrix]
+* [link geometry.reference.algorithms.relate relate]

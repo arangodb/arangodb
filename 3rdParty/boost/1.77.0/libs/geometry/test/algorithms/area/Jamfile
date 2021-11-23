@@ -1,0 +1,20 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2016-2021 Oracle and/or its affiliates.
+#
+# Contributed and/or modified by Vissarion Fisikopoulos, on behalf of Oracle
+# Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-algorithms-area
+    :
+    [ run area.cpp                     : : : : algorithms_area ]
+    [ run area_box_sg.cpp              : : : : algorithms_area_box_sg ]
+    [ run area_geo.cpp                 : : : : algorithms_area_geo ]
+    [ run area_multi.cpp               : : : : algorithms_area_multi ]
+    [ run area_sph_geo.cpp             : : : : algorithms_area_sph_geo ]
+    ;
+

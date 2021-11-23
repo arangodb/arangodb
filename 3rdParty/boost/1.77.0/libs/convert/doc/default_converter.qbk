@@ -1,0 +1,38 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2020
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[section Default Converter]
+
+[import ../example/default_converter.cpp]
+
+The explicit converter as in
+
+ int i = boost::convert<int>("123", converter).value();
+ 
+provides considerable flexibility, configurability and efficiency. However, in certain contexts that might be not that important or even counter-productive if, for example, an application relies on certain consistent behavior associated with one particular converter type and configuration. To accommodate such a scenario ['Boost.Convert] introduces the concept of the ['default converter] implemented as  `boost::cnv::by_default`. 
+
+[important There is no default converter set by default.] 
+
+Consequently, without additional configuration steps the following call will fail to compile: 
+
+ int i = boost::convert<int>("123").value(); // No converter provided
+ 
+However, after `boost::cnv::by_default` is defined simply as:
+
+[default_converter_declaration_simple]
+
+or potentially configured with additional formatting:
+
+[default_converter_declaration_formatted]
+
+the code compiles and deploys `boost::cnv::cstream` when `boost::convert()` is called without an explicitly supplied converter:
+
+[default_converter_example1]
+
+The trade-off for the convenience is the rigid converter configuration (which in certain contexts might be the desired behavior) and a potential performance impact. When a converter is not provided explicitly, the default converter is created, potentially configured, deployed and destroyed for every `boost::convert()` call. Consequently, if efficiency of this particular component is important, then the implementation of `boost::cnv::by_default` will need to take that into account and to make sure those operations are cheap.
+
+[endsect]
+

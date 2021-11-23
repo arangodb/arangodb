@@ -1,0 +1,106 @@
+[/
+    Copyright (c) 2019 Vinnie Falco (vinnie.falco@gmail.com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/cppalliance/json
+]
+
+[/-----------------------------------------------------------------------------]
+
+[section Background]
+
+The first version of allocators in C++ defined the named requirement
+__Allocator__, and made each standard container a class template
+parameterized on the allocator type. For example, here is the
+declaration for __std_vector__:
+
+[doc_background_1]
+
+The standard allocator is __DefaultConstructible__. To support stateful
+allocators, containers provide additional constructor overloads taking
+an allocator instance parameter.
+
+[doc_background_2]
+
+While the system works, it has some usability problems:
+
+* The container must be a class template.
+* Parameterizing the allocator on the element type is clumsy.
+* The system of allocator traits, especially POCCA and POCMA,
+  is complicated and error-prone.
+
+Allocator-based programs which use multiple allocator types
+incur a greater number of function template instantiations and
+are generally slower to compile because class template function
+definitions must be visible at all call sites.
+
+[heading Polymorphic Allocators]
+
+C++17 improves the allocator model by representing the low-level
+allocation operation with an abstract interface called __memory_resource__,
+which is not parameterized on the element type, and has no traits:
+
+[doc_background_3]
+
+The class template __polymorphic_allocator__ wraps a __memory_resource__
+pointer and meets the requirements of __Allocator__, allowing it to be
+used where an allocator is expected. The standard provides type aliases
+using the polymorphic allocator for standard containers:
+
+[doc_background_4]
+
+A polymorphic allocator constructs with a pointer to a memory resource:
+
+[doc_background_5]
+
+The memory resource is passed by pointer; ownership is not transferred.
+The caller is responsible for extending the lifetime of the memory
+resource until the last container which is using it goes out of scope,
+otherwise the behavior is undefined. Sometimes this is the correct model,
+such as in this example which uses a monotonic resource constructed from
+a local stack buffer:
+
+[doc_background_6]
+
+However, sometimes shared ownership is needed. Specifically, that the
+lifetime extension of the memory resource should be automatic. For
+example, if a library wants to return a container which owns an
+instance of the library's custom memory resource as shown below:
+
+[doc_background_7]
+
+This can be worked around by declaring the container to use a custom
+allocator (perhaps using a `std::shared_ptr< memory_resource >` as a
+data member). This hinders library composition; every library now
+exports unique, incompatible container types. A raw memory resource
+pointer is also easy to misuse:
+
+[doc_background_8]
+
+Workarounds for this problem are worse than the problem itself. The library
+could return a pair with the vector and `unique_ptr<memory_resource>`
+which the caller must manage. Or the library could change its function
+signatures to accept a `memory_resource*` provided by the caller, where
+the library also makes public the desired memory resources
+(`my_resource` above).
+
+[heading Problem Statement]
+
+We would like an allocator model using a single type `T` with the
+following properties:
+
+* `T` is not a class template
+* `T` references a __memory_resource__
+* `T` supports both reference semantics or shared ownership
+* `T` interoperates with code already using `std::pmr`
+
+Boost.JSON solves this problem by introducing a new smart pointer
+called __storage_ptr__ which builds upon C++17's memory allocation
+interfaces, accomplishing the goals above. As a result, libraries
+which use this type compose more easily and enjoy faster compilation,
+as member functions for containers which use the type can be defined
+out-of-line.
+
+[endsect]

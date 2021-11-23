@@ -1,0 +1,762 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE library PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "../../../tools/boostbook/dtd/boostbook.dtd">
+
+<!--
+  Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+
+  Distributed under the Boost Software License, Version 1.0. (See accompanying
+  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+-->
+
+<informaltable frame="all">
+  <tgroup cols="4">
+    <colspec colname="a"/>
+    <colspec colname="b"/>
+    <colspec colname="c"/>
+    <colspec colname="d"/>
+    <thead>
+      <row>
+        <entry valign="center" namest="a" nameend="a">
+          <bridgehead renderas="sect2">Properties</bridgehead>
+        </entry>
+        <entry valign="center" namest="b" nameend="d">
+          <bridgehead renderas="sect2">Execution</bridgehead>
+        </entry>
+      </row>
+    </thead>
+    <tbody>
+      <row>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Customisation Points</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.prefer">prefer</link></member>
+            <member><link linkend="boost_asio.reference.query">query</link></member>
+            <member><link linkend="boost_asio.reference.require">require</link></member>
+            <member><link linkend="boost_asio.reference.require_concept">require_concept</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Traits</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.can_prefer">can_prefer</link></member>
+            <member><link linkend="boost_asio.reference.can_query">can_query</link></member>
+            <member><link linkend="boost_asio.reference.can_require">can_require</link></member>
+            <member><link linkend="boost_asio.reference.can_require_concept">can_require_concept</link></member>
+            <member><link linkend="boost_asio.reference.is_nothrow_prefer">is_nothrow_prefer</link></member>
+            <member><link linkend="boost_asio.reference.is_nothrow_query">is_nothrow_query</link></member>
+            <member><link linkend="boost_asio.reference.is_nothrow_require">is_nothrow_require</link></member>
+            <member><link linkend="boost_asio.reference.is_nothrow_require_concept">is_nothrow_require_concept</link></member>
+            <member><link linkend="boost_asio.reference.prefer_result">prefer_result</link></member>
+            <member><link linkend="boost_asio.reference.query_result">query_result</link></member>
+            <member><link linkend="boost_asio.reference.require_result">require_result</link></member>
+            <member><link linkend="boost_asio.reference.require_concept_result">require_concept_result</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.execution__any_executor">execution::any_executor</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.execution__bad_executor">execution::bad_executor</link></member>
+            <member><link linkend="boost_asio.reference.execution__invocable_archetype">execution::invocable_archetype</link></member>
+            <member><link linkend="boost_asio.reference.execution__receiver_invocation_error">execution::receiver_invocation_error</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Properties</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.execution__allocator_t">execution::allocator_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_t">execution::blocking_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_t__possibly_t">execution::blocking_t::possibly_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_t__always_t">execution::blocking_t::always_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_t__never_t">execution::blocking_t::never_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_adaptation_t">execution::blocking_adaptation_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_adaptation_t__disallowed_t">execution::blocking_adaptation_t::disallowed_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_adaptation_t__allowed_t">execution::blocking_adaptation_t::allowed_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__bulk_guarantee_t">execution::bulk_guarantee_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__bulk_guarantee_t__unsequenced_t">execution::bulk_guarantee_t::unsequenced_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__bulk_guarantee_t__sequenced_t">execution::bulk_guarantee_t::sequenced_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__bulk_guarantee_t__parallel_t">execution::bulk_guarantee_t::parallel_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__context_t">execution::context_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__context_as_t">execution::context_as_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__mapping_t">execution::mapping_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__mapping_t__thread_t">execution::mapping_t::thread_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__mapping_t__new_thread_t">execution::mapping_t::new_thread_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__mapping_t__other_t">execution::mapping_t::other_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__occupancy_t">execution::occupancy_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__outstanding_work_t">execution::outstanding_work_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__outstanding_work_t__untracked_t">execution::outstanding_work_t::untracked_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__outstanding_work_t__tracked_t">execution::outstanding_work_t::tracked_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__prefer_only">execution::prefer_only</link></member>
+            <member><link linkend="boost_asio.reference.execution__relationship_t">execution::relationship_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__relationship_t__fork_t">execution::relationship_t::fork_t</link></member>
+            <member><link linkend="boost_asio.reference.execution__relationship_t__continuation_t">execution::relationship_t::continuation_t</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Customisation Points</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.execution__bulk_execute">execution::bulk_execute</link></member>
+            <member><link linkend="boost_asio.reference.execution__connect">execution::connect</link></member>
+            <member><link linkend="boost_asio.reference.execution__execute">execution::execute</link></member>
+            <member><link linkend="boost_asio.reference.execution__schedule">execution::schedule</link></member>
+            <member><link linkend="boost_asio.reference.execution__set_done">execution::set_done</link></member>
+            <member><link linkend="boost_asio.reference.execution__set_error">execution::set_error</link></member>
+            <member><link linkend="boost_asio.reference.execution__set_value">execution::set_value</link></member>
+            <member><link linkend="boost_asio.reference.execution__start">execution::start</link></member>
+            <member><link linkend="boost_asio.reference.execution__submit">execution::submit</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Property Objects</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.execution__allocator">execution::allocator</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking">execution::blocking</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_t.possibly">execution::blocking.possibly</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_t.always">execution::blocking.always</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_t.never">execution::blocking.never</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_adaptation">execution::blocking_adaptation</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_adaptation_t.disallowed">execution::blocking_adaptation.disallowed</link></member>
+            <member><link linkend="boost_asio.reference.execution__blocking_adaptation_t.allowed">execution::blocking_adaptation.allowed</link></member>
+            <member><link linkend="boost_asio.reference.execution__bulk_guarantee">execution::bulk_guarantee</link></member>
+            <member><link linkend="boost_asio.reference.execution__bulk_guarantee_t.unsequenced">execution::bulk_guarantee.unsequenced</link></member>
+            <member><link linkend="boost_asio.reference.execution__bulk_guarantee_t.sequenced">execution::bulk_guarantee.sequenced</link></member>
+            <member><link linkend="boost_asio.reference.execution__bulk_guarantee_t.parallel">execution::bulk_guarantee.parallel</link></member>
+            <member><link linkend="boost_asio.reference.execution__context">execution::context</link></member>
+            <member><link linkend="boost_asio.reference.execution__context_as">execution::context_as</link></member>
+            <member><link linkend="boost_asio.reference.execution__mapping">execution::mapping</link></member>
+            <member><link linkend="boost_asio.reference.execution__mapping_t.thread">execution::mapping.thread</link></member>
+            <member><link linkend="boost_asio.reference.execution__mapping_t.new_thread">execution::mapping.new_thread</link></member>
+            <member><link linkend="boost_asio.reference.execution__mapping_t.other">execution::mapping.other</link></member>
+            <member><link linkend="boost_asio.reference.execution__occupancy">execution::occupancy</link></member>
+            <member><link linkend="boost_asio.reference.execution__outstanding_work">execution::outstanding_work</link></member>
+            <member><link linkend="boost_asio.reference.execution__outstanding_work_t.untracked">execution::outstanding_work.untracked</link></member>
+            <member><link linkend="boost_asio.reference.execution__outstanding_work_t.tracked">execution::outstanding_work.tracked</link></member>
+            <member><link linkend="boost_asio.reference.execution__relationship">execution::relationship</link></member>
+            <member><link linkend="boost_asio.reference.execution__relationship_t.fork">execution::relationship.fork</link></member>
+            <member><link linkend="boost_asio.reference.execution__relationship_t.continuation">execution::relationship.continuation</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Type Traits</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.execution__can_bulk_execute">execution::can_bulk_execute</link></member>
+            <member><link linkend="boost_asio.reference.execution__can_connect">execution::can_connect</link></member>
+            <member><link linkend="boost_asio.reference.execution__can_execute">execution::can_execute</link></member>
+            <member><link linkend="boost_asio.reference.execution__can_schedule">execution::can_schedule</link></member>
+            <member><link linkend="boost_asio.reference.execution__can_set_done">execution::can_set_done</link></member>
+            <member><link linkend="boost_asio.reference.execution__can_set_error">execution::can_set_error</link></member>
+            <member><link linkend="boost_asio.reference.execution__can_set_value">execution::can_set_value</link></member>
+            <member><link linkend="boost_asio.reference.execution__can_start">execution::can_start</link></member>
+            <member><link linkend="boost_asio.reference.execution__can_submit">execution::can_submit</link></member>
+            <member><link linkend="boost_asio.reference.execution__connect_result">execution::connect_result</link></member>
+            <member><link linkend="boost_asio.reference.execution__is_executor">execution::is_executor</link></member>
+            <member><link linkend="boost_asio.reference.execution__is_executor_of">execution::is_executor_of</link></member>
+            <member><link linkend="boost_asio.reference.execution__is_nothrow_receiver_of">execution::is_nothrow_receiver_of</link></member>
+            <member><link linkend="boost_asio.reference.execution__is_receiver">execution::is_receiver</link></member>
+            <member><link linkend="boost_asio.reference.execution__is_receiver_of">execution::is_receiver_of</link></member>
+            <member><link linkend="boost_asio.reference.execution__is_sender">execution::is_sender</link></member>
+            <member><link linkend="boost_asio.reference.execution__is_sender_to">execution::is_sender_to</link></member>
+            <member><link linkend="boost_asio.reference.execution__is_typed_sender">execution::is_typed_sender</link></member>
+            <member><link linkend="boost_asio.reference.execution__sender_traits">execution::sender_traits</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Concepts</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.Executor1.standard_executors">executor</link></member>
+            <member><link linkend="boost_asio.reference.Executor1.standard_executors">executor_of</link></member>
+            <member><link linkend="boost_asio.reference.OperationState">operation_state</link></member>
+            <member><link linkend="boost_asio.reference.Receiver">receiver</link></member>
+            <member><link linkend="boost_asio.reference.Receiver">receiver_of</link></member>
+            <member><link linkend="boost_asio.reference.Scheduler">scheduler</link></member>
+            <member><link linkend="boost_asio.reference.Sender">sender</link></member>
+            <member><link linkend="boost_asio.reference.Sender">sender_to</link></member>
+            <member><link linkend="boost_asio.reference.Sender.typed_sender">typed_sender</link></member>
+          </simplelist>
+        </entry>
+      </row>
+    </tbody>
+  </tgroup>
+  <tgroup cols="4">
+    <colspec colname="a"/>
+    <colspec colname="b"/>
+    <colspec colname="c"/>
+    <colspec colname="d"/>
+    <thead>
+      <row>
+        <entry valign="center" namest="a" nameend="d">
+          <bridgehead renderas="sect2">Core</bridgehead>
+        </entry>
+      </row>
+    </thead>
+    <tbody>
+      <row>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.any_io_executor">any_io_executor</link></member>
+            <member><link linkend="boost_asio.reference.bad_executor">bad_executor</link></member>
+            <member><link linkend="boost_asio.reference.cancellation_signal">cancellation_signal</link></member>
+            <member><link linkend="boost_asio.reference.cancellation_slot">cancellation_slot</link></member>
+            <member><link linkend="boost_asio.reference.cancellation_state">cancellation_state</link></member>
+            <member><link linkend="boost_asio.reference.cancellation_type">cancellation_type</link></member>
+            <member><link linkend="boost_asio.reference.coroutine">coroutine</link></member>
+            <member><link linkend="boost_asio.reference.detached_t">detached_t</link></member>
+            <member><link linkend="boost_asio.reference.execution_context">execution_context</link></member>
+            <member><link linkend="boost_asio.reference.execution_context__id">execution_context::id</link></member>
+            <member><link linkend="boost_asio.reference.execution_context__service">execution_context::service</link></member>
+            <member><link linkend="boost_asio.reference.executor">executor</link></member>
+            <member><link linkend="boost_asio.reference.executor_arg_t">executor_arg_t</link></member>
+            <member><link linkend="boost_asio.reference.invalid_service_owner">invalid_service_owner</link></member>
+            <member><link linkend="boost_asio.reference.io_context">io_context</link></member>
+            <member><link linkend="boost_asio.reference.io_context.executor_type">io_context::executor_type</link></member>
+            <member><link linkend="boost_asio.reference.io_context__service">io_context::service</link></member>
+            <member><link linkend="boost_asio.reference.io_context__strand">io_context::strand</link></member>
+            <member><link linkend="boost_asio.reference.io_context__work">io_context::work</link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.multiple_exceptions">multiple_exceptions</link></member>
+            <member><link linkend="boost_asio.reference.service_already_exists">service_already_exists</link></member>
+            <member><link linkend="boost_asio.reference.static_thread_pool">static_thread_pool</link></member>
+            <member><link linkend="boost_asio.reference.system_context">system_context</link></member>
+            <member><link linkend="boost_asio.reference.system_executor">system_executor</link></member>
+            <member><link linkend="boost_asio.reference.this_coro__executor_t">this_coro::executor_t</link></member>
+            <member><link linkend="boost_asio.reference.thread_pool">thread_pool</link></member>
+            <member><link linkend="boost_asio.reference.thread_pool.executor_type">thread_pool::executor_type</link></member>
+            <member><link linkend="boost_asio.reference.yield_context">yield_context</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Free Functions</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.execution_context.add_service">add_service</link></member>
+            <member><link linkend="boost_asio.reference.experimental__append">experimental::append</link></member>
+            <member><link linkend="boost_asio.reference.experimental__as_single">experimental::as_single</link></member>
+            <member><link linkend="boost_asio.reference.experimental__as_tuple">experimental::as_tuple</link></member>
+            <member><link linkend="boost_asio.reference.experimental__make_parallel_group">experimental::make_parallel_group</link></member>
+            <member><link linkend="boost_asio.reference.experimental__prepend">experimental::prepend</link></member>
+            <member><link linkend="boost_asio.reference.asio_handler_allocate">asio_handler_allocate</link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.asio_handler_deallocate">asio_handler_deallocate</link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.asio_handler_invoke">asio_handler_invoke</link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.asio_handler_is_continuation">asio_handler_is_continuation</link></member>
+            <member><link linkend="boost_asio.reference.async_compose">async_compose</link></member>
+            <member><link linkend="boost_asio.reference.async_initiate">async_initiate</link></member>
+            <member><link linkend="boost_asio.reference.bind_cancellation_slot">bind_cancellation_slot</link></member>
+            <member><link linkend="boost_asio.reference.bind_executor">bind_executor</link></member>
+            <member><link linkend="boost_asio.reference.co_spawn">co_spawn</link></member>
+            <member><link linkend="boost_asio.reference.dispatch">dispatch</link></member>
+            <member><link linkend="boost_asio.reference.defer">defer</link></member>
+            <member><link linkend="boost_asio.reference.get_associated_allocator">get_associated_allocator</link></member>
+            <member><link linkend="boost_asio.reference.get_associated_cancellation_slot">get_associated_cancellation_slot</link></member>
+            <member><link linkend="boost_asio.reference.get_associated_executor">get_associated_executor</link></member>
+            <member><link linkend="boost_asio.reference.execution_context.has_service">has_service</link></member>
+            <member><link linkend="boost_asio.reference.make_strand">make_strand</link></member>
+            <member><link linkend="boost_asio.reference.make_work_guard">make_work_guard</link></member>
+            <member><link linkend="boost_asio.reference.post">post</link></member>
+            <member><link linkend="boost_asio.reference.redirect_error">redirect_error</link></member>
+            <member><link linkend="boost_asio.reference.spawn">spawn</link></member>
+            <member><link linkend="boost_asio.reference.this_coro__reset_cancellation_state">this_coro::reset_cancellation_state</link></member>
+            <member><link linkend="boost_asio.reference.this_coro__throw_if_cancelled">this_coro::throw_if_cancelled</link></member>
+            <member><link linkend="boost_asio.reference.execution_context.use_service">use_service</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.async_completion">async_completion</link></member>
+            <member><link linkend="boost_asio.reference.awaitable">awaitable</link></member>
+            <member><link linkend="boost_asio.reference.basic_io_object">basic_io_object</link></member>
+            <member><link linkend="boost_asio.reference.basic_system_executor">basic_system_executor</link></member>
+            <member><link linkend="boost_asio.reference.basic_yield_context">basic_yield_context</link></member>
+            <member><link linkend="boost_asio.reference.cancellation_filter">cancellation_filter</link></member>
+            <member><link linkend="boost_asio.reference.cancellation_slot_binder">cancellation_slot_binder</link></member>
+            <member><link linkend="boost_asio.reference.experimental__deferred_t">experimental::deferred_t</link></member>
+            <member><link linkend="boost_asio.reference.executor_binder">executor_binder</link></member>
+            <member><link linkend="boost_asio.reference.executor_work_guard">executor_work_guard</link></member>
+            <member><link linkend="boost_asio.reference.experimental__append_t">experimental::append_t</link></member>
+            <member><link linkend="boost_asio.reference.experimental__as_single_t">experimental::as_single_t</link></member>
+            <member><link linkend="boost_asio.reference.experimental__as_tuple_t">experimental::as_tuple_t</link></member>
+            <member><link linkend="boost_asio.reference.experimental__coro">experimental::coro</link></member>
+            <member><link linkend="boost_asio.reference.experimental__parallel_group">experimental::parallel_group</link></member>
+            <member><link linkend="boost_asio.reference.experimental__prepend_t">experimental::prepend_t</link></member>
+            <member><link linkend="boost_asio.reference.experimental__promise_lt__void_lp_Ts_ellipsis__rp__comma__Executor__gt_">experimental::promise</link></member>
+            <member><link linkend="boost_asio.reference.experimental__use_coro_t">experimental::use_coro_t</link></member>
+            <member><link linkend="boost_asio.reference.experimental__wait_for_all">experimental::wait_for_all</link></member>
+            <member><link linkend="boost_asio.reference.experimental__wait_for_one">experimental::wait_for_one</link></member>
+            <member><link linkend="boost_asio.reference.experimental__wait_for_one_error">experimental::wait_for_one_error</link></member>
+            <member><link linkend="boost_asio.reference.experimental__wait_for_one_success">experimental::wait_for_one_success</link></member>
+            <member><link linkend="boost_asio.reference.io_context__basic_executor_type">io_context::basic_executor_type</link></member>
+            <member><link linkend="boost_asio.reference.redirect_error_t">redirect_error_t</link></member>
+            <member><link linkend="boost_asio.reference.strand">strand</link></member>
+            <member><link linkend="boost_asio.reference.thread_pool__basic_executor_type">thread_pool::basic_executor_type</link></member>
+            <member><link linkend="boost_asio.reference.use_awaitable_t">use_awaitable_t</link></member>
+            <member><link linkend="boost_asio.reference.use_future_t">use_future_t</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Special Values</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.detached">detached</link></member>
+            <member><link linkend="boost_asio.reference.executor_arg">executor_arg</link></member>
+            <member><link linkend="boost_asio.reference.experimental__deferred">experimental::deferred</link></member>
+            <member><link linkend="boost_asio.reference.experimental__use_coro">experimental::use_coro</link></member>
+            <member><link linkend="boost_asio.reference.this_coro__cancellation_state">this_coro::cancellation_state</link></member>
+            <member><link linkend="boost_asio.reference.this_coro__executor">this_coro::executor</link></member>
+            <member><link linkend="boost_asio.reference.use_future">use_future</link></member>
+            <member><link linkend="boost_asio.reference.use_awaitable">use_awaitable</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Error Codes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.error__basic_errors">error::basic_errors</link></member>
+            <member><link linkend="boost_asio.reference.error__netdb_errors">error::netdb_errors</link></member>
+            <member><link linkend="boost_asio.reference.error__addrinfo_errors">error::addrinfo_errors</link></member>
+            <member><link linkend="boost_asio.reference.error__misc_errors">error::misc_errors</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Boost.Bind Placeholders</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.placeholders__bytes_transferred">placeholders::bytes_transferred</link></member>
+            <member><link linkend="boost_asio.reference.placeholders__endpoint">placeholders::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.placeholders__error">placeholders::error</link></member>
+            <member><link linkend="boost_asio.reference.placeholders__iterator">placeholders::iterator</link></member>
+            <member><link linkend="boost_asio.reference.placeholders__results">placeholders::results</link></member>
+            <member><link linkend="boost_asio.reference.placeholders__signal_number">placeholders::signal_number</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Type Traits</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.associated_allocator">associated_allocator</link></member>
+            <member><link linkend="boost_asio.reference.associated_cancellation_slot">associated_cancellation_slot</link></member>
+            <member><link linkend="boost_asio.reference.associated_executor">associated_executor</link></member>
+            <member><link linkend="boost_asio.reference.associator">associator</link></member>
+            <member><link linkend="boost_asio.reference.async_result">async_result</link></member>
+            <member><link linkend="boost_asio.reference.default_completion_token">default_completion_token</link></member>
+            <member><link linkend="boost_asio.reference.is_executor">is_executor</link></member>
+            <member><link linkend="boost_asio.reference.uses_executor">uses_executor</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Type Requirements</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.asynchronous_operations">Asynchronous operations</link></member>
+            <member><link linkend="boost_asio.reference.CancellationHandler">CancellationHandler</link></member>
+            <member><link linkend="boost_asio.reference.CancellationSlot">CancellationSlot</link></member>
+            <member><link linkend="boost_asio.reference.CompletionHandler">CompletionHandler</link></member>
+            <member><link linkend="boost_asio.reference.ExecutionContext">ExecutionContext</link></member>
+            <member><link linkend="boost_asio.reference.Executor1">Executor</link></member>
+            <member><link linkend="boost_asio.reference.Handler">Handler</link></member>
+            <member><link linkend="boost_asio.reference.Service">Service</link></member>
+          </simplelist>
+        </entry>
+      </row>
+    </tbody>
+  </tgroup>
+  <tgroup cols="4">
+    <colspec colname="a"/>
+    <colspec colname="b"/>
+    <colspec colname="c"/>
+    <colspec colname="d"/>
+    <thead>
+      <row>
+        <entry valign="center" namest="a" nameend="d">
+          <bridgehead renderas="sect2">Buffers and Buffer-Oriented Operations</bridgehead>
+        </entry>
+      </row>
+    </thead>
+    <tbody>
+      <row>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.const_buffer">const_buffer</link></member>
+            <member><link linkend="boost_asio.reference.mutable_buffer">mutable_buffer</link></member>
+            <member><link linkend="boost_asio.reference.const_buffers_1">const_buffers_1 </link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.mutable_buffers_1">mutable_buffers_1 </link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.null_buffers">null_buffers</link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.streambuf">streambuf</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.basic_streambuf">basic_streambuf</link></member>
+            <member><link linkend="boost_asio.reference.buffered_read_stream">buffered_read_stream</link></member>
+            <member><link linkend="boost_asio.reference.buffered_stream">buffered_stream</link></member>
+            <member><link linkend="boost_asio.reference.buffered_write_stream">buffered_write_stream</link></member>
+            <member><link linkend="boost_asio.reference.buffers_iterator">buffers_iterator</link></member>
+            <member><link linkend="boost_asio.reference.dynamic_string_buffer">dynamic_string_buffer</link></member>
+            <member><link linkend="boost_asio.reference.dynamic_vector_buffer">dynamic_vector_buffer</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Free Functions</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.async_read">async_read</link></member>
+            <member><link linkend="boost_asio.reference.async_read_at">async_read_at</link></member>
+            <member><link linkend="boost_asio.reference.async_read_until">async_read_until</link></member>
+            <member><link linkend="boost_asio.reference.async_write">async_write</link></member>
+            <member><link linkend="boost_asio.reference.async_write_at">async_write_at</link></member>
+            <member><link linkend="boost_asio.reference.buffer">buffer</link></member>
+            <member><link linkend="boost_asio.reference.buffer_cast">buffer_cast </link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.buffer_copy">buffer_copy</link></member>
+            <member><link linkend="boost_asio.reference.buffer_size">buffer_size</link></member>
+            <member><link linkend="boost_asio.reference.buffer_sequence_begin">buffer_sequence_begin</link></member>
+            <member><link linkend="boost_asio.reference.buffer_sequence_end">buffer_sequence_end</link></member>
+            <member><link linkend="boost_asio.reference.buffers_begin">buffers_begin</link></member>
+            <member><link linkend="boost_asio.reference.buffers_end">buffers_end</link></member>
+            <member><link linkend="boost_asio.reference.dynamic_buffer">dynamic_buffer</link></member>
+            <member><link linkend="boost_asio.reference.read">read</link></member>
+            <member><link linkend="boost_asio.reference.read_at">read_at</link></member>
+            <member><link linkend="boost_asio.reference.read_until">read_until</link></member>
+            <member><link linkend="boost_asio.reference.transfer_all">transfer_all</link></member>
+            <member><link linkend="boost_asio.reference.transfer_at_least">transfer_at_least</link></member>
+            <member><link linkend="boost_asio.reference.transfer_exactly">transfer_exactly</link></member>
+            <member><link linkend="boost_asio.reference.write">write</link></member>
+            <member><link linkend="boost_asio.reference.write_at">write_at</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Type Traits</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.is_const_buffer_sequence">is_const_buffer_sequence</link></member>
+            <member><link linkend="boost_asio.reference.is_dynamic_buffer">is_dynamic_buffer</link></member>
+            <member><link linkend="boost_asio.reference.is_dynamic_buffer_v1">is_dynamic_buffer_v1</link></member>
+            <member><link linkend="boost_asio.reference.is_dynamic_buffer_v2">is_dynamic_buffer_v2</link></member>
+            <member><link linkend="boost_asio.reference.is_match_condition">is_match_condition</link></member>
+            <member><link linkend="boost_asio.reference.is_mutable_buffer_sequence">is_mutable_buffer_sequence</link></member>
+            <member><link linkend="boost_asio.reference.is_read_buffered">is_read_buffered</link></member>
+            <member><link linkend="boost_asio.reference.is_write_buffered">is_write_buffered</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Type Requirements</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.read_write_operations">Read and write operations</link></member>
+            <member><link linkend="boost_asio.reference.AsyncRandomAccessReadDevice">AsyncRandomAccessReadDevice</link></member>
+            <member><link linkend="boost_asio.reference.AsyncRandomAccessWriteDevice">AsyncRandomAccessWriteDevice</link></member>
+            <member><link linkend="boost_asio.reference.AsyncReadStream">AsyncReadStream</link></member>
+            <member><link linkend="boost_asio.reference.AsyncWriteStream">AsyncWriteStream</link></member>
+            <member><link linkend="boost_asio.reference.CompletionCondition">CompletionCondition</link></member>
+            <member><link linkend="boost_asio.reference.ConstBufferSequence">ConstBufferSequence</link></member>
+            <member><link linkend="boost_asio.reference.DynamicBuffer">DynamicBuffer</link></member>
+            <member><link linkend="boost_asio.reference.DynamicBuffer_v1">DynamicBuffer_v1</link></member>
+            <member><link linkend="boost_asio.reference.DynamicBuffer_v2">DynamicBuffer_v2</link></member>
+            <member><link linkend="boost_asio.reference.MutableBufferSequence">MutableBufferSequence</link></member>
+            <member><link linkend="boost_asio.reference.ReadHandler">ReadHandler</link></member>
+            <member><link linkend="boost_asio.reference.SyncRandomAccessReadDevice">SyncRandomAccessReadDevice</link></member>
+            <member><link linkend="boost_asio.reference.SyncRandomAccessWriteDevice">SyncRandomAccessWriteDevice</link></member>
+            <member><link linkend="boost_asio.reference.SyncReadStream">SyncReadStream</link></member>
+            <member><link linkend="boost_asio.reference.SyncWriteStream">SyncWriteStream</link></member>
+            <member><link linkend="boost_asio.reference.WriteHandler">WriteHandler</link></member>
+          </simplelist>
+        </entry>
+      </row>
+    </tbody>
+  </tgroup>
+  <tgroup cols="4">
+    <colspec colname="a"/>
+    <colspec colname="b"/>
+    <colspec colname="c"/>
+    <colspec colname="d"/>
+    <thead>
+      <row>
+        <entry valign="center" namest="a" nameend="d">
+          <bridgehead renderas="sect2">Networking</bridgehead>
+        </entry>
+      </row>
+    </thead>
+    <tbody>
+      <row>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.generic__datagram_protocol">generic::datagram_protocol</link></member>
+            <member><link linkend="boost_asio.reference.generic__datagram_protocol.endpoint">generic::datagram_protocol::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.generic__datagram_protocol.socket">generic::datagram_protocol::socket</link></member>
+            <member><link linkend="boost_asio.reference.generic__raw_protocol">generic::raw_protocol</link></member>
+            <member><link linkend="boost_asio.reference.generic__raw_protocol.endpoint">generic::raw_protocol::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.generic__raw_protocol.socket">generic::raw_protocol::socket</link></member>
+            <member><link linkend="boost_asio.reference.generic__seq_packet_protocol">generic::seq_packet_protocol</link></member>
+            <member><link linkend="boost_asio.reference.generic__seq_packet_protocol.endpoint">generic::seq_packet_protocol::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.generic__seq_packet_protocol.socket">generic::seq_packet_protocol::socket</link></member>
+            <member><link linkend="boost_asio.reference.generic__stream_protocol">generic::stream_protocol</link></member>
+            <member><link linkend="boost_asio.reference.generic__stream_protocol.endpoint">generic::stream_protocol::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.generic__stream_protocol.iostream">generic::stream_protocol::iostream</link></member>
+            <member><link linkend="boost_asio.reference.generic__stream_protocol.socket">generic::stream_protocol::socket</link></member>
+            <member><link linkend="boost_asio.reference.ip__address">ip::address</link></member>
+            <member><link linkend="boost_asio.reference.ip__address_v4">ip::address_v4</link></member>
+            <member><link linkend="boost_asio.reference.ip__address_v4_iterator">ip::address_v4_iterator</link></member>
+            <member><link linkend="boost_asio.reference.ip__address_v4_range">ip::address_v4_range</link></member>
+            <member><link linkend="boost_asio.reference.ip__address_v6">ip::address_v6</link></member>
+            <member><link linkend="boost_asio.reference.ip__address_v6_iterator">ip::address_v6_iterator</link></member>
+            <member><link linkend="boost_asio.reference.ip__address_v6_range">ip::address_v6_range</link></member>
+            <member><link linkend="boost_asio.reference.ip__bad_address_cast">ip::bad_address_cast</link></member>
+            <member><link linkend="boost_asio.reference.ip__icmp">ip::icmp</link></member>
+            <member><link linkend="boost_asio.reference.ip__icmp.endpoint">ip::icmp::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.ip__icmp.resolver">ip::icmp::resolver</link></member>
+            <member><link linkend="boost_asio.reference.ip__icmp.socket">ip::icmp::socket</link></member>
+            <member><link linkend="boost_asio.reference.ip__network_v4">ip::network_v4</link></member>
+            <member><link linkend="boost_asio.reference.ip__network_v6">ip::network_v6</link></member>
+            <member><link linkend="boost_asio.reference.ip__resolver_base">ip::resolver_base</link></member>
+            <member><link linkend="boost_asio.reference.ip__resolver_query_base">ip::resolver_query_base</link></member>
+            <member><link linkend="boost_asio.reference.ip__tcp">ip::tcp</link></member>
+            <member><link linkend="boost_asio.reference.ip__tcp.acceptor">ip::tcp::acceptor</link></member>
+            <member><link linkend="boost_asio.reference.ip__tcp.endpoint">ip::tcp::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.ip__tcp.iostream">ip::tcp::iostream</link></member>
+            <member><link linkend="boost_asio.reference.ip__tcp.resolver">ip::tcp::resolver</link></member>
+            <member><link linkend="boost_asio.reference.ip__tcp.socket">ip::tcp::socket</link></member>
+            <member><link linkend="boost_asio.reference.ip__udp">ip::udp</link></member>
+            <member><link linkend="boost_asio.reference.ip__udp.endpoint">ip::udp::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.ip__udp.resolver">ip::udp::resolver</link></member>
+            <member><link linkend="boost_asio.reference.ip__udp.socket">ip::udp::socket</link></member>
+            <member><link linkend="boost_asio.reference.ip__v4_mapped_t">ip::v4_mapped_t</link></member>
+            <member><link linkend="boost_asio.reference.socket_base">socket_base</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Free Functions</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.async_connect">async_connect</link></member>
+            <member><link linkend="boost_asio.reference.connect">connect</link></member>
+            <member><link linkend="boost_asio.reference.ip__host_name">ip::host_name</link></member>
+            <member><link linkend="boost_asio.reference.ip__address.make_address">ip::make_address</link></member>
+            <member><link linkend="boost_asio.reference.ip__address_v4.make_address_v4">ip::make_address_v4</link></member>
+            <member><link linkend="boost_asio.reference.ip__address_v6.make_address_v6">ip::make_address_v6</link></member>
+            <member><link linkend="boost_asio.reference.ip__network_v4.make_network_v4">ip::make_network_v4</link></member>
+            <member><link linkend="boost_asio.reference.ip__network_v6.make_network_v6">ip::make_network_v6</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.basic_datagram_socket">basic_datagram_socket</link></member>
+            <member><link linkend="boost_asio.reference.basic_raw_socket">basic_raw_socket</link></member>
+            <member><link linkend="boost_asio.reference.basic_seq_packet_socket">basic_seq_packet_socket</link></member>
+            <member><link linkend="boost_asio.reference.basic_socket">basic_socket</link></member>
+            <member><link linkend="boost_asio.reference.basic_socket_acceptor">basic_socket_acceptor</link></member>
+            <member><link linkend="boost_asio.reference.basic_socket_iostream">basic_socket_iostream</link></member>
+            <member><link linkend="boost_asio.reference.basic_socket_streambuf">basic_socket_streambuf</link></member>
+            <member><link linkend="boost_asio.reference.basic_stream_socket">basic_stream_socket</link></member>
+            <member><link linkend="boost_asio.reference.generic__basic_endpoint">generic::basic_endpoint</link></member>
+            <member><link linkend="boost_asio.reference.ip__basic_endpoint">ip::basic_endpoint</link></member>
+            <member><link linkend="boost_asio.reference.ip__basic_resolver">ip::basic_resolver</link></member>
+            <member><link linkend="boost_asio.reference.ip__basic_resolver_entry">ip::basic_resolver_entry</link></member>
+            <member><link linkend="boost_asio.reference.ip__basic_resolver_iterator">ip::basic_resolver_iterator</link></member>
+            <member><link linkend="boost_asio.reference.ip__basic_resolver_results">ip::basic_resolver_results</link></member>
+            <member><link linkend="boost_asio.reference.ip__basic_resolver_query">ip::basic_resolver_query</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Socket Options</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.ip__multicast__enable_loopback">ip::multicast::enable_loopback</link></member>
+            <member><link linkend="boost_asio.reference.ip__multicast__hops">ip::multicast::hops</link></member>
+            <member><link linkend="boost_asio.reference.ip__multicast__join_group">ip::multicast::join_group</link></member>
+            <member><link linkend="boost_asio.reference.ip__multicast__leave_group">ip::multicast::leave_group</link></member>
+            <member><link linkend="boost_asio.reference.ip__multicast__outbound_interface">ip::multicast::outbound_interface</link></member>
+            <member><link linkend="boost_asio.reference.ip__tcp.no_delay">ip::tcp::no_delay</link></member>
+            <member><link linkend="boost_asio.reference.ip__unicast__hops">ip::unicast::hops</link></member>
+            <member><link linkend="boost_asio.reference.ip__v6_only">ip::v6_only</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.broadcast">socket_base::broadcast</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.debug">socket_base::debug</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.do_not_route">socket_base::do_not_route</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.enable_connection_aborted">socket_base::enable_connection_aborted</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.keep_alive">socket_base::keep_alive</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.linger">socket_base::linger</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.receive_buffer_size">socket_base::receive_buffer_size</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.receive_low_watermark">socket_base::receive_low_watermark</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.reuse_address">socket_base::reuse_address</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.send_buffer_size">socket_base::send_buffer_size</link></member>
+            <member><link linkend="boost_asio.reference.socket_base.send_low_watermark">socket_base::send_low_watermark</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">I/O Control Commands</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.socket_base.bytes_readable">socket_base::bytes_readable</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Type Requirements</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.synchronous_socket_operations">Synchronous socket operations</link></member>
+            <member><link linkend="boost_asio.reference.asynchronous_socket_operations">Asynchronous socket operations</link></member>
+            <member><link linkend="boost_asio.reference.AcceptableProtocol">AcceptableProtocol</link></member>
+            <member><link linkend="boost_asio.reference.AcceptHandler">AcceptHandler</link></member>
+            <member><link linkend="boost_asio.reference.ConnectCondition">ConnectCondition</link></member>
+            <member><link linkend="boost_asio.reference.ConnectHandler">ConnectHandler</link></member>
+            <member><link linkend="boost_asio.reference.Endpoint">Endpoint</link></member>
+            <member><link linkend="boost_asio.reference.EndpointSequence">EndpointSequence</link></member>
+            <member><link linkend="boost_asio.reference.GettableSocketOption">GettableSocketOption</link></member>
+            <member><link linkend="boost_asio.reference.InternetProtocol">InternetProtocol</link></member>
+            <member><link linkend="boost_asio.reference.IoControlCommand">IoControlCommand</link></member>
+            <member><link linkend="boost_asio.reference.IteratorConnectHandler">IteratorConnectHandler</link></member>
+            <member><link linkend="boost_asio.reference.MoveAcceptHandler">MoveAcceptHandler</link></member>
+            <member><link linkend="boost_asio.reference.Protocol">Protocol</link></member>
+            <member><link linkend="boost_asio.reference.RangeConnectHandler">RangeConnectHandler</link></member>
+            <member><link linkend="boost_asio.reference.ResolveHandler">ResolveHandler</link></member>
+            <member><link linkend="boost_asio.reference.SettableSocketOption">SettableSocketOption</link></member>
+          </simplelist>
+        </entry>
+      </row>
+    </tbody>
+  </tgroup>
+  <tgroup cols="4">
+    <colspec colname="a"/>
+    <colspec colname="b"/>
+    <colspec colname="c"/>
+    <colspec colname="d"/>
+    <thead>
+      <row>
+        <entry valign="center" namest="a" nameend="a">
+          <bridgehead renderas="sect2">Timers</bridgehead>
+        </entry>
+        <entry valign="center" namest="b" nameend="b">
+          <bridgehead renderas="sect2">SSL</bridgehead>
+        </entry>
+        <entry valign="center" namest="c" nameend="c">
+          <bridgehead renderas="sect2">Serial Ports</bridgehead>
+        </entry>
+        <entry valign="center" namest="d" nameend="d">
+          <bridgehead renderas="sect2">Signal Handling</bridgehead>
+        </entry>
+      </row>
+    </thead>
+    <tbody>
+      <row>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.deadline_timer">deadline_timer</link></member>
+            <member><link linkend="boost_asio.reference.high_resolution_timer">high_resolution_timer</link></member>
+            <member><link linkend="boost_asio.reference.steady_timer">steady_timer</link></member>
+            <member><link linkend="boost_asio.reference.system_timer">system_timer</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.basic_deadline_timer">basic_deadline_timer</link></member>
+            <member><link linkend="boost_asio.reference.basic_waitable_timer">basic_waitable_timer</link></member>
+            <member><link linkend="boost_asio.reference.time_traits_lt__ptime__gt_">time_traits</link></member>
+            <member><link linkend="boost_asio.reference.wait_traits">wait_traits</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Type Requirements</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.TimeTraits">TimeTraits</link></member>
+            <member><link linkend="boost_asio.reference.WaitHandler">WaitHandler</link></member>
+            <member><link linkend="boost_asio.reference.WaitTraits">WaitTraits</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.ssl__context">ssl::context</link></member>
+            <member><link linkend="boost_asio.reference.ssl__context_base">ssl::context_base</link></member>
+            <member><link linkend="boost_asio.reference.ssl__host_name_verification">ssl::host_name_verification</link></member>
+            <member><link linkend="boost_asio.reference.ssl__rfc2818_verification">ssl::rfc2818_verification</link> (deprecated)</member>
+            <member><link linkend="boost_asio.reference.ssl__stream_base">ssl::stream_base</link></member>
+            <member><link linkend="boost_asio.reference.ssl__verify_context">ssl::verify_context</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.ssl__stream">ssl::stream</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Error Codes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.ssl__error__stream_errors">ssl::error::stream_errors</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Type Requirements</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.BufferedHandshakeHandler">BufferedHandshakeHandler</link></member>
+            <member><link linkend="boost_asio.reference.HandshakeHandler">HandshakeHandler</link></member>
+            <member><link linkend="boost_asio.reference.ShutdownHandler">ShutdownHandler</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.serial_port">serial_port</link></member>
+            <member><link linkend="boost_asio.reference.serial_port_base">serial_port_base</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Class templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.basic_serial_port">basic_serial_port</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Serial Port Options</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.serial_port_base__baud_rate">serial_port_base::baud_rate</link></member>
+            <member><link linkend="boost_asio.reference.serial_port_base__flow_control">serial_port_base::flow_control</link></member>
+            <member><link linkend="boost_asio.reference.serial_port_base__parity">serial_port_base::parity</link></member>
+            <member><link linkend="boost_asio.reference.serial_port_base__stop_bits">serial_port_base::stop_bits</link></member>
+            <member><link linkend="boost_asio.reference.serial_port_base__character_size">serial_port_base::character_size</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Type Requirements</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.GettableSerialPortOption">GettableSerialPortOption</link></member>
+            <member><link linkend="boost_asio.reference.SettableSerialPortOption">SettableSerialPortOption</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.signal_set">signal_set</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.basic_signal_set">basic_signal_set</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Type Requirements</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.SignalHandler">SignalHandler</link></member>
+          </simplelist>
+        </entry>
+      </row>
+    </tbody>
+  </tgroup>
+  <tgroup cols="3">
+    <colspec colname="a"/>
+    <colspec colname="b"/>
+    <colspec colname="c"/>
+    <thead>
+      <row>
+        <entry valign="center" namest="a" nameend="b">
+          <bridgehead renderas="sect2">POSIX-specific</bridgehead>
+        </entry>
+        <entry valign="center" namest="c" nameend="c">
+          <bridgehead renderas="sect2">Windows-specific</bridgehead>
+        </entry>
+      </row>
+    </thead>
+    <tbody>
+      <row>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.local__stream_protocol">local::stream_protocol</link></member>
+            <member><link linkend="boost_asio.reference.local__stream_protocol.acceptor">local::stream_protocol::acceptor</link></member>
+            <member><link linkend="boost_asio.reference.local__stream_protocol.endpoint">local::stream_protocol::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.local__stream_protocol.iostream">local::stream_protocol::iostream</link></member>
+            <member><link linkend="boost_asio.reference.local__stream_protocol.socket">local::stream_protocol::socket</link></member>
+            <member><link linkend="boost_asio.reference.local__datagram_protocol">local::datagram_protocol</link></member>
+            <member><link linkend="boost_asio.reference.local__datagram_protocol.endpoint">local::datagram_protocol::endpoint</link></member>
+            <member><link linkend="boost_asio.reference.local__datagram_protocol.socket">local::datagram_protocol::socket</link></member>
+            <member><link linkend="boost_asio.reference.posix__descriptor">posix::descriptor</link></member>
+            <member><link linkend="boost_asio.reference.posix__descriptor_base">posix::descriptor_base</link></member>
+            <member><link linkend="boost_asio.reference.posix__stream_descriptor">posix::stream_descriptor</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Free Functions</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.local__connect_pair">local::connect_pair</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.local__basic_endpoint">local::basic_endpoint</link></member>
+            <member><link linkend="boost_asio.reference.posix__basic_descriptor">posix::basic_descriptor</link></member>
+            <member><link linkend="boost_asio.reference.posix__basic_stream_descriptor">posix::basic_stream_descriptor</link></member>
+          </simplelist>
+        </entry>
+        <entry valign="top">
+          <bridgehead renderas="sect3">Classes</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.windows__object_handle">windows::object_handle</link></member>
+            <member><link linkend="boost_asio.reference.windows__overlapped_handle">windows::overlapped_handle</link></member>
+            <member><link linkend="boost_asio.reference.windows__overlapped_ptr">windows::overlapped_ptr</link></member>
+            <member><link linkend="boost_asio.reference.windows__random_access_handle">windows::random_access_handle</link></member>
+            <member><link linkend="boost_asio.reference.windows__stream_handle">windows::stream_handle</link></member>
+          </simplelist>
+          <bridgehead renderas="sect3">Class Templates</bridgehead>
+          <simplelist type="vert" columns="1">
+            <member><link linkend="boost_asio.reference.windows__basic_object_handle">windows::basic_object_handle</link></member>
+            <member><link linkend="boost_asio.reference.windows__basic_overlapped_handle">windows::basic_overlapped_handle</link></member>
+            <member><link linkend="boost_asio.reference.windows__basic_random_access_handle">windows::basic_random_access_handle</link></member>
+            <member><link linkend="boost_asio.reference.windows__basic_stream_handle">windows::basic_stream_handle</link></member>
+          </simplelist>
+        </entry>
+      </row>
+    </tbody>
+  </tgroup>
+</informaltable>

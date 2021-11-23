@@ -1,0 +1,84 @@
+[/
+    Copyright 2010 Neil Groves
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+/]
+[section:indexed indexed]
+
+[table
+    [[Syntax] [Code]]
+    [[Pipe] [`rng | boost::adaptors::indexed()`]]
+    [[Pipe] [`rng | boost::adaptors::indexed(start_index)`]]
+    [[Function] [`boost::adaptors::index(rng)`]]
+    [[Function] [`boost::adaptors::index(rng, start_index)`]]
+]
+
+[heading Description]
+The index within each returned `boost::range::index_value` is equal to
+`start_index` + the offset of the element from the beginning of the range. In
+the versions of the functions that omit `start_index` the starting index is
+taken to be `0`.
+
+* [*Purpose:] Adapt `rng` to return elements that have the corresponding value
+from `rng` and a numeric index.
+* [*Returns:] A range adapted to return both the element and the associated
+index. The returned range has elements of type:
+
+``
+boost::range::index_value<
+    typename boost::range_reference<decltype(rng)>::type,
+    typename boost::range_difference<decltype(rng)>::type
+>
+``
+
+The synopsis of index_value is as follows:
+``
+template<class T, class Indexable=std::ptrdiff_t>
+class index_value : public boost::tuple<Indexable, T>
+{
+public:
+
+    typedef ...unspecified...       index_type;
+    typedef ...unspecified...       const_index_type;
+
+    typedef ...unspecified...       value_type;
+    typedef ...unspecified...       const_value_type;
+
+    // ...unspecified... constructors
+
+    index_type index();
+    const_index_type index() const;
+
+    value_type value();
+    const_value_type value() const;
+};
+``
+
+* [*Range Category:] __single_pass_range__
+* [*Range Return Type:] `boost::indexed_range<decltype(rng)>`
+* [*Returned Range Category:] The range category of `rng` if and only if `rng`
+is not a __bidirectional_range__. If `rng` is a __bidirectional_range__ then the
+returned range category is __forward_range__. The rationale for the demotion of
+__bidirectional_range__ inputs to __forward_range__ is to avoid slow calculation
+of indices for `boost::end(rng)`.
+
+[section:indexed_example indexed example]
+[import ../../../test/adaptor_test/indexed_example.cpp]
+[indexed_example]
+[endsect]
+
+This would produce the output:
+``
+Element = 10 Index = 0
+Element = 20 Index = 1
+Element = 30 Index = 2
+Element = 40 Index = 3
+Element = 50 Index = 4
+Element = 60 Index = 5
+Element = 70 Index = 6
+Element = 80 Index = 7
+Element = 90 Index = 8
+``
+[endsect]
+
+

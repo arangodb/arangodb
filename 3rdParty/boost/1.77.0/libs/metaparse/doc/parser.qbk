@@ -1,0 +1,22 @@
+[#parser]
+[section Parser]
+
+A ['parser] is a [link metafunction_class template metafunction class] that
+takes the following arguments:
+
+* a suffix of the input text, a [link string `string`]
+* a [link source_position source position] describing at which position of the
+  entire input text the suffix begins at
+
+The function parses a prefix of the input string.
+When the parsing is successful, it returns an [link accept `accept`] value.
+When there is a parsing error, the parser returns a [link reject `reject`]
+value. The [link is_error `is_error`] metafunction can be used to determine
+about the result of a parser if it succeeded or failed.
+
+The documentation refers often to the ['result of a parser]. This means that the
+parser accepts the input and refers to what [link get_result `get_result`]
+returns for the value returned by the parser.
+
+[endsect]
+
