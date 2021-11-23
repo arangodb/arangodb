@@ -171,7 +171,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
 
   // FIXME: Evaluate buffering iresearch reads
   template<typename Callback, bool withExtra, bool withCovering, bool produce>
-  bool nextImplInternal(Callback callback, size_t limit)  {
+  bool nextImplInternal(Callback const& callback, size_t limit)  {
     if (limit == 0 || !_filter) {
       TRI_ASSERT(limit > 0); // Someone called with limit == 0. Api broken
                              // validate that Iterator is in a good shape and hasn't failed
@@ -392,6 +392,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
         TRI_ASSERT(itr);
         if (ADB_LIKELY(itr)) {
           value = irs::get<irs::payload>(*itr);
+          TRI_ASSERT(value);
           if (ADB_UNLIKELY(!value)) {
             value = &NoPayload;
           }
@@ -403,6 +404,10 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       if (itr && doc == itr->seek(doc)) {
         size_t i = 0;
         auto const totalSize = value->value.size();
+        if (index == 0 && totalSize == 0) {
+          // one empty field optimization
+          return VPackSlice::nullSlice();
+        }
         TRI_ASSERT(totalSize > 0);
         size_t size = 0;
         VPackSlice slice(value->value.c_str());
@@ -495,7 +500,6 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   };
 
   // FIXME:!! check order
-  VPackBuffer<uint8_t> _coveringBuffer;
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
   irs::filter::prepared::ptr _filter;

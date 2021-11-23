@@ -47,53 +47,61 @@
 
 
 namespace {
-std::vector<std::vector<std::string>> EMPTY_STORED_FIELDS{};
-
 using DocsMap = std::map<arangodb::LocalDocumentId, std::shared_ptr<VPackBuilder>>;
 using StoredFields = std::vector<std::vector<std::string>>;
 using Fields = std::vector<std::string>;
+using SortFields = std::vector<std::pair<std::string, bool>>;
 
 class SimpleDataSetProvider {
  public:
-   static DocsMap docs() {
-     return {
-      {arangodb::LocalDocumentId(1), arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"2"})")},
-      {arangodb::LocalDocumentId(2), arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})")},
-      {arangodb::LocalDocumentId(3), arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})")},
-      {arangodb::LocalDocumentId(4), arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})")},
-      {arangodb::LocalDocumentId(5), arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})")}
-     };
-   }
+  static DocsMap docs() {
+    return {{arangodb::LocalDocumentId(1),
+             arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"2"})")},
+            {arangodb::LocalDocumentId(2),
+             arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"1"})")},
+            {arangodb::LocalDocumentId(3),
+             arangodb::velocypack::Parser::fromJson(R"({"a":"2", "b":"2"})")},
+            {arangodb::LocalDocumentId(4),
+             arangodb::velocypack::Parser::fromJson(R"({"a":"1", "b":"1"})")},
+            {arangodb::LocalDocumentId(5),
+             arangodb::velocypack::Parser::fromJson(R"({"a":"3", "b":"3"})")}};
+  }
 
-   static StoredFields storedFields() {
-     return {{"a", "b"}, {"a"}, {"b"}};
-   }
+  static StoredFields storedFields() { return {{"a", "b"}, {"a"}, {"b"}}; }
 
-   static Fields indexFields() {
-     return {"a", "b"};
-   }
+  static Fields indexFields() { return {"a", "b"}; }
+
+  static SortFields sortFields() { return {}; }
 };
 
 
+class SortedSimpleDataSetProvider : public SimpleDataSetProvider {
+ public:
+  static SortFields sortFields() { return {{"a", true}, {"b", false}}; }
+};
+
 class ExtraDataSetProvider {
  public:
-   static DocsMap docs() {
-     return {
-      {arangodb::LocalDocumentId(1), arangodb::velocypack::Parser::fromJson(R"({"_to":"2", "a":"1", "b":"2"})")},
-      {arangodb::LocalDocumentId(2), arangodb::velocypack::Parser::fromJson(R"({"_from": "1", "_to":"2", "a":"2", "b":"1"})")},
-      {arangodb::LocalDocumentId(3), arangodb::velocypack::Parser::fromJson(R"({"_from": "1", "_to":"2", "a":"2", "b":"2"})")},
-      {arangodb::LocalDocumentId(4), arangodb::velocypack::Parser::fromJson(R"({"_from": "1", "_to":"2", "a":"1", "b":"1"})")},
-      {arangodb::LocalDocumentId(5), arangodb::velocypack::Parser::fromJson(R"({"_from": "1", "a":"3", "b":"3"})")}
-     };
-   }
+  static DocsMap docs() {
+    return {{arangodb::LocalDocumentId(1),
+             arangodb::velocypack::Parser::fromJson(R"({"_to":"2", "a":"1", "b":"2"})")},
+            {arangodb::LocalDocumentId(2),
+             arangodb::velocypack::Parser::fromJson(R"({"_from": "1", "_to":"2", "a":"2", "b":"1"})")},
+            {arangodb::LocalDocumentId(3),
+             arangodb::velocypack::Parser::fromJson(R"({"_from": "1", "_to":"2", "a":"2", "b":"2"})")},
+            {arangodb::LocalDocumentId(4),
+             arangodb::velocypack::Parser::fromJson(R"({"_from": "1", "_to":"2", "a":"1", "b":"1"})")},
+            {arangodb::LocalDocumentId(5),
+             arangodb::velocypack::Parser::fromJson(R"({"_from": "1", "a":"3", "b":"3"})")}};
+  }
 
-   static StoredFields storedFields() {
-     return {{"_from"}, {"a", "b"}, {"a"}, {"b"}, {"_to"}};
-   }
+  static StoredFields storedFields() {
+    return {{"_from"}, {"a", "b"}, {"a"}, {"b"}, {"_to"}};
+  }
 
-   static Fields indexFields() {
-     return {"a", "b", "_from", "_to"};
-   }
+  static Fields indexFields() { return {"a", "b", "_from", "_to"}; }
+
+  static SortFields sortFields() { return {}; }
 };
 
 } // namespace
@@ -132,8 +140,9 @@ class IResearchInvertedIndexIteratorTestBase
     arangodb::iresearch::InvertedIndexFieldMeta meta;
     std::string errorField;
     auto storedFields = Provider::storedFields();
+    auto sortedFields = Provider::sortFields();
     EXPECT_TRUE(meta.init(_server.server(),
-                          getInvertedIndexPropertiesSlice(id, Provider::indexFields(), &storedFields).slice(),
+                          getInvertedIndexPropertiesSlice(id, Provider::indexFields(), &storedFields, &sortedFields).slice(),
                           false, errorField, _vocbase->name()));
     _index = std::make_shared<arangodb::iresearch::IResearchInvertedIndex>(id, *_collection, std::move(meta));
     EXPECT_TRUE(_index);
@@ -226,7 +235,7 @@ class IResearchInvertedIndexIteratorTestBase
     arangodb::SingleCollectionTransaction trx(
       ctx, collection(), arangodb::AccessMode::Type::READ);
     auto iterator = index().iteratorForCondition(
-                    &collection(), &trx, filterNode, ref, opts, mutableConditionIdx);
+                    &collection(), &trx, filterNode->getMember(0), ref, opts, mutableConditionIdx);
     test(iterator.get());
   }
 
@@ -452,7 +461,7 @@ using IResearchInvertedIndexIteratorExtraTest = IResearchInvertedIndexIteratorTe
 TEST_F(IResearchInvertedIndexIteratorExtraTest, test_skip_nextExtra_skip) {
   std::string queryString{ R"(FOR d IN col FILTER d._from == "1" AND (d.a == "1" OR d.b == "2" OR d.b == "3") RETURN d)"};
   auto expectedDocs = data();
-    auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
     ASSERT_NE(iterator, nullptr);
     ASSERT_TRUE(iterator->hasMore());
     uint64_t skipped{0};
@@ -472,18 +481,44 @@ TEST_F(IResearchInvertedIndexIteratorExtraTest, test_skip_nextExtra_skip) {
     };
     ASSERT_TRUE(iterator->nextExtra(docCallback, 1));
     ASSERT_EQ(docs.size(), 1);
-    // we can't assume order of the documents. Let's just check invalid ones are not returned
-    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());
     ASSERT_TRUE(iterator->hasMore());
-    docs.clear();
-    ASSERT_TRUE(iterator->nextExtra(docCallback, 1));
-    ASSERT_EQ(docs.size(), 1);
-    // we can't assume order of the documents. Let's just check invalid ones are not returned
-    ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)), docs.end());
     uint64_t skipped2{0};
     iterator->skipAll(skipped2);
     ASSERT_EQ(1, skipped2);
     ASSERT_FALSE(iterator->hasMore());
   };
   executeIteratorTest(queryString, test, "d", nullptr, 0);
+}
+
+
+using IResearchInvertedIndexIteratorSortedTest = IResearchInvertedIndexIteratorTestBase<SortedSimpleDataSetProvider>;
+
+
+TEST_F(IResearchInvertedIndexIteratorSortedTest, test_next_full) {
+  std::string queryString{ R"(FOR d IN col
+                              FILTER (d.a == "1" OR d.b == "2" OR d.b == "3")
+                              SORT d.a ASC, d.b DESC
+                              RETURN d)"};
+  std::vector<arangodb::LocalDocumentId> expectedDocs = {
+      arangodb::LocalDocumentId(1), arangodb::LocalDocumentId(4),
+      arangodb::LocalDocumentId(3), arangodb::LocalDocumentId(5)};
+  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasCovering());
+    ASSERT_FALSE(iterator->hasExtra());
+    ASSERT_FALSE(iterator->canRearm());
+    std::vector<arangodb::LocalDocumentId> docs;
+    auto docCallback = [&docs](arangodb::LocalDocumentId token) {
+      docs.push_back(token);
+      return true;
+    };
+    iterator->next(docCallback, 1000);
+    ASSERT_EQ(docs.size(), expectedDocs.size());
+    for (size_t i = 0; i < docs.size(); ++i) {
+      ASSERT_EQ(docs[i], expectedDocs[i]);
+    }
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test, "d", nullptr, -1);
 }
