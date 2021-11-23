@@ -1,6 +1,11 @@
 v3.8.4 (XXXX-XX-XX)
 -------------------
 
+* Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
+  "read-own-writes" flag. Previously the tagging only happened after all query
+  optimizations were completed, making the tag unavailable to the optimizer.
+  Now the tag is set early on, so it is accessible by the query optimizer.
+
 * Removed an invalid assertion that could be triggered during chaos testing in
   maintainer mode.
 
