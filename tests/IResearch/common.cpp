@@ -967,6 +967,45 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
   ASSERT_TRUE(parseResult.result.fail());
 }
 
+VPackBuilder getInvertedIndexPropertiesSlice(arangodb::IndexId iid, std::vector<std::string> const& fields, std::vector<std::vector<std::string>> const* storedFields, std::vector<std::pair<std::string, bool>> const* sortedFields) {
+    VPackBuilder vpack;
+    {
+        VPackObjectBuilder obj(&vpack);
+        vpack.add(arangodb::StaticStrings::IndexId, VPackValue(iid.id()));
+        vpack.add(arangodb::StaticStrings::IndexType, VPackValue("inverted"));
+
+        // FIXME: maybe this should be set by index internally ?
+        vpack.add(arangodb::StaticStrings::IndexUnique, VPackValue(false));
+        vpack.add(arangodb::StaticStrings::IndexSparse, VPackValue(true));
+
+        {
+            VPackArrayBuilder arrayFields(&vpack, arangodb::StaticStrings::IndexFields);
+            for (auto const& f : fields) {
+                vpack.add(VPackValue(f));
+            }
+        }
+        if (storedFields && !storedFields->empty()) {
+            VPackArrayBuilder arrayFields(&vpack, "storedValues");
+            for (auto const& f : *storedFields) {
+                VPackArrayBuilder arrayFields(&vpack);
+                for (auto const& s : f) {
+                    vpack.add(VPackValue(s));
+                }
+            }
+        }
+
+        if (sortedFields && !sortedFields->empty()) {
+            VPackArrayBuilder arraySort(&vpack, "primarySort");
+            for (auto const& f : *sortedFields) {
+                VPackObjectBuilder field(&vpack);
+                vpack.add("field", VPackValue(f.first));
+                vpack.add("direction", VPackValue(f.second ? "asc" : "desc"));
+            }
+        }
+    }
+    return vpack;
+}
+
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(name, id);

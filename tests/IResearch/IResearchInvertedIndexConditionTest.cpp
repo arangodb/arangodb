@@ -73,49 +73,7 @@ class IResearchInvertedIndexConditionTest
                                                  arangodb::tests::AnalyzerCollectionName,
                                                  false, _collection);
   }
-  VPackBuilder getPropertiesSlice(arangodb::IndexId iid,
-                                  std::vector<std::string> const& fields,
-                                  std::vector<std::vector<std::string>> const& storedFields = EMPTY_STORED_FIELDS,
-                                  std::vector<std::pair<std::string, bool>> const& sortedFields = EMPTY_SORTED_FIELDS) {
-    VPackBuilder vpack;
-    {
-      VPackObjectBuilder obj(&vpack);
-      vpack.add(arangodb::StaticStrings::IndexId, VPackValue(iid.id()));
-      vpack.add(arangodb::StaticStrings::IndexType, VPackValue("inverted"));
-
-      //FIXME: maybe this should be set by index internally ?
-      vpack.add(arangodb::StaticStrings::IndexUnique, VPackValue(false));
-      vpack.add(arangodb::StaticStrings::IndexSparse, VPackValue(true));
-
-      {
-        VPackArrayBuilder arrayFields(&vpack, arangodb::StaticStrings::IndexFields);
-        for (auto const& f : fields) {
-          vpack.add(VPackValue(f));
-        }
-      }
-      if (!storedFields.empty())
-      {
-        VPackArrayBuilder arrayFields(&vpack, "storedValues");
-        for (auto const& f : storedFields) {
-          VPackArrayBuilder arrayFields(&vpack);
-          for (auto const& s : f) {
-            vpack.add(VPackValue(s));
-          }
-        }
-      }
-
-      if (!sortedFields.empty()) {
-        VPackArrayBuilder arraySort(&vpack, "primarySort");
-        for (auto const& f : sortedFields) {
-          VPackObjectBuilder field(&vpack);
-          vpack.add("field", VPackValue(f.first));
-          vpack.add("direction", VPackValue(f.second? "asc" : "desc"));
-        }
-      }
-    }
-    return vpack;
-  }
-
+ 
   ~IResearchInvertedIndexConditionTest() {
     _collection.reset();
   }
@@ -130,7 +88,7 @@ class IResearchInvertedIndexConditionTest
     std::string errorField;
     std::vector<std::string> fields = {"a"};
     ASSERT_TRUE(meta.init(server.server(),
-                          getPropertiesSlice(id, fields, storedFields).slice(),
+                          getInvertedIndexPropertiesSlice(id, fields, &storedFields).slice(),
                           false, errorField, _vocbase->name()));
     arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
     ASSERT_TRUE(Index.covers(projections));
@@ -153,7 +111,9 @@ class IResearchInvertedIndexConditionTest
     arangodb::IndexId id(1);
     arangodb::iresearch::InvertedIndexFieldMeta meta;
     std::string errorField;
-    meta.init(server.server(), getPropertiesSlice(id, fields).slice(), false, errorField, _vocbase->name());
+    meta.init(server.server(),
+              getInvertedIndexPropertiesSlice(id, fields).slice(),
+              false, errorField, _vocbase->name());
     auto indexFields =arangodb::iresearch::IResearchInvertedIndex::fields(meta);
     arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
 
@@ -227,7 +187,8 @@ class IResearchInvertedIndexConditionTest
     for (auto const& f : fields) {
       indexFields.push_back(f.first);
     }
-    ASSERT_TRUE(meta.init(server.server(), getPropertiesSlice(id, indexFields, EMPTY_STORED_FIELDS, fields).slice(),
+    ASSERT_TRUE(meta.init(server.server(),
+                          getInvertedIndexPropertiesSlice(id, indexFields, nullptr, &fields).slice(),
                           false, errorField, _vocbase->name()));
     arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection, std::move(meta));
 
@@ -286,10 +247,6 @@ class IResearchInvertedIndexConditionTest
 
     std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
     arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> nonNullAttributes;
-    for (auto const& f : Index.fields(Index._meta)) {
-      nonNullAttributes.emplace(f);
-    }
-    // optimization time
     {
       arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase()),
                                           {}, {}, {}, arangodb::transaction::Options());

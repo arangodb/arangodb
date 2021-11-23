@@ -131,8 +131,9 @@ class IResearchInvertedIndexIteratorTestBase
     arangodb::IndexId id(1);
     arangodb::iresearch::InvertedIndexFieldMeta meta;
     std::string errorField;
+    auto storedFields = Provider::storedFields();
     EXPECT_TRUE(meta.init(_server.server(),
-                          getPropertiesSlice(id, Provider::indexFields(), Provider::storedFields()).slice(),
+                          getInvertedIndexPropertiesSlice(id, Provider::indexFields(), &storedFields).slice(),
                           false, errorField, _vocbase->name()));
     _index = std::make_shared<arangodb::iresearch::IResearchInvertedIndex>(id, *_collection, std::move(meta));
     EXPECT_TRUE(_index);
@@ -176,38 +177,6 @@ class IResearchInvertedIndexIteratorTestBase
     EXPECT_TRUE(_index->commit(true).ok());
   }
 
-  VPackBuilder getPropertiesSlice(arangodb::IndexId iid,
-                                  std::vector<std::string> const& fields,
-                                  std::vector<std::vector<std::string>> const& storedFields = EMPTY_STORED_FIELDS) {
-    VPackBuilder vpack;
-    {
-      VPackObjectBuilder obj(&vpack);
-      vpack.add(arangodb::StaticStrings::IndexId, VPackValue(iid.id()));
-      vpack.add(arangodb::StaticStrings::IndexType, VPackValue("inverted"));
-
-      //FIXME: maybe this should be set by index internally ?
-      vpack.add(arangodb::StaticStrings::IndexUnique, VPackValue(false));
-      vpack.add(arangodb::StaticStrings::IndexSparse, VPackValue(true));
-
-      {
-        VPackArrayBuilder arrayFields(&vpack, arangodb::StaticStrings::IndexFields);
-        for (auto const& f : fields) {
-          vpack.add(VPackValue(f));
-        }
-      }
-      if (!storedFields.empty())
-      {
-        VPackArrayBuilder arrayFields(&vpack, "storedValues");
-        for (auto const& f : storedFields) {
-          VPackArrayBuilder arrayFields(&vpack);
-          for (auto const& s : f) {
-            vpack.add(VPackValue(s));
-          }
-        }
-      }
-    }
-    return vpack;
-  }
 
   void executeIteratorTest(std::string_view queryString,
                            std::function<void(arangodb::IndexIterator* it)> const& test,
