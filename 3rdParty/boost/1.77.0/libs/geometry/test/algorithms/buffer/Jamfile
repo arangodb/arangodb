@@ -1,0 +1,32 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2011-2019 Barend Gehrels, Amsterdam, the Netherlands.
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+project boost-geometry-algorithms-buffer
+    :
+    requirements
+        <include>.
+    ;
+
+test-suite boost-geometry-algorithms-buffer
+    :
+    [ run buffer.cpp                  : : : : algorithms_buffer ]
+    [ run buffer_with_strategies.cpp  : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_with_strategies ]
+    [ run buffer_piece_border.cpp     : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_piece_border ]
+    [ run buffer_point.cpp            : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_point ]
+    [ run buffer_point_geo.cpp        : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_point_geo ]
+    [ run buffer_linestring.cpp       : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_linestring ]
+    [ run buffer_ring.cpp             : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_ring ]
+    [ run buffer_polygon.cpp          : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_polygon ]
+    [ run buffer_multi_point.cpp      : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_multi_point ]
+    [ run buffer_multi_linestring.cpp : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_multi_linestring ]
+    [ run buffer_multi_polygon.cpp    : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_multi_polygon ]
+    [ run buffer_linestring_aimes.cpp : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_linestring_aimes ]
+# Uncomment next line if you want to test this manually; requires access to data/ folder
+#    [ run buffer_countries.cpp        : : : <define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE : algorithms_buffer_countries ]
+    ;
+

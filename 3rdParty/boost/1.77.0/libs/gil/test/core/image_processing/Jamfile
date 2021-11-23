@@ -1,0 +1,21 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright 2019 Miral Shah <miralshah2211@gmail.com>
+#
+# Use, modification and distribution are subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+#
+import testing ;
+
+compile-fail threshold_color_spaces_not_compatible_fail.cpp ;
+run threshold_binary.cpp ;
+run threshold_truncate.cpp ;
+run threshold_otsu.cpp ;
+run lanczos_scaling.cpp ;
+run simple_kernels.cpp ;
+run harris.cpp ;
+run hessian.cpp ;
+run sobel_scharr.cpp ;
+run box_filter.cpp ;
+run median_filter.cpp ;

@@ -1,0 +1,54 @@
+# Boost.GIL (Generic Image Library) - IO tests
+#
+# Copyright (c) 2012 Christian Henning
+# Copyright (c) 2017 Stefan Seefeld
+# Copyright (c) 2012-2020 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import ac ;
+import testing ;
+
+using libtiff : : : : true ;
+lib libtiffxx : : <name>tiffxx ;
+
+# TODO: Download TIFF test suite images and build with BOOST_GIL_IO_USE_TIFF_GRAPHICSMAGICK_TEST_SUITE_IMAGES
+
+project
+   : requirements
+      <define>BOOST_GIL_IO_TEST_ALLOW_READING_IMAGES
+      <define>BOOST_GIL_IO_TEST_ALLOW_WRITING_IMAGES
+      <library>/boost/filesystem//boost_filesystem
+      <library>libtiffxx
+      [ ac.check-library /libtiff//libtiff : <library>/libtiff//libtiff : <build>no ]
+   ;
+
+run  tiff_file_format_test.cpp ;
+run  tiff_subimage_test.cpp ;
+run  tiff_test.cpp ;
+run  tiff_tiled_float_test.cpp ;
+run  tiff_tiled_minisblack_test_1-10.cpp ;
+run  tiff_tiled_minisblack_test_11-20.cpp ;
+run  tiff_tiled_minisblack_test_21-31_32-64.cpp ;
+run  tiff_tiled_minisblack_write_test_1-10.cpp ;
+run  tiff_tiled_minisblack_write_test_11-20.cpp ;
+run  tiff_tiled_minisblack_write_test_21-31_32-64.cpp ;
+run  tiff_tiled_palette_test_1-8.cpp ;
+run  tiff_tiled_palette_test_8-16.cpp ;
+run  tiff_tiled_palette_write_test_1-8.cpp ;
+run  tiff_tiled_palette_write_test_8-16.cpp ;
+run  tiff_tiled_rgb_contig_test_1-10.cpp ;
+run  tiff_tiled_rgb_contig_test_11-20.cpp ;
+run  tiff_tiled_rgb_contig_test_21-31_32_64.cpp ;
+run  tiff_tiled_rgb_contig_write_test_1-10.cpp ;
+run  tiff_tiled_rgb_contig_write_test_11-20.cpp ;
+run  tiff_tiled_rgb_contig_write_test_21-31_32_64.cpp ;
+run  tiff_tiled_rgb_planar_test_1-10.cpp ;
+run  tiff_tiled_rgb_planar_test_11-20.cpp ;
+run  tiff_tiled_rgb_planar_test_21-31_32_64.cpp ;
+run  tiff_tiled_test.cpp ;
+run  tiff_write_test.cpp ;
+
+run  tiff_old_test.cpp ;

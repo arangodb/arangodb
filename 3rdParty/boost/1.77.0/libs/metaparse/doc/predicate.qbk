@@ -1,0 +1,24 @@
+[#predicate]
+[section Predicate]
+
+A ['predicate] (or unary predicate) is a
+[link metafunction_class template metafunction class] taking one argument and
+returning a [link boxed_value boxed value] of type `bool`.
+
+For example the following predicate checks if its argument is the boxed `char`
+value `x`:
+
+  struct is_x
+  {
+    template <class C>
+    struct apply
+    {
+      static constexpr bool value = (C::value == 'x');
+      using type = apply;
+    };
+  
+    using type = is_x;
+  };
+
+[endsect]
+

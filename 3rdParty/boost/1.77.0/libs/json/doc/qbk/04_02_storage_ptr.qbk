@@ -1,0 +1,232 @@
+[/
+    Copyright (c) 2019 Vinnie Falco (vinnie.falco@gmail.com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/cppalliance/json
+]
+
+[/-----------------------------------------------------------------------------]
+
+[section storage_ptr]
+
+Variable-length containers in this library all use dynamically allocated
+memory to store their contents. Callers can gain control over the strategy
+used for allocation by specifying a __storage_ptr__ in select constructors
+and function parameter lists. A __storage_ptr__ has these properties:
+
+* A storage pointer always points to a valid,
+  type-erased __memory_resource__.
+
+* Default-constructed storage pointers reference the
+  ['default resource], an implementation-defined instance
+  which always uses the equivalent of global operator new
+  and delete.
+
+* Storage pointers constructed from a
+  [link json.ref.boost__json__memory_resource `memory_resource*`]
+  or __polymorphic_allocator__ do not acquire ownership; the
+  caller is responsible for ensuring that the lifetime of
+  the resource extends until it is no longer referenced.
+
+* A storage pointer obtained from __make_shared_resource__
+  acquires shared ownership of the memory resource; the
+  lifetime of the resource is extended until all copies
+  of the storage pointer are destroyed.
+
+* The storage pointer remembers the value of
+  __is_deallocate_trivial__ before type-erasing the resource,
+  allowing the value to be queried at run-time.
+
+This lists all of the allocation-related types and functions
+available when using the library:
+
+[table Functions and Types
+[ [Name] [Description] ]
+[
+    [__get_null_resource__]
+    [
+        Returns a pointer to a memory resource instance which
+        always throws an exception upon allocation. This is
+        used to to achieve the invariant that no parsing or
+        container operation will dynamically allocate memory.
+    ]
+][
+    [__is_deallocate_trivial__]
+    [
+        A customization point allowing a memory resource type
+        to indicate that calls to deallocate are trivial.
+    ]
+][
+    [__make_shared_resource__]
+    [
+        A function returning a smart pointer with shared
+        ownership of a newly allocated memory resource.
+    ]
+][
+    [__memory_resource__]
+    [
+        The abstract base class representing an allocator.
+    ]
+][
+    [__monotonic_resource__]
+    [
+        A memory resource which allocates large blocks of memory and
+        has a trivial deallocate function. Allocated memory is not
+        freed until the resource is destroyed, making it fast for
+        parsing but not suited for performing modifications.
+    ]
+][
+    [__polymorphic_allocator__]
+    [
+        An __Allocator__ which uses a reference to a
+        __memory_resource__ to perform allocations.
+    ]
+][
+    [__static_resource__]
+    [
+        A memory resource that uses a single caller provided
+        buffer. No dynamic allocations are used. This is fast for
+        parsing but not suited for performing modifications.
+    ]
+][
+    [__storage_ptr__]
+    [
+        A smart pointer through which a __memory_resource__
+        is managed and accessed.
+    ]
+]]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Default Memory Resource]
+
+The ['default memory resource] wraps calls to the global heap allocation
+functions. This resource is not reference counted and has a non-trivial
+deallocate function. All default-constructed __storage_ptr__ reference
+the same default memory resource:
+
+[doc_storage_ptr_1]
+
+Default-constructed library containers use the default memory resource:
+
+[doc_storage_ptr_2]
+
+The default memory resource is well suited for general usage. It offers
+reasonable performance for parsing, and conservative memory usage for
+modification of the contents of containers.
+
+[/-----------------------------------------------------------------------------]
+
+[heading Monotonic Resource]
+
+Consider the pattern of memory allocation during parsing: when an array,
+object, or string is encountered the parser accumulates elements in its
+temporary storage area. When all of the elements are known, a single
+memory allocation is requested from the resource when constructing
+the value. Thus, parsing only allocates and constructs containers
+at their final size. Memory is not reallocated; that is, a memory
+buffer never needs to grow by allocating a new larger buffer and
+deallocating the previous buffer.
+
+The __monotonic_resource__ optimizes this memory allocation pattern by
+allocating increasingly large blocks of global memory internally and
+parceling those blocks out in smaller pieces to fulfill allocation
+requests. It has a trivial deallocate function. The monotonic resource
+does not actually deallocate memory until the resource is destroyed.
+Thus, it is ideally suited for the use-case where JSON is parsed,
+and the resulting value is then inspected but not modified.
+
+The resource to use when constructing values may be specified in calls
+to __parse__ as shown here:
+
+[doc_storage_ptr_3]
+
+Or, to parse into a value with shared ownership of the memory resource:
+
+[doc_storage_ptr_4]
+
+A monotonic resource may be optionally constructed with an initial buffer
+to use first, before going to the heap. This allows the caller to use
+stack space and avoid dynamic allocations for most parsed JSON, falling
+back to dynamic allocation from the heap if the input JSON is larger than
+average, as shown here:
+
+[doc_storage_ptr_5]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Static Resource]
+
+A __static_resource__ constructs from a caller-provided buffer, and satisfies
+all memory allocation requests from the buffer. Once the buffer is exhausted,
+subsequent calls to allocate throw the exception `std::bad_alloc`. The
+resource offers a simple invariant: dynamic heap allocations are never
+performed.
+
+To use the resource, construct it with a local buffer:
+
+[doc_storage_ptr_6]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Null Resource]
+
+The function __get_null_resource__ returns a global instance of the
+null resource. This resource offers a simple invariant: all calls to
+allocate will throw the exception `std::bad_alloc`. An instance of
+the null resource can be used to make parsing guarantee that
+allocations from the heap are never made. This is explored
+in more detail in a later section.
+
+[/-----------------------------------------------------------------------------]
+
+[heading Allocator Propagation]
+
+The containers __array__, __object__, and __value__ all propagate the
+memory resource they were constructed with to child elements:
+
+[doc_storage_ptr_7]
+
+This propagation acts recursively, containers within containers will
+all have the resource propagated. Once a container is constructed,
+its memory resource can never be changed.
+
+[/-----------------------------------------------------------------------------]
+
+[heading Resource Lifetime]
+
+It is important to note that __storage_ptr__ supports both
+shared-ownership and reference lifetime models. Construction
+from a memory resource pointer does not transfer ownership:
+
+[doc_storage_ptr_8]
+
+When using a memory resource in this fashion, including the case
+where a storage pointer or container is constructed from a
+__polymorphic_allocator__, the caller must ensure that the
+lifetime of the resource is extended until it is no longer
+referenced by any variables; otherwise, undefined behavior
+is possible.
+
+Shared ownership is achieved using the function __make_shared_resource__,
+which creates a new, reference-counted memory resource using a dynamic memory
+allocation and returns it as a __storage_ptr__:
+
+[doc_storage_ptr_9]
+
+When a storage pointer is constructed this way, the lifetime of
+the referenced memory resource is extended until all variables which
+reference it are destroyed.
+
+[heading User-Defined Resource]
+
+To implement custom memory allocation strategies, derive your class
+from __memory_resource__ and implement the functions `do_allocate`,
+`do_deallocate`, and `do_is_equal` as seen in this example below,
+which logs each operation it performs to the console:
+
+[doc_storage_ptr_10]
+
+[endsect]

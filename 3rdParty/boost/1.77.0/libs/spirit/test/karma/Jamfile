@@ -1,0 +1,137 @@
+#==============================================================================
+#   Copyright (c) 2001-2011 Joel de Guzman
+#   Copyright (c) 2001-2012 Hartmut Kaiser
+#   Copyright (c)      2011 Bryce Lelbach
+#   Copyright (c) 2016-2019 Nikita Kniazev
+#
+#   Use, modification and distribution is subject to the Boost Software
+#   License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+
+import testing ;
+
+###############################################################################
+
+project spirit-karma
+    : requirements
+        <include>.
+        <c++-template-depth>512
+    ;
+
+###############################################################################
+
+cpp-pch pch : pch.hpp : : : <include>. <force-include>pch.hpp ;
+
+explicit pch ;
+
+###############################################################################
+
+local subproject-name = karma ;
+
+rule run ( sources + : args * : input-files *
+         : requirements * : target-name ? : default-build * )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.run $(sources) : $(args) : $(input-files)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) : $(default-build) ] ;
+}
+
+rule compile ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile $(sources)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) ] ;
+}
+
+rule compile-fail ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile-fail $(sources)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) ] ;
+}
+
+###############################################################################
+
+compile-fail grammar_fail.cpp ;
+compile-fail rule_fail.cpp ;
+run actions.cpp ;
+run alternative1.cpp ;
+run alternative2.cpp ;
+run and_predicate.cpp ;
+run attribute.cpp ;
+run auto1.cpp ;
+run auto2.cpp ;
+run auto3.cpp ;
+run binary1.cpp ;
+run binary2.cpp ;
+run binary3.cpp ;
+run bool.cpp ;
+run buffer.cpp ;
+run case_handling1.cpp ;
+run case_handling2.cpp ;
+run case_handling3.cpp ;
+run center_alignment.cpp ;
+run char1.cpp ;
+run char2.cpp ;
+run char3.cpp ;
+run char_class.cpp ;
+run columns.cpp ;
+run debug.cpp : : : <pch>off ;
+run delimiter.cpp ;
+run duplicate.cpp ;
+run encoding.cpp ;
+run eol.cpp ;
+run eps.cpp ;
+run format_manip.cpp ;
+run format_manip_attr.cpp ;
+run format_pointer_container.cpp ;
+run generate_attr.cpp ;
+run grammar.cpp ;
+run int1.cpp ;
+run int2.cpp ;
+run int3.cpp ;
+run kleene.cpp ;
+run lazy.cpp ;
+run left_alignment.cpp ;
+run list.cpp ;
+run lit.cpp ;
+run maxwidth.cpp ;
+run not_predicate.cpp ;
+run omit.cpp ;
+run optional.cpp ;
+run pattern1.cpp ;
+run pattern2.cpp ;
+run pattern3.cpp ;
+run pattern4.cpp ;
+run plus.cpp ;
+run real1.cpp ;
+run real2.cpp ;
+run real3.cpp ;
+run repeat1.cpp ;
+run repeat2.cpp ;
+run right_alignment.cpp ;
+run sequence1.cpp ;
+run sequence2.cpp ;
+run stream.cpp ;
+run symbols1.cpp ;
+run symbols2.cpp ;
+run symbols3.cpp ;
+run tricky_alignment.cpp ;
+run uint_radix.cpp ;
+run utree1.cpp ;
+run utree2.cpp ;
+run utree3.cpp ;
+run wstream.cpp ;
+
+compile regression_const_real_policies.cpp ;
+run regression_adapt_adt.cpp ;
+run regression_center_alignment.cpp ;
+run regression_container_variant_sequence.cpp ;
+run regression_iterator.cpp ;
+run regression_optional_double.cpp ;
+run regression_real_0.cpp ;
+run regression_real_policy_sign.cpp ;
+run regression_real_scientific.cpp ;
+run regression_semantic_action_attribute.cpp ;
+run regression_unicode_char.cpp : : : <pch>off ;

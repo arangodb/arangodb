@@ -36,12 +36,21 @@
     x() { _name = #x; _help = help; } \
     }
 
-#define DECLARE_GAUGE(x, type, help)    \
+#define DECLARE_GAUGE(x, type, help)                    \
   struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    x() { _name = #x; _help = help; } \
-    }
-    
+    static constexpr std::string_view kName = #x;       \
+    x() {                                               \
+      _name = #x;                                       \
+      _help = help;                                     \
+    }                                                   \
+  }
+
 #define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
+
+#define DECLARE_GUARD_METRIC(x, type)                         \
+  struct x : arangodb::metrics::GuardMetricBuilder<x, type> { \
+    x() { _name = #x; }                                       \
+  }
 
 #define DECLARE_HISTOGRAM(x, scale, help)                   \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
@@ -137,6 +146,17 @@ struct GaugeBuilder : GenericBuilder<Derived> {
   char const* type() const override { return "gauge"; }
 };
 
+template <typename Derived, typename T>
+struct GuardMetricBuilder : GenericBuilder<Derived> {
+  using metric_t = ::GuardMetric<T>;
+
+  std::shared_ptr<::Metric> build() const final {
+    return std::make_shared<metric_t>(T{}, this->name(), this->_help, this->_labels);
+  }
+
+  char const* type() const final { return "untyped"; }
+};
+
 template <class Derived, class Scale>
 struct HistogramBuilder : GenericBuilder<Derived> {
   using metric_t = ::Histogram<decltype(Scale::scale())>;
@@ -168,6 +188,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return static_cast<typename MetricBuilder::metric_t&>(*doAdd(builder));
   }
 
+  Metric* get(const metrics_key& key);
+
+  template <typename MetricBuilder>
+  bool remove(MetricBuilder&& builder) {
+    return doRemove(builder);
+  }
+
   template <typename MetricBuilder>
   auto addShared(MetricBuilder&& builder)
       -> std::shared_ptr<typename MetricBuilder::metric_t> {
@@ -180,7 +207,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
  private:
   auto doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric>;
-
+  bool doRemove(const metrics::Builder& builder);
 
   registry_type _registry;
 

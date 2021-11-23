@@ -1,0 +1,56 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:internals Internal Support Code]
+
+There are some traits classes which authors of new backends should be aware of:
+
+   namespace boost{ namespace multiprecision{ namespace detail{
+
+   template<typename From, typename To>
+   struct is_explicitly_convertible;
+
+   }}}
+
+Inherits from `boost::integral_constant<bool,true>` if type `From` has an explicit conversion from `To`.
+
+   template <class From, class To>
+   struct is_lossy_conversion
+   {
+      static const bool value = see below;
+   };
+
+Member `value` is true if the conversion from `From` to `To` would result in a loss of precision, and `false` otherwise.
+
+The default version of this trait simply checks whether the ['kind] of conversion (for example from a floating-point to an integer type)
+is inherently lossy.  Note that if either of the types `From` or `To` are of an unknown number category (because `number_category` is not
+specialised for that type) then this trait will be `true`.
+
+   template<typename From, typename To>
+   struct is_restricted_conversion
+   {
+      static const bool value = see below;
+   };
+
+Member `value` is `true` if `From` is only explicitly convertible to `To` and not implicitly convertible, or
+if `is_lossy_conversion<From, To>::value` is `true`.  Otherwise `false`.
+
+Note that while this trait is the ultimate arbiter of which constructors are marked as `explicit` in class `number`,
+authors of backend types should generally specialise one of the traits above, rather than this one directly.
+
+   template <class T>
+   is_signed_number;
+   template <class T>
+   is_unsigned_number;
+
+These two traits inherit from either `std::integral_constant<bool, true>` or `std::integral_constant<bool, false>`, by default types are assumed to be signed unless
+`is_unsigned_number` is specialized for that type.
+
+[endsect]

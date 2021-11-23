@@ -1,0 +1,33 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2020
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[import ../example/lexical_cast.cpp]
+
+[section:lexical_cast_converter ['boost::cnv::lexical_cast] Converter]
+
+The purpose of the converter is to
+
+* Make use of the `boost::lexical_cast` functionality and performance that many people have become accustomed to and comfortable with;
+* Demonstrate how existing independent conversion\/transformation-related facilities might be incorporated in to the ['Boost.Convert] framework.
+
+The converter can easily replace `boost::lexical_cast`, adding flexibility and convenience:
+
+[lexical_cast_headers1]
+[lexical_cast_example1]
+
+See the [classref boost::cnv::lexical_cast `boost::cnv::lexical_cast` implementation] for details.
+
+In order for a user-defined type to be integrated into the `boost::lexical_cast` framework and, consequently, deployed with the `boost::cnv::lexical_cast` converter:
+
+* ['TypeOut] needs to be [@http://en.cppreference.com/w/cpp/named_req/CopyConstructible ['Copy Constructible]];
+* ['TypeOut] needs to be [@http://en.cppreference.com/w/cpp/named_req/DefaultConstructible ['Default Constructible]];
+* ['TypeOut] needs to be ['Input Streamable];
+* ['TypeIn] needs to be ['Output Streamable].
+
+The first two requirements are imposed by the `boost::lexical_cast` design and implementation and the last two requirements by the underlying `std::stringstream` engine.
+
+[endsect]
+
