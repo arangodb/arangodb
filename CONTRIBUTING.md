@@ -530,7 +530,7 @@ Make the above change permanent:
 
 `echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf`
 
-**Please note that GDB 9 is required for ArangoDB 3.6 and later.**
+**Please note that at least GDB 9 is required.**
 
 You can also generate core dumps from running processes without killing them by
 using gdb:
