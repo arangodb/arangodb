@@ -64,7 +64,9 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
 }
 
 /** @brief extract the _key attribute from a slice. If slice is an Object,
- * _key is read from the attribute. If slice is a String, the substring
+ * _key is read from the attribute. If the read attribute is a String, it is returned,
+ * otherwise, the empty string is returned.
+ * If the given slice is a String, the substring
  * after '/' or the whole string if '/' does not appear is returned.
  *
  * @param slice can be Object or String, otherwise an empty StringRef is returned.
@@ -88,7 +90,9 @@ arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice 
   return arangodb::velocypack::StringRef();
 }
 
-/// @brief extract the _key attribute from a StringRef
+/** @brief Given a string, returns the substring after the first '/' or
+ *          the whole string if it contains no '/'.
+ */
 arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(velocypack::StringRef key) {
   size_t pos = key.find('/');
   if (pos == std::string::npos) {

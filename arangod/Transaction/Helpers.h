@@ -53,7 +53,9 @@ namespace helpers {
 /// @brief extract the _key attribute from a slice
 arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
 
-/// @brief extract the _key attribute from a StringRef
+/** @brief Given a string, returns the substring after the first '/' or
+ *          the whole string if it contains no '/'.
+ */
 arangodb::velocypack::StringRef extractKeyPart(velocypack::StringRef);
 
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
@@ -64,12 +66,14 @@ struct SmartGraphEdgeToFrom {
   velocypack::StringRef to;
 };
 
-/** Extracts the _key attribute from slice and writes to left: the part of it
-   * up to the first ':' (meaning _from),
-   * and to right: the part of it from the second ':' (meaning _to).
-   * @param slice can be Object (isObject() == true) or String (isString() == true)
-   * @param left
-   * @param right
+/** Extracts the _from and the _to attributes from the given slice and returns
+ * them. If the slice is a String, it is expected to have the form
+ * <from>:<key>:<to>. If slice is an Object, it is expected that its _key
+ * attribute has this form. The _from and the _to are extracted from a String in
+ * both cases.
+ * On error, the error is returned.
+ * @param slice can be Object (isObject() == true) or String (isString() == true)
+todo rename to extractSmartGraphFromTo
  */
 auto extractSmartGraphIds(arangodb::velocypack::Slice const slice) -> ResultT<SmartGraphEdgeToFrom> ;
 
