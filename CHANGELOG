@@ -1,6 +1,10 @@
 v3.8.4 (XXXX-XX-XX)
 -------------------
 
+* Make `db.<collection>.figures(true)` operate on the same snapshot when 
+  counting the number of documents in the documents column family and the
+  indexes. This ensures consistency for the results of a single figures result.
+
 * Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
   "read-own-writes" flag. Previously the tagging only happened after all query
   optimizations were completed, making the tag unavailable to the optimizer.
