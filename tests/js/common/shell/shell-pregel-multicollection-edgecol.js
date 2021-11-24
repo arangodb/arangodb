@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/*global assertEqual, assertTrue, assertNotEqual, assertFalse */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -199,6 +199,7 @@ function multiCollectionTestSuite() {
         if (stats.state !== "running" && stats.state !== "storing") {
           assertEqual(stats.vertexCount, numComponents * n, stats);
           assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+          assertFalse(stats.hasOwnProperty("parallelism"));
 
           let mySet = new Set();
           for (let j = 0; j < cn; ++j) {
@@ -231,6 +232,7 @@ function multiCollectionTestSuite() {
             assertTrue( stats.gss <= 25);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+            assertTrue(stats.hasOwnProperty("parallelism"));
             assertEqual(parallelism, stats.parallelism);
 
             let mySet = new Set();
@@ -265,6 +267,7 @@ function multiCollectionTestSuite() {
             assertTrue(stats.gss <= 25);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+            assertTrue(stats.hasOwnProperty("parallelism"));
             assertEqual(parallelism, stats.parallelism);
 
             let mySet = new Set();
@@ -304,6 +307,7 @@ function edgeCollectionRestrictionsTestSuite() {
       if (stats.state !== "running" && stats.state !== "storing") {
         assertEqual(200, stats.vertexCount, stats);
         assertEqual(90, stats.edgeCount, stats);
+        assertTrue(stats.hasOwnProperty("parallelism"));
 
         let fromComponents = {};
         let toComponents = {};
