@@ -89,14 +89,6 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
         currentSize = 0;
       }
     }
-    {
-      // Add first entry in term
-      currentSize += PersistingLogEntry{LogTerm{5}, LogIndex{1}, std::nullopt}.approxByteSize();
-      if (currentSize >= _optionsMock->_maxNetworkBatchSize) {
-        numRequests += 1;
-        currentSize = 0;
-      }
-    }
     // Some pending entries still need to be submitted
     if (currentSize > 0) {
       numRequests += 1;
