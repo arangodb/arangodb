@@ -1261,8 +1261,5 @@ arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Sli
   }
 #endif
 
-  if (isSingleServer) {
-    std::make_shared<arangodb::LogicalCollection>(vocbase, data, isAStub);
-  }
   return std::make_shared<LogicalCollection>(vocbase, data, isAStub);
 }
