@@ -68,6 +68,7 @@
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/VocbaseInfo.h"
 
 #ifdef USE_ENTERPRISE
@@ -737,7 +738,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   // collection is in building stage
   if (collection == nullptr) {
     // no previous version of the collection exists, or its hash value has changed
-    collection = createCollectionObject(data, vocbase);
+    collection = methods::Collections::createCollectionObject(data, vocbase);
     TRI_ASSERT(collection != nullptr);
 
     if (!isBuilding) {
@@ -762,25 +763,6 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   TRI_ASSERT(!isBuilding || hash == 0);
 
   return {hash, collection};
-}
-
-/// @brief helper function to build a new LogicalCollection object from the velocypack
-/// input
-/*static*/ std::shared_ptr<LogicalCollection> ClusterInfo::createCollectionObject(
-    arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase) {
-#ifdef USE_ENTERPRISE
-  auto isSmart = data.get(StaticStrings::IsSmart);
-
-  if (isSmart.isTrue()) {
-    auto type = data.get(StaticStrings::DataSourceType);
-
-    if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-      return std::make_shared<VirtualClusterSmartEdgeCollection>(vocbase, data);
-    }
-    return std::make_shared<SmartVertexCollection>(vocbase, data);
-  }
-#endif
-  return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
 
 struct ClusterInfo::NewStuffByDatabase {
