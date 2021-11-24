@@ -569,7 +569,7 @@ std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::v
 
   condition->_isNormalized = true;
   condition->_isSorted = false;
-  
+
   return condition;
 }
 
