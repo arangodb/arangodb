@@ -106,7 +106,7 @@ std::string makeIdFromCustom(CollectionNameResolver const* resolver,
 
 std::string makeIdFromParts(CollectionNameResolver const* resolver,
                             DataSourceId const& cid, VPackSlice const& keyPart);
-};  // namespace helpers
+} // namespace helpers
 
 /// @brief basics::StringBuffer leaser
 /// @deprecated rather use StringLeaser for a shared std::string
