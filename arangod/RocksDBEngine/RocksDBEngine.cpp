@@ -2597,7 +2597,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         // LogicalCollections pointers.
         collection = methods::Collections::createCollectionObject(it, *vocbase, false);
       } else {
-        std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
+        collection = std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
       }
 
       TRI_ASSERT(collection != nullptr);
