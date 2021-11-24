@@ -624,6 +624,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _maintenanceState{std::make_shared<MaintenanceState>()},
       _id{iid},
       _lastCommittedTick{0},
+      _cleanupIntervalCount{0},
       _createdInRecovery{false},
       _linkStats{nullptr},
       _numFailedCommits{nullptr},
@@ -834,7 +835,15 @@ Result IResearchLink::commit(bool wait /*= true*/) {
   }
 
   CommitResult code{CommitResult::UNDEFINED};
-  return commitUnsafe(wait, &code).result;
+  auto result = commitUnsafe(wait, &code).result;
+  if (auto& meta = _dataStore._meta; meta._commitIntervalMsec == 0) {
+    // If auto commit is disabled, we want to manually trigger the cleanup for the consistent API
+    if (meta._cleanupIntervalStep != 0 && ++_cleanupIntervalCount >= meta._cleanupIntervalStep) {
+      _cleanupIntervalCount = 0;
+      (void)cleanupUnsafe();
+    }
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
