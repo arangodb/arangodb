@@ -60,8 +60,6 @@ arangodb::velocypack::StringRef extractKeyPart(velocypack::StringRef);
 
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 
-
-
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
 /// be the first one
