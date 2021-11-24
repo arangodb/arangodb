@@ -1238,10 +1238,10 @@ arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Sli
 /// input
 /*static*/ std::shared_ptr<LogicalCollection> Collections::createCollectionObject(
     arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase) {
-#ifdef USE_ENTERPRISE
   bool isSingleServer = ServerState::instance()->isSingleServer();
   bool isAStub = !isSingleServer;
 
+#ifdef USE_ENTERPRISE
   auto isSmart = data.get(StaticStrings::IsSmart);
 
   if (isSmart.isTrue()) {
