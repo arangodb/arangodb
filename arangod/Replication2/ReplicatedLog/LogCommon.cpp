@@ -112,11 +112,6 @@ auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice) -> PersistingLo
   return PersistingLogEntry(logTerm, logIndex, std::move(payload));
 }
 
-auto PersistingLogEntry::operator==(PersistingLogEntry const& other) const noexcept -> bool {
-  return other._logIndex == _logIndex && other._logTerm == _logTerm &&
-         other._payload == _payload;
-}
-
 auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
   return TermIndexPair{_logTerm, _logIndex};
 }
@@ -194,10 +189,6 @@ auto replication2::operator==(LogPayload const& left, LogPayload const& right) -
   return arangodb::basics::VelocyPackHelper::equal(velocypack::Slice(left.dummy.data()),
                                                    velocypack::Slice(right.dummy.data()),
                                                    true);
-}
-
-auto replication2::operator!=(LogPayload const& left, LogPayload const& right) -> bool {
-  return !(left == right);
 }
 
 LogPayload::LogPayload(velocypack::UInt8Buffer dummy)
@@ -291,16 +282,6 @@ auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
 }
 
-auto replication2::operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool {
-  // TODO How can we make sure that we never forget a field here?
-  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern &&
-         left.replicationFactor == right.replicationFactor;
-}
-
-auto replication2::operator!=(const LogConfig& left, const LogConfig& right) noexcept -> bool {
-  return !(left == right);
-}
-
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
   TRI_ASSERT(from <= to);
 }
@@ -352,24 +333,6 @@ auto LogRange::Iterator::operator*() const noexcept -> LogIndex {
 }
 auto LogRange::Iterator::operator->() const noexcept -> LogIndex const* {
   return &current;
-}
-
-auto replication2::operator==(LogRange a, LogRange b) noexcept -> bool {
-  return a.from == b.from && a.to == b.to;
-}
-
-auto replication2::operator!=(LogRange a, LogRange b) noexcept -> bool {
-  return !(a == b);
-}
-
-auto replication2::operator==(LogRange::Iterator const& a,
-                              LogRange::Iterator const& b) noexcept -> bool {
-  return a.current == b.current;
-}
-
-auto replication2::operator!=(LogRange::Iterator const& a,
-                              LogRange::Iterator const& b) noexcept -> bool {
-  return !(a == b);
 }
 
 template <typename... Args>

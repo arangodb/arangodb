@@ -74,7 +74,7 @@ auto resolvePromiseSet(std::pair<Queue, Result>& q) {
   std::for_each(std::begin(q.first), std::end(q.first), [&](auto& pair) {
     TRI_ASSERT(!pair.second.isFulfilled());
     if (!pair.second.isFulfilled()) {
-      pair.second.setValue(q.second);
+      pair.second.setTry(std::move(q.second));
     }
   });
 }
@@ -161,6 +161,11 @@ struct LogMultiplexerImplementationBase {
     });
   }
 
+  auto resolveLeaderChange(std::exception_ptr ptr) {
+    auto promiseSet = _guardedData.getLockedGuard()->getChangeLeaderResolveSet(ptr);
+    resolvePromiseSets(Spec{}, promiseSet);
+  }
+
  protected:
   template <typename>
   struct MultiplexerData;
@@ -174,7 +179,7 @@ struct LogMultiplexerImplementationBase {
     Derived& _self;
 
     explicit MultiplexerData(Derived& self) : _self(self) {}
-    void digestIterator(LogRangeIterator& iter) {
+    void digestIterator(LogIterator& iter) {
       while (auto memtry = iter.next()) {
         auto muxedValue =
             MultiplexedValues::fromVelocyPack<Descriptors...>(memtry->logPayload());
@@ -189,15 +194,21 @@ struct LogMultiplexerImplementationBase {
       }
     }
 
+    auto getChangeLeaderResolveSet(std::exception_ptr ptr) {
+      return std::make_tuple(std::make_pair(
+          std::move(getBlockForDescriptor<Descriptors>()._waitForQueue),
+          futures::Try<typename StreamInformationBlock<Descriptors>::WaitForResult>{ptr})...);
+    }
+
     auto getWaitForResolveSetAll(LogIndex commitIndex) {
       return std::make_tuple(std::make_pair(
           getBlockForDescriptor<Descriptors>().getWaitForResolveSet(commitIndex),
-          typename StreamInformationBlock<Descriptors>::WaitForResult{})...);
+          futures::Try{typename StreamInformationBlock<Descriptors>::WaitForResult{}})...);
     }
 
     // returns a LogIndex to wait for (if necessary)
     auto checkWaitFor() -> std::optional<LogIndex> {
-      if (!_pendingWaitFor && _lastIndex >= _firstUncommittedIndex) {
+      if (!_pendingWaitFor) {
         // we have to trigger a waitFor operation
         // and wait for the next index
         _pendingWaitFor = true;
@@ -219,9 +230,7 @@ struct LogMultiplexerImplementationBase {
   auto shared_from_self() -> std::shared_ptr<Derived> {
     return std::static_pointer_cast<Derived>(static_cast<Derived&>(*this).shared_from_this());
   }
-  auto weak_from_self() -> std::weak_ptr<Derived> {
-    return shared_from_self();
-  }
+  auto weak_from_self() -> std::weak_ptr<Derived> { return shared_from_self(); }
 
   Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guardedData{};
   std::shared_ptr<Interface> const _interface;
@@ -238,12 +247,14 @@ template <typename Spec, typename Interface>
 struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,  // implement the actual class
       ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream>,  // use a proxy stream dispatcher
-      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, arangodb::replication2::streams::Stream, Interface> {
+      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec,
+                                       arangodb::replication2::streams::Stream, Interface> {
   explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface_)
-      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec, arangodb::replication2::streams::Stream, Interface>(
+      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec,
+                                         arangodb::replication2::streams::Stream, Interface>(
             std::move(interface_)) {}
 
-  auto digestIterator(LogRangeIterator& iter) -> void override {
+  auto digestIterator(LogIterator& iter) -> void override {
     this->_guardedData.getLockedGuard()->digestIterator(iter);
   }
 
@@ -264,19 +275,41 @@ struct LogDemultiplexerImplementation
  private:
   void triggerWaitFor(LogIndex waitForIndex) {
     this->_interface->waitForIterator(waitForIndex)
-        .thenValue([weak = this->weak_from_this()](std::unique_ptr<LogRangeIterator>&& iter) {
+        .thenFinal([weak = this->weak_from_this()](
+                       futures::Try<std::unique_ptr<LogRangeIterator>>&& result) noexcept {
           if (auto locked = weak.lock(); locked) {
             auto that = std::static_pointer_cast<LogDemultiplexerImplementation>(locked);
-            auto [nextIndex, promiseSets] = that->_guardedData.doUnderLock([&](auto& self) {
-              self._firstUncommittedIndex = iter->range().to;
-              self.digestIterator(*iter);
-              return std::make_tuple(self._firstUncommittedIndex,
-                                     self.getWaitForResolveSetAll(
-                                         self._firstUncommittedIndex.saturatedDecrement()));
-            });
+            try {
+              auto iter = std::move(result).get();  // potentially throws an exception
+              auto [nextIndex, promiseSets] = that->_guardedData.doUnderLock([&](auto& self) {
+                self._firstUncommittedIndex = iter->range().to;
+                self.digestIterator(*iter);
+                return std::make_tuple(self._firstUncommittedIndex,
+                                       self.getWaitForResolveSetAll(
+                                           self._firstUncommittedIndex.saturatedDecrement()));
+              });
 
-            that->triggerWaitFor(nextIndex);
-            resolvePromiseSets(Spec{}, promiseSets);
+              that->triggerWaitFor(nextIndex);
+              resolvePromiseSets(Spec{}, promiseSets);
+            } catch (basics::Exception const& e) {
+              if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
+                LOG_TOPIC("c5c04", DEBUG, Logger::REPLICATION2)
+                    << "demultiplexer received follower-resigned exception";
+                that->resolveLeaderChange(std::current_exception());
+              } else {
+                LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
+                    << "demultiplexer received unexpected exception: " << e.what();
+                FATAL_ERROR_EXIT();
+              }
+            } catch (std::exception const& e) {
+              LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
+                  << "demultiplexer received unexpected exception: " << e.what();
+              FATAL_ERROR_EXIT();
+            } catch (...) {
+              LOG_TOPIC("c3a3d", FATAL, Logger::REPLICATION2)
+                  << "demultiplexer received unexpected exception";
+              FATAL_ERROR_EXIT();
+            }
           }
         });
   }
@@ -286,12 +319,26 @@ template <typename Spec, typename Interface>
 struct LogMultiplexerImplementation
     : LogMultiplexer<Spec>,
       ProxyStreamDispatcher<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream>,
-      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, arangodb::replication2::streams::ProducerStream, Interface> {
+      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec,
+                                       arangodb::replication2::streams::ProducerStream, Interface> {
   using SelfClass = LogMultiplexerImplementation<Spec, Interface>;
 
   explicit LogMultiplexerImplementation(std::shared_ptr<Interface> interface_)
-      : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec, arangodb::replication2::streams::ProducerStream, Interface>(
+      : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec,
+                                         arangodb::replication2::streams::ProducerStream, Interface>(
             std::move(interface_)) {}
+
+  void digestAvailableEntries() override {
+    auto log = this->_interface->copyInMemoryLog();
+    auto iter = log.getIteratorFrom(LogIndex{0});
+    auto waitForIndex = this->_guardedData.template doUnderLock([&](auto& self) {
+      self.digestIterator(*iter);
+      return self.checkWaitFor();
+    });
+    if (waitForIndex.has_value()) {
+      triggerWaitForIndex(*waitForIndex);
+    }
+  }
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>>
   auto insertInternal(T const& t) -> LogIndex {
@@ -303,10 +350,13 @@ struct LogMultiplexerImplementation
     });
 
     // we have to lock before we insert, otherwise we could mess up the order
-    // or log entries for this stream
+    // of log entries for this stream
     auto [index, waitForIndex] = this->_guardedData.doUnderLock([&](auto& self) {
-      // First write to replicated log
-      auto insertIndex = this->_interface->insert(LogPayload(std::move(serialized)));
+      // First write to replicated log - note that insert could trigger a
+      // waitFor to be resolved. Therefore, we should hold the lock.
+      auto insertIndex =
+          this->_interface->insert(LogPayload(std::move(serialized)), false,
+                                   replicated_log::LogLeader::doNotTriggerAsyncReplication);
       TRI_ASSERT(insertIndex > self._lastIndex);
       self._lastIndex = insertIndex;
 
@@ -316,6 +366,7 @@ struct LogMultiplexerImplementation
       block.appendEntry(insertIndex, t);
       return std::make_pair(insertIndex, self.checkWaitFor());
     });
+    this->_interface->triggerAsyncReplication();
 
     if (waitForIndex.has_value()) {
       triggerWaitForIndex(*waitForIndex);
@@ -325,29 +376,51 @@ struct LogMultiplexerImplementation
 
  private:
   void triggerWaitForIndex(LogIndex waitForIndex) {
+    LOG_TOPIC("2b7b1", INFO, Logger::REPLICATION2) << "multiplexer trigger wait for index " << waitForIndex;
     auto f = this->_interface->waitFor(waitForIndex);
-    std::move(f).thenValue([weak = this->weak_from_this()](
-                               replicated_log::WaitForResult&& result) noexcept {
+    std::move(f).thenFinal([weak = this->weak_from_this()](
+                               futures::Try<replicated_log::WaitForResult>&& tryResult) noexcept {
       // First lock the shared pointer
       if (auto locked = weak.lock(); locked) {
         auto that = std::static_pointer_cast<SelfClass>(locked);
-        // now acquire the mutex
-        auto [resolveSets, nextIndex] = that->_guardedData.doUnderLock([&](auto& self) {
-          self._pendingWaitFor = false;
+        try {
+          auto& result = tryResult.get();
+          // now acquire the mutex
+          auto [resolveSets, nextIndex] = that->_guardedData.doUnderLock([&](auto& self) {
+            self._pendingWaitFor = false;
 
-          // find out what the commit index is
-          self._firstUncommittedIndex = result.currentCommitIndex + 1;
-          return std::make_pair(self.getWaitForResolveSetAll(result.currentCommitIndex),
-                                self.checkWaitFor());
-        });
+            // find out what the commit index is
+            self._firstUncommittedIndex = result.currentCommitIndex + 1;
+            return std::make_pair(self.getWaitForResolveSetAll(result.currentCommitIndex),
+                                  self.checkWaitFor());
+          });
 
-        resolvePromiseSets(Spec{}, resolveSets);
-        if (nextIndex.has_value()) {
-          that->triggerWaitForIndex(*nextIndex);
+          resolvePromiseSets(Spec{}, resolveSets);
+          if (nextIndex.has_value()) {
+            that->triggerWaitForIndex(*nextIndex);
+          }
+        } catch (basics::Exception const& e) {
+          if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
+            LOG_TOPIC("c5c05", INFO, Logger::REPLICATION2)
+                << "multiplexer received leader-resigned exception";
+            that->resolveLeaderChange(std::current_exception());
+          } else {
+            LOG_TOPIC("2e28e", FATAL, Logger::REPLICATION2)
+                << "multiplexer received unexpected exception: " << e.what();
+            FATAL_ERROR_EXIT();
+          }
+        } catch (std::exception const& e) {
+          LOG_TOPIC("709f9", FATAL, Logger::REPLICATION2)
+              << "multiplexer received unexpected exception: " << e.what();
+          FATAL_ERROR_EXIT();
+        } catch (...) {
+          LOG_TOPIC("c3a3e", FATAL, Logger::REPLICATION2)
+              << "multiplexer received unexpected exception";
+          FATAL_ERROR_EXIT();
         }
       }
     });
-  } 
+  }
 };
 
 #if (_MSC_VER >= 1)

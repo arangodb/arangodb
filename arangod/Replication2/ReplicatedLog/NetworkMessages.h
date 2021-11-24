@@ -51,11 +51,11 @@ class Result;
 
 namespace arangodb::replication2::replicated_log {
 
-struct MessageId : implement_compare<MessageId> {
+struct MessageId {
   constexpr MessageId() noexcept : value{0} {}
   constexpr explicit MessageId(std::uint64_t value) noexcept : value{value} {}
 
-  friend auto operator<=(MessageId, MessageId) noexcept -> bool;
+  friend auto operator<=>(MessageId, MessageId) noexcept = default;
   friend auto operator++(MessageId& id) -> MessageId&;
   friend auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
 
@@ -64,7 +64,6 @@ struct MessageId : implement_compare<MessageId> {
   std::uint64_t value;
 };
 
-auto operator<=(MessageId, MessageId) noexcept -> bool;
 auto operator++(MessageId& id) -> MessageId&;
 auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
 

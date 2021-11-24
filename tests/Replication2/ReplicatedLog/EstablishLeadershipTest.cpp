@@ -38,6 +38,8 @@ TEST_F(EstablishLeadershipTest, wait_for_leadership) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{4}, "leader");
   auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
+  auto f = leader->waitForLeadership();
+
   {
     auto status = leader->getStatus();
     ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
@@ -46,6 +48,7 @@ TEST_F(EstablishLeadershipTest, wait_for_leadership) {
 
   EXPECT_FALSE(follower->hasPendingAppendEntries());
   EXPECT_FALSE(leader->isLeadershipEstablished());
+  EXPECT_FALSE(f.isReady());
   leader->triggerAsyncReplication();
   EXPECT_TRUE(follower->hasPendingAppendEntries());
 
@@ -60,4 +63,5 @@ TEST_F(EstablishLeadershipTest, wait_for_leadership) {
     EXPECT_TRUE(std::get<LeaderStatus>(status.getVariant()).leadershipEstablished);
   }
 
+  EXPECT_TRUE(f.isReady());
 }
