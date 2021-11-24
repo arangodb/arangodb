@@ -1,0 +1,45 @@
+
+#          Copyright Oliver Kowalke 2014.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+# For more information, see http://www.boost.org/
+
+import common ;
+import feature ;
+import indirect ;
+import modules ;
+import os ;
+import toolset ;
+
+project boost/coroutine2/example
+    : requirements
+      <library>/boost/context//boost_context
+      <target-os>linux,<toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <target-os>linux,<toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>static
+      <threading>multi
+    ;
+
+exe fibonacci
+    : fibonacci.cpp
+    ;
+
+exe same_fringe
+    : same_fringe.cpp
+    ;
+
+exe layout
+    : layout.cpp
+    ;
+
+exe parser
+    : parser.cpp
+    ;
+
+exe segmented
+    : segmented.cpp
+    ;

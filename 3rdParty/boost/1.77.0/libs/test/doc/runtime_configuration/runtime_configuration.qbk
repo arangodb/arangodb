@@ -1,0 +1,55 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:runtime_config Runtime parameters]
+
+
+[h4 Boost.Test runtime parameters]
+The __UTF__ supports multiple parameters that affect test module execution. To set the parameter's value you can
+either use a runtime configuration subsystem interface from within the test module initialization function or you can
+specify the value at runtime during test module invocation.
+
+The __UTF__ provides two ways to set a parameter at runtime: by specifying a command line argument and by setting an
+environment variable. The command line argument always overrides the corresponding environment variable.
+
+During test module initialization the __UTF__ parses the command line and excludes all parameters that belong to it and
+their values from the argument list. The rest of command line is forwarded to the test module initialization function
+supplied by you. The command line argument format expected by the __UTF__ is:
+
+[pre
+  --<command_line_argument_name>=<argument_value>
+]
+
+The command line argument name is case sensitive. It is required to match exactly the name in parameter specification.
+There should not be any spaces between '=' and either command line argument name or argument value.
+
+The corresponding environment variable name is also case sensitive and is required to exactly match the name in the
+parameter specification.
+
+All information about the currently supported parameters of the __UTF__ is summarized in
+the [link boost_test.runtime_config.summary summary section].
+
+[h4 Test filtering]
+The __UTF__ provides an extensive filtering facility making it easy to run a specific test or a subset of tests. The
+[link boost_test.runtime_config.test_unit_filtering section on filtering] gives all the details for the command line interface.
+
+Additionally, [link boost_test.tests_organization.test_tree.test_suite test-suites] and [link boost_test.tests_organization.tests_grouping labels]
+may be used in order to construct subset of tests in an efficient and easy way, while decorators
+(eg. __decorator_disabled__, __decorator_precondition__) can be used to set the default run status of a test case.
+
+[h4 Custom runtime parameters]
+It is possible to extend further the command line interface by providing a custom command line interpretation logic. There are several
+ways on how to integrate this logic in the __UTF__ and this is explained in details in the section
+[link boost_test.runtime_config.custom_command_line_arguments Custom runtime parameters].
+
+
+[include test_unit_filtering.qbk]
+[include runtime_custom.qbk]
+[include runtime_config_summary.qbk]
+
+[endsect] [/ runtime configuration]

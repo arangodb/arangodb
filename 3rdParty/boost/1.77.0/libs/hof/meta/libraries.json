@@ -1,0 +1,12 @@
+{
+    "key": "hof",
+    "name": "HOF",
+    "authors": [ "Paul Fultz II" ],
+    "maintainers": [ "Paul Fultz II <pfultz2 -at- yahoo.com>" ],
+    "description": "Higher-order functions for C++",
+    "category": [
+        "Metaprogramming",
+        "Function-objects"
+    ],
+    "cxxstd": "11"
+}

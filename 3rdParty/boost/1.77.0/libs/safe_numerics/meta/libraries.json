@@ -1,0 +1,16 @@
+{
+    "key": "safe_numerics",
+    "name": "Safe Numerics",
+    "authors": [
+        "Robert Ramey"
+    ],
+    "description": "Guaranteed Correct Integer Arithmetic",
+    "category": [
+        "Math",
+        "Correctness"
+    ],
+    "maintainers": [
+        "Robert Ramey <ramey -at- rrsd.com>"
+    ],
+    "cxxstd": "14"
+}

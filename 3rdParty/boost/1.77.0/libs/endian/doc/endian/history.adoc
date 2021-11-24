@@ -1,0 +1,167 @@
+////
+Copyright 2011-2016 Beman Dawes
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+////
+
+[#appendix_history]
+[appendix]
+# History and Acknowledgments
+:idprefix: apph_
+
+## History
+
+### Changes requested by formal review
+
+The library was reworked from top to bottom to accommodate changes requested
+during the formal review. The issues that were required to be resolved before
+a mini-review are shown in *bold* below, with the resolution indicated.
+
+Common use case scenarios should be developed.::
+Done. The documentation have been refactored. A page is now devoted to
+<<choosing,Choosing the Approach>> to endianness. See
+<<choosing_use_cases,Use cases>> for use case scenarios.
+
+Example programs should be developed for the common use case scenarios.::
+Done. See <<choosing,Choosing the Approach>>. Example code has been added
+throughout.
+
+Documentation should illuminate the differences between endian integer/float type and endian conversion approaches to the common use case scenarios, and provide guidelines for choosing the most appropriate approach in user's applications.::
+Done. See <<choosing,Choosing the Approach>>.
+
+Conversion functions supplying results via return should be provided.::
+Done. See <<conversion,Conversion Functions>>.
+
+Platform specific performance enhancements such as use of compiler intrinsics or relaxed alignment requirements should be supported.::
+Done. Compiler (Clang, GCC, Visual{cpp}, etc.) intrinsics and built-in
+functions are used in the implementation where appropriate, as requested. See
+<<overview_intrinsic,Built-in support for Intrinsics>>. See
+<<overview_timings,Timings for Example 2>> to gauge the impact of intrinsics.
+
+Endian integer (and floating) types should be implemented via the conversion functions. If that can't be done efficiently, consideration should be given to expanding the conversion function signatures to  resolve the inefficiencies.::
+Done. For the endian types, the implementation uses the endian conversion
+functions, and thus the intrinsics, as requested.
+
+Benchmarks that measure performance should be provided. It should be possible to compare platform specific performance enhancements against portable base implementations, and to compare endian integer approaches against endian conversion approaches for the common use case scenarios.::
+Done. See <<overview_timings,Timings for Example 2>>. The `endian/test`
+directory  also contains several additional benchmark and speed test programs.
+
+Float (32-bits) and double (64-bits) should be supported. IEEE 754 is the primary use case.::
+Done. The <<buffers,endian buffer types>>,
+<<arithmetic,endian arithmetic types>> and
+<<conversion,endian conversion functions>> now support 32-bit `(float)`
+and 64-bit `(double)` floating point, as requested.
+
+NOTE: This answer is outdated. The support for `float` and `double` was subsequently found
+      problematic and has been removed. Recently, support for `float` and `double` has
+      been reinstated for `endian_buffer` and `endian_arithmetic`, but not for the
+      conversion functions.
+
+Support for user defined types (UDTs) is desirable, and should be provided where there would be no conflict with the other concerns.::
+Done. See <<conversion_customization,Customization points for user-defined
+types (UDTs)>>.
+
+There is some concern that endian integer/float arithmetic operations might used inadvertently or inappropriately. The impact of adding an endian_buffer class without arithmetic operations should be investigated.::
+Done. The endian types have been decomposed into class template
+`<<buffers,endian_buffer>>` and class template
+`<<arithmetic,endian_arithmetic>>`. Class `endian_buffer` is a public base
+class for `endian_arithmetic`, and can also be used by users as a stand-alone
+class.
+
+Stream insertion and extraction of the endian integer/float types should be documented and included in the test coverage.::
+Done. See <<buffers_stream_inserter,Stream inserter>> and
+<<buffers_stream_extractor,Stream extractor>>.
+
+Binary I/O support that was investigated during development of the Endian library should be put up for mini-review for inclusion in the Boost I/O library.::
+Not done yet. Will be handled as a separate min-review soon after the Endian
+mini-review.
+
+Other requested changes.::
+* In addition to the named-endianness conversion functions, functions that
+  perform compile-time (via template) and run-time (via function argument)
+  dispatch are now provided.
+* `order::native` is now a synonym for `order::big` or `order::little` according
+  to the endianness of the platform. This reduces the number of template
+  specializations required.
+* Headers have been reorganized to make them easier to read, with a synopsis
+  at the front and implementation following.
+
+### Other changes since formal review
+
+* Header `boost/endian/endian.hpp` has been renamed to
+`boost/endian/arithmetic.hpp`. Headers
+`boost/endian/conversion.hpp` and `boost/endian/buffers.hpp` have been added.
+Infrastructure file names were changed accordingly.
+* The endian arithmetic type aliases have been renamed, using a naming pattern
+that is consistent for both integer and floating point, and a consistent set of
+aliases supplied for the endian buffer types.
+* The unaligned-type alias names still have the `_t` suffix, but the
+aligned-type alias names now have an `_at` suffix.
+* `endian_reverse()` overloads for `int8_t` and `uint8_t` have been added for
+improved generality. (Pierre Talbot)
+* Overloads of `endian_reverse_inplace()` have been replaced with a single
+`endian_reverse_inplace()` template. (Pierre Talbot)
+* For X86 and X64 architectures, which permit unaligned loads and stores,
+unaligned little endian buffer and arithmetic types use regular loads and
+stores when the size is exact. This makes unaligned little endian buffer and
+arithmetic types significantly more efficient on these architectures. (Jeremy
+Maitin-Shepard)
+* {cpp}11 features affecting interfaces, such as `noexcept`, are now used.
+{cpp}03 compilers are still supported.
+* Acknowledgements have been updated.
+
+## Compatibility with interim releases
+
+Prior to the official Boost release, class template `endian_arithmetic` has been
+used for a decade or more with the same functionality but under the name
+`endian`. Other names also changed in the official release. If the macro
+`BOOST_ENDIAN_DEPRECATED_NAMES` is defined, those old now deprecated names are
+still supported. However, the class template `endian` name is only provided for
+compilers supporting {cpp}11 template aliases. For {cpp}03 compilers, the name
+will have to be changed to `endian_arithmetic`.
+
+To support backward header compatibility, deprecated header
+`boost/endian/endian.hpp` forwards to `boost/endian/arithmetic.hpp`. It requires
+`BOOST_ENDIAN_DEPRECATED_NAMES` be defined. It should only be used while
+transitioning to the official Boost release of the library as it will be removed
+in some future release.
+
+## Future directions
+
+Standardization.::
+The plan is to submit Boost.Endian to the {cpp} standards committee for possible
+inclusion in a Technical Specification or the {cpp} standard itself.
+
+Specializations for `numeric_limits`.::
+Roger Leigh requested that all `boost::endian` types provide `numeric_limits`
+specializations.
+See https://github.com/boostorg/endian/issues/4[GitHub issue 4].
+
+Character buffer support.::
+Peter Dimov pointed out during the mini-review that getting and setting basic
+arithmetic types (or `<cstdint>` equivalents) from/to an offset into an array of
+unsigned char is a common need. See
+http://lists.boost.org/Archives/boost/2015/01/219574.php[Boost.Endian
+mini-review posting].
+
+Out-of-range detection.::
+Peter Dimov pointed suggested during the mini-review that throwing an exception
+on buffer values being out-of-range might be desirable. See the end of
+http://lists.boost.org/Archives/boost/2015/01/219659.php[this posting] and
+subsequent replies.
+
+## Acknowledgements
+
+Comments and suggestions were received from Adder, Benaka Moorthi, Christopher
+Kohlhoff, Cliff Green, Daniel James, Dave Handley, Gennaro Proto, Giovanni Piero
+Deretta, Gordon Woodhull, dizzy, Hartmut Kaiser, Howard Hinnant, Jason Newton,
+Jeff Flinn, Jeremy Maitin-Shepard, John Filo, John Maddock, Kim Barrett, Marsh
+Ray, Martin Bonner, Mathias Gaunard, Matias Capeletto, Neil Mayhew, Nevin Liber,
+Olaf van der Spek, Paul Bristow, Peter Dimov, Pierre Talbot, Phil Endecott,
+Philip Bennefall, Pyry Jahkola, Rene Rivera, Robert Stewart, Roger Leigh, Roland
+Schwarz, Scott McMurray, Sebastian Redl, Tim Blechmann, Tim Moore, tymofey,
+Tomas Puverle, Vincente Botet, Yuval Ronen and Vitaly Budovsk. Apologies if
+anyone has been missed.
+
+The documentation was converted into Asciidoc format by Glen Fernandes.
