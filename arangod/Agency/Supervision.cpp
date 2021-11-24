@@ -2253,7 +2253,7 @@ void Supervision::checkBrokenCollections() {
         continue;
       }
 
-      // also check all indexes of the collection
+      // also check all indexes of the collection to see if they are abandoned
       if (collectionPair.second->has("indexes")) {
         Slice indexes = collectionPair.second->get("indexes").value().get().getArray().value();
         // check if the coordinator which started creating this index is 
