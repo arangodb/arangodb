@@ -769,7 +769,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
     result.add(VPackValue(StaticStrings::Schema));
     schemaToVelocyPack(result);
   }
-  // Internal CollectionType
+  // Internal collection validator type
   result.add(StaticStrings::InternalValidatorTypes, VPackValue(_internalValidatorTypes));
 
   // Cluster Specific
