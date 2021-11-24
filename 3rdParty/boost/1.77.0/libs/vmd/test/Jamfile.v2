@@ -1,0 +1,223 @@
+#  (C) Copyright Edward Diener 2010-2015
+#  Use, modification and distribution are subject to the Boost Software License,
+#  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt).
+#
+# VariadicMacroData testing Jamfile
+#
+
+import testing ;
+import ../../predef/check/predef
+    : check require
+    : predef-check predef-require ;
+
+project variadic_macro_data_tests : requirements <warnings>on
+                                                 <test-info>always_show_run_output
+                                                 <toolset>msvc:<warnings>all
+                                                 <toolset>msvc:<cxxflags>-wd4003
+                                                 <toolset>gcc:<warnings>all
+                                                 [ predef-check "BOOST_COMP_GNUC >= 4.7.4" : : <cxxflags>-ftrack-macro-expansion=0 ]
+                                                 [ predef-check "BOOST_COMP_GNUC >= 4.3.0" : : <cxxflags>-Wno-variadic-macros ]
+                                                 <toolset>gcc-4.3.0:<cxxflags>-U__STRICT_ANSI__
+                                                 <toolset>gcc-4.4.0:<cxxflags>-U__STRICT_ANSI__
+                                                 <toolset>gcc-4.5.0:<linkflags>"-Wl,--enable-auto-import"
+                                                 ;
+                                                 
+alias variadic_macro_data
+    : 
+       [ run test_after_array_elem.cpp ]
+       [ run test_after_identifier_elem.cpp ]
+       [ run test_after_list_elem.cpp ]
+       [ run test_after_number_elem.cpp ]
+       [ run test_after_seq_elem.cpp ]
+       [ run test_after_tuple_elem.cpp ]
+       [ run test_after_type_elem.cpp ]
+       [ run test_array_elem.cpp ]
+       [ run test_array_empty.cpp ]
+       [ run test_array_equal.cpp ]
+       [ run test_array_to_seq.cpp ]
+       [ run test_array_to_tuple.cpp ]
+       [ run test_ary.cpp ]
+       [ compile test_assert.cpp ]
+       [ compile-fail test_assert_fail.cpp ]
+       [ compile-fail test_assert_fail_array.cpp ]
+       [ compile-fail test_assert_fail_identifier.cpp ]
+       [ compile-fail test_assert_fail_is_empty.cpp ]
+       [ compile-fail test_assert_fail_is_identifier.cpp ]
+       [ compile-fail test_assert_fail_is_number.cpp ]
+       [ compile-fail test_assert_fail_list.cpp ]
+       [ compile-fail test_assert_fail_number.cpp ]
+       [ compile-fail test_assert_fail_seq.cpp ]
+       [ compile-fail test_assert_fail_tuple.cpp ]
+       [ compile-fail test_assert_fail_vcstring.cpp ]
+       [ compile test_assert_is_array.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_array_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_array_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_array_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_array_fail4.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile test_assert_is_empty.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_empty_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_empty_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_empty_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile test_assert_is_identifier.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_identifier_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile test_assert_is_list.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_list_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_list_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_list_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_list_fail4.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile test_assert_is_number.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_number_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile test_assert_is_seq.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_seq_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_seq_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_seq_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_seq_fail4.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile test_assert_is_tuple.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_tuple_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_tuple_fail2.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_tuple_fail3.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_tuple_fail4.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile test_assert_is_type.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_assert_is_type_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile test_doc_assert.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ compile-fail test_doc_assert_fail.cpp :
+         <define>BOOST_VMD_ASSERT_DATA=1 ]
+       [ run test_doc_empty.cpp ]
+       [ compile-fail test_doc_empty_fail.cpp ]
+#       [ compile-fail test_doc_empty_fail2.cpp ]
+       [ compile-fail test_doc_empty_fail3.cpp ]
+       [ compile-fail test_doc_empty_fail4.cpp ]
+       [ compile-fail test_doc_empty_fail6.cpp ]
+       [ compile-fail test_doc_empty_fail7.cpp ]
+       [ compile-fail test_doc_empty_fail8.cpp ]
+       [ run test_doc_equality.cpp ]
+       [ run test_doc_example_switch.cpp ]
+       [ run test_doc_get_type.cpp ]
+       [ run test_doc_identifier.cpp ]
+       [ run test_doc_identifier_subtyping.cpp ]
+       [ run test_doc_modifiers_filter.cpp ]
+       [ run test_doc_modifiers_identifier.cpp ]
+       [ run test_doc_modifiers_index.cpp ]
+       [ run test_doc_modifiers_return_type.cpp : : : [ predef-require "BOOST_COMP_CLANG == 0" or "BOOST_COMP_CLANG >= 10" ] ]
+       [ run test_doc_modifiers_splitting.cpp ]
+       [ run test_doc_number.cpp ]
+       [ run test_doc_type.cpp ]
+       [ run test_doc_pp_data_types.cpp ]
+       [ run test_doc_sequence.cpp ]
+       [ run test_doc_sequence_access.cpp ]
+       [ run test_doc_sequence_convert.cpp ]
+       [ run test_doc_whyhow.cpp ]
+       [ run test_equal.cpp ]
+       [ run test_equal_array.cpp ]
+       [ run test_equal_identifier.cpp ]
+       [ run test_equal_list.cpp ]
+       [ run test_equal_multi.cpp ]
+       [ run test_equal_number.cpp ]
+       [ run test_equal_seq.cpp ]
+       [ run test_equal_tuple.cpp ]
+       [ run test_equal_type.cpp ]
+       [ run test_identifier_elem.cpp ]
+       [ run test_identifier_equal.cpp ]
+       [ run test_is_array.cpp ]
+       [ run-fail test_is_array_fail.cpp ]
+       [ run-fail test_is_array_fail2.cpp ]
+       [ run-fail test_is_array_fail3.cpp ]
+       [ run-fail test_is_array_fail4.cpp ]
+       [ run test_is_empty.cpp ]
+       [ run test_is_general_identifier.cpp ]
+       [ compile-fail test_is_empty_fail.cpp ]
+       [ run test_is_identifier.cpp ]
+       [ run test_is_list.cpp ]
+       [ run-fail test_is_list_fail.cpp ]
+       [ run-fail test_is_list_fail2.cpp ]
+       [ run-fail test_is_list_fail3.cpp ]
+       [ run-fail test_is_list_fail4.cpp ]
+       [ run test_is_number.cpp : : : <define>BOOST_PP_LIMIT_MAG=1024 ]
+       [ run test_is_parens_empty.cpp ]
+       [ run test_is_seq.cpp ]
+       [ run-fail test_is_seq_fail.cpp ]
+       [ run-fail test_is_seq_fail2.cpp ]
+       [ run-fail test_is_seq_fail3.cpp ]
+       [ run-fail test_is_seq_fail4.cpp ]
+       [ run test_is_tuple.cpp ]
+       [ run-fail test_is_tuple_fail.cpp ]
+       [ run-fail test_is_tuple_fail2.cpp ]
+       [ run-fail test_is_tuple_fail3.cpp ]
+       [ run-fail test_is_tuple_fail4.cpp ]
+       [ run test_is_type.cpp ]
+       [ run test_is_vmd_seq.cpp ]
+       [ run test_is_vmd_tuple.cpp ]
+       [ run test_list_elem.cpp ]
+       [ run test_list_empty.cpp ]
+       [ run test_list_equal.cpp ]
+       [ run test_list_to_seq.cpp ]
+       [ run test_list_to_tuple.cpp ]
+       [ run test_number_elem.cpp ]
+       [ run test_number_equal.cpp ]
+       [ run test_seq_elem.cpp ]
+       [ run test_seq_equal.cpp ]
+       [ run test_seq_pop_back.cpp ]
+       [ run test_seq_pop_front.cpp ]
+       [ run test_seq_push_back.cpp ]
+       [ run test_seq_push_front.cpp ]
+       [ run test_seq_remove.cpp ]
+       [ run test_seq_size.cpp ]
+       [ run test_seq_to_array.cpp ]
+       [ run test_seq_to_list.cpp ]
+       [ run test_seq_to_tuple.cpp ]
+       [ run test_sequence_after_elem.cpp ]
+       [ run test_sequence_elem.cpp ]
+       [ run test_sequence_enum.cpp ]
+       [ run test_sequence_size.cpp ]
+       [ run test_sequence_to_array.cpp ]
+       [ run test_sequence_to_list.cpp ]
+       [ run test_sequence_to_seq.cpp ]
+       [ run test_sequence_to_tuple.cpp ]
+       [ run test_tuple_elem.cpp ]
+       [ run test_tuple_equal.cpp ]
+       [ run test_tuple_pop_back.cpp ]
+       [ run test_tuple_pop_front.cpp ]
+       [ run test_tuple_push_back.cpp ]
+       [ run test_tuple_push_front.cpp ]
+       [ run test_tuple_remove.cpp ]
+       [ run test_tuple_size.cpp ]
+       [ run test_tuple_to_array.cpp ]
+       [ run test_tuple_to_list.cpp ]
+       [ run test_tuple_to_seq.cpp ]
+       [ run test_type.cpp ]
+       [ run test_type_elem.cpp ]
+       [ run test_type_equal.cpp ]
+       [ run test_variadic_macro.cpp ]
+    ;

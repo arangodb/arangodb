@@ -1,0 +1,22 @@
+# Boost.Geometry
+#
+# Copyright (c) 2019-2021, Oracle and/or its affiliates.
+#
+# Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+#
+# Licensed under the Boost Software License version 1.0.
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-cs_undefined
+    :
+    [ compile distance.cpp        : : csundef_distance ]
+	[ compile envelope_expand.cpp : : csundef_envelope_expand ]
+	[ compile index.cpp           : : csundef_index ]
+	[ compile is.cpp              : : csundef_is ]
+	[ compile measure.cpp         : : csundef_measure ]
+	[ compile other.cpp           : : csundef_other ]
+	[ compile relops1.cpp         : : csundef_relops1 ]
+	[ compile relops2.cpp         : : csundef_relops2 ]
+	[ compile setops1.cpp         : : csundef_setops1 ]
+    [ compile setops2.cpp         : : csundef_setops2 ]
+    ;

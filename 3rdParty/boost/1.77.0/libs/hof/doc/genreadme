@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cat src/index.md src/building.md | sed -e 's,\](\(.*\)\.md),](http://pfultz2.github.io/Fit/doc/html//en/latest/\1/index.html\),g'
