@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H
-#define ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H 1
+#pragma once
 
 #include <fuerte/connection.h>
 
@@ -71,5 +70,3 @@ struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool
   arangodb::consensus::index_t _index;
 
 };
-
-#endif

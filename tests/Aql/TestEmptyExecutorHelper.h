@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
-#define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
+#pragma once
 
 #include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
@@ -70,5 +69,3 @@ class TestEmptyExecutorHelper {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

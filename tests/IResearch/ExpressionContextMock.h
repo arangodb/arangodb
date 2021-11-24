@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT
-#define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT 1
+#pragma once
 
 #include "Aql/QueryContext.h"
 #include "Aql/AqlFunctionsInternalCache.h"
@@ -67,5 +66,3 @@ struct ExpressionContextMock final : public arangodb::iresearch::ViewExpressionC
   arangodb::aql::AqlFunctionsInternalCache _regexCache;
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
 }; // ExpressionContextMock
-
-#endif // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT

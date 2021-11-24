@@ -20,8 +20,8 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef TESTS_GRAPH_TOOLS_H
-#define TESTS_GRAPH_TOOLS_H
+
+#pragma once
 
 #include "gtest/gtest.h"
 
@@ -341,4 +341,3 @@ bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb
-#endif
