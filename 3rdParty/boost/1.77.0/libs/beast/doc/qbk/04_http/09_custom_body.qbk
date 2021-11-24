@@ -1,0 +1,156 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Custom Body Types]
+[block'''<?dbhtml stop-chunking?>''']
+
+User-defined types are possible for the message body, where the type meets the
+__Body__ requirements. This simplified class declaration
+shows the customization points available to user-defined body types:
+```
+/// Defines a Body type
+struct body
+{
+    /// This determines the return type of the `message::body` member function
+    using value_type = ...;
+
+    /// An optional function, returns the body's payload size (which may be zero)
+    static
+    std::uint64_t
+    size(value_type const& v);
+
+    /// The algorithm used for extracting buffers
+    class reader;
+
+    /// The algorithm used for inserting buffers
+    class writer;
+}
+```
+
+The meaning of the nested types is as follows
+
+[table Body Type Members
+[[Name][Description]]
+[
+    [`value_type`]
+    [
+        Determines the type of the
+        [link beast.ref.boost__beast__http__message.body `message::body`]
+        member.
+    ]
+][
+    [`reader`]
+    [
+        An optional nested type meeting the requirements of __BodyReader__,
+        which provides the algorithm for storing a forward range of buffer
+        sequences in the body representation.
+        If present, this body type may be used with a __parser__.
+    ]
+][
+    [`writer`]
+    [
+        An optional nested type meeting the requirements of __BodyWriter__,
+        which provides the algorithm for converting the body representation
+        to a forward range of buffer sequences.
+        If present this body type may be used with a __serializer__.
+    ]
+]
+]
+
+[heading Value Type]
+
+The `value_type` nested type allows the body to define the declaration of
+the body type as it appears in the message. This can be any type. For
+example, a body's value type may specify `std::vector<char>` or 
+`std::list<std::string>`. A custom body may even set the value type to
+something that is not a container for body octets, such as a
+[@boost:/libs/filesystem/doc/reference.html#class-path `boost::filesystem::path`].
+Or, a more structured container may be chosen. This declares a body's
+value type as a JSON tree structure produced from a
+[@boost:/doc/html/property_tree/parsers.html#property_tree.parsers.json_parser `boost::property_tree::json_parser`]:
+```
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
+struct Body
+{
+    using value_type = boost::property_tree::ptree;
+
+    class reader
+    class writer;
+};
+```
+
+As long as a suitable reader or writer is available to provide the
+algorithm for transferring buffers in and out of the value type,
+those bodies may be parsed or serialized.
+
+
+
+[section:file_body File Body __example__]
+
+Use of the flexible __Body__ concept customization point enables authors to
+preserve the self-contained nature of the __message__ object while allowing
+domain specific behaviors. Common operations for HTTP servers include sending
+responses which deliver file contents, and allowing for file uploads. In this
+example we build the
+[link beast.ref.boost__beast__http__basic_file_body `basic_file_body`]
+type which supports both reading and
+writing to a file on the file system. The interface is a class templated
+on the type of file used to access the file system, which must meet the
+requirements of __File__.
+
+First we declare the type with its nested types:
+
+[example_http_file_body_1]
+
+We will start with the definition of the `value_type`. Our strategy
+will be to store the file object directly in the message container
+through the `value_type` field. To use this body it will be necessary
+to call `msg.body.file().open()` first with the required information
+such as the path and open mode. This ensures that the file exists
+throughout the operation and prevent the race condition where the
+file is removed from the file system in between calls.
+
+[example_http_file_body_2]
+
+Our implementation of __BodyWriter__ will contain a small buffer
+from which the file contents are read. The buffer is provided to
+the implementation on each call until everything has been read in.
+
+[example_http_file_body_3]
+
+And here are the definitions for the functions we have declared:
+
+[example_http_file_body_4]
+
+Files can be read now, and the next step is to allow writing to files
+by implementing the __BodyReader__. The style is similar to the writer,
+except that buffers are incoming instead of outgoing. Here's the
+declaration:
+
+[example_http_file_body_5]
+
+Finally, here is the implementation of the reader member functions:
+
+[example_http_file_body_6]
+
+We have created a full featured body type capable of reading and
+writing files on the filesystem, integrating seamlessly with the
+HTTP algorithms and message container. The body type works with
+any file implementation meeting the requirements of __File__ so
+it may be transparently used with solutions optimized for particular
+platforms. Example HTTP servers which use file bodies are available
+in the example directory.
+
+[endsect]
+
+
+
+[endsect]

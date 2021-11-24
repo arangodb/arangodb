@@ -1,0 +1,29 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright (c) 2018 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+compile concepts.cpp ;
+compile derived_view_type.cpp ;
+compile dynamic_step.cpp ;
+compile is_planar.cpp ;
+compile view_is_basic.cpp ;
+compile view_is_mutable.cpp ;
+compile view_is_step.cpp ;
+compile view_type.cpp ;
+compile view_type_from_pixel.cpp ;
+
+run axis_iterator.cpp ;
+run collection.cpp ;
+run iterator.cpp ;
+run planar_rgba_view.cpp ;
+run reverse_iterator.cpp ;
+run subimage_view.cpp ;
+run x_iterator.cpp ;
+run xy_locator.cpp ;
+run y_iterator.cpp ;

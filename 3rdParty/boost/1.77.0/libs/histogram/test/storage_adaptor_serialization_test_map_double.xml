@@ -1,0 +1,30 @@
+<!--
+	Copyright 2018-2019 Hans Dembinski
+
+	Distributed under the Boost Software License, Version 1.0.
+	(See accompanying file LICENSE_1_0.txt
+	or copy at http://www.boost.org/LICENSE_1_0.txt)
+-->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="17">
+<item class_id="0" tracking_level="0" version="0">
+	<impl class_id="1" tracking_level="0" version="0">
+		<size>3</size>
+		<map class_id="2" tracking_level="0" version="0">
+			<count>2</count>
+			<item_version>0</item_version>
+			<item class_id="3" tracking_level="0" version="0">
+				<first>1</first>
+				<second>1.00000000000000000e+00</second>
+			</item>
+			<item>
+				<first>2</first>
+				<second>2.00000000000000000e+00</second>
+			</item>
+		</map>
+	</impl>
+</item>
+</boost_serialization>
+

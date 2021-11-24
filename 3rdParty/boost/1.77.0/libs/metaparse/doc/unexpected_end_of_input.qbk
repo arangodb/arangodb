@@ -1,0 +1,23 @@
+[#unexpected_end_of_input]
+[section unexpected_end_of_input]
+
+[h1 Synopsis]
+
+  namespace error
+  {
+    struct unexpected_end_of_input;
+  }
+
+This is a [link parsing_error_message parsing error message].
+
+[h1 Description]
+
+Class representing the error that the end of input has been reached while it
+should contain further characters.
+
+[h1 Header]
+
+  #include <boost/metaparse/error/unexpected_end_of_input.hpp>
+
+[endsect]
+

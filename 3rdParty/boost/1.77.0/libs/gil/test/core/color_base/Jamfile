@@ -1,0 +1,16 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright (c) 2019 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+compile concepts.cpp ;
+compile-fail static_transform_gray_to_rgb_fail.cpp ;
+compile-fail static_transform_rgb_to_cmyk_fail.cpp ;
+
+run homogeneous_color_base.cpp ;
+run static_transform.cpp ;

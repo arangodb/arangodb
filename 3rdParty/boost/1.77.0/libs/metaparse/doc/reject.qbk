@@ -1,0 +1,51 @@
+[#reject]
+[section reject]
+
+[h1 Synopsis]
+
+  template <class Msg, class Pos>
+  struct reject;
+
+This is a [link metaprogramming_value template metaprogramming value].
+
+[table Arguments
+  [[Name]  [Type]]
+  [[`Msg`] [[link metaprogramming_value template metaprogramming value]]]
+  [[`Pos`] [[link source_position source position]]]
+]
+
+[h1 Description]
+
+Values representing a failed parser application. It behaves as a
+[link lazy_metafunction lazy template metafunction]: when it is evaluated as a
+metafunction, it returns itself with its arguments evaluated. See expression
+semantics for further details.
+
+[note
+Note that for backward compatibility when `Msg::type` is not defined,
+`reject<....>::type` does not evaluate `Msg`. For example
+`reject<int, start>::type` is `reject<int, start::type>`. Using types that are
+not template metaprogramming values as `Msg` is deprecated and will not work
+in future versions of the library.
+]
+
+[h1 Expressions semantics]
+
+For any `m` template metaprogramming value and `p` source position the following
+are equivalent:
+
+  reject<m, p>::type
+  
+  reject<m, p::type>
+
+[h1 Header]
+
+  #include <boost/metaparse/reject.hpp>
+
+[h1 Operations]
+
+* [link get_position `get_position`]
+* [link get_message `get_message`]
+
+[endsect]
+

@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H
-#define ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H
+#pragma once
 
 #include <array>
 #include <memory>
@@ -143,5 +142,3 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H

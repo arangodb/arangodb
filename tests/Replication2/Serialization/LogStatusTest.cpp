@@ -108,7 +108,14 @@ TEST(LogStatusTest, commit_fail_reason) {
             << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
   builder.clear();
-  reason = CommitFailReason::withQuorumSizeNotReached();
+  reason = CommitFailReason::withQuorumSizeNotReached("PRMR-1234");
+  reason.toVelocyPack(builder);
+  slice = builder.slice();
+  fromVPack = CommitFailReason::fromVelocyPack(slice);
+  EXPECT_EQ(reason, fromVPack);
+
+  builder.clear();
+  reason = CommitFailReason::withForcedParticipantNotInQuorum("PRMR-1234");
   reason.toVelocyPack(builder);
   slice = builder.slice();
   fromVPack = CommitFailReason::fromVelocyPack(slice);

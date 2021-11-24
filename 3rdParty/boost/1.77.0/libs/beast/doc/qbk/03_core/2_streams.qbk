@@ -1,0 +1,116 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+
+
+[section:stream_types Streams]
+
+A __Stream__ is a communication channel where data is reliably transferred as
+an ordered sequence of bytes. Streams are either synchronous or asynchronous,
+and may allow reading, writing, or both. Note that a particular type may model
+more than one concept. For example, the networking types  __socket__ and
+__ssl_stream__ support both __SyncStream__ and __AsyncStream__. All stream
+algorithms in Beast are declared as template functions using these concepts:
+
+[table Stream Concepts
+[[Concept][Description]]
+[
+    [__SyncReadStream__]
+    [
+        Supports buffer-oriented blocking reads.
+    ]
+][
+    [__SyncWriteStream__]
+    [
+        Supports buffer-oriented blocking writes.
+    ]
+][
+    [__SyncStream__]
+    [
+        A stream supporting buffer-oriented blocking reads and writes.
+    ]
+][
+    [__AsyncReadStream__]
+    [
+        Supports buffer-oriented asynchronous reads.
+    ]
+][
+    [__AsyncWriteStream__]
+    [
+        Supports buffer-oriented asynchronous writes.
+    ]
+][
+    [__AsyncStream__]
+    [
+        A stream supporting buffer-oriented asynchronous reads and writes.
+    ]
+]
+]
+
+These template metafunctions check whether a given type meets the
+requirements for the various stream concepts, and some additional
+useful utilities. The library uses these type checks internally
+and also provides them as public interfaces so users may use the
+same techniques to augment their own code. The use of these type
+checks helps provide more concise errors during compilation:
+
+[table Type Traits and Metafunctions
+[[Name][Description]]
+[[
+    [link beast.ref.boost__beast__executor_type `executor_type`]
+][
+    An alias for the type of object returned by `get_executor`.
+]]
+[[
+    [link beast.ref.boost__beast__has_get_executor `has_get_executor`]
+][
+    Determine if the `get_executor` member function is present.
+]]
+[[
+    [link beast.ref.boost__beast__is_async_read_stream `is_async_read_stream`]
+][
+    Determine if a type meets the requirements of __AsyncReadStream__.
+]]
+[[
+    [link beast.ref.boost__beast__is_async_stream `is_async_stream`]
+][
+    Determine if a type meets the requirements of both __AsyncReadStream__
+    and __AsyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__is_async_write_stream `is_async_write_stream`]
+][
+    Determine if a type meets the requirements of __AsyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__is_sync_read_stream `is_sync_read_stream`]
+][
+    Determine if a type meets the requirements of __SyncReadStream__.
+]]
+[[
+    [link beast.ref.boost__beast__is_sync_stream `is_sync_stream`]
+][
+    Determine if a type meets the requirements of both __SyncReadStream__
+    and __SyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__is_sync_write_stream `is_sync_write_stream`]
+][
+    Determine if a type meets the requirements of __SyncWriteStream__.
+]]
+]
+
+Using the type checks with `static_assert` on function or class template
+types will provide users with helpful error messages and prevent undefined
+behaviors. This example shows how a template function which writes to a
+synchronous stream may check its argument:
+
+[snippet_core_3]
+
+[endsect]

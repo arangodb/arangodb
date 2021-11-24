@@ -429,7 +429,7 @@ void H2CommTask<T>::setIOTimeout() {
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis);  // cancels old waiters
   this->_protocol->timer.async_wait(
-      [=, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+      [=, this, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
         std::shared_ptr<CommTask> s;
         if (ec || !(s = self.lock())) {  // was canceled / deallocated
           return;
