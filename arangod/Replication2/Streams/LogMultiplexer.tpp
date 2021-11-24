@@ -380,6 +380,7 @@ struct LogMultiplexerImplementation
     auto f = this->_interface->waitFor(waitForIndex);
     std::move(f).thenFinal([weak = this->weak_from_this()](
                                futures::Try<replicated_log::WaitForResult>&& tryResult) noexcept {
+      LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2) << "multiplexer trigger wait for returned";
       // First lock the shared pointer
       if (auto locked = weak.lock(); locked) {
         auto that = std::static_pointer_cast<SelfClass>(locked);
@@ -391,6 +392,7 @@ struct LogMultiplexerImplementation
 
             // find out what the commit index is
             self._firstUncommittedIndex = result.currentCommitIndex + 1;
+            LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2) << "multiplexer update commit index to " << result.currentCommitIndex;
             return std::make_pair(self.getWaitForResolveSetAll(result.currentCommitIndex),
                                   self.checkWaitFor());
           });

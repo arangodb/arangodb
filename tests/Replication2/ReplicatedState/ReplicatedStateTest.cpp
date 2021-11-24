@@ -34,6 +34,8 @@
 #include "Basics/voc-errors.h"
 #include "Futures/Future.h"
 
+#include "Mocks/LogLevels.h"
+
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
 #include "Replication2/Streams/LogMultiplexer.h"
@@ -64,18 +66,7 @@ using ReplicatedStateStreamSpec = streams::stream_descriptor_set<streams::stream
     streams::tag_descriptor_set<streams::tag_descriptor<1, typename ReplicatedStateTraits<S>::Deserializer, typename ReplicatedStateTraits<S>::Serializer>>>>;
 
 template <typename S>
-struct ReplicatedLeaderState {
-  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
-  using Stream = streams::Stream<EntryType>;
-  using EntryIterator = typename Stream::Iterator;
-  virtual ~ReplicatedLeaderState() = default;
-
- protected:
-  virtual auto installSnapshot(ParticipantId const& destination)
-      -> futures::Future<Result> = 0;
-  virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
-      -> futures::Future<Result> = 0;
-};
+struct ReplicatedLeaderState;
 
 template <typename S>
 struct ReplicatedFollowerState;
@@ -97,6 +88,7 @@ struct ReplicatedState : ReplicatedStateBase,
   void flush() {
     auto participant = log->getParticipant();
     if (auto leader = std::dynamic_pointer_cast<replicated_log::LogLeader>(participant); leader) {
+      runLeader(std::move(leader));
     } else if (auto follower = std::dynamic_pointer_cast<replicated_log::LogFollower>(participant);
                follower) {
       runFollower(std::move(follower));
@@ -115,6 +107,7 @@ struct ReplicatedState : ReplicatedStateBase,
 
  private:
   friend struct ReplicatedFollowerState<S>;
+  friend struct ReplicatedLeaderState<S>;
 
   struct StateBase {
     virtual ~StateBase() = default;
@@ -134,6 +127,21 @@ struct ReplicatedState : ReplicatedStateBase,
 };
 
 template <typename S>
+struct ReplicatedLeaderState {
+  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using Stream = streams::Stream<EntryType>;
+  using EntryIterator = typename Stream::Iterator;
+  virtual ~ReplicatedLeaderState() = default;
+
+ protected:
+  friend struct ReplicatedState<S>::LeaderState;
+  virtual auto installSnapshot(ParticipantId const& destination)
+      -> futures::Future<Result> = 0;
+  virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
+      -> futures::Future<Result> = 0;
+};
+
+template <typename S>
 struct ReplicatedFollowerState {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Stream = streams::Stream<EntryType>;
@@ -148,9 +156,14 @@ struct ReplicatedFollowerState {
 };
 
 template <typename S, typename F>
-struct ReplicatedState<S, F>::LeaderState : StateBase {
-  explicit LeaderState(std::shared_ptr<ReplicatedState> const& parent)
-      : parent(parent) {}
+struct ReplicatedState<S, F>::LeaderState : StateBase,
+                                            std::enable_shared_from_this<LeaderState> {
+  explicit LeaderState(std::shared_ptr<ReplicatedState> const& parent,
+                       std::shared_ptr<replicated_log::LogLeader> leader)
+      : _parent(parent), _leader(std::move(leader)) {}
+
+  using Stream = streams::Stream<EntryType>;
+  using Iterator = typename Stream::Iterator;
 
   void run() {
     // 1. wait for leadership established
@@ -159,9 +172,41 @@ struct ReplicatedState<S, F>::LeaderState : StateBase {
     // 2.2 apply all log entries of the previous term
     // 3. make leader state available
     // 2. on configuration change, update
+    LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
+        << "LeaderState waiting for leadership to be established";
+    _leader->waitForLeadership()
+        .thenValue([self = this->shared_from_this()](auto&& result) {
+          LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
+              << "LeaderState established";
+          self->_mux = Multiplexer::construct(self->_leader);
+          self->_mux->digestAvailableEntries();
+          if (auto parent = self->_parent.lock(); parent) {
+            self->_machine = parent->factory->constructLeader();
+            auto stream = self->_mux->template getStreamById<1>();
+            LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
+                << "receiving committed entries for recovery";
+            return stream->waitForIterator(LogIndex{0}).thenValue([self](std::unique_ptr<Iterator>&& result) {
+              LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
+                  << "starting recovery";
+              return self->_machine->recoverEntries(std::move(result));
+            });
+          }
+          return futures::Future<Result>{TRI_ERROR_REPLICATION_LEADER_CHANGE};
+        })
+        .thenValue([self = this->shared_from_this()](Result&& result) {
+          LOG_TOPIC("fb593", TRACE, Logger::REPLICATED_STATE)
+              << "recovery completed";
+          LOG_TOPIC("fb593", TRACE, Logger::REPLICATED_STATE)
+              << "starting leader service";
+        });
   }
 
-  std::weak_ptr<ReplicatedState> parent;
+  using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
+
+  std::shared_ptr<ReplicatedLeaderState<S>> _machine;
+  std::shared_ptr<Multiplexer> _mux;
+  std::weak_ptr<ReplicatedState> _parent;
+  std::shared_ptr<replicated_log::LogLeader> _leader;
 };
 
 template <typename S, typename F>
@@ -209,11 +254,11 @@ struct ReplicatedState<S, F>::FollowerState
             }
             self->run();
           } catch (basics::Exception const& e) {
-            if (e.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED) {
+            if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
               if (auto ptr = self->parent.lock(); ptr) {
                 ptr->flush();
               } else {
-                LOG_TOPIC("15cb4", TRACE, Logger::REPLICATED_STATE)
+                LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
                     << "LogFollower resigned, but Replicated State already "
                        "gone";
               }
@@ -251,7 +296,7 @@ void ReplicatedState<S, Factory>::runFollower(std::shared_ptr<replicated_log::Lo
 template <typename S, typename Factory>
 void ReplicatedState<S, Factory>::runLeader(std::shared_ptr<replicated_log::LogLeader> logLeader) {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
-  auto machine = std::make_shared<LeaderState>(this->shared_from_this());
+  auto machine = std::make_shared<LeaderState>(this->shared_from_this(), logLeader);
   machine->run();
   currentState = machine;
 }
@@ -343,6 +388,7 @@ struct EntryDeserializer<MyEntryType> {
     return MyEntryType{.key = key, .value = value};
   }
 };
+
 template <>
 struct EntrySerializer<MyEntryType> {
   auto operator()(streams::serializer_tag_t<MyEntryType>, MyEntryType const& e,
@@ -359,12 +405,19 @@ struct MyStateBase {
 };
 
 struct MyLeaderState : MyStateBase, ReplicatedLeaderState<MyState> {
+ protected:
   auto installSnapshot(ParticipantId const& destination) -> futures::Future<Result> override {
+    return futures::Future<Result>{TRI_ERROR_NO_ERROR};
+  }
+
+  auto recoverEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override {
+    LOG_DEVEL << "recover from log";
     return futures::Future<Result>{TRI_ERROR_NO_ERROR};
   }
 };
 
 struct MyFollowerState : MyStateBase, ReplicatedFollowerState<MyState> {
+ protected:
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override {
     while (auto entry = ptr->next()) {
       auto& [idx, modification] = *entry;
@@ -379,9 +432,14 @@ struct MyFactory {
   auto constructFollower() -> std::shared_ptr<MyFollowerState> {
     return std::make_shared<MyFollowerState>();
   }
+  auto constructLeader() -> std::shared_ptr<MyLeaderState> {
+    return std::make_shared<MyLeaderState>();
+  }
 };
 
-struct ReplicatedStateTest : test::ReplicatedLogTest {
+struct ReplicatedStateTest
+    : test::ReplicatedLogTest,
+      tests::LogSuppressor<Logger::REPLICATED_STATE, LogLevel::TRACE> {
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
 };
@@ -402,7 +460,7 @@ TEST_F(ReplicatedStateTest, simple_become_follower_test) {
   auto mux = streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(leader);
   auto inputStream = mux->getStreamById<1>();
 
-  auto idx = inputStream->insert({.key = "hello", .value = "world"});
+  inputStream->insert({.key = "hello", .value = "world"});
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
   }
@@ -412,4 +470,63 @@ TEST_F(ReplicatedStateTest, simple_become_follower_test) {
   auto& store = followerState->store;
   EXPECT_EQ(store.size(), 1);
   EXPECT_EQ(store["hello"], "world");
+}
+
+TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
+  feature->registerStateType<MyState>("my-state");
+  auto log = makeReplicatedLog(LogId{1});
+  auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");
+  auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
+      feature->createReplicatedState("my-state", log));
+  ASSERT_NE(state, nullptr);
+
+  // create a leader in term 1
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
+  auto mux = streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(leader);
+  auto inputStream = mux->getStreamById<1>();
+  inputStream->insert({.key = "hello", .value = "world"});
+
+  state->flush();
+
+  // recreate follower
+  follower = log->becomeFollower("follower", LogTerm{2}, "leader");
+
+  // create a leader in term 2
+  leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{2}, {follower});
+  mux = streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(leader);
+  inputStream = mux->getStreamById<1>();
+  inputStream->insert({.key = "hello", .value = "world"});
+
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  auto followerState = state->getFollower();
+  ASSERT_NE(followerState, nullptr);
+  auto& store = followerState->store;
+  EXPECT_EQ(store.size(), 1);
+  EXPECT_EQ(store["hello"], "world");
+}
+
+TEST_F(ReplicatedStateTest, simple_become_leader_test) {
+  feature->registerStateType<MyState>("my-state");
+
+  auto followerLog = makeReplicatedLog(LogId{1});
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  auto log = makeReplicatedLog(LogId{1});
+  auto leader = log->becomeLeader(LogConfig(2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
+  leader->triggerAsyncReplication();
+  auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
+      feature->createReplicatedState("my-state", log));
+  ASSERT_NE(state, nullptr);
+
+  state->flush();
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
 }
