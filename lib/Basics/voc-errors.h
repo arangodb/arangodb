@@ -832,7 +832,7 @@ constexpr auto TRI_ERROR_CLUSTER_CONNECTION_LOST                                
 /// 1466: ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY
 /// "must not specify _key for this collection"
 /// Will be raised when a Coordinator in a cluster finds that the _key
-/// attribute was specified in a sharded collection that uses not only _key as
+/// attribute was specified in a sharded collection the uses not only _key as
 /// sharding attribute.
 constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY                            = ErrorCode{1466};
 

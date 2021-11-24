@@ -58,32 +58,9 @@ arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
  */
 arangodb::velocypack::StringRef extractKeyPart(velocypack::StringRef);
 
-/**
- * Verifies that id has the form <prefix>/<smartPart>:<...> where <prefix> has
- * no ':' and returns <smartPart> or the error TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.
- * @param id
- * @return
- */
-auto extractSmartPart(velocypack::StringRef id) -> ResultT<velocypack::StringRef>;
-
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 
-// Note that the fields from and to to not own the string.
-struct SmartGraphEdgeToFrom {
-  velocypack::StringRef from;
-  velocypack::StringRef to;
-};
 
-/** Extracts the _from and the _to attributes from the given slice and returns
- * them. If the slice is a String, it is expected to have the form
- * <from>:<key>:<to>. If slice is an Object, it is expected that its _key
- * attribute has this form. The _from and the _to are extracted from a String in
- * both cases.
- * On error, the error is returned.
- * @param slice can be Object (isObject() == true) or String (isString() == true)
-todo rename to extractSmartGraphFromTo
- */
-auto extractSmartGraphIds(arangodb::velocypack::Slice const slice) -> ResultT<SmartGraphEdgeToFrom> ;
 
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to

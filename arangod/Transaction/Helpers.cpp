@@ -170,30 +170,6 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
   return makeIdFromCustom(resolver, id, key);
 }
 
-auto transaction::helpers::extractSmartGraphIds(VPackSlice const doc) -> ResultT<SmartGraphEdgeToFrom> {
-  auto key = transaction::helpers::extractKeyPart(doc);
-
-  auto pos = key.find(':');
-  if (pos == std::string::npos) {
-    return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
-  }
-  auto from = key.substr(0, pos);
-  if (from.empty()) {
-    return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
-  }
-  key = key.substr(pos + 1);
-
-  pos = key.find(':');
-  if (pos == std::string::npos) {
-    return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
-  }
-
-  auto to = key.substr(pos + 1);
-  if (to.empty()) {
-    return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
-  }
-  return SmartGraphEdgeToFrom{from, to};
-}
 
 /// @brief quick access to the _id attribute in a database document
 /// the document must have at least two attributes, and _id is supposed to
@@ -450,18 +426,6 @@ std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* 
   resolved.push_back('/');
   resolved.append(p, static_cast<size_t>(keyLength));
   return resolved;
-}
-
-auto transaction::helpers::extractSmartPart(velocypack::StringRef id)
-    -> ResultT<velocypack::StringRef> {
-    size_t s = id.find('/');
-    size_t t = id.find(':');
-    if (s > t || s == std::string::npos || t == std::string::npos) {
-        // This id is invalid.
-        return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
-    }
-    id = id.substr(s + 1, t - s - 1);
-    return id;
 }
 
 // ============== StringBufferLeaser ==============
