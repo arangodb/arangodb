@@ -1238,8 +1238,7 @@ arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Sli
 /// input
 /*static*/ std::shared_ptr<LogicalCollection> Collections::createCollectionObject(
     arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase) {
-  bool isSingleServer = ServerState::instance()->isSingleServer();
-  bool isAStub = !isSingleServer;
+  bool isAStub = ServerState::instance()->isCoordinator();
 
 #ifdef USE_ENTERPRISE
   auto isSmart = data.get(StaticStrings::IsSmart);
@@ -1248,7 +1247,7 @@ arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Sli
     auto type = data.get(StaticStrings::DataSourceType);
     if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
       // either can be a SmartEdgeCollection ...
-      if (isSingleServer) {
+      if (ServerState::instance()->isSingleServer()) {
         return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data);
       } else {
         return std::make_shared<VirtualClusterSmartEdgeCollection>(vocbase, data);
