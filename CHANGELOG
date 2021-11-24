@@ -10,6 +10,10 @@ devel
   currently in flight and the number of shards that responded to the index
   creation. It did not check the status of the index creation for each shard.
 
+* Make `db.<collection>.figures(true)` operate on the same snapshot when 
+  counting the number of documents in the documents column family and the
+  indexes. This ensures consistency for the results of a single figures result.
+
 * Upgraded bundled version of RocksDB to 6.27.
 
 * Updated immer to version 0.7.0.
