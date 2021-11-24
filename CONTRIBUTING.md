@@ -631,17 +631,18 @@ You may also try to download the symbols manually using:
     symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://download.arangodb.com/symsrv_arangodbXX/
 
 The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is
-browseable; thus you can easily download the files you need by hand.  It
-contains of a list of directories corresponding to the components of ArangoDB:
+browseable; thus you can easily download the files you need by hand. It
+contains of a list of directories corresponding to the components of ArangoDB, e.g.:
 
   - arango - the basic arangodb library needed by all components
   - arango_v8 - the basic V8 wrappers needed by all components
   - arangod - the server process
   - the client utilities:
-    - arangob
+    - arangobackup
     - arangobench
+    - arangodump
     - arangoexport
-    - arangoimp
+    - arangoimport
     - arangorestore
     - arangosh
     - arangovpack
