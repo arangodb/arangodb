@@ -444,12 +444,12 @@ function BaseTestConfig () {
           db[cn].insert({
             _key: 'boom',
             who: 'slave'
-          });
+          }, {waitForSync: true});
           connectToMaster();
           db[cn].insert({
             _key: 'boom',
             who: 'master'
-          });
+          }, {waitForSync: true});
         },
 
         function (state) {
