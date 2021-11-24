@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_VELOCYPACK_HELPER_H
-#define ARANGOD_AQL_TESTS_VELOCYPACK_HELPER_H
+#pragma once
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockManager.h"
@@ -102,5 +101,3 @@ std::vector<arangodb::aql::SharedAqlItemBlockPtr> vPackToAqlItemBlocks(
 
 }  // namespace tests
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_TESTS_VELOCYPACK_HELPER_H
