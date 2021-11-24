@@ -38,6 +38,7 @@
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -618,9 +619,9 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
 bool SynchronizeShard::first() {
   std::string const& database = getDatabase();
-  std::string planId = _description.get(COLLECTION);
+  std::string const& planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
-  std::string leader = _description.get(THE_LEADER);
+  std::string const& leader = _description.get(THE_LEADER);
  
   size_t failuresInRow = feature().replicationErrors(database, shard);
   
@@ -822,40 +823,14 @@ bool SynchronizeShard::first() {
         << "synchronizeOneShard: trying to synchronize local shard '" << database
         << "/" << shard << "' for central '" << database << "/" << planId << "'";
 
-    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer;
-    VPackBuilder builder;
-    // build configuration for WAL tailing
-    {
-      {
-        VPackObjectBuilder o(&builder);
-        builder.add(ENDPOINT, VPackValue(ep));
-        builder.add(DATABASE, VPackValue(getDatabase()));
-        builder.add(COLLECTION, VPackValue(getShard()));
-        builder.add(LEADER_ID, VPackValue(leader));
-        builder.add("requestTimeout", VPackValue(600.0));
-        builder.add("connectTimeout", VPackValue(30.0));
-      }
-      
-      ReplicationApplierConfiguration configuration =
-          ReplicationApplierConfiguration::fromVelocyPack(feature().server(), builder.slice(), getDatabase());
-      // will throw if invalid
-      configuration.validate();
-  
-      // build DatabaseTailingSyncer object for WAL tailing
-      TRI_ASSERT(tailingSyncer == nullptr);
-
-      tailingSyncer = DatabaseTailingSyncer::create(guard.database(), configuration, /*lastTick*/ 0, /*useTick*/true);
-    }
+    // the destructor of the tailingSyncer will automatically unregister itself from the
+    // leader in case it still has to do so (it will do it at most once per tailingSyncer
+    // object, and only if the tailingSyncer registered itself on the leader)
+    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer = buildTailingSyncer(guard.database(), ep);
 
     // tailingSyncer cannot be a nullptr here, because DatabaseTailingSyncer::create()
     // returns the result of a make_shared operation.
     TRI_ASSERT(tailingSyncer != nullptr);
-
-    if (!leader.empty()) {
-      // In the initial phase we still use the normal leaderId without a following
-      // term id:
-      tailingSyncer->setLeaderId(leader);
-    }
 
     try {
       // From here on we perform a number of steps, each of which can
@@ -874,14 +849,13 @@ bool SynchronizeShard::first() {
         return false;
       }
 
-      startTime = system_clock::now();
 
       VPackBuilder config;
       {
         VPackObjectBuilder o(&config);
         config.add(ENDPOINT, VPackValue(ep));
         config.add(INCREMENTAL,
-                   VPackValue(docCount > 0));  // use dump if possible
+                   VPackValue(docCount > 0));  // use incremental sync if possible
         config.add(LEADER_ID, VPackValue(leader));
         config.add(SKIP_CREATE_DROP, VPackValue(true));
         config.add(RESTRICT_TYPE, VPackValue(INCLUDE));
@@ -897,6 +871,8 @@ bool SynchronizeShard::first() {
       // Configure the shard to follow the leader without any following
       // term id:
       collection->followers()->setTheLeader(leader);
+      
+      startTime = system_clock::now();
 
       VPackBuilder builder;
       ResultT<SyncerId> syncRes =
@@ -944,7 +920,6 @@ bool SynchronizeShard::first() {
           catchupWithReadLock(ep, *collection, clientId, leader, lastTick, tailingSyncer);
 
       if (!tickResult.ok()) {
-        tailingSyncer->unregisterFromLeader();
         LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << tickResult.errorMessage();
         result(std::move(tickResult).result());
         return false;
@@ -955,13 +930,11 @@ bool SynchronizeShard::first() {
       Result res = catchupWithExclusiveLock(ep, *collection, clientId,
                                             leader, syncerId, lastTick, tailingSyncer);
       if (!res.ok()) {
-        tailingSyncer->unregisterFromLeader();
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
         result(res);
         return false;
       }
     } catch (basics::Exception const& e) {
-      tailingSyncer->unregisterFromLeader();
       // don't log errors for already dropped databases/collections
       if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
           e.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
@@ -974,8 +947,6 @@ bool SynchronizeShard::first() {
       result(e.code(), e.what());
       return false;
     } catch (std::exception const& e) {
-      tailingSyncer->unregisterFromLeader();
-
       std::stringstream error;
       error << "synchronization of ";
       AppendShardInformationToMessage(database, shard, planId, startTime, error);
@@ -1374,4 +1345,33 @@ void SynchronizeShard::setState(ActionState state) {
     _feature.incShardVersion(getShard());
   }
   ActionBase::setState(state);
+}
+
+std::shared_ptr<DatabaseTailingSyncer> SynchronizeShard::buildTailingSyncer(TRI_vocbase_t& vocbase, 
+                                                                            std::string const& endpoint) {
+  // build configuration for WAL tailing
+  ReplicationApplierConfiguration configuration(feature().server());
+  configuration._endpoint = endpoint;
+  configuration._database = getDatabase();
+  configuration._requestTimeout = 600.0;
+  configuration._connectTimeout = 30.0;
+  // set JWT
+  if (feature().server().hasFeature<AuthenticationFeature>()) {
+    configuration._jwt =
+        feature().server().getFeature<AuthenticationFeature>().tokenCache().jwtToken();
+  }
+  // will throw if invalid
+  configuration.validate();
+
+  // build DatabaseTailingSyncer object for WAL tailing
+  auto syncer = DatabaseTailingSyncer::create(vocbase, configuration, /*lastTick*/ 0, /*useTick*/true);
+
+  std::string const& leader = _description.get(THE_LEADER);
+  if (!leader.empty()) {
+    // In the initial phase we still use the normal leaderId without a following
+    // term id:
+    syncer->setLeaderId(leader);
+  }
+
+  return syncer;
 }
