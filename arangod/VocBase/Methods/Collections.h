@@ -148,6 +148,11 @@ struct Collections {
 
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(arangodb::velocypack::Slice slice);
+
+  /// @brief helper function to build a new LogicalCollection object from the velocypack
+  /// input
+  static std::shared_ptr<LogicalCollection> createCollectionObject(
+      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
 };
 
 #ifdef USE_ENTERPRISE

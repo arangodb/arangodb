@@ -67,6 +67,9 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/Methods/CollectionValidatorEE.h"
+#include "Enterprise/VocBase/SmartVertexCollection.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
+#include "Enterprise/VocBase/VirtualSmartEdgeCollection.h"
 #endif
 
 #include <unordered_set>
@@ -1229,4 +1232,37 @@ arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Sli
           StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
           StaticStrings::MinReplicationFactor,  // deprecated
           StaticStrings::WriteConcern, "servers"});
+}
+
+/// @brief helper function to build a new LogicalCollection object from the velocypack
+/// input
+/*static*/ std::shared_ptr<LogicalCollection> Collections::createCollectionObject(
+    arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase) {
+#ifdef USE_ENTERPRISE
+  bool isSingleServer = ServerState::instance()->isSingleServer();
+  bool isAStub = !isSingleServer;
+
+  auto isSmart = data.get(StaticStrings::IsSmart);
+
+  if (isSmart.isTrue()) {
+    auto type = data.get(StaticStrings::DataSourceType);
+    if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
+      // either can be a SmartEdgeCollection ...
+      if (isSingleServer) {
+        return std::make_shared<VirtualSmartEdgeCollection>(vocbase, data);
+      } else {
+        return std::make_shared<VirtualClusterSmartEdgeCollection>(vocbase, data);
+      }
+    }
+    // ... or it must be a SmartVertexCollection
+
+    TRI_ASSERT(type.isInteger() && type.getUInt() == TRI_COL_TYPE_DOCUMENT);
+    return std::make_shared<SmartVertexCollection>(vocbase, data);
+  }
+#endif
+
+  if (isSingleServer) {
+    std::make_shared<arangodb::LogicalCollection>(vocbase, data, isAStub);
+  }
+  return std::make_shared<LogicalCollection>(vocbase, data, isAStub);
 }
