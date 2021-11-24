@@ -4246,6 +4246,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
     if (numberOfShards > 0 &&
         !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
       ob->add(StaticStrings::IndexIsBuilding, VPackValue(true));
+      // add our coordinator id and reboot id
+      ob->add(StaticStrings::AttrCoordinator,
+              VPackValue(ServerState::instance()->getId()));
+      ob->add(StaticStrings::AttrCoordinatorRebootId,
+              VPackValue(ServerState::instance()->getRebootId().value()));
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }

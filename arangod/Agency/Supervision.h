@@ -33,6 +33,10 @@
 #include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 namespace consensus {
 
 class Agent;
@@ -73,7 +77,7 @@ class Supervision : public arangodb::Thread {
 
   template <TASKS T>
   class Task {
-    explicit Task(const VPackSlice& config) {}
+    explicit Task(VPackSlice config) {}
     ServerID _serverID;
     std::string _endpoint;
   };
@@ -187,7 +191,7 @@ class Supervision : public arangodb::Thread {
 
   // @brief Action is called if resource should be deleted
   void resourceCreatorLost(std::shared_ptr<Node> const& resource,
-                           std::function<void(const ResourceCreatorLostEvent&)> const& action);
+                           std::function<void(ResourceCreatorLostEvent const&)> const& action);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
@@ -265,6 +269,10 @@ class Supervision : public arangodb::Thread {
   void deleteBrokenCollection(std::string const& database, std::string const& collection,
                               std::string const& coordinatorID,
                               uint64_t rebootID, bool coordinatorFound);
+  void deleteBrokenIndex(std::string const& database, std::string const& collection,
+                         arangodb::velocypack::Slice index,
+                         std::string const& coordinatorID,
+                         uint64_t rebootID, bool coordinatorFound);
 
   void restoreBrokenAnalyzersRevision(std::string const& database,
                                       AnalyzersRevision::Revision revision,

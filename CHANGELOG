@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fix agency supervision to not spuriously bring back indexes that were failed
+  upon their initial creation. When an index creation failed, e.g. due to a 
+  unique constraint violation, and all DB server shards of the collection had
+  reported back the index creation status (success or failure), there was a 
+  small window of time in which the supervision would consider the index valid
+  and enabled it. This is because the supervision only checked for indexes
+  currently in flight and the number of shards that responded to the index
+  creation. It did not check the status of the index creation for each shard.
+
 * Upgraded bundled version of RocksDB to 6.27.
 
 * Updated immer to version 0.7.0.

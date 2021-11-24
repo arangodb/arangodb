@@ -265,8 +265,7 @@ bool AddFollower::start(bool&) {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC("15c37", WARN, Logger::SUPERVISION)
-            << e.what() << ": " << __FILE__ << ":" << __LINE__;
+        LOG_TOPIC("15c37", WARN, Logger::SUPERVISION) << e.what();
         return false;
       }
     }

@@ -527,8 +527,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       ok = false;
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC("bedb8", DEBUG, Logger::AGENCY) << "Exception during log append: " << __FILE__
-                                     << __LINE__ << " " << e.what();
+    LOG_TOPIC("bedb8", DEBUG, Logger::AGENCY) << "Exception during log append: " << e.what();
   }
 
   {
@@ -2010,11 +2009,11 @@ void Agent::setPersistedState(VPackSlice compaction) {
     CONDITION_LOCKER(guard, _waitForCV);
     _readDB = compaction;
     _commitIndex =
-        arangodb::basics::StringUtils::uint64(compaction.get("_key").copyString());
+        arangodb::basics::StringUtils::uint64(compaction.get(StaticStrings::KeyString).copyString());
     _local_index = _commitIndex.load(std::memory_order_relaxed);
     _waitForCV.broadcast();
   } catch (std::exception const& e) {
-    LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what();
   }
 }
 
@@ -2111,7 +2110,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
       try {
         _config.eraseGossipPeer(endpoint);
       } catch (std::exception const& e) {
-        LOG_TOPIC("58f08", ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " " << e.what();
+        LOG_TOPIC("58f08", ERR, Logger::AGENCY) << e.what();
       }
     }
 

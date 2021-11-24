@@ -180,7 +180,7 @@ std::vector<apply_ret_t> Store::applyTransactions(VPackSlice query,
       }
 
     } catch (std::exception const& e) {  // Catch any errors
-      LOG_TOPIC("8264b", ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " " << e.what();
+      LOG_TOPIC("8264b", ERR, Logger::AGENCY) << e.what();
       success.push_back(UNKNOWN_ERROR);
     }
 

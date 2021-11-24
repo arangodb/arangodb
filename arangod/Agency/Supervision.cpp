@@ -1090,7 +1090,7 @@ void Supervision::run() {
                       << "Finished doChecks";
                 } catch (std::exception const& e) {
                   LOG_TOPIC("e0869", ERR, Logger::SUPERVISION)
-                      << e.what() << " " << __FILE__ << " " << __LINE__;
+                      << e.what();
                 } catch (...) {
                   LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
                       << "Supervision::doChecks() generated an uncaught "
@@ -1901,7 +1901,7 @@ void Supervision::workJobs() {
 }
 
 bool Supervision::verifyServerRebootID(std::string const& serverID,
-                                            uint64_t wantedRebootID, bool& serverFound) {
+                                       uint64_t wantedRebootID, bool& serverFound) {
   // check if the coordinator exists in health
   std::string const& health = serverHealth(serverID);
   LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
@@ -2037,6 +2037,54 @@ void Supervision::deleteBrokenCollection(std::string const& database,
   }
 }
 
+void Supervision::deleteBrokenIndex(std::string const& database,
+                                    std::string const& collection,
+                                    arangodb::velocypack::Slice index,
+                                    std::string const& coordinatorID,
+                                    uint64_t rebootID, bool coordinatorFound) {
+  auto envelope = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(envelope.get());
+    {
+      std::string collectionPath =
+          plan()->collections()->database(database)->collection(collection)->str();
+      std::string indexesPath =
+          plan()->collections()->database(database)->collection(collection)->indexes()->str();
+
+      VPackArrayBuilder trx(envelope.get());
+      {
+        VPackObjectBuilder operation(envelope.get());
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + "/" + PLAN_VERSION);
+          envelope->add("op", VPackValue("increment"));
+        }
+        // delete the index from Plan/Collections/<db>/<collection>
+        {
+          VPackObjectBuilder o(envelope.get(), indexesPath);
+          envelope->add("op", VPackValue("erase"));
+          envelope->add("val", index);
+        }
+      }
+      {
+        // precondition that the collection is still in Plan
+        VPackObjectBuilder preconditions(envelope.get());
+        {
+          VPackObjectBuilder precondition(envelope.get(), collectionPath);
+          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+        }
+      }
+    }
+  }
+
+  write_ret_t res = _agent->write(envelope);
+  if (!res.successful()) {
+    LOG_TOPIC("01598", DEBUG, Logger::SUPERVISION)
+        << "failed to delete broken index in agency. Will retry. "
+        << envelope->toJson();
+  }
+}
+
 void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
                                                  AnalyzersRevision::Revision revision,
                                                  AnalyzersRevision::Revision buildingRevision,
@@ -2101,7 +2149,7 @@ void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
 
 void Supervision::resourceCreatorLost(
     std::shared_ptr<Node> const& resource,
-    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+    std::function<void(ResourceCreatorLostEvent const&)> const& action) {
   //  check if the coordinator exists and its reboot is the same as specified
   auto rebootID =
       resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
@@ -2110,7 +2158,6 @@ void Supervision::resourceCreatorLost(
 
   bool keepResource = true;
   bool coordinatorFound = false;
-
 
   if (rebootID && coordinatorID) {
     keepResource = Supervision::verifyServerRebootID(*coordinatorID, *rebootID, coordinatorFound);
@@ -2130,7 +2177,7 @@ void Supervision::resourceCreatorLost(
 
 void Supervision::ifResourceCreatorLost(
     std::shared_ptr<Node> const& resource,
-    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+    std::function<void(ResourceCreatorLostEvent const&)> const& action) {
   // check if isBuilding is set and it is true
   auto isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
   if (isBuilding && isBuilding.value()) {
@@ -2188,6 +2235,9 @@ void Supervision::checkBrokenCollections() {
         continue;
       }
 
+      // check if the coordinator which started creating this collection is 
+      // still present...
+      bool deleted = false;
       ifResourceCreatorLost(collectionPair.second, [&](ResourceCreatorLostEvent const& ev) {
         LOG_TOPIC("fe523", INFO, Logger::SUPERVISION)
             << "checkBrokenCollections: removing broken collection with name "
@@ -2195,7 +2245,43 @@ void Supervision::checkBrokenCollections() {
         // delete this database and all of its collections
         deleteBrokenCollection(dbpair.first, collectionPair.first, ev.coordinatorId,
                                ev.coordinatorRebootId, ev.coordinatorFound);
+        deleted = true;
       });
+
+      if (deleted) {
+        // collection deleted. no need to verify the indexes
+        continue;
+      }
+
+      // also check all indexes of the collection
+      if (collectionPair.second->has("indexes")) {
+        Slice indexes = collectionPair.second->get("indexes").value().get().getArray().value();
+        // check if the coordinator which started creating this index is 
+        // still present...
+        for (auto const& planIndex : VPackArrayIterator(indexes)) {
+          if (VPackSlice isBuildingSlice = planIndex.get(StaticStrings::AttrIsBuilding); !isBuildingSlice.isTrue()) {
+            // we are only interested in indexes that are still building
+            continue;
+          }
+
+          VPackSlice rebootIDSlice = planIndex.get(StaticStrings::AttrCoordinatorRebootId);
+          VPackSlice coordinatorIDSlice = planIndex.get(StaticStrings::AttrCoordinator);
+
+          if (rebootIDSlice.isNumber() && coordinatorIDSlice.isString()) {
+            auto rebootID = rebootIDSlice.getUInt();
+            auto coordinatorID = coordinatorIDSlice.copyString();
+            
+            bool coordinatorFound = false;
+            bool keepResource = Supervision::verifyServerRebootID(coordinatorID, rebootID, coordinatorFound);
+
+            if (!keepResource) {
+              // delete this index
+              deleteBrokenIndex(dbpair.first, collectionPair.first, planIndex, coordinatorID,
+                                rebootID, coordinatorFound);
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -2353,6 +2439,13 @@ void Supervision::readyOrphanedIndexCreations() {
                       auto curIndexes =
                           currentDBs.get(colPath + shname + "/indexes").value().get().slice();
                       for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
+                        VPackSlice errorSlice = curIndex.get(StaticStrings::Error);
+                        if (errorSlice.isTrue()) {
+                          // index creation for this shard has failed - don't count it as valid!
+                          continue;
+                        }
+
+                        // index creation for this shard has succeeded!
                         auto const& curId = curIndex.get("id");
                         if (basics::VelocyPackHelper::equal(planId, curId, false)) {
                           ++nIndexes;
@@ -2718,8 +2811,7 @@ void Supervision::getUniqueIds() {
       _jobId = _jobIdMax - n;
     } catch (std::exception const& e) {
       LOG_TOPIC("4da4b", ERR, Logger::SUPERVISION)
-          << "Failed to acquire job IDs from agency: " << e.what() << __FILE__
-          << " " << __LINE__;
+          << "Failed to acquire job IDs from agency: " << e.what();
     }
   }
 }

@@ -1029,7 +1029,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
         plan, planIndex, dirty, moreDirt, local, serverId, feature, report, shardActionMap, localLogs);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
-          << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
+          << "Error executing plan: " << e.what();
     }
   }
 
