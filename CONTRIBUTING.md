@@ -530,7 +530,7 @@ Make the above change permanent:
 
 `echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf`
 
-**Please note that GDB 9 is required for ArangoDB 3.6 and later; GDB 8 is required for ArangoDB 3.4 and 3.5; GDB7 won't see threads**
+**Please note that at least GDB 9 is required.**
 
 You can also generate core dumps from running processes without killing them by
 using gdb:
@@ -614,8 +614,8 @@ will be printed above.
 ##### Windows Debugging Symbols
 
 Releases are supported by a public symbol server so you will be able to debug
-cores.  Please replace `XX` with the major and minor release number (e.g. `35`
-for v3.5).  Note that you should run the latest version of a release series
+cores.  Please replace `XX` with the major and minor release number (e.g. `38`
+for v3.8).  Note that you should run the latest version of a release series
 before reporting bugs.  Either
 [WinDbg](https://docs.microsoft.com/de-de/windows-hardware/drivers/debugger/debugger-download-tools)
 or Visual Studio support setting the symbol path via the environment variable or
