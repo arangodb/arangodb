@@ -84,6 +84,7 @@ struct ReplicatedState : ReplicatedStateBase,
 
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
+  using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
 
   void flush() {
     auto participant = log->getParticipant();
@@ -101,6 +102,13 @@ struct ReplicatedState : ReplicatedStateBase,
   auto getFollower() const -> std::shared_ptr<FollowerType> {
     if (auto machine = std::dynamic_pointer_cast<FollowerState>(currentState); machine) {
       return std::static_pointer_cast<FollowerType>(machine->state);
+    }
+    return nullptr;
+  }
+
+  auto getLeader() const -> std::shared_ptr<LeaderType> {
+    if (auto machine = std::dynamic_pointer_cast<LeaderState>(currentState); machine) {
+      return std::static_pointer_cast<LeaderType>(machine->_machine);
     }
     return nullptr;
   }
@@ -129,7 +137,7 @@ struct ReplicatedState : ReplicatedStateBase,
 template <typename S>
 struct ReplicatedLeaderState {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
-  using Stream = streams::Stream<EntryType>;
+  using Stream = streams::ProducerStream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
   virtual ~ReplicatedLeaderState() = default;
 
@@ -139,6 +147,17 @@ struct ReplicatedLeaderState {
       -> futures::Future<Result> = 0;
   virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
       -> futures::Future<Result> = 0;
+
+  auto getStream() const -> std::shared_ptr<Stream> {
+    if (_stream) {
+      return _stream;
+    }
+
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  }
+
+ private:
+  std::shared_ptr<Stream> _stream;
 };
 
 template <typename S>
@@ -153,6 +172,17 @@ struct ReplicatedFollowerState {
   friend struct ReplicatedState<S>::FollowerState;
   virtual auto applyEntries(std::unique_ptr<EntryIterator>)
       -> futures::Future<Result> = 0;
+
+  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> {
+    if (_stream) {
+      return _stream;
+    }
+
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+  }
+
+ private:
+  std::shared_ptr<Stream> _stream;
 };
 
 template <typename S, typename F>
@@ -180,22 +210,27 @@ struct ReplicatedState<S, F>::LeaderState : StateBase,
               << "LeaderState established";
           self->_mux = Multiplexer::construct(self->_leader);
           self->_mux->digestAvailableEntries();
-          if (auto parent = self->_parent.lock(); parent) {
-            self->_machine = parent->factory->constructLeader();
-            auto stream = self->_mux->template getStreamById<1>();
+
+          auto stream = self->_mux->template getStreamById<1>();
+          LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
+              << "receiving committed entries for recovery";
+          // TODO we don't have to `waitFor` we can just access the log.
+          //    new entries are not yet written, because the stream was
+          //    not published.
+          return stream->waitForIterator(LogIndex{0}).thenValue([self](std::unique_ptr<Iterator>&& result) {
             LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
-                << "receiving committed entries for recovery";
-            return stream->waitForIterator(LogIndex{0}).thenValue([self](std::unique_ptr<Iterator>&& result) {
-              LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
-                  << "starting recovery";
+                << "starting recovery";
+            if (auto parent = self->_parent.lock(); parent) {
+              self->_machine = parent->factory->constructLeader();
               return self->_machine->recoverEntries(std::move(result));
-            });
-          }
-          return futures::Future<Result>{TRI_ERROR_REPLICATION_LEADER_CHANGE};
+            }
+            return futures::Future<Result>{TRI_ERROR_REPLICATION_LEADER_CHANGE};
+          });
         })
         .thenValue([self = this->shared_from_this()](Result&& result) {
           LOG_TOPIC("fb593", TRACE, Logger::REPLICATED_STATE)
               << "recovery completed";
+          self->_machine->_stream = self->_mux->template getStreamById<1>();
           LOG_TOPIC("fb593", TRACE, Logger::REPLICATED_STATE)
               << "starting leader service";
         });
@@ -227,6 +262,11 @@ struct ReplicatedState<S, F>::FollowerState
   std::weak_ptr<ReplicatedState> parent;
 
   void run() {
+    state->_stream = stream;
+    runNext();
+  }
+
+  void runNext() {
     LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
         << "FollowerState wait for iterator starting at " << _nextEntry;
     stream->waitForIterator(_nextEntry)
@@ -402,16 +442,35 @@ struct EntrySerializer<MyEntryType> {
 struct MyStateBase {
   virtual ~MyStateBase() = default;
   std::unordered_map<std::string, std::string> store;
+
+  void applyIterator(TypedLogRangeIterator<streams::StreamEntryView<MyEntryType>>& iter) {
+    while (auto entry = iter.next()) {
+      auto& [idx, modification] = *entry;
+      LOG_DEVEL << modification.key << " = " << modification.value;
+      store[modification.key] = modification.value;
+    }
+  }
 };
 
 struct MyLeaderState : MyStateBase, ReplicatedLeaderState<MyState> {
+  void set(std::string key, std::string value) {
+    auto entry = MyEntryType{key, value};
+    auto idx = getStream()->insert(entry);
+    getStream()->waitFor(idx).thenValue([this, key, value](auto&& res) {
+      LOG_DEVEL << "apply " << key << " = " << value
+                << " to local store";
+      store[key] = value;
+    });
+  }
+
  protected:
   auto installSnapshot(ParticipantId const& destination) -> futures::Future<Result> override {
     return futures::Future<Result>{TRI_ERROR_NO_ERROR};
   }
 
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override {
-    LOG_DEVEL << "recover from log";
+    LOG_DEVEL << "leader recover from log";
+    applyIterator(*ptr);
     return futures::Future<Result>{TRI_ERROR_NO_ERROR};
   }
 };
@@ -419,11 +478,9 @@ struct MyLeaderState : MyStateBase, ReplicatedLeaderState<MyState> {
 struct MyFollowerState : MyStateBase, ReplicatedFollowerState<MyState> {
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override {
-    while (auto entry = ptr->next()) {
-      auto& [idx, modification] = *entry;
-      store[modification.key] = modification.value;
-    }
-
+    LOG_DEVEL << "follower apply entries";
+    applyIterator(*ptr);
+    getStream()->release(ptr->range().to.saturatedDecrement());
     return futures::Future<Result>{TRI_ERROR_NO_ERROR};
   }
 };
@@ -517,8 +574,8 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto log = makeReplicatedLog(LogId{1});
-  auto leader = log->becomeLeader(LogConfig(2, 2, false), "leader",
-                                        LogTerm{1}, {follower});
+  auto leader =
+      log->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
   leader->triggerAsyncReplication();
   auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", log));
@@ -529,4 +586,92 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
     follower->runAsyncAppendEntries();
   }
 
+  auto leaderState = state->getLeader();
+  ASSERT_NE(leaderState, nullptr);
+}
+
+TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
+  feature->registerStateType<MyState>("my-state");
+  auto log = makeReplicatedLog(LogId{1});
+  auto leaderLog = makeReplicatedLog(LogId{1});
+
+  // First insert an entry on the leader log
+  {
+    auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");
+    auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
+        feature->createReplicatedState("my-state", log));
+    ASSERT_NE(state, nullptr);
+
+    state->flush();
+
+    auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
+                                          LogTerm{1}, {follower});
+    auto mux = streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(leader);
+    auto inputStream = mux->getStreamById<1>();
+
+    inputStream->insert({.key = "hello", .value = "world"});
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+  }
+
+  // then let the follower log become the leader
+  // and check that old entries are recovered.
+  {
+    auto follower = leaderLog->becomeFollower("follower", LogTerm{2}, "leader");
+    auto leader =
+        log->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{2}, {follower});
+    leader->triggerAsyncReplication();
+    auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
+        feature->createReplicatedState("my-state", log));
+    ASSERT_NE(state, nullptr);
+
+    state->flush();
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+
+    auto leaderState = state->getLeader();
+    ASSERT_NE(leaderState, nullptr);
+    auto& store = leaderState->store;
+    EXPECT_EQ(store.size(), 1);
+    EXPECT_EQ(store["hello"], "world");
+  }
+}
+
+TEST_F(ReplicatedStateTest, stream_test) {
+  feature->registerStateType<MyState>("my-state");
+
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto followerLog = makeReplicatedLog(LogId{1});
+
+  auto follower = followerLog->becomeFollower("B", LogTerm{1}, "A");
+  auto leader =
+      leaderLog->becomeLeader(LogConfig(2, 2, false), "A", LogTerm{1}, {follower});
+  leader->triggerAsyncReplication();
+
+  auto leaderState = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
+      feature->createReplicatedState("my-state", leaderLog));
+  leaderState->flush();
+
+  auto followerState = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
+      feature->createReplicatedState("my-state", followerLog));
+  followerState->flush();
+
+  // make sure we do recovery
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  // now leader machine should be available
+  auto leaderMachine = leaderState->getLeader();
+  ASSERT_NE(leaderMachine, nullptr);
+
+  for (int i = 0; i < 200; i++) {
+    leaderMachine->set(std::to_string(i), std::string{"value"} + std::to_string(i));
+  }
+
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
 }

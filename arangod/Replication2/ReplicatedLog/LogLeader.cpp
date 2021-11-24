@@ -287,6 +287,9 @@ auto replicated_log::LogLeader::construct(
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
   auto const lastIndex = log.getLastTermIndexPair();
+  // if this assertion triggers there is an entry present in the log
+  // that has the current term. Did create a different leader with the same term
+  // in your test?
   TRI_ASSERT(lastIndex.term != term);
 
   // Note that although we add an entry to establish our leadership
