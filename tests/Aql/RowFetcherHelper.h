@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_ROW_FETCHER_HELPER_H
-#define ARANGOD_AQL_TESTS_ROW_FETCHER_HELPER_H
+#pragma once
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlockManager.h"
@@ -140,5 +139,3 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

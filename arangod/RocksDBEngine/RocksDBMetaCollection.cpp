@@ -1720,7 +1720,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
       << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name()
       << " with " << count << " entries and size " 
       << _tree->byteSize() << ", hibernated size: " << _compressed.size() 
-      << ", hibernation took: " << (TRI_microtime() - start);;
+      << ", hibernation took: " << (TRI_microtime() - start);
 
   // we would like to see at least 50% compressibility
   if (_compressed.size() * 2 < _tree->byteSize()) {
