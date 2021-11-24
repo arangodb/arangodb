@@ -452,6 +452,18 @@ std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* 
   return resolved;
 }
 
+auto transaction::helpers::extractSmartPart(velocypack::StringRef id)
+    -> ResultT<velocypack::StringRef> {
+    size_t s = id.find('/');
+    size_t t = id.find(':');
+    if (s > t || s == std::string::npos || t == std::string::npos) {
+        // This id is invalid.
+        return Result{TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
+    }
+    id = id.substr(s + 1, t - s - 1);
+    return id;
+}
+
 // ============== StringBufferLeaser ==============
 
 /// @brief constructor, leases a StringBuffer

@@ -58,6 +58,14 @@ arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
  */
 arangodb::velocypack::StringRef extractKeyPart(velocypack::StringRef);
 
+/**
+ * Verifies that id has the form <prefix>/<smartPart>:<...> where <prefix> has
+ * no ':' and returns <smartPart> or the error TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.
+ * @param id
+ * @return
+ */
+auto extractSmartPart(velocypack::StringRef id) -> ResultT<velocypack::StringRef>;
+
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 
 // Note that the fields from and to to not own the string.
