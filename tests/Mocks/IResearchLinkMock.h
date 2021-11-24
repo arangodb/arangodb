@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TESTS_IRESEARCH__IRESEARCH_LINK_MOCK_H
-#define ARANGOD_TESTS_IRESEARCH__IRESEARCH_LINK_MOCK_H 1
+#pragma once
 
 #include "IResearch/IResearchLink.h"
 
@@ -118,5 +117,3 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-#endif

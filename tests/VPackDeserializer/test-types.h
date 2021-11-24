@@ -20,8 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef DESERIALIZER_TEST_TYPES_H
-#define DESERIALIZER_TEST_TYPES_H
+
+#pragma once
+
 #include <iostream>
 #include <memory>
 #include <utility>
@@ -289,5 +290,3 @@ using object_iterator = ::deserializer::test::object_iterator;
 using array_iterator = ::deserializer::test::array_iterator;
 }  // namespace deserializer
 #endif
-
-#endif  // DESERIALIZER_TEST_TYPES_H
