@@ -79,6 +79,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
   
   FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
+  FLAG_READ_OWN_WRITES = 0x0200000,  // reads own writes (only needed for UPSERT FOR nodes)
 };
 
 /// @brief enumeration of AST node value types

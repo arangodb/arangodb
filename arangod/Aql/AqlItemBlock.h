@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Basics/ResourceUsage.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/SmallVector.h"
 
 #include <limits>
@@ -33,7 +34,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include <absl/container/flat_hash_map.h>
 
 namespace arangodb {
 namespace aql {
@@ -371,7 +371,7 @@ class AqlItemBlock {
   /// count with valueCount.
   /// note: only AqlValues that point to dynamically allocated memory
   /// should be added to this map. Other types (VPACK_INLINE) are not supported.
-  ::iresearch_absl::flat_hash_map<void const*, ValueInfo> _valueCount;
+  containers::FlatHashMap<void const*, ValueInfo> _valueCount;
 
   /// @brief _numRows, number of rows
   size_t _numRows = 0;

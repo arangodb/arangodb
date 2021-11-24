@@ -173,7 +173,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   using ShardMap = std::map<std::string, std::unordered_set<CollectionShardPair>>;
   using ReshardAlgorithm =
-      std::function<void(ShardMap&, std::vector<MoveShardDescription>&)>;
+      std::function<void(ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
 
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
