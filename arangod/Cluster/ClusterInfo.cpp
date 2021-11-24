@@ -4375,8 +4375,12 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         {
           VPackObjectBuilder o(&finishedPlanIndex);
           for (auto const& entry : VPackObjectIterator(newIndexBuilder.slice())) {
-            auto const key = entry.key.copyString();
+            std::string_view key = entry.key.stringView();
+            // remove "isBuilding", "coordinatorId" and "rebootId", plus "newlyCreated"
+            // from the final index
             if (key != StaticStrings::IndexIsBuilding &&
+                key != StaticStrings::AttrCoordinator &&
+                key != StaticStrings::AttrCoordinatorRebootId &&
                 key != "isNewlyCreated") {
               finishedPlanIndex.add(entry.key.copyString(), entry.value);
             }
