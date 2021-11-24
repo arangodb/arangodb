@@ -1,4 +1,4 @@
-name: arangodb_arangosearch_num_docs
+name: arangosearch_num_docs
 introducedIn: "3.10.0"
 help: |
   Number of documents for current snapshot.

@@ -1,7 +1,7 @@
-name: arangodb_arangosearch_num_files
+name: arangosearch_num_failed_cleanups
 introducedIn: "3.10.0"
 help: |
-  Number of files for current snapshot.
+  Number of failed cleanups.
 unit: number
 type: gauge
 category: ArangoSearch
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Number of files for current snapshot.
+  Number of failed cleanups.

@@ -1,4 +1,4 @@
-name: arangodb_arangosearch_index_size
+name: arangosearch_index_size
 introducedIn: "3.10.0"
 help: |
   Size of the index in bytes for current snapshot.

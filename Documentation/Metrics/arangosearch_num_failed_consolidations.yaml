@@ -1,7 +1,7 @@
-name: arangodb_arangosearch_num_failed_commits
+name: arangosearch_num_failed_consolidations
 introducedIn: "3.10.0"
 help: |
-  Number of failed commits.
+  Number of failed consolidations.
 unit: number
 type: gauge
 category: ArangoSearch
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Number of failed commits.
+  Number of failed consolidations.

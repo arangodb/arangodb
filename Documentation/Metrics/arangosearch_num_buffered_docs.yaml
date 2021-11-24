@@ -1,4 +1,4 @@
-name: arangodb_arangosearch_num_buffered_docs
+name: arangosearch_num_buffered_docs
 introducedIn: "3.10.0"
 help: |
   Number of buffered documents for current snapshot.

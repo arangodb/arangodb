@@ -1,8 +1,8 @@
-name: arangodb_arangosearch_num_failed_consolidations
+name: arangosearch_cleanup_time
 introducedIn: "3.10.0"
 help: |
-  Number of failed consolidations.
-unit: number
+  Average time of few last cleanups.
+unit: ms
 type: gauge
 category: ArangoSearch
 complexity: advanced
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - single
 description: |
-  Number of failed consolidations.
+  Average time of few last cleanups.
