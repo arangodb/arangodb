@@ -22,8 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_AQL_EXECUTORTESTCASE_H
-#define TESTS_AQL_EXECUTORTESTCASE_H
+#pragma once
 
 #include "gtest/gtest.h"
 
@@ -109,4 +108,3 @@ class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-#endif

@@ -314,7 +314,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   }
 #else
   generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-		"memory profiles not enabled at compile time");
+      "memory profiles not enabled at compile time");
 #endif
 
   return RestStatus::DONE;

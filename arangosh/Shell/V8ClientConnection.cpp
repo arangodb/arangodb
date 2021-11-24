@@ -232,7 +232,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
           //_client->disconnect();
           shutdownConnection();
           std::string msg("Server version number ('" + versionString +
-                          "') is too low. Expecting 3.0 or higher");;
+                          "') is too low. Expecting 3.0 or higher");
           setCustomError(500, msg);
           return newConnection;
         }

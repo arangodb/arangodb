@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.exception_policy">
+  <title>ExceptionPolicy&lt;EP&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section>
+    <title>Description</title>
+
+    <para>The exception policy specifies what is to occur when a safe
+    operation cannot return a valid result. A type is an ExceptionPolicy if it
+    has functions for handling exceptional events that occur in the course of
+    safe numeric operations.</para>
+  </section>
+
+  <section>
+    <title>Notation</title>
+
+    <informaltable>
+      <tgroup cols="2" colsep="1" rowsep="1">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="6*"/>
+
+        <tbody>
+          <row>
+            <entry><code>EP</code></entry>
+
+            <entry>A type that fulfills the requirements of an
+            ExceptionPolicy</entry>
+          </row>
+
+          <row>
+            <entry>e</entry>
+
+            <entry>A code from <link
+            linkend="safe_numerics.safe_numerics_error"><code>safe_numerics_error</code></link></entry>
+          </row>
+
+          <row>
+            <entry>message</entry>
+
+            <entry>A const char * which refers to a text message about the
+            cause of an exception</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Valid Expressions</title>
+
+    <para>Whenever an operation yield an invalid result, one of the following
+    functions will be invoked.</para>
+
+    <para><informaltable>
+        <tgroup cols="3">
+          <colspec align="left" colwidth="9*"/>
+
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="12*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry>Return Value</entry>
+
+              <entry>Invoked when:</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>EP::on_arithmetic_error(e, message)</code></entry>
+
+              <entry>void</entry>
+
+              <entry>The operation cannot produce valid arithmetic result such
+              as overflows, divide by zero, etc.</entry>
+            </row>
+
+            <row>
+              <entry><code>EP::on_undefined_behavior(e,
+              message)</code></entry>
+
+              <entry>void</entry>
+
+              <entry>The result is undefined by the C++ standard</entry>
+            </row>
+
+            <row>
+              <entry><code>EP::on_implementation_defined_behavior(e,
+              message)</code></entry>
+
+              <entry>void</entry>
+
+              <entry>The result depends upon implementation defined behavior
+              according to the C++ standard</entry>
+            </row>
+
+            <row>
+              <entry><code>EP::on_uninitialized_value(e,
+              message)</code></entry>
+
+              <entry>void</entry>
+
+              <entry>A variable is not initialized</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </informaltable></para>
+  </section>
+
+  <section>
+    <title>dispatch&lt;EP&gt;(const safe_numerics_error &amp; e, const char *
+    msg)</title>
+
+    <para>This function is used to invoke the exception handling policy for a
+    particular exception code.</para>
+
+    <section>
+      <title>Synopsis</title>
+
+      <para><programlisting>template&lt;class EP&gt;
+constexpr void
+dispatch&lt;EP&gt;(const boost::numeric::safe_numerics_error &amp; e, char const * const &amp; msg);</programlisting></para>
+    </section>
+
+    <section>
+      <title>Example of use</title>
+
+      <programlisting>#include &lt;boost/safe_numerics/exception_policies.hpp"
+
+dispatch&lt;boost::numeric::loose_exception_policy&gt;(
+    boost::numeric::safe_numerics_error::positive_overflow_error, 
+    "operation resulted in overflow"
+);</programlisting>
+    </section>
+  </section>
+
+  <section>
+    <title>Models</title>
+
+    <para>The library header <ulink
+    url="../../include/boost/safe_numerics/exception_policies.hpp"><code>&lt;boost/safe_numerics/exception_policies.hpp&gt;
+    </code></ulink>contains a number of pre-made exception policies:</para>
+
+    <itemizedlist>
+      <listitem>
+        <para><code id="">boost::numeric::loose_exception_policy</code></para>
+
+        <para>Throw on arithmetic errors, ignore other errors. Some
+        applications ignore these issues and still work and we don't want to
+        update them.</para>
+      </listitem>
+
+      <listitem>
+        <para><code
+        id="safe_numerics.exception_policies.loose_trap_policy">boost::numeric::loose_trap_policy</code></para>
+
+        <para>Same as above in that it doesn't check for various undefined
+        behaviors but traps at compile time for hard arithmetic errors. This
+        policy would be suitable for older embedded systems which depend on
+        bit manipulation operations to work.</para>
+      </listitem>
+
+      <listitem>
+        <para><code
+        id="safe_numerics.exception_policies.strict_exception_policy">boost::numeric::strict_exception_policy</code></para>
+
+        <para>Permit just about anything, throw at runtime on any kind of
+        error. Recommended for new code. Check everything at compile time if
+        possible and runtime if necessary. Trap or Throw as appropriate.
+        Should guarantee code to be portable across architectures.</para>
+      </listitem>
+
+      <listitem>
+        <para><code
+        id="safe_numerics.exception_policies.strict_trap_policy">boost::numeric::strict_trap_policy</code></para>
+
+        <para>Same as above but requires code to be written in such a way as
+        to make it impossible for errors to occur. This naturally will require
+        extra coding effort but might be justified for embedded and/or safety
+        critical systems.</para>
+      </listitem>
+
+      <listitem>
+        <para><code
+        id="safe_numerics.exception_policies.default_exception_policy">boost::numeric::default_exception_policy</code></para>
+
+        <para>Alias for <code>strict_exception_policy</code>, One would use
+        this first. After experimentation, one might switch to one of the
+        above policies or perhaps use a custom policy.</para>
+      </listitem>
+    </itemizedlist>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/concept/exception_policy.hpp"><code>#include
+    &lt;boost/safe_numerics/concepts/exception_policy.hpp&gt;
+    </code></ulink></para>
+  </section>
+</section>

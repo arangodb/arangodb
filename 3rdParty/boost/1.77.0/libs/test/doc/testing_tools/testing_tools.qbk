@@ -1,0 +1,50 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:testing_tools Writing unit tests]
+
+Once a test case has been declared, the body of this test should be written. A test case is a
+sequence of operations in which *assertions* are inserted. Those assertions evaluate /statements/ that implement the expectation being validated,
+and report failures and/or information in a uniform manner, depending on the [link boost_test.utf_reference.rt_param_reference.log_level log level].
+
+The __UTF__'s supplies a toolbox of assertions to ease the creation and maintenance of test cases and
+provide a uniform error reporting mechanism. The toolbox supplied is in most part in a form of macro declarations.
+An (almost) unique interface to all of them implemented by the macro __BOOST_TEST__.
+
+[note All macros arguments are calculated once, so it's safe to pass complex expressions in their place.]
+
+All tools automatically supply an error location: a file name and a line number, which can also be overridden.
+
+[caution The testing tools are intended for unit test code rather than library or production code, where throwing exceptions, using `assert()`,
+`boost::concept_check` or `BOOST_STATIC_ASSERT()` may be more suitable ways to detect and report errors.]
+
+For a list of all supplied testing tools and usage examples, see the [link boost_test.testing_tools.summary summary]
+or the [link boost_test.utf_reference.testing_tool_ref reference].
+
+[include assertions_severity_levels.qbk]
+[include boost_test_universal_macro.qbk]
+[include boost_test_reported_information.qbk]
+
+[section:extended_comparison Extended comparisons support]
+[include testing_floating_points.qbk]
+[include boost_test_string_comparison.qbk]
+[include boost_test_collection_comparison.qbk]
+[include boost_test_bitwise_comparison.qbk]
+[endsect]
+
+[include testing_exception_correctness.qbk]
+[include timeout.qbk]
+[include expected_failures.qbk]
+[include custom_predicates.qbk]
+[include testing_output_streams.qbk]
+
+[include boost_test_technical_details.qbk]
+[include boost_test_debugging.qbk]
+[include testing_tools_summary.qbk]
+
+
+[endsect] [/ testing tools]

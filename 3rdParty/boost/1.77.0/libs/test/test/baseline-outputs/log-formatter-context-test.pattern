@@ -1,0 +1,176 @@
+* 1-format  *******************************************************************
+Running 1 test case...
+xxx/log-formatter-test.cpp:330: Entering test suite "1 test cases inside"
+xxx/log-formatter-test.cpp:331: Entering test case "context_mixed_foo"
+xxx/log-formatter-test.cpp:93: info: check true has passed
+Assertion occurred in a following context:
+    some context
+unknown location:0: fatal error: in "1 test cases inside/context_mixed_foo": unknown type
+xxx/log-formatter-test.cpp:93: last checkpoint
+Failure occurred in a following context:
+    other context
+xxx/log-formatter-test.cpp:331: Leaving test case "context_mixed_foo"
+xxx/log-formatter-test.cpp:330: Leaving test suite "1 test cases inside"
+
+* 1-format  *******************************************************************
+Running 1 test case...
+unknown location:0: fatal error: in "1 test cases inside/context_mixed_foo": unknown type
+xxx/log-formatter-test.cpp:93: last checkpoint
+Failure occurred in a following context:
+    other context
+
+* 1-format  *******************************************************************
+Running 1 test case...
+xxx/log-formatter-test.cpp:330: Entering test suite "1 test cases inside"
+xxx/log-formatter-test.cpp:331: Entering test case "context_mixed_foo"
+xxx/log-formatter-test.cpp:93: info: check true has passed
+Assertion occurred in a following context:
+    some context
+unknown location:0: fatal error: in "1 test cases inside/context_mixed_foo": unknown type
+xxx/log-formatter-test.cpp:93: last checkpoint
+Failure occurred in a following context:
+    other context
+xxx/log-formatter-test.cpp:331: Leaving test case "context_mixed_foo"
+xxx/log-formatter-test.cpp:330: Leaving test suite "1 test cases inside"
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite tests="1" skipped="0" errors="1" failures="0" id="0" name="1_test_cases_inside" time="0.1234">
+<testcase assertions="2" name="context_mixed_foo" time="0.1234">
+<error message="unexpected exception" type="uncaught exception"><![CDATA[
+UNCAUGHT EXCEPTION:
+- file: unknown location
+- line: 0
+
+
+EXCEPTION STACK TRACE: --------------
+unknown type
+-------------------------------------
+
+Last checkpoint:
+- message: ""
+- file: log-formatter-test.cpp
+- line: 93
+
+
+CONTEXT:
+- 'other context'
+]]></error><system-out><![CDATA[INFO:
+- file   : log-formatter-test.cpp
+- line   : 93
+- message: check true has passed
+- context:
+  - 'some context'
+
+
+]]></system-out>
+<system-err><![CDATA[Failures detected in:
+- test case: 1 test cases inside/context_mixed_foo
+- file: log-formatter-test.cpp
+- line: 331
+]]></system-err>
+</testcase>
+</testsuite>
+* 1-format  *******************************************************************
+Running 1 test case...
+unknown location:0: fatal error: in "1 test cases inside/context_mixed_foo": unknown type
+xxx/log-formatter-test.cpp:93: last checkpoint
+Failure occurred in a following context:
+    other context
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite tests="1" skipped="0" errors="1" failures="0" id="0" name="1_test_cases_inside" time="0.1234">
+<testcase assertions="2" name="context_mixed_foo" time="0.1234">
+<error message="unexpected exception" type="uncaught exception"><![CDATA[
+UNCAUGHT EXCEPTION:
+- file: unknown location
+- line: 0
+
+
+EXCEPTION STACK TRACE: --------------
+unknown type
+-------------------------------------
+
+Last checkpoint:
+- message: ""
+- file: log-formatter-test.cpp
+- line: 93
+
+
+CONTEXT:
+- 'other context'
+]]></error><system-err><![CDATA[Failures detected in:
+- test case: 1 test cases inside/context_mixed_foo
+- file: log-formatter-test.cpp
+- line: 331
+]]></system-err>
+</testcase>
+</testsuite>
+* 2-format  *******************************************************************
+<TestLog><TestSuite name="1 test cases inside" file="xxx/log-formatter-test.cpp" line="330"><TestCase name="context_mixed_foo" file="xxx/log-formatter-test.cpp" line="331"><Info file="xxx/log-formatter-test.cpp" line="93"><![CDATA[check true has passed]]><Context><Frame><![CDATA[some context]]></Frame></Context></Info><Exception file="unknown location" line="0"><![CDATA[unknown type]]><LastCheckpoint file="xxx/log-formatter-test.cpp" line="93"><![CDATA[]]></LastCheckpoint><Context><Frame><![CDATA[other context]]></Frame></Context></Exception><TestingTime>ZZZ</TestingTime></TestCase></TestSuite></TestLog>
+* 2-format  *******************************************************************
+<TestLog><Exception file="unknown location" line="0"><![CDATA[unknown type]]><LastCheckpoint file="xxx/log-formatter-test.cpp" line="93"><![CDATA[]]></LastCheckpoint><Context><Frame><![CDATA[other context]]></Frame></Context></Exception></TestLog>
+* 3-format  *******************************************************************
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite tests="1" skipped="0" errors="1" failures="0" id="0" name="1_test_cases_inside" time="0.1234">
+<testcase assertions="2" name="context_mixed_foo" time="0.1234">
+<error message="unexpected exception" type="uncaught exception"><![CDATA[
+UNCAUGHT EXCEPTION:
+- file: unknown location
+- line: 0
+
+
+EXCEPTION STACK TRACE: --------------
+unknown type
+-------------------------------------
+
+Last checkpoint:
+- message: ""
+- file: log-formatter-test.cpp
+- line: 93
+
+
+CONTEXT:
+- 'other context'
+]]></error><system-out><![CDATA[INFO:
+- file   : log-formatter-test.cpp
+- line   : 93
+- message: check true has passed
+- context:
+  - 'some context'
+
+
+]]></system-out>
+<system-err><![CDATA[Failures detected in:
+- test case: 1 test cases inside/context_mixed_foo
+- file: log-formatter-test.cpp
+- line: 331
+]]></system-err>
+</testcase>
+</testsuite>
+* 3-format  *******************************************************************
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite tests="1" skipped="0" errors="1" failures="0" id="0" name="1_test_cases_inside" time="0.1234">
+<testcase assertions="2" name="context_mixed_foo" time="0.1234">
+<error message="unexpected exception" type="uncaught exception"><![CDATA[
+UNCAUGHT EXCEPTION:
+- file: unknown location
+- line: 0
+
+
+EXCEPTION STACK TRACE: --------------
+unknown type
+-------------------------------------
+
+Last checkpoint:
+- message: ""
+- file: log-formatter-test.cpp
+- line: 93
+
+
+CONTEXT:
+- 'other context'
+]]></error><system-err><![CDATA[Failures detected in:
+- test case: 1 test cases inside/context_mixed_foo
+- file: log-formatter-test.cpp
+- line: 331
+]]></system-err>
+</testcase>
+</testsuite>

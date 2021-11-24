@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make `db.<collection>.figures(true)` operate on the same snapshot when 
+  counting the number of documents in the documents column family and the
+  indexes. This ensures consistency for the results of a single figures result.
+
 * Upgraded bundled version of RocksDB to 6.27.
 
 * Updated immer to version 0.7.0.
@@ -20,6 +24,8 @@ devel
   when no positional argument (operation type) was specified. Previously,
   arangobackup insisted on specifying the operation type alongside the
   `--version` or `--version-json` commands.
+
+* Updated boost to version 1.77.0.
 
 * Removed the following deprecated arangobench testcases:
   * aqltrx

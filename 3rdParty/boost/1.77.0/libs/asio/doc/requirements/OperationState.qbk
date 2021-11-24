@@ -1,0 +1,34 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:OperationState Operation state concept]
+
+        template<class O>
+          concept operation_state =
+            destructible<O> &&
+            is_object_v<O> &&
+            requires (O& o) {
+              { execution::start(o) } noexcept;
+            };
+
+An object whose type satisfies `operation_state` represents the state of an
+asynchronous operation. It is the result of calling `execution::connect` with a
+`sender` and a `receiver`.
+
+`execution::start` may be called on an `operation_state` object at most once.
+Once `execution::start` has been invoked, the caller shall ensure that the
+start of a non-exceptional invocation of one of the receiver's
+completion-signalling operations strongly happens before [intro.multithread]
+the call to the `operation_state` destructor.
+
+The start of the invocation of `execution::start` shall strongly happen before
+[intro.multithread] the invocation of one of the three receiver operations.
+
+`execution::start` may or may not block pending the successful transfer of
+execution to one of the three receiver operations.
+
+[endsect]

@@ -1,0 +1,15 @@
+{
+    "key": "pool",
+    "name": "Pool",
+    "authors": [
+        "Steve Cleary"
+    ],
+    "description": "Memory pool management.",
+    "category": [
+        "Memory"
+    ],
+    "maintainers": [
+        "Stephen Cleary <scleary -at- jerviswebb.com>"
+    ],
+    "cxxstd": "03"
+}

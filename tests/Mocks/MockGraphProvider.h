@@ -19,8 +19,8 @@
 ///
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef TESTS_MOCK_GRAPH_PROVIDER_H
-#define TESTS_MOCK_GRAPH_PROVIDER_H
+
+#pragma once
 
 #include <numeric>
 #include <ostream>
@@ -247,5 +247,3 @@ class MockGraphProvider {
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

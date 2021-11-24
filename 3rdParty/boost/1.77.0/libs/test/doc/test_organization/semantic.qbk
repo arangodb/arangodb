@@ -1,0 +1,26 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:semantic Adding semantic to a test]
+
+It is sometimes useful to add a /semantic description/ to a test unit, which may be consulted by the user during a dry
+run. The user may then choose the test he/she wants to run based on this information, instead of basing his/her choice
+on the test unit /name/, or instead of looking at the code.
+
+The __UTF__ provides the decorator __decorator_description__ for that purpose.
+
+Decorator `description` attaches an arbitrary string to the test unit. All strings attached to test units can be
+displayed when running a test program with parameter [link boost_test.utf_reference.rt_param_reference.list_content `list_content`].
+This can be used for conveying information from the person who composes the test tree to the person who will be
+running the test program. Applying more than one decorator `description` to the same test unit means that the two
+(or more) strings will be concatenated.
+
+
+[bt_example decorator_09..decorator description..run]
+
+[endsect]

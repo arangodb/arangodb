@@ -335,6 +335,51 @@ void H2Connection<T>::finishConnect() {
 }
 
 template <>
+void H2Connection<SocketType::Tcp>::readSwitchingProtocolsResponse() {
+  FUERTE_LOG_HTTPTRACE << "readSwitchingProtocolsResponse)\n";
+
+  auto self = Connection::shared_from_this();
+  this->_proto.timer.expires_after(std::chrono::seconds(5));
+  this->_proto.timer.async_wait([self](auto ec) {
+    if (!ec) {
+      self->cancel();
+    }
+  });
+  // read until we find end of http header
+  asio_ns::async_read_until(
+      this->_proto.socket, this->_receiveBuffer, "\r\n\r\n",
+      [self](asio_ns::error_code const& ec, size_t nread) {
+        auto& me = static_cast<H2Connection<SocketType::Tcp>&>(*self);
+        me._proto.timer.cancel();
+        if (ec) {
+          me.shutdownConnection(Error::ReadError,
+                                "error reading upgrade response");
+          return;
+        }
+
+        // server should respond with 101 and "Upgrade: h2c"
+        auto it = asio_ns::buffers_begin(me._receiveBuffer.data());
+        std::string header(it, it + static_cast<ptrdiff_t>(nread));
+        if (header.compare(0, 12, "HTTP/1.1 101") == 0 &&
+            header.find("Upgrade: h2c\r\n") != std::string::npos) {
+          FUERTE_ASSERT(nread == header.size());
+          me._receiveBuffer.consume(nread);
+          me._state.store(Connection::State::Connected);
+
+          // submit a ping so the connection is not closed right away
+          me.startPing();
+
+          me.asyncReadSome();
+          me.doWrite();
+        } else {
+          FUERTE_ASSERT(false);
+          me.shutdownConnection(Error::ProtocolError,
+                                "illegal upgrade response");
+        }
+      });
+}
+
+template <>
 void H2Connection<SocketType::Tcp>::sendHttp1UpgradeRequest() {
   // client connection preface via Upgrade header
   std::array<nghttp2_settings_entry, 4> iv;
@@ -376,51 +421,6 @@ void H2Connection<SocketType::Tcp>::sendHttp1UpgradeRequest() {
           me.shutdownConnection(Error::WriteError, ec.message());
         } else {
           me.readSwitchingProtocolsResponse();
-        }
-      });
-}
-
-template <>
-void H2Connection<SocketType::Tcp>::readSwitchingProtocolsResponse() {
-  FUERTE_LOG_HTTPTRACE << "readSwitchingProtocolsResponse)\n";
-
-  auto self = Connection::shared_from_this();
-  this->_proto.timer.expires_after(std::chrono::seconds(5));
-  this->_proto.timer.async_wait([self](auto ec) {
-    if (!ec) {
-      self->cancel();
-    }
-  });
-  // read until we find end of http header
-  asio_ns::async_read_until(
-      this->_proto.socket, this->_receiveBuffer, "\r\n\r\n",
-      [self](asio_ns::error_code const& ec, size_t nread) {
-        auto& me = static_cast<H2Connection<SocketType::Tcp>&>(*self);
-        me._proto.timer.cancel();
-        if (ec) {
-          me.shutdownConnection(Error::ReadError,
-                                "error reading upgrade response");
-          return;
-        }
-
-        // server should respond with 101 and "Upgrade: h2c"
-        auto it = asio_ns::buffers_begin(me._receiveBuffer.data());
-        std::string header(it, it + static_cast<ptrdiff_t>(nread));
-        if (header.compare(0, 12, "HTTP/1.1 101") == 0 &&
-            header.find("Upgrade: h2c\r\n") != std::string::npos) {
-          FUERTE_ASSERT(nread == header.size());
-          me._receiveBuffer.consume(nread);
-          me._state.store(Connection::State::Connected);
-
-          // submit a ping so the connection is not closed right away
-          me.startPing();
-
-          me.asyncReadSome();
-          me.doWrite();
-        } else {
-          FUERTE_ASSERT(false);
-          me.shutdownConnection(Error::ProtocolError,
-                                "illegal upgrade response");
         }
       });
 }

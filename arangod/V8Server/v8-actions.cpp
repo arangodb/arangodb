@@ -376,7 +376,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     }
   } else {
     req->Set(context, IsAdminUser, ExecContext::isAuthEnabled() ? v8::False(isolate)
-                                                       : v8::True(isolate)).FromMaybe(false);;
+                                                       : v8::True(isolate)).FromMaybe(false);
   }
 
   // create database attribute
@@ -1034,7 +1034,7 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
   std::string errorMessage;
 
   try {
-    callback->Call(TRI_IGETC, callback, 2, args).FromMaybe(v8::Local<v8::Value>());;
+    callback->Call(TRI_IGETC, callback, 2, args).FromMaybe(v8::Local<v8::Value>());
     errorCode = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
     errorCode = ex.code();

@@ -466,7 +466,8 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
     EXPECT_TRUE(trx.begin().ok());
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view);
     ASSERT_TRUE(link);
-    irs::directory_reader const snapshotReader = link->snapshot();
+    auto const snapshot = link->snapshot();
+    auto const& snapshotReader = snapshot.getDirectoryReader();
     std::string const columns[] = {arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("_id"),
                                    arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("foo"),
                                    arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("foo") +
@@ -612,7 +613,8 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecordWithCompressio
     EXPECT_TRUE(trx.begin().ok());
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view);
     ASSERT_TRUE(link);
-    irs::directory_reader const snapshotReader = link->snapshot();
+    auto const snapshot = link->snapshot();
+    auto const& snapshotReader = snapshot.getDirectoryReader();
     std::string const columns[] = { arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("_id"),
                                    arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("foo"),
                                    arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("foo") +
