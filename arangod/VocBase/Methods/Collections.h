@@ -152,7 +152,7 @@ struct Collections {
   /// @brief helper function to build a new LogicalCollection object from the velocypack
   /// input
   static std::shared_ptr<LogicalCollection> createCollectionObject(
-      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
+      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, bool isAStub);
 };
 
 #ifdef USE_ENTERPRISE

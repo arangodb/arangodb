@@ -2588,7 +2588,18 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      auto collection = methods::Collections::createCollectionObject(it, *vocbase);
+      std::shared_ptr<LogicalCollection> collection;
+      if (ServerState::instance()->isSingleServer()) {
+        // In case we're on SingleServer, we will use the helper method to create
+        // proper more specified class types of LogicalCollections. For some reason
+        // cluster runs into several situations where it is not allowed to use the
+        // helper method. Therefore, it has to stay the old way, by creating only
+        // LogicalCollections pointers.
+        collection = methods::Collections::createCollectionObject(it, *vocbase, false);
+      } else {
+        std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
+      }
+
       TRI_ASSERT(collection != nullptr);
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());

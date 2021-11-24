@@ -738,7 +738,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   // collection is in building stage
   if (collection == nullptr) {
     // no previous version of the collection exists, or its hash value has changed
-    collection = methods::Collections::createCollectionObject(data, vocbase);
+    collection = methods::Collections::createCollectionObject(data, vocbase, true);
     TRI_ASSERT(collection != nullptr);
 
     if (!isBuilding) {

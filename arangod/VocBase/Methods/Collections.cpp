@@ -1237,9 +1237,7 @@ arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Sli
 /// @brief helper function to build a new LogicalCollection object from the velocypack
 /// input
 /*static*/ std::shared_ptr<LogicalCollection> Collections::createCollectionObject(
-    arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase) {
-  bool isAStub = ServerState::instance()->isCoordinator();
-
+    arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase, bool isAStub) {
 #ifdef USE_ENTERPRISE
   auto isSmart = data.get(StaticStrings::IsSmart);
 
