@@ -341,7 +341,7 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
       _index(index),
       _cursor(_trx.indexScanForCondition(
           index, condition, infos.getOutVariable(), infos.getOptions(),
-          infos.canReadOwnWrites(), -1, &infos.getProjections())),
+          infos.canReadOwnWrites(), -1)),
       _context(context),
       _type(infos.getCount() ? Type::Count :
                 infos.isLateMaterialized()
@@ -521,8 +521,7 @@ void IndexExecutor::CursorReader::reset() {
                                          _infos.getOutVariable(),
                                          _infos.getOptions(),
                                          _infos.canReadOwnWrites(),
-                                         -1,
-                                         &_infos.getProjections());
+                                         -1);
   }
 }
 

@@ -304,8 +304,7 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
         cursor = _trx->indexScanForCondition(it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no,
-                                             static_cast<int>(info.conditionNeedUpdate? info.conditionMemberToUpdate : -1),
-                                             nullptr);
+                                             static_cast<int>(info.conditionNeedUpdate? info.conditionMemberToUpdate : -1));
       }
       ++j;
     }
@@ -339,6 +338,6 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
   csrs.reserve(info.idxHandles.size());
   for (std::shared_ptr<Index> const& index : info.idxHandles) {
     csrs.emplace_back(_trx->indexScanForCondition(index, info.indexCondition, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no,
-                                                  static_cast<int>(info.conditionNeedUpdate? info.conditionMemberToUpdate : -1), nullptr));
+                                                  static_cast<int>(info.conditionNeedUpdate? info.conditionMemberToUpdate : -1)));
   }
 }

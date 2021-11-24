@@ -569,6 +569,7 @@ std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::v
 
   condition->_isNormalized = true;
   condition->_isSorted = false;
+  
   return condition;
 }
 
@@ -644,7 +645,7 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
                                                                      reference, sortCondition,
                                                                      itemsInIndex, node->hint(),
                                                                      usedIndexes, _isSorted,
-                                                                      isAllCoveredByIndex);
+                                                                     isAllCoveredByIndex);
 }
 
 /// @brief get the attributes for a sub-condition that are const

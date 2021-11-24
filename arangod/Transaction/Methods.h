@@ -342,8 +342,7 @@ class Methods {
                                                        arangodb::aql::Variable const*,
                                                        IndexIteratorOptions const&,
                                                        ReadOwnWrites readOwnWrites,
-                                                       int mutableConditionIdx,
-                                                       aql::Projections const* projections);
+                                                       int mutableConditionIdx);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when

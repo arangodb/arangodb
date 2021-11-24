@@ -136,8 +136,8 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
     _cursor = trx->indexScanForCondition(_accessor->indexHandle(), node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no,
-                                         static_cast<int>(_accessor->getMemberToUpdate().has_value()? _accessor->getMemberToUpdate().value(): -1),
-                                         nullptr);
+                                         static_cast<int>(_accessor->getMemberToUpdate().has_value()?
+                                                          _accessor->getMemberToUpdate().value(): -1));
   }
 }
 
