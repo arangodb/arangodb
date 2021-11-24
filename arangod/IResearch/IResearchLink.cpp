@@ -693,6 +693,14 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
 void IResearchLink::afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) {
   auto lock = _asyncSelf->lock();  // '_dataStore' can be asynchronously modified
 
+  bool ok{false};
+  auto computeMetrics = irs::make_finally([&]() noexcept {
+    // We don't measure time because we believe that it should tend to zero
+    if (!ok && _numFailedCommits != nullptr) {
+      _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
+    }
+  });
+
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -753,6 +761,8 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx
     // update reader
     _dataStore._reader = reader;
 
+    _linkStats->store(statsUnsafe());
+
     auto subscription = std::atomic_load(&_flushSubscription);
 
     if (subscription) {
@@ -760,6 +770,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx
 
       impl.tick(_lastCommittedTick);
     }
+    ok = true;
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
