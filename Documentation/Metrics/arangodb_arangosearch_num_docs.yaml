@@ -4,7 +4,7 @@ help: |
   Number of documents for current snapshot.
 unit: number
 type: gauge
-category: Disk
+category: ArangoSearch
 complexity: advanced
 exposedBy:
   - dbserver
