@@ -21,8 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCKS_LOG_LEVEL_CHANGER_H
-#define ARANGODB_TESTS_MOCKS_LOG_LEVEL_CHANGER_H 1
+#pragma once
 
 #include "Logger/LogLevel.h"
 #include "Logger/LogTopic.h"
@@ -55,5 +54,3 @@ class IResearchLogSuppressor {
 
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

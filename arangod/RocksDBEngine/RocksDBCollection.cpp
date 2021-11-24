@@ -964,7 +964,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       if (ps.IsPinned()) {
         buffer->assign(ps.data(), ps.size());
       } // else value is already assigned
-      ret = true;;
+      ret = true;
     }
   }
 

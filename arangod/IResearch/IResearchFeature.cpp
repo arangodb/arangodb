@@ -364,7 +364,7 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
                   LOG_TOPIC("50ace", WARN, arangodb::iresearch::TOPIC)
                     << "Unable to store updated link information on upgrade for collection '"
                     << clusterCollectionName << "' for link " << indexPtr->id().id()
-                    << ": " << res.errorMessage();;
+                    << ": " << res.errorMessage();
                 }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               } else if (selector.engineName() != "Mock") { // for unit tests just ignore write to storage
