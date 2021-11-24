@@ -77,7 +77,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
 
   
   bool hasCoveringIterator() const override {
-    return !_meta._storedValues.empty() || !_meta._sort.empty();
+    return !meta()._storedValues.empty() || !meta()._sort.empty();
   }
 
   Result drop() override;
@@ -126,7 +126,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
     return IResearchDataStore::insert<InvertedIndexFieldIterator, 
-                                      InvertedIndexFieldMeta>(trx, documentId, doc, _meta);
+                                      InvertedIndexFieldMeta>(trx, documentId, doc, meta());
   }
 
   Result remove(transaction::Methods& trx,

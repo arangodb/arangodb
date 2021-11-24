@@ -214,6 +214,15 @@ class IResearchInvertedIndex  : public IResearchDataStore {
   aql::AstNode* specializeCondition(aql::AstNode* node,
                                     aql::Variable const* reference) const;
 
+  InvertedIndexFieldMeta const& meta() const noexcept {
+    return _meta;
+  }
+
+ protected:
+
+  void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
+
+ private:
   InvertedIndexFieldMeta _meta;
 };
 } // namespace iresearch

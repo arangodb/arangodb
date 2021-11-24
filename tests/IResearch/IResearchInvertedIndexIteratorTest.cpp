@@ -162,7 +162,7 @@ class IResearchInvertedIndexIteratorTestBase
          auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator, 
                                    arangodb::iresearch::InvertedIndexFieldMeta>(
                                       trx, doc->first,
-                                      doc->second->slice(), _index->_meta).ok();
+                                      doc->second->slice(), _index->meta()).ok();
          EXPECT_TRUE(res);
          ++doc;
       }
@@ -178,7 +178,7 @@ class IResearchInvertedIndexIteratorTestBase
       // MSVC fails to compile if EXPECT_TRUE  is called directly
       auto res = _index->insert<arangodb::iresearch::InvertedIndexFieldIterator,
                                 arangodb::iresearch::InvertedIndexFieldMeta>(
-                    trx, doc->first, doc->second->slice(), _index->_meta).ok();
+                    trx, doc->first, doc->second->slice(), _index->meta()).ok();
       EXPECT_TRUE(res);
       ++doc;
     }

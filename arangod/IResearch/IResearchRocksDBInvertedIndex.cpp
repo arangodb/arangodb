@@ -187,9 +187,9 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(velocypack::Builder& norm
 }
 
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
-    IndexId id, LogicalCollection& collection, uint64_t objectId, std::string const& name, InvertedIndexFieldMeta && meta)
-    : IResearchInvertedIndex(id, collection, std::move(meta)),
-      RocksDBIndex(id, collection, name, IResearchInvertedIndex::fields(_meta), false, true,
+    IndexId id, LogicalCollection& collection, uint64_t objectId, std::string const& name, InvertedIndexFieldMeta && m)
+    : IResearchInvertedIndex(id, collection, std::move(m)),
+      RocksDBIndex(id, collection, name, IResearchInvertedIndex::fields(meta()), false, true,
                    RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid), objectId, false) {}
 
 IResearchRocksDBInvertedIndex::~IResearchRocksDBInvertedIndex() {

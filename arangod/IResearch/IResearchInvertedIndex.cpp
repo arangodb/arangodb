@@ -26,6 +26,7 @@
 #include "AqlHelper.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Projections.h"
+#include "Aql/QueryCache.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
@@ -89,40 +90,157 @@ inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
   return reader ? reader->iterator() : nullptr;
 }
 
+/// @brief  Struct represents value of a Projections[i]
+///         After the document id has beend found "get" method
+///         could be used to get Slice for the Projections
+struct CoveringValue {
+  explicit CoveringValue(irs::string_ref col) : _column(col) {}
+
+  CoveringValue(CoveringValue&& other) noexcept : _column(other._column) {}
+
+  void reset(irs::sub_reader const& rdr) {
+    itr.reset();
+    value = &NoPayload;
+    // FIXME: this is cheap. Keep it here?
+    auto extraValuesReader = _column.empty() ? rdr.sort() : rdr.column_reader(_column);
+    // FIXME: this is expensive - move it to get and do lazily?
+    if (ADB_LIKELY(extraValuesReader)) {
+      itr = extraValuesReader->iterator();
+      TRI_ASSERT(itr);
+      if (ADB_LIKELY(itr)) {
+        value = irs::get<irs::payload>(*itr);
+        TRI_ASSERT(value);
+        if (ADB_UNLIKELY(!value)) {
+          value = &NoPayload;
+        }
+      }
+    }
+  }
+
+  VPackSlice get(irs::doc_id_t doc, size_t index) {
+    if (itr && doc == itr->seek(doc)) {
+      size_t i = 0;
+      auto const totalSize = value->value.size();
+      if (index == 0 && totalSize == 0) {
+        // one empty field optimization
+        return VPackSlice::nullSlice();
+      }
+      TRI_ASSERT(totalSize > 0);
+      size_t size = 0;
+      VPackSlice slice(value->value.c_str());
+      TRI_ASSERT(slice.byteSize() <= totalSize);
+      while (i < index) {
+        if (ADB_LIKELY(size < totalSize)) {
+          size += slice.byteSize();
+          TRI_ASSERT(size <= totalSize);
+          if (ADB_UNLIKELY(size > totalSize)) {
+            slice = VPackSlice::noneSlice();
+            break;
+          }
+          slice = VPackSlice{slice.end()};
+          ++i;
+        } else {
+          slice = VPackSlice::noneSlice();
+          break;
+        }
+      }
+      return slice;
+    }
+    return VPackSlice::noneSlice();
+  }
+
+  irs::doc_iterator::ptr itr;
+  irs::string_ref _column;
+  const irs::payload* value{};
+};
+
+/// @brief Represents virtual "vector" of stored values in the irsesearch index
+class CoveringVector final : public IndexIterator::CoveringData {
+ public:
+  explicit CoveringVector(InvertedIndexFieldMeta const& meta) {
+    size_t fields{meta._sort.fields().size()};
+    if (!meta._sort.empty()) {
+      _coverage.emplace_back(fields, CoveringValue(irs::string_ref::EMPTY));
+    }
+    for (auto const& column : meta._storedValues.columns()) {
+      fields += column.fields.size();
+      _coverage.emplace_back(fields, CoveringValue(column.name));
+    }
+    _length = fields;
+  }
+
+  void reset(irs::sub_reader const& rdr) {
+    std::for_each(_coverage.begin(), _coverage.end(),
+                  [&rdr](decltype(_coverage)::value_type& v) {
+                    v.second.reset(rdr);
+                  });
+  }
+
+  void seek(irs::doc_id_t doc) { _doc = doc; }
+
+  VPackSlice at(size_t i) override { return get(i); }
+
+  bool isArray() const noexcept override { return true; }
+
+  bool empty() const { return _coverage.empty(); }
+
+  velocypack::ValueLength length() const override { return _length; }
+
+ private:
+  VPackSlice get(size_t i) {
+    TRI_ASSERT(irs::doc_limits::valid(_doc));
+    size_t column{0};
+    size_t prev{0};
+    // FIXME: check for the performance bottleneck!
+    while (column < _coverage.size() && _coverage[column].first <= i) {
+      prev = _coverage[column].first;
+      ++column;
+    }
+    if (column < _coverage.size()) {
+      TRI_ASSERT(i >= prev);
+      return _coverage[column].second.get(_doc, i - prev);
+    }
+    return VPackSlice::noneSlice();
+  }
+  std::vector<std::pair<size_t, CoveringValue>> _coverage;
+  irs::doc_id_t _doc{irs::doc_limits::invalid()};
+  velocypack::ValueLength _length{0};
+};
+
 class IResearchSnapshotState final : public TransactionState::Cookie {
  public:
   IResearchDataStore::Snapshot snapshot;
   std::map<aql::AstNode const*, proxy_query::proxy_cache> _immutablePartCache;
 };
 
-class IResearchInvertedIndexIterator final : public IndexIterator  {
+class IResearchInvertedIndexIteratorBase : public IndexIterator  {
  public:
-  IResearchInvertedIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                                 aql::AstNode const& condition, IResearchInvertedIndex* index,
-                                 aql::Variable const* variable, int64_t mutableConditionIdx,
-                                 std::string_view extraFieldName)
-    : IndexIterator(collection, trx, ReadOwnWrites::no), _index(index),
-      _variable(variable), _mutableConditionIdx(mutableConditionIdx),
-      _projections(index->_meta) {
-    resetFilter(condition);
+  IResearchInvertedIndexIteratorBase(LogicalCollection* collection,
+                                     transaction::Methods* trx, aql::AstNode const& condition,
+                                     IResearchInvertedIndex* index,
+                                     aql::Variable const* variable, int64_t mutableConditionIdx,
+                                     std::string_view extraFieldName)
+      : IndexIterator(collection, trx, ReadOwnWrites::no),
+        _index(index),
+        _variable(variable),
+        _mutableConditionIdx(mutableConditionIdx) {
     if (!extraFieldName.empty()) {
       TRI_ASSERT(arangodb::StaticStrings::FromString == extraFieldName ||
                  arangodb::StaticStrings::ToString == extraFieldName);
-      auto columnSize = index->_meta._sort.fields().size();
-      // extra is expected to be the _from/_to attribute. So don't bother with the full
-      // path inspection
+      auto columnSize = index->meta()._sort.fields().size();
+      // extra is expected to be the _from/_to attribute. So don't bother with
+      // the full path inspection
       for (size_t i = 0; i < columnSize; ++i) {
-        if (index->_meta._sort.fields()[i].size() == 1 &&
-            index->_meta._sort.fields()[i].front().name == extraFieldName) {
+        if (index->meta()._sort.fields()[i].size() == 1 &&
+            index->meta()._sort.fields()[i].front().name == extraFieldName) {
           _extraIndex = static_cast<int64_t>(i);
           break;
         }
       }
-      if (_extraIndex < 0) { // try to find in other stored
-        for (size_t columnIndex = 0; 
-             columnIndex < index->_meta._storedValues.columns().size();
-             ++columnIndex) {
-          auto const& column = index->_meta._storedValues.columns()[columnIndex];
+      if (_extraIndex < 0) {  // try to find in other stored
+        for (size_t columnIndex = 0;
+             columnIndex < index->meta()._storedValues.columns().size(); ++columnIndex) {
+          auto const& column = index->meta()._storedValues.columns()[columnIndex];
           auto const size = column.fields.size();
           for (size_t i = 0; i < size; ++i) {
             if (column.fields[i].second.size() == 1 &&
@@ -138,6 +256,24 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
         }
       }
     }
+  }
+ protected:
+  IResearchInvertedIndex* _index;
+  aql::Variable const* _variable;
+  int64_t _mutableConditionIdx;
+  int64_t _extraIndex{-1};
+};
+
+class IResearchInvertedIndexIterator final : public IResearchInvertedIndexIteratorBase  {
+ public:
+  IResearchInvertedIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                 aql::AstNode const& condition, IResearchInvertedIndex* index,
+                                 aql::Variable const* variable, int64_t mutableConditionIdx,
+                                 std::string_view extraFieldName)
+      : IResearchInvertedIndexIteratorBase(collection, trx, condition, index, variable,
+                                           mutableConditionIdx, extraFieldName),
+        _projections(index->meta()) {
+    resetFilter(condition);
   }
 
   char const* typeName() const override { return "inverted-index-iterator"; }
@@ -275,7 +411,7 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
       }
       ctx->snapshot = _index->snapshot();
     }
-    _reader =  &static_cast<irs::directory_reader const&>(ctx->snapshot);
+    _reader =  &ctx->snapshot.getDirectoryReader();
     QueryContext const queryCtx = { _trx, nullptr, nullptr,
                                     nullptr, _reader, _variable};
 
@@ -370,135 +506,6 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
 
  private:
 
-  /// @brief  Struct represents value of a Projections[i]
-  ///         After the document id has beend found "get" method
-  ///         could be used to get Slice for the Projections
-  struct CoveringValue {
-    explicit CoveringValue(irs::string_ref col)
-      : _column(col) {}
-
-    CoveringValue(CoveringValue&& other) noexcept : _column(other._column) {
-
-    }
-
-    void reset(irs::sub_reader const& rdr) {
-      itr.reset();
-      value = &NoPayload;
-      // FIXME: this is cheap. Keep it here?
-      auto extraValuesReader = _column.empty() ? rdr.sort() : rdr.column_reader(_column);
-      // FIXME: this is expensive - move it to get and do lazily?
-      if (ADB_LIKELY(extraValuesReader)) {
-        itr = extraValuesReader->iterator();
-        TRI_ASSERT(itr);
-        if (ADB_LIKELY(itr)) {
-          value = irs::get<irs::payload>(*itr);
-          TRI_ASSERT(value);
-          if (ADB_UNLIKELY(!value)) {
-            value = &NoPayload;
-          }
-        } 
-      } 
-    }
-
-    VPackSlice get(irs::doc_id_t doc, size_t index) {
-      if (itr && doc == itr->seek(doc)) {
-        size_t i = 0;
-        auto const totalSize = value->value.size();
-        if (index == 0 && totalSize == 0) {
-          // one empty field optimization
-          return VPackSlice::nullSlice();
-        }
-        TRI_ASSERT(totalSize > 0);
-        size_t size = 0;
-        VPackSlice slice(value->value.c_str());
-        TRI_ASSERT(slice.byteSize() <= totalSize);
-        while (i < index) {
-          if (ADB_LIKELY(size < totalSize)) {
-            size += slice.byteSize();
-            TRI_ASSERT(size <= totalSize);
-            if (ADB_UNLIKELY(size > totalSize)) {
-              slice = VPackSlice::noneSlice();
-              break;
-            }
-            slice = VPackSlice{slice.end()};
-            ++i;
-          } else {
-            slice = VPackSlice::noneSlice();
-            break;
-          }
-        }
-        return slice;
-      }
-      return VPackSlice::noneSlice();
-    }
-
-    irs::doc_iterator::ptr itr;
-    irs::string_ref _column;
-    const irs::payload* value{};
-  };
-
-  class CoveringVector final : public IndexIterator::CoveringData {
-   public:
-    explicit CoveringVector(InvertedIndexFieldMeta const& meta) {
-      size_t fields{meta._sort.fields().size()};
-      if (!meta._sort.empty()) {
-        _coverage.emplace_back(fields, CoveringValue(irs::string_ref::EMPTY));
-      }
-      for (auto const& column : meta._storedValues.columns()) {
-        fields += column.fields.size();
-        _coverage.emplace_back(fields, CoveringValue(column.name));
-      }
-      _length = fields;
-    }
-
-    void reset(irs::sub_reader const& rdr) {
-      std::for_each(_coverage.begin(), _coverage.end(),
-                    [&rdr](decltype(_coverage)::value_type& v) {
-                      v.second.reset(rdr);
-                    });
-    }
-
-    void seek(irs::doc_id_t doc) {
-      _doc = doc;
-    }
-
-    VPackSlice at(size_t i) override {
-      return get(i);
-    }
-
-    bool isArray() const noexcept override {
-      return true;
-    }
-
-    bool empty() const {
-      return _coverage.empty();
-    }
-
-    velocypack::ValueLength length() const override {
-      return _length;
-    }
-
-   private:
-    VPackSlice get(size_t i) {
-      TRI_ASSERT(irs::doc_limits::valid(_doc));
-      size_t column{0};
-      size_t prev{0};
-      // FIXME: check for the performance bottleneck!
-      while (column < _coverage.size() && _coverage[column].first <= i) {
-        prev = _coverage[column].first;
-        ++column;
-      }
-      if (column < _coverage.size()) {
-        TRI_ASSERT(i >= prev);
-        return _coverage[column].second.get(_doc, i - prev);
-      }
-      return VPackSlice::noneSlice();
-    }
-    std::vector<std::pair<size_t, CoveringValue>> _coverage;
-    irs::doc_id_t _doc{irs::doc_limits::invalid()};
-    velocypack::ValueLength _length{0};
-  };
-
   // FIXME:!! check order
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
@@ -506,14 +513,9 @@ class IResearchInvertedIndexIterator final : public IndexIterator  {
   irs::document const* _doc{};
   const irs::payload* _pkValue{};
   irs::index_reader const* _reader{0};
-  IResearchInvertedIndex* _index;
-  aql::Variable const* _variable;
   size_t _readerOffset{0};
-  int64_t _mutableConditionIdx;
   irs::order::prepared _order;
-
   CoveringVector _projections;
-  int64_t _extraIndex{-1};
 };
 } // namespace
 
@@ -800,6 +802,11 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   }
   return filterCosts;
 }
+
+void IResearchInvertedIndex::invalidateQueryCache(TRI_vocbase_t* vocbase) {
+  aql::QueryCache::instance()->invalidate(vocbase, collection().guid());
+}
+
 
 aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,
                                                           aql::Variable const* reference) const {
