@@ -20,8 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MOCKS_PREPARED_RESPONSE_CONNECTION_POOL
-#define ARANGODB_MOCKS_PREPARED_RESPONSE_CONNECTION_POOL 1
+#pragma once
 
 #include "Network/ConnectionPool.h"
 #include "Rest/CommonDefines.h"
@@ -88,5 +87,3 @@ class PreparedResponseConnectionPool final : public arangodb::network::Connectio
 
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

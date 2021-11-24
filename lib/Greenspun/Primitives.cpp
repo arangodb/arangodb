@@ -317,7 +317,7 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
 
 EvalResult Prim_Report(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   result.add(VPackSlice::nullSlice());
-  return ctx.print(paramsToString(params));;
+  return ctx.print(paramsToString(params));
 }
 
 EvalResult Machine::print(const std::string& msg) const {

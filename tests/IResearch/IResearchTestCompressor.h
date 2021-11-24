@@ -21,8 +21,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__TEST_COMPRESSOR_H
-#define ARANGODB_IRESEARCH__TEST_COMPRESSOR_H 1
+#pragma once
 
 #include "utils/compression.hpp"
 #include "utils/ctr_encryption.hpp"
@@ -139,4 +138,3 @@ private:
 } // mock
 
 } // iresearch
-#endif //ARANGODB_IRESEARCH__TEST_COMPRESSOR_H
