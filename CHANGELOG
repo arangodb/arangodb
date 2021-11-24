@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fix agency supervision to not spuriously bring back indexes that were failed
+* Fix agency supervision to not spuriously bring back indexes that failed
   upon their initial creation. When an index creation failed, e.g. due to a 
   unique constraint violation, and all DB server shards of the collection had
   reported back the index creation status (success or failure), there was a 
