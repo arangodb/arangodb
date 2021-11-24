@@ -781,7 +781,10 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
 
   if (hasSmartJoinAttribute()) {
-    result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
+    result.add(StaticStrings::SmartJoinAttribute, VPackValue(smartJoinAttribute()));
+  }
+  if (hasSmartGraphAttribute()) {
+    result.add(StaticStrings::GraphSmartGraphAttribute, VPackValue(smartGraphAttribute()));
   }
 
   if (!forPersistence) {
