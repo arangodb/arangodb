@@ -190,7 +190,7 @@ std::pair<bool, std::string> RocksDBShaCalculatorThread::shaCalcFile(std::string
 void RocksDBShaCalculatorThread::deleteObsoleteFiles() {
   std::string const dirname = getRocksDBPath();
   std::string scratch;
-    
+
   MUTEX_LOCKER(mutexLock, _pendingMutex);
 
   while (!_pendingDeletions.empty()) {
@@ -198,7 +198,7 @@ void RocksDBShaCalculatorThread::deleteObsoleteFiles() {
     // ".sst" is 4 characters
     TRI_ASSERT(isSstFilename(it));
     TRI_ASSERT(it.size() > 4);
-      
+
     scratch.clear();
 
     auto it2 = _calculatedHashes.find(TRI_Basename(it));
@@ -210,10 +210,10 @@ void RocksDBShaCalculatorThread::deleteObsoleteFiles() {
       scratch.append(".sha.");
       scratch.append((*it2).second);
       scratch.append(".hash");
-  
+
       _calculatedHashes.erase(it2);
     }
-    
+
     _pendingDeletions.erase(_pendingDeletions.begin());
 
     if (!scratch.empty()) {
@@ -345,6 +345,7 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
 RocksDBShaCalculator::RocksDBShaCalculator(application_features::ApplicationServer& server,
                                            bool startThread)
     : _shaThread(server, "Sha256Thread") {
+  startThread = false;
   if (startThread) {
     _shaThread.start(&_threadDone);
   }

@@ -394,8 +394,6 @@ class RocksDBEngine final : public StorageEngine {
   static arangodb::Result registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper);
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& recoveryHelpers();
 
-  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
-
  private:
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
@@ -540,10 +538,6 @@ class RocksDBEngine final : public StorageEngine {
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _throttleListener;
-
-  // optional code to notice when rocksdb creates or deletes .ssh files.  Currently
-  //  uses that input to create or delete parallel sha256 files
-  std::shared_ptr<RocksDBShaCalculator> _shaListener;
   
   /// @brief background error listener. will be invoked by rocksdb in case of
   /// a non-recoverable error
