@@ -40,6 +40,7 @@
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
+#include <index/heap_iterator.hpp>
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
@@ -95,7 +96,6 @@ inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
 ///         could be used to get Slice for the Projections
 struct CoveringValue {
   explicit CoveringValue(irs::string_ref col) : _column(col) {}
-
   CoveringValue(CoveringValue&& other) noexcept : _column(other._column) {}
 
   void reset(irs::sub_reader const& rdr) {
@@ -256,8 +256,150 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator  {
         }
       }
     }
+    resetFilter(condition);
   }
+
+  bool hasExtra() const override {
+    return _extraIndex >= 0;
+  }
+
+  bool canRearm() const override {
+    return _mutableConditionIdx != -1;
+  }
+
+  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const*,
+                 IndexIteratorOptions const&) override {
+    TRI_ASSERT(node);
+    if (ADB_LIKELY(node)) {
+      reset();
+      resetFilter(*node);
+      return true;
+    }
+    return false;
+  }
+
  protected:
+  void resetFilter(arangodb::aql::AstNode const& condition) {
+    if (!_trx->state()) {
+      LOG_TOPIC("a9ccd", WARN, arangodb::iresearch::TOPIC)
+          << "failed to get transaction state while creating inverted index "
+             "snapshot";
+
+      return;
+    }
+    auto& state = *(_trx->state());
+
+    // TODO FIXME find a better way to look up a State
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* ctx = dynamic_cast<IResearchSnapshotState*>(state.cookie(_index));
+#else
+    auto* ctx = static_cast<IResearchSnapshotState*>(state.cookie(_index));
+#endif
+    if (!ctx) {
+      auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
+      ctx = ptr.get();
+      state.cookie(_index, std::move(ptr));
+
+      if (!ctx) {
+        LOG_TOPIC("d7061", WARN, arangodb::iresearch::TOPIC)
+            << "failed to store state into a TransactionState for snapshot of "
+               "inverted index ";
+        return;
+      }
+      ctx->snapshot = _index->snapshot();
+    }
+    _reader = &ctx->snapshot.getDirectoryReader();
+    QueryContext const queryCtx = {_trx,    nullptr, nullptr,
+                                   nullptr, _reader, _variable};
+
+    irs::Or root;
+    if (_mutableConditionIdx == -1 ||
+        (condition.type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
+         condition.type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
+      auto rv = FilterFactory::filter(&root, queryCtx, condition, false);
+      if (rv.fail()) {
+        arangodb::velocypack::Builder builder;
+        condition.toVelocyPack(builder, true);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            rv.errorNumber(), basics::StringUtils::concatT(
+                                  "failed to build filter while querying "
+                                  "inverted index, query '",
+                                  builder.toJson(), "': ", rv.errorMessage()));
+      }
+    } else {
+      TRI_ASSERT(static_cast<int64_t>(condition.numMembers()) > _mutableConditionIdx);
+      if (ADB_UNLIKELY(static_cast<int64_t>(condition.numMembers()) <= _mutableConditionIdx)) {
+        arangodb::velocypack::Builder builder;
+        condition.toVelocyPack(builder, true);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
+            basics::StringUtils::concatT(
+                "Invalid condition members count while querying "
+                "inverted index, query '",
+                builder.toJson(), "'"));
+      }
+      irs::boolean_filter* conditionJoiner{nullptr};
+      std::unique_ptr<irs::boolean_filter> immutableRoot;
+      if (condition.type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
+        conditionJoiner = &root.add<irs::And>();
+        immutableRoot = std::make_unique<irs::And>();
+      } else {
+        TRI_ASSERT((condition.type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR));
+        conditionJoiner = &root.add<irs::Or>();
+        immutableRoot = std::make_unique<irs::Or>();
+      }
+      auto& mutable_root = conditionJoiner->add<irs::Or>();
+      auto rv = FilterFactory::filter(&mutable_root, queryCtx,
+                                      *condition.getMember(_mutableConditionIdx), false);
+      if (rv.fail()) {
+        arangodb::velocypack::Builder builder;
+        condition.toVelocyPack(builder, true);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            rv.errorNumber(),
+            basics::StringUtils::concatT(
+                "failed to build mutable filter part while querying "
+                "inverted index, query '",
+                builder.toJson(), "': ", rv.errorMessage()));
+      }
+      auto const conditionSize = static_cast<int64_t>(condition.numMembers());
+      for (int64_t i = 0; i < conditionSize; ++i) {
+        if (i != _mutableConditionIdx) {
+          auto& tmp_root = immutableRoot->add<irs::Or>();
+          auto rv = FilterFactory::filter(&tmp_root, queryCtx,
+                                          *condition.getMember(i), false);
+          if (rv.fail()) {
+            arangodb::velocypack::Builder builder;
+            condition.toVelocyPack(builder, true);
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                rv.errorNumber(),
+                basics::StringUtils::concatT(
+                    "failed to build immutable filter part while querying "
+                    "inverted index, query '",
+                    builder.toJson(), "': ", rv.errorMessage()));
+          }
+        }
+      }
+      conditionJoiner->add<proxy_filter>()
+          .add(std::move(immutableRoot))
+          .set_cache(&(ctx->_immutablePartCache[&condition]));
+    }
+    _filter = root.prepare(*_reader, _order, irs::no_boost(), nullptr);
+    TRI_ASSERT(_filter);
+    if (ADB_UNLIKELY(!_filter)) {
+      arangodb::velocypack::Builder builder;
+      condition.toVelocyPack(builder, true);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL_AQL,
+          basics::StringUtils::concatT(
+              "Failed to prepare the filter while querying "
+              "inverted index, query '",
+              builder.toJson(), "'"));
+    }
+  }
+
+  irs::filter::prepared::ptr _filter;
+  irs::order::prepared _order;
+  irs::index_reader const* _reader{0};
   IResearchInvertedIndex* _index;
   aql::Variable const* _variable;
   int64_t _mutableConditionIdx;
@@ -272,13 +414,9 @@ class IResearchInvertedIndexIterator final : public IResearchInvertedIndexIterat
                                  std::string_view extraFieldName)
       : IResearchInvertedIndexIteratorBase(collection, trx, condition, index, variable,
                                            mutableConditionIdx, extraFieldName),
-        _projections(index->meta()) {
-    resetFilter(condition);
-  }
+        _projections(index->meta()) {}
 
   char const* typeName() const override { return "inverted-index-iterator"; }
-
-  bool hasExtra() const override { return _extraIndex >=0; }
 
   bool hasCovering() const { return !_projections.empty(); }
 
@@ -368,136 +506,6 @@ class IResearchInvertedIndexIterator final : public IResearchInvertedIndexIterat
     return limit == 0;
   }
 
-  bool canRearm() const override {
-    return _mutableConditionIdx != -1;
-  }
-
-  bool rearmImpl(arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const*,
-    IndexIteratorOptions const&) override {
-    reset();
-    TRI_ASSERT(node);
-    resetFilter(*node);
-    return true;
-  }
-
-  // FIXME: support sorting!
-  void resetFilter(arangodb::aql::AstNode const& condition) {
-    if (!_trx->state()) {
-      LOG_TOPIC("a9ccd", WARN, arangodb::iresearch::TOPIC)
-        << "failed to get transaction state while creating inverted index "
-           "snapshot";
-
-      return;
-    }
-    auto& state = *(_trx->state());
-
-    // TODO FIXME find a better way to look up a State
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* ctx = dynamic_cast<IResearchSnapshotState*>(state.cookie(_index));
-#else
-    auto* ctx = static_cast<IResearchSnapshotState*>(state.cookie(_index));
-#endif
-    if (!ctx) {
-      auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
-      ctx = ptr.get();
-      state.cookie(_index, std::move(ptr));
-
-      if (!ctx) {
-        LOG_TOPIC("d7061", WARN, arangodb::iresearch::TOPIC)
-            << "failed to store state into a TransactionState for snapshot of "
-               "inverted index ";
-        return;
-      }
-      ctx->snapshot = _index->snapshot();
-    }
-    _reader =  &ctx->snapshot.getDirectoryReader();
-    QueryContext const queryCtx = { _trx, nullptr, nullptr,
-                                    nullptr, _reader, _variable};
-
-    irs::Or root;
-    if (_mutableConditionIdx == -1 ||
-          (condition.type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
-           condition.type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
-      auto rv = FilterFactory::filter(&root, queryCtx, condition, false);
-      if (rv.fail()) {
-        arangodb::velocypack::Builder builder;
-        condition.toVelocyPack(builder, true);
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            rv.errorNumber(),
-            basics::StringUtils::concatT("failed to build filter while querying "
-                                 "inverted index, query '",
-                                 builder.toJson(), "': ", rv.errorMessage()));
-      }
-    } else {
-      TRI_ASSERT(static_cast<int64_t>(condition.numMembers()) > _mutableConditionIdx);
-      if (ADB_UNLIKELY(static_cast<int64_t>(condition.numMembers()) <= _mutableConditionIdx)) {
-        arangodb::velocypack::Builder builder;
-        condition.toVelocyPack(builder, true);
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL_AQL, basics::StringUtils::concatT(
-                                  "Invalid condition members count while querying "
-                                  "inverted index, query '",
-                                  builder.toJson(), "'"));
-      }
-      irs::boolean_filter* conditionJoiner{nullptr};
-      std::unique_ptr<irs::boolean_filter> immutableRoot;
-      if (condition.type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
-        conditionJoiner = &root.add<irs::And>();
-        immutableRoot = std::make_unique<irs::And>();
-      } else {
-        TRI_ASSERT((condition.type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR));
-        conditionJoiner = &root.add<irs::Or>();
-        immutableRoot = std::make_unique<irs::Or>();
-      }
-      auto& mutable_root = conditionJoiner->add<irs::Or>();
-      auto rv = FilterFactory::filter(&mutable_root, queryCtx,
-                                      *condition.getMember(_mutableConditionIdx), false);
-      if (rv.fail()) {
-        arangodb::velocypack::Builder builder;
-        condition.toVelocyPack(builder, true);
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            rv.errorNumber(),
-            basics::StringUtils::concatT(
-                "failed to build mutable filter part while querying "
-                "inverted index, query '",
-                builder.toJson(), "': ", rv.errorMessage()));
-      }
-      auto const conditionSize = static_cast<int64_t>(condition.numMembers());
-      for (int64_t i = 0; i < conditionSize; ++i) {
-        if (i != _mutableConditionIdx) {
-          auto& tmp_root = immutableRoot->add<irs::Or>();
-          auto rv = FilterFactory::filter(&tmp_root, queryCtx,
-                                          *condition.getMember(i), false);
-          if (rv.fail()) {
-            arangodb::velocypack::Builder builder;
-            condition.toVelocyPack(builder, true);
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                rv.errorNumber(),
-                basics::StringUtils::concatT(
-                    "failed to build immutable filter part while querying "
-                    "inverted index, query '",
-                    builder.toJson(), "': ", rv.errorMessage()));
-          }
-        }
-      }
-      conditionJoiner->add<proxy_filter>().add(std::move(immutableRoot))
-                       .set_cache(&(ctx->_immutablePartCache[&condition]));
-    }
-    _filter = root.prepare(*_reader, _order, irs::no_boost(), nullptr);
-    TRI_ASSERT(_filter);
-    if (ADB_UNLIKELY(!_filter)) {
-      arangodb::velocypack::Builder builder;
-      condition.toVelocyPack(builder, true);
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL_AQL,
-          basics::StringUtils::concatT(
-              "Failed to prepare the filter while querying "
-              "inverted index, query '",
-              builder.toJson(), "'"));
-    }
-  }
-
   void resetImpl() override {
     _readerOffset = 0;
     _itr.reset();
@@ -505,18 +513,162 @@ class IResearchInvertedIndexIterator final : public IResearchInvertedIndexIterat
   }
 
  private:
-
   // FIXME:!! check order
   irs::doc_iterator::ptr _itr;
   irs::doc_iterator::ptr _pkDocItr;
-  irs::filter::prepared::ptr _filter;
   irs::document const* _doc{};
   const irs::payload* _pkValue{};
-  irs::index_reader const* _reader{0};
   size_t _readerOffset{0};
-  irs::order::prepared _order;
   CoveringVector _projections;
 };
+
+class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexIteratorBase {
+  IResearchInvertedIndexMergeIterator(LogicalCollection* collection,
+                                      transaction::Methods* trx, aql::AstNode const& condition,
+                                      IResearchInvertedIndex* index,
+                                      aql::Variable const* variable, int64_t mutableConditionIdx,
+                                      std::string_view extraFieldName)
+      : IResearchInvertedIndexIteratorBase(collection, trx, condition, index, variable,
+                                           mutableConditionIdx, extraFieldName),
+        _projectionsPrototype(index->meta()),
+    _heap_it({index->meta()._sort, index->meta()._sort.size(), _segments})  {}
+
+  char const* typeName() const override { return "inverted-index-sorted-iterator"; }
+
+  bool hasCovering() const { return !_projectionsPrototype.empty(); }
+
+ protected:
+  void resetImpl() override {
+    _segments.clear();
+    auto const size = _reader->size();
+    _segments.reserve(size);
+    for (size_t i = 0; i < size; ++i) {
+      auto& segment = (*_reader)[i];
+      irs::doc_iterator::ptr it = segment.mask(_filter->execute(segment));
+      TRI_ASSERT(!_projectionsPrototype.empty()); // at least sort column should be here
+      _segments.emplace_back(it, segment, i, _projectionsPrototype);
+    }
+    _heap_it.reset(_segments.size());
+  }
+
+  bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override {
+    if (limit == 0) {
+      TRI_ASSERT(false);  // Someone called with limit == 0. Api broken
+                          // validate that Iterator is in a good shape and hasn't failed
+      return false;
+    }
+    TRI_ASSERT(hasExtra());
+    return nextImplInternal<ExtraCallback, true, false, true>(callback, limit);
+  }
+
+  bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
+    return nextImplInternal<LocalDocumentIdCallback, false, false, true>(callback, limit);
+  }
+
+  bool nextCoveringImpl(CoveringCallback const& callback, size_t limit) override {
+    return nextImplInternal<CoveringCallback, false, true, true>(callback, limit);
+  }
+
+  void skipImpl(uint64_t count, uint64_t& skipped) override {
+    nextImplInternal<decltype(skipped), false, false, false>(skipped, count);
+  }
+
+  template<typename Callback, bool withExtra, bool withCovering, bool produce>
+  bool nextImplInternal(Callback const& callback, size_t limit)  {
+    if (limit == 0 || !_filter) {
+      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+                              // validate that Iterator is in a good shape and hasn't failed
+      TRI_ASSERT(_filter);  // _filter is not initialized (should not happen)
+      return false;
+    }
+    TRI_ASSERT(_reader);
+    while (limit && _heap_it->next()) {
+      auto& segment = _segments[_heap_it.value()];
+      if constexpr (produce) {
+        if (segment.doc->value == segment.pkDocItr->seek(segment.doc->value)) {
+          LocalDocumentId documentId;
+          bool const readSuccess = DocumentPrimaryKey::read(documentId, segment.pkValue->value);
+          if (readSuccess) {
+            if constexpr (withExtra) {
+              TRI_ASSERT(_extraIndex >= 0);
+              segment.projections.seek(segment.doc->value);
+              auto extraSlice = segment.projections.at(_extraIndex);
+              if (!extraSlice.isNone()) {
+                if (callback(documentId, extraSlice)) {
+                  --limit;
+                }
+              }
+            } else if constexpr (withCovering) {
+              segment.projections.seek(segment.doc->value);
+              if (callback(documentId, &segment.projections)) {
+                --limit;
+              }
+            } else {
+              if (callback(documentId)) {
+                --limit;  // count only existing documents
+              }
+            }
+          }
+        }
+      } else {
+        --limit;
+        ++callback;
+      }
+    }
+    return limit == 0;
+  }
+
+ private:
+  struct Segment {
+    Segment(irs::doc_iterator::ptr&& docs,
+            irs::sub_reader const* segment,
+            size_t index,
+            CoveringVector const& prototype)
+      : itr(std::move(docs)),
+        readerOffset(index),
+        projections(prototype) {
+      TRI_ASSERT(segment);
+      projections.reset(*segment);
+      pkDocItr = ::pkColumn(*segment);
+      pkValue = irs::get<irs::payload>(*pkDocItr);
+      if (ADB_UNLIKELY(!pkValue)) {
+        pkValue = &NoPayload;
+      }
+    }
+
+    Segment(Segment const&) = delete;
+    Segment(Segment&&) = default;
+    Segment& operator=(Segment const&) = delete;
+    Segment& operator=(Segment&&) = delete;
+
+    irs::doc_iterator::ptr itr;
+    irs::doc_iterator::ptr pkDocItr;
+    irs::document const* doc{};
+    irs::payload const* pkValue{};
+    size_t readerOffset{0};
+    CoveringVector projections;
+  };
+
+  class MinHeapContext {
+   public:
+    MinHeapContext(IResearchViewSort const& sort, size_t sortBuckets,
+                   std::vector<Segment>& segments) noexcept;
+
+    // advance
+    bool operator()(size_t i) const;
+
+    // compare
+    bool operator()(size_t lhs, size_t rhs) const;
+
+    VPackComparer _less;
+    std::vector<Segment>* _segments;
+  };
+
+  std::vector<Segment> _segments;
+  irs::external_heap_iterator<MinHeapContext> _heap_it;
+  CoveringVector const _projectionsPrototype;
+};
+
 } // namespace
 
 
