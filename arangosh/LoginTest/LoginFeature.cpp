@@ -254,7 +254,7 @@ void LoginFeature::start() {
       return;
     }
 
-    auto result = authHandler.authenticate(slice.get("user").toString(), slice.get("passvoid").toString());
+    auto result = authHandler.authenticate(slice.get("user").toString(), slice.get("password").toString());
  
     VPackBuffer<uint8_t> response;
     VPackBuilder bodyBuilder(response);

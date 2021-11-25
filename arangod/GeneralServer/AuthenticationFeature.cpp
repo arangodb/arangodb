@@ -39,8 +39,8 @@
 #include "RestServer/QueryRegistryFeature.h"
 
 #if USE_ENTERPRISE
-//#include "Enterprise/Ldap/LdapAuthenticationHandler.h"
-//#include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Auth/AuthPipeFeature.h"
+#include "Enterprise/Auth/AuthPipeHandler.h"
 #endif
 
 using namespace arangodb::options;
@@ -63,7 +63,7 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
 #ifdef USE_ENTERPRISE
-//  startsAfter<LdapFeature>();
+  startsAfter<AuthPipeFeature>();
 #endif
 }
 
@@ -182,11 +182,10 @@ void AuthenticationFeature::prepare() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
-#if 0
-    USE_ENTERPRISE
-    if (server().getFeature<LdapFeature>().isEnabled()) {
+#if USE_ENTERPRISE
+    if (server().getFeature<AuthPipeFeature>().isEnabled()) {
       _userManager = std::make_unique<auth::UserManager>(
-          server(), std::make_unique<LdapAuthenticationHandler>(server().getFeature<LdapFeature>()));
+          server(), std::make_unique<PipeAuthenticationHandler>(server().getFeature<AuthPipeFeature>()));
     }
 #endif
     if (_userManager == nullptr) {
