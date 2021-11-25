@@ -964,7 +964,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       if (ps.IsPinned()) {
         buffer->assign(ps.data(), ps.size());
       } // else value is already assigned
-      ret = true;;
+      ret = true;
     }
   }
 
@@ -1282,7 +1282,7 @@ bool RocksDBCollection::hasDocuments() {
   RocksDBEngine& engine =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
-  return rocksutils::hasKeys(engine.db(), bounds, true);
+  return rocksutils::hasKeys(engine.db(), bounds, /*snapshot*/ nullptr, true);
 }
 
 /// @brief return engine-specific figures
@@ -1321,15 +1321,21 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
 
   if (details) {
     // engine-specific stuff here
+    RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
+
     rocksdb::DB* rootDB = db->GetRootDB();
+      
+    // acquire a snapshot
+    rocksdb::Snapshot const* snapshot = db->GetSnapshot();
+     
+    try {
+      builder.add("engine", VPackValue(VPackValueType::Object));
 
-    builder.add("engine", VPackValue(VPackValueType::Object));
+      builder.add("documents",
+                  VPackValue(rocksutils::countKeyRange(
+                      rootDB, RocksDBKeyBounds::CollectionDocuments(objectId()), snapshot, true)));
+      builder.add("indexes", VPackValue(VPackValueType::Array));
 
-    builder.add("documents",
-                VPackValue(rocksutils::countKeyRange(
-                    rootDB, RocksDBKeyBounds::CollectionDocuments(objectId()), true)));
-    builder.add("indexes", VPackValue(VPackValueType::Array));
-    {
       RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
       for (auto it : _indexes) {
         auto type = it->type();
@@ -1347,28 +1353,28 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
         size_t count = 0;
         switch (type) {
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), true);
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::PrimaryIndex(rix->objectId()), snapshot, true);
             break;
           case Index::TRI_IDX_TYPE_GEO_INDEX:
           case Index::TRI_IDX_TYPE_GEO1_INDEX:
           case Index::TRI_IDX_TYPE_GEO2_INDEX:
-            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::GeoIndex(rix->objectId()), true);
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::GeoIndex(rix->objectId()), snapshot, true);
             break;
           case Index::TRI_IDX_TYPE_HASH_INDEX:
           case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
           case Index::TRI_IDX_TYPE_TTL_INDEX:
           case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
             if (it->unique()) {
-              count = rocksutils::countKeyRange(db, RocksDBKeyBounds::UniqueVPackIndex(rix->objectId(), false), true);
+              count = rocksutils::countKeyRange(db, RocksDBKeyBounds::UniqueVPackIndex(rix->objectId(), false), snapshot, true);
             } else {
-              count = rocksutils::countKeyRange(db, RocksDBKeyBounds::VPackIndex(rix->objectId(), false), true);
+              count = rocksutils::countKeyRange(db, RocksDBKeyBounds::VPackIndex(rix->objectId(), false), snapshot, true);
             }
             break;
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
-            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), false);
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), snapshot, false);
             break;
           case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
-            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), true);
+            count = rocksutils::countKeyRange(db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), snapshot, true);
             break;
           default:
             // we should not get here
@@ -1378,6 +1384,12 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
         builder.add("count", VPackValue(count));
         builder.close();
       }
+        
+      db->ReleaseSnapshot(snapshot);
+    } catch (...) {
+      // always free the snapshot
+      db->ReleaseSnapshot(snapshot);
+      throw;
     }
     builder.close(); // "indexes" array
     builder.close(); // "engine" object

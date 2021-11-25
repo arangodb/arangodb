@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_IRESEARCH__COMMON_H
-#define TESTS_IRESEARCH__COMMON_H 1
+#pragma once
 
 #include "Aql/AstNode.h"
 #include "Aql/Query.h"
@@ -226,5 +225,3 @@ arangodb::CreateDatabaseInfo testDBInfo(arangodb::application_features::Applicat
 arangodb::CreateDatabaseInfo unknownDBInfo(
     arangodb::application_features::ApplicationServer& server,
     std::string const& name = "unknownVocbase", uint64_t id = 3);
-
-#endif

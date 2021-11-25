@@ -4568,20 +4568,6 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
             }
             // intentionally falls through
           }
-#if 0
-          // TODO: this is already prepared to push subqueries on the DB servers.
-          // However, the ExecutionEngine's instanciator cannot yet handle subqueries
-          // on DB servers. Once it can do this, this part can be finished
-          else if (inspectNode->getType() == EN::SUBQUERY) {
-            // check if the subquery can be executed on a DB server safely
-            SubqueryNode* s = ExecutionNode::castTo<SubqueryNode*>(inspectNode);
-            if (!s->isDeterministic() || s->mayAccessCollections()) {
-              stopSearching = true;
-              break;
-            }
-            // intentionally falls through
-          }
-#endif
           // no special handling for filters here
 
           TRI_ASSERT(inspectNode->getType() == EN::SUBQUERY ||

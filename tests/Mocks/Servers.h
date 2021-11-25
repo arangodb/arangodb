@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCKS_SERVERS_H
-#define ARANGODB_TESTS_MOCKS_SERVERS_H 1
+#pragma once
 
 #include "IResearch/AgencyMock.h"
 #include "StorageEngineMock.h"
@@ -288,5 +287,3 @@ class MockCoordinator : public MockClusterServer {
 }  // namespace mocks
 }  // namespace tests
 }  // namespace arangodb
-
-#endif
