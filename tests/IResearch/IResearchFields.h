@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TESTS_IRESEARCH__IRESEARCH_FIELDS_H
-#define ARANGOD_TESTS_IRESEARCH__IRESEARCH_FIELDS_H 1
+#pragma once
 
 #include "analysis/token_streams.hpp"
 #include "store/store_utils.hpp"
@@ -100,5 +99,3 @@ struct GeoField final {
 
 } // arangodb
 } // tests
-
-#endif // ARANGOD_TESTS_IRESEARCH__IRESEARCH_FIELDS_H

@@ -1,0 +1,49 @@
+[/==============================================================================
+    Copyright (C) 2001-2015 Joel de Guzman
+    Copyright (C) 2001-2011 Hartmut Kaiser
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[section Number List - stuffing numbers into a std::vector]
+
+This sample demonstrates a parser for a comma separated list of numbers and
+using a semantic action to collect the numbers into a `std::vector`.
+
+    template <typename Iterator>
+    bool parse_numbers(Iterator first, Iterator last, std::vector<double>& v)
+    {
+        using x3::double_;
+        using x3::phrase_parse;
+        using x3::_attr;
+        using ascii::space;
+
+        auto push_back = [&](auto& ctx){ v.push_back(_attr(ctx)); };
+
+        bool r = phrase_parse(first, last,
+
+            //  Begin grammar
+            (
+                double_[push_back]
+                    >> *(',' >> double_[push_back])
+            )
+            ,
+            //  End grammar
+
+            space);
+
+        if (first != last) // fail if we did not get a full match
+            return false;
+        return r;
+    }
+
+The full cpp file for this example can be found here:
+[@../../../example/x3/num_list/num_list2.cpp num_list2.cpp]
+
+This, again, is the same parser as before. This time, instead of summing up the
+numbers, we stuff them in a `std::vector`.
+
+    [&](auto& ctx){ v.push_back(_attr(ctx)); }
+
+[endsect]

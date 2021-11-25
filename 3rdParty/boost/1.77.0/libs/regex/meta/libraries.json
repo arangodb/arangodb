@@ -1,0 +1,18 @@
+{
+    "key": "regex",
+    "name": "Regex",
+    "authors": [
+        "John Maddock"
+    ],
+    "description": "Regular expression library.",
+    "std": [
+        "tr1"
+    ],
+    "category": [
+        "String"
+    ],
+    "maintainers": [
+        "John Maddock <john -at- johnmaddock.co.uk>"
+    ],
+    "cxxstd": "11"
+}

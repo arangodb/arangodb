@@ -1,0 +1,235 @@
+[/
+    Copyright (c) 2019 Vinnie Falco (vinnie.falco@gmail.com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/cppalliance/json
+]
+
+[/-----------------------------------------------------------------------------]
+
+[section Parsing]
+
+Parsing is the process where a serialized JSON is validated
+and decomposed into elements. The library provides these
+functions and types to assist with parsing:
+
+[table Parsing Functions and Types
+[ [Name] [Description ]]
+[
+    [__basic_parser__]
+    [
+        A SAX push parser implementation which converts a
+        serialized JSON into a series of member function calls
+        to a user provided handler. This allows custom behaviors
+        to be implemented for representing the document in memory.
+
+    ]
+][
+    [__parse_options__]
+    [
+        A structure used to select which extensions are
+        enabled during parsing.
+    ]
+][
+    [__parse__]
+    [
+        Parse a string containing a complete serialized JSON, and
+        return a __value__.
+    ]
+][
+    [__parser__]
+    [
+        A stateful DOM parser object which may be used
+        to efficiently parse a series of JSONs each
+        contained in a single contiguous character buffer,
+        returning each result as a __value__.
+    ]
+][
+    [__stream_parser__]
+    [
+        A stateful DOM parser object which may be used to
+        efficiently parse a series of JSONs incrementally,
+        returning each result as a __value__.
+    ]
+][
+    [__value_stack__]
+    [
+        A low level building block used for efficiently building
+        a __value__. The parsers use this internally, and users
+        may use it to adapt foreign parsers to produce this
+        library's containers.
+    ]
+]]
+
+The __parse__ function offers a simple interface for converting
+a serialized JSON text to a __value__ in a single function call.
+This overload uses exceptions to indicate errors:
+
+[doc_parsing_1]
+
+Alternatively, an __error_code__ can be used:
+
+[doc_parsing_2]
+
+Even when using error codes, exceptions thrown from the underlying
+__memory_resource__ are still possible:
+
+[doc_parsing_3]
+
+The __value__ returned in the preceding examples use the default
+memory resource. The following code uses a __monotonic_resource__,
+which results in faster parsing. `jv` is marked `const` to prevent
+subsequent modification, because containers using a monotonic
+resource waste memory when mutated.
+
+[doc_parsing_4]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Non-Standard JSON]
+
+Unless otherwise specified, the parser in this library is strict.
+It recognizes only valid, standard JSON. The parser can be configured
+to allow certain non-standard extensions by filling in a __parse_options__
+structure and passing it by value. By default all extensions are disabled:
+
+[doc_parsing_5]
+
+When building with C++20 or later, the use of
+[@https://en.cppreference.com/w/cpp/language/aggregate_initialization#Designated_initializers designated initializers]
+with __parse_options__ is possible:
+
+[doc_parsing_6]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Parser]
+
+Instances of __parser__ and __stream_parser__ offer functionality beyond
+what is available when using the __parse__ free functions:
+
+* More control over memory
+* Streaming API, parse input JSON incrementally
+* Improved performance when parsing multiple JSONs
+* Ignore non-JSON content after the end of a JSON
+
+The parser implementation uses temporary storage space to accumulate
+values during parsing. When using the __parse__ free functions, this
+storage is allocated and freed in each call. However, by declaring
+an instance of __parser__ or __stream_parser__, this temporary storage
+can be reused when parsing more than one JSON, reducing the total
+number of dynamic memory allocations.
+
+To use the __parser__, declare an instance. Then call
+[link json.ref.boost__json__parser.write `write`]
+once with the buffer containing representing the input JSON.
+Finally, call
+[link json.ref.boost__json__parser.release `release`]
+to take ownership of the resulting __value__ upon success.
+This example persists the parser instance in a class member
+to reuse across calls:
+
+[doc_parsing_7]
+
+Sometimes a protocol may have a JSON text followed by data that is in
+a different format or specification. The JSON portion can still be parsed
+by using the function
+[link json.ref.boost__json__parser.write_some `write_some`].
+Upon success, the return value will indicate the number of characters
+consumed from the input, which will exclude the non-JSON characters:
+
+[doc_parsing_8]
+
+The parser instance may be constructed with parse options which
+allow some non-standard JSON extensions to be recognized:
+
+[doc_parsing_9]
+
+[heading Streaming Parser]
+
+The __stream_parser__ implements a
+[@https://en.wikipedia.org/wiki/Online_algorithm ['streaming algorithm]];
+it allows incremental processing of large JSON inputs using one or more
+contiguous character buffers. The entire input JSON does not need to be
+loaded into memory at once. A network server can use the streaming
+interface to process incoming JSON in fixed-size amounts, providing
+these benefits:
+
+* CPU consumption per I/O cycle is bounded
+* Memory consumption per I/O cycle is bounded
+* Jitter, unfairness, and latency is reduced
+* Less total memory is required to process the full input
+
+To use the __stream_parser__, declare an instance. Then call
+[link json.ref.boost__json__stream_parser.write `write`]
+zero or more times with successive buffers representing the input JSON.
+When there are no more buffers, call
+[link json.ref.boost__json__stream_parser.finish `finish`].
+The function
+[link json.ref.boost__json__stream_parser.done `done`]
+returns `true` after a successful call to `write` or `finish`
+if parsing is complete.
+
+In the following example a JSON is parsed from standard input a line
+at a time. Error codes are used instead. The function
+[link json.ref.boost__json__stream_parser.finish `finish`]
+is used to indicate the end of the input:
+
+[doc_parsing_10]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Controlling Memory]
+
+After default construction, or after
+[link json.ref.boost__json__stream_parser.reset `reset`]
+is called with no arguments, the __value__ produced after a successful
+parse operation uses the default memory resource. To use a different
+memory resource, call `reset` with the resource to use. Here we use
+a __monotonic_resource__, which is optimized for parsing but not
+subsequent modification:
+
+[doc_parsing_11]
+
+To achieve performance and memory efficiency, the parser uses a
+temporary storage area to hold intermediate results. This storage
+is reused when parsing more than one JSON, reducing the total
+number of calls to allocate memory and thus improving performance.
+Upon construction, the memory resource used to perform allocations
+for this temporary storage area may be specified. Otherwise, the
+default memory resource is used. In addition to a memory resource,
+the parser can make use of a caller-owned buffer for temporary
+storage. This can help avoid dynamic allocations for small inputs.
+The following example uses a four kilobyte temporary buffer for
+the parser, and falls back to the default memory resource if needed:
+
+[doc_parsing_12]
+
+[section Avoiding Dynamic Allocations]
+
+Through careful specification of buffers and memory resources,
+it is possible to eliminate all dynamic allocation completely when
+parsing JSON, for the case where the entire JSON is available in
+a single character buffer, as shown here:
+
+[doc_parsing_13]
+
+[endsect]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Custom Parsers]
+
+Users who wish to implement custom parsing strategies may create
+their own handler to use with an instance of __basic_parser__.
+The handler implements the function signatures required by SAX
+event interface. In this example we define the "null" parser,
+which does nothing with the parsed results, to use in the
+implementation of a function that determines if a JSON
+text is valid.
+
+[example_validate]
+
+[endsect]

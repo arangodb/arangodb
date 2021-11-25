@@ -204,7 +204,7 @@ if __name__ == "__main__":
     root = os.path.abspath(root + os.path.sep + os.pardir)
     check_only = True
     sys.exit(generate_ids_main(check_only, root              #project_root
-            ,["arangod", "arangosh", "enterprise", "lib"]    #dirs to include
+            ,["arangod", "client-tools", "enterprise", "lib"]    #dirs to include
             ,[".", "lib/Logger/LogMacros.h",
               "arangod/StorageEngine/TransactionState.h",
               "arangod/Replication2/LoggerContext.h"]    #dirs and files to exclude (does not purge the dir)

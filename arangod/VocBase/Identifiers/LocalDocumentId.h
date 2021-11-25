@@ -32,11 +32,11 @@ class RevisionId;
 
 /// @brief a LocalDocumentId is an identifier for storing and retrieving
 /// documents using a uint64_t value.
-class LocalDocumentId : public basics::Identifier {
+class LocalDocumentId final : public basics::Identifier {
  public:
   constexpr LocalDocumentId() noexcept : Identifier() {}
   constexpr explicit LocalDocumentId(BaseType id) noexcept : Identifier(id) {}
-  explicit LocalDocumentId(RevisionId const& id) noexcept;
+  explicit LocalDocumentId(RevisionId id) noexcept;
 
   /// @brief whether or not the id is set (not 0)
   bool isSet() const noexcept;
@@ -57,10 +57,10 @@ class LocalDocumentId : public basics::Identifier {
   }
 
   /// @brief create a document id from an existing revision id
-  static LocalDocumentId create(RevisionId const& rid);
+  static LocalDocumentId create(RevisionId rid);
 
   /// @brief use to track an existing value in recovery to ensure no duplicates
-  static void track(LocalDocumentId const& id);
+  static void track(LocalDocumentId id);
 };
 
 // LocalDocumentId should not be bigger than the BaseType

@@ -1,0 +1,25 @@
+[/============================================================================
+  Boost.Geometry
+
+  Copyright (c) 2018, Oracle and/or its affiliates.
+  Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+
+  Use, modification and distribution is subject to the Boost Software License,
+  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================/]
+
+[def __this_function__ densify]
+
+[heading_conformance_no_ogc __this_function__]
+[note PostGIS contains an algorithm ST_Segmentize with the same functionality.
+  See the [@http://www.postgis.org/docs/ST_Segmentize.html PostGIS documentation]. 
+]
+
+[heading Behavior]
+The algorithm divides segments of a geometry if they are longer than passed
+distance into smaller segments.
+
+[note The units of the distance depends on strategy. In order to change the
+default behavior a user has to create a strategy and pass it explicitly into
+the algorithm.]

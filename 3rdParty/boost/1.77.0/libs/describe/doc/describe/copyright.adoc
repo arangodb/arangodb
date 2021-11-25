@@ -1,0 +1,12 @@
+////
+Copyright 2020 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+[#copyright]
+# Copyright and License
+:idprefix:
+
+This documentation is copyright 2020 Peter Dimov and is distributed under
+the http://www.boost.org/LICENSE_1_0.txt[Boost Software License, Version 1.0].

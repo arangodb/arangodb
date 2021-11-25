@@ -1034,6 +1034,10 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
     }
     IndexHint hint(_ast->query(), options);
     en = registerNode(new EnumerateCollectionNode(this, nextId(), collection, v, false, hint));
+    if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {
+      // this is a FOR node that belongs to an UPSERT query
+      ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(ReadOwnWrites::yes);
+    }
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
     std::string const viewName = expression->getString();
