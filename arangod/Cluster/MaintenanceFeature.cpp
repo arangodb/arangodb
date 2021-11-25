@@ -255,6 +255,9 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
         << "maintenance-slow-threads raised to "
         << _maintenanceThreadsSlowMax;
   }
+}
+
+void MaintenanceFeature::prepare() {
   if (ServerState::instance()->isDBServer()) {
     LOG_TOPIC("42531", INFO, Logger::MAINTENANCE)
       << "Using " << _maintenanceThreadsMax

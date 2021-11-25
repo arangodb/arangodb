@@ -44,7 +44,7 @@ NODE_TYPES = ["coordinator", "dbserver", "agent", "single"]
 
 # Check that we are in the right place:
 LS_HERE = os.listdir(".")
-if not("arangod" in LS_HERE and "arangosh" in LS_HERE and
+if not("arangod" in LS_HERE and "client-tools" in LS_HERE and
        "Documentation" in LS_HERE and "CMakeLists.txt" in LS_HERE):
     print("Please execute me in the main source dir!")
     sys.exit(1)
