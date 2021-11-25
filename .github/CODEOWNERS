@@ -1,0 +1,6 @@
+# please check the following Github page for documentation:
+#   https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+/3rdParty/iresearch @arangodb/team-reed
+
+/3rdParty/velocypack @jsteemann
