@@ -207,6 +207,8 @@ void LoginFeature::start() {
 
   ::CustomTypeHandler customTypeHandler;
 
+  bool const outputIsJson = (_outputType == "json" || _outputType == "json-pretty");
+  bool const outputIsHex = (_outputType == "vpack-hex");
   VPackSlice slice;
   std::shared_ptr<VPackBuilder> builder;
 
@@ -269,8 +271,6 @@ void LoginFeature::start() {
       ofs.seekp(0);
     }
 
-    bool const outputIsJson = (_outputType == "json" || _outputType == "json-pretty");
-    bool const outputIsHex = (_outputType == "vpack-hex");
     if (outputIsJson) {
       // JSON output
       VPackOptions options;
