@@ -852,9 +852,9 @@ IResearchLink::UnsafeOpResult IResearchLink::commitUnsafe(bool wait, CommitResul
                         .count();
 
   if (bool ok = result.ok(); !ok && _numFailedCommits != nullptr) {
-    _numFailedCleanups->fetch_add(1, std::memory_order_relaxed);
+    _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
   } else if (ok && *code == CommitResult::DONE && _avgCommitTimeMs != nullptr) {
-    _avgCommitTimeMs->store(computeAvg(_cleanupTimeNum, timeMs), std::memory_order_relaxed);
+    _avgCommitTimeMs->store(computeAvg(_commitTimeNum, timeMs), std::memory_order_relaxed);
   }
   return {result, timeMs};
 }
