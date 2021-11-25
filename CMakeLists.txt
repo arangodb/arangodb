@@ -636,9 +636,9 @@ else ()
   )
   # We currently need to disable ICF because unfortunately we have some code
   # that depends on unique addresses for functions or read-only data members.
-  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:REF /OPT:NOICF")
-  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:REF /OPT:NOICF")
-  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:REF /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:NOICF")
 endif ()
 
 # broken clock_gettime on MacOSX
