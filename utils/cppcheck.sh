@@ -12,16 +12,16 @@ fi
 if [[ -n $* ]]; then
   files=( "$@" )
 else
-  files=( arangod/ arangosh/ lib/ enterprise/ )
+  files=( arangod/ client-tools/ lib/ enterprise/ )
 fi
 
 cppcheck "$@" \
   -j $threads \
   --xml --xml-version=2 \
   -I arangod \
-  -I arangosh \
+  -I client-tools \
   -I build/arangod \
-  -I build/arangosh \
+  -I build/client-tools \
   -I build/lib \
   -I enterprise \
   -I lib \
