@@ -1,6 +1,9 @@
 v3.8.4 (XXXX-XX-XX)
 -------------------
 
+* Improve visibility in case of potential data corruption between primary
+  index and actual document store in documents column family.
+
 * Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
   "read-own-writes" flag. Previously the tagging only happened after all query
   optimizations were completed, making the tag unavailable to the optimizer.
