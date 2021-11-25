@@ -1,10 +1,6 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
-* Disable COMDAT folding (aka Identical Code Folding) on Windows, because it
-  can break a program that depends on unique addresses for functions or
-  read-only data members (which apparently we do at the moment).
-
 * Improvements for getting-in-sync:
   Reuse the same DatabaseTailingSyncer instance for both the catchup (soft lock)
   and the exclusive (hard lock) phase. This allows the syncer to use the same
