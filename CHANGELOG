@@ -1,6 +1,9 @@
 v3.7.16 (XXXX-XX-XX)
 --------------------
 
+* Improve visibility in case of potential data corruption between primary
+  index and actual document store in documents column family.
+
 * Improvements for getting-in-sync:
   Reuse the same DatabaseTailingSyncer instance for both the catchup (soft lock)
   and the exclusive (hard lock) phase. This allows the syncer to use the same

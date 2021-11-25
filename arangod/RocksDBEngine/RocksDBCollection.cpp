@@ -653,6 +653,22 @@ arangodb::Result cleanupOldIdSpaces(rocksdb::DB& db, arangodb::RocksDBMetaCollec
   return res;
 }
 
+void reportPrimaryIndexInconsistency(
+    arangodb::Result const& res,
+    arangodb::velocypack::StringRef const& key,
+    arangodb::LocalDocumentId const& rev) {
+
+  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    // Scandal! A primary index entry is pointing to nowhere! Let's report
+    // this to the authorities immediately:
+    LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
+        << "Found primary index entry for which there is no actual "
+           "document: _key=" << key << ", _rev=" << rev.id()
+        << ", ";
+    TRI_ASSERT(false);
+  }
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -1376,11 +1392,12 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 
   ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
 
+  LocalDocumentId documentId;
   do {
-    LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
+    documentId = primaryIndex()->lookupKey(trx, key);
     if (!documentId.isSet()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      break;
+      return res;
     }  // else found
 
     std::string* buffer = result.setManaged();
@@ -1394,6 +1411,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
+  ::reportPrimaryIndexInconsistency(res, key, documentId);
   return res;
 }
 
@@ -1510,7 +1528,8 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  auto const oldDocumentId = primaryIndex()->lookupKey(trx, VPackStringRef(keySlice));
+  VPackStringRef keyStr(keySlice);
+  auto const oldDocumentId = primaryIndex()->lookupKey(trx, keyStr);
   if (!oldDocumentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
@@ -1520,6 +1539,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
   Result res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
                                    /*readCache*/true, /*fillCache*/false);
   if (res.fail()) {
+    ::reportPrimaryIndexInconsistency(res, keyStr, oldDocumentId);
     return res;
   }
 
@@ -1724,7 +1744,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  auto const documentId = primaryIndex()->lookupKey(&trx, VPackStringRef(keySlice));
+  VPackStringRef keyStr(keySlice);
+  auto const documentId = primaryIndex()->lookupKey(&trx, keyStr);
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
@@ -1735,7 +1756,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     expectedId = LocalDocumentId::create(TRI_ExtractRevisionId(slice));
   }
 
-  return remove(trx, documentId, expectedId, previousMdr, options);
+  Result res = remove(trx, documentId, expectedId, previousMdr, options);
+  ::reportPrimaryIndexInconsistency(res, keyStr, documentId);
+  return res;
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
