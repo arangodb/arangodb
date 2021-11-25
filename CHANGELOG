@@ -1,10 +1,6 @@
 v3.8.4 (XXXX-XX-XX)
 -------------------
 
-* Disable COMDAT folding (aka Identical Code Folding) on Windows, because it
-  can break a program that depends on unique addresses for functions or
-  read-only data members (which apparently we do at the moment).
-
 * Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
   "read-own-writes" flag. Previously the tagging only happened after all query
   optimizations were completed, making the tag unavailable to the optimizer.
