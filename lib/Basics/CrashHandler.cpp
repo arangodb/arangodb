@@ -76,6 +76,8 @@ namespace {
 // forward-declare a pseudo struct so the following code compiles
 struct siginfo_t;
 
+void createMiniDump(EXCEPTION_POINTERS* pointers);
+
 #else
 
 // memory reserved for the signal handler stack
