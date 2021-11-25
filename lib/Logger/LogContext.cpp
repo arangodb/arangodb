@@ -32,17 +32,28 @@ using namespace arangodb;
 
 thread_local LogContext::ThreadControlBlock LogContext::_threadControlBlock;
 
+void LogContext::clear(EntryCache& cache) {
+  if (_tail) {
+    if (_tail->decRefCnt() == 1) {
+      _tail->release(cache);
+    }
+    _tail = nullptr;
+  }
+}
+
 LogContext::ScopedContext::ScopedContext(LogContext ctx) noexcept {
   auto& local = LogContext::controlBlock();
   if (ctx._tail != local._logContext._tail) {
     _oldContext = std::move(local._logContext);
-    LogContext::setCurrent(std::move(ctx));
+    local._logContext = std::move(ctx);
   }
 }
 
 LogContext::ScopedContext::~ScopedContext() {
   if (_oldContext) {
-    LogContext::setCurrent(LogContext(std::move(_oldContext).value()));
+    auto& local = LogContext::controlBlock();
+    local._logContext.clear(local._entryCache);
+    local._logContext = std::move(_oldContext).value();
   }
 }
 

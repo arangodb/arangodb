@@ -152,6 +152,7 @@ class LogContext {
 
   Entry* pushEntry(std::unique_ptr<Entry>) noexcept;
   void popTail(EntryCache& cache) noexcept;
+  void clear(EntryCache& cache);
 
   Entry* _tail{};
 
@@ -473,7 +474,9 @@ inline LogContext::~LogContext() {
       // to prev and therefore do not need to update any refCount.
       t->release(cache);
     } else {
-      prev->incRefCnt();
+      if (prev) {
+        prev->incRefCnt();
+      }
       if (t->decRefCnt() == 1) {
         t->release(cache);
       }
@@ -531,7 +534,9 @@ inline void LogContext::popTail(EntryCache& cache) noexcept {
     // to prev and therefore do not need to update any refCount.
     _tail->release(cache);
   } else {
-    prev->incRefCnt();
+    if (prev) {
+      prev->incRefCnt();
+    }
     if (_tail->decRefCnt() == 1) {
       _tail->release(cache);
     }
