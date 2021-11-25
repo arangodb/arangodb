@@ -146,58 +146,37 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     PORT=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$PORT "
-    if [ "$AUTOUPGRADE" == "1" ];then
-      $ARANGOD \
-          -c none \
-          --agency.activate true \
-          --agency.compaction-step-size $COMP \
-          --agency.compaction-keep-size $KEEP \
-          --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-          --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
-          --agency.pool-size $NRAGENTS \
-          --agency.size $NRAGENTS \
-          --agency.supervision true \
-          --agency.supervision-frequency $SFRE \
-          --agency.wait-for-sync false \
-          --database.directory cluster/data$PORT \
-          --javascript.enabled false \
-          --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --log.role true \
-          --log.file cluster/$PORT.log \
-          --log.force-direct false \
-          --log.level $LOG_LEVEL_AGENCY \
-          --server.descriptors-minimum 0 \
-          $STORAGE_ENGINE \
-          $AUTHENTICATION \
-          $SSLKEYFILE \
-          $ENCRYPTION \
+
+    # startup options for agents
+    read -r -d '' AGENCY_OPTIONS << EOM
+      -c none 
+      --agency.activate true 
+      --agency.compaction-step-size $COMP 
+      --agency.compaction-keep-size $KEEP 
+      --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE 
+      --agency.my-address $TRANSPORT://$ADDRESS:$PORT
+      --agency.pool-size $NRAGENTS 
+      --agency.size $NRAGENTS 
+      --agency.supervision true 
+      --agency.supervision-frequency $SFRE 
+      --agency.wait-for-sync false 
+      --database.directory cluster/data$PORT 
+      --server.endpoint $TRANSPORT://$ENDPOINT:$PORT 
+      --log.role true 
+      --log.file cluster/$PORT.log 
+      --log.force-direct false 
+      --log.level $LOG_LEVEL_AGENCY 
+      --server.descriptors-minimum 0 
+EOM
+
+    AGENCY_OPTIONS="$AGENCY_OPTIONS $STORAGE_ENGINE $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
+
+    if [ "$AUTOUPGRADE" == "1" ]; then
+      $ARANGOD $AGENCY_OPTIONS \
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
-    $ARANGOD \
-        -c none \
-        --agency.activate true \
-        --agency.compaction-step-size $COMP \
-        --agency.compaction-keep-size $KEEP \
-        --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-        --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
-        --agency.pool-size $NRAGENTS \
-        --agency.size $NRAGENTS \
-        --agency.supervision true \
-        --agency.supervision-frequency $SFRE \
-        --agency.wait-for-sync false \
-        --database.directory cluster/data$PORT \
-        --javascript.enabled false \
-        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --log.role true \
-        --log.file cluster/$PORT.log \
-        --log.force-direct false \
-        --log.level $LOG_LEVEL_AGENCY \
-        --server.descriptors-minimum 0 \
-        $STORAGE_ENGINE \
-        $AUTHENTICATION \
-        $SSLKEYFILE \
-        $ENCRYPTION \
+    $ARANGOD $AGENCY_OPTIONS \
         2>&1 | tee cluster/$PORT.stdout &
 done
 
@@ -233,55 +212,35 @@ start() {
     mkdir -p cluster/data$PORT
     echo == Starting $TYPE on port $PORT
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
+   
+    # startup options for coordinators and db servers
+    read -r -d '' SERVER_OPTIONS << EOM
+      -c none
+      --database.directory cluster/data$PORT
+      --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE
+      --cluster.my-address $TRANSPORT://$ADDRESS:$PORT 
+      --server.endpoint $TRANSPORT://$ENDPOINT:$PORT
+      --cluster.my-role $ROLE 
+      --log.role true 
+      --log.file cluster/$PORT.log 
+      --log.level $LOG_LEVEL 
+      --log.thread true
+      --javascript.startup-directory $SRC_DIR/js 
+      --javascript.module-directory $SRC_DIR/enterprise/js 
+      --javascript.app-path cluster/apps$PORT 
+      --log.force-direct false 
+      --log.level $LOG_LEVEL_CLUSTER
+      --server.descriptors-minimum 0
+      --javascript.allow-admin-execute true
+EOM
+
+    SERVER_OPTIONS="$SERVER_OPTIONS $SYSTEM_REPLICATION_FACTOR $STORAGE_ENGINE $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
     if [ "$AUTOUPGRADE" == "1" ];then
-      $CMD \
-          -c none \
-          --database.directory cluster/data$PORT \
-          --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-          --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
-          --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --cluster.my-role $ROLE \
-          --log.role true \
-          --log.file cluster/$PORT.log \
-          --log.level $LOG_LEVEL \
-          --javascript.startup-directory $SRC_DIR/js \
-          --javascript.module-directory $SRC_DIR/enterprise/js \
-          --javascript.app-path cluster/apps$PORT \
-          --log.force-direct false \
-          --log.level $LOG_LEVEL_CLUSTER \
-          --server.descriptors-minimum 0 \
-          --javascript.allow-admin-execute true \
-          $SYSTEM_REPLICATION_FACTOR \
-          $STORAGE_ENGINE \
-          $AUTHENTICATION \
-          $SSLKEYFILE \
-          $ENCRYPTION \
+      $CMD $SERVER_OPTIONS \
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
-    $CMD \
-        -c none \
-        --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-        --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
-        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --cluster.my-role $ROLE \
-        --log.role true \
-        --log.file cluster/$PORT.log \
-        --log.level $LOG_LEVEL \
-        --javascript.startup-directory $SRC_DIR/js \
-        --javascript.module-directory $SRC_DIR/enterprise/js \
-        --javascript.app-path cluster/apps$PORT \
-        --log.force-direct false \
-        --log.thread true \
-        --log.level $LOG_LEVEL_CLUSTER \
-        --server.descriptors-minimum 0 \
-        --javascript.allow-admin-execute true \
-        $SYSTEM_REPLICATION_FACTOR \
-        $STORAGE_ENGINE \
-        $AUTHENTICATION \
-        $SSLKEYFILE \
-        $ENCRYPTION \
+    $CMD $SERVER_OPTIONS \
         2>&1 | tee cluster/$PORT.stdout &
 }
 

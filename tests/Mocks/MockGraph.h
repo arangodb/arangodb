@@ -20,8 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_MOCK_GRAPH_H
-#define TESTS_MOCK_GRAPH_H
+#pragma once
 
 #include "Basics/operating-system.h"
 
@@ -148,5 +147,3 @@ class MockGraph {
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

@@ -1,0 +1,41 @@
+[/
+ / Copyright (c) 2019 Raffi Enficiaud
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:test_tree Test tree]
+
+The test tree is the hierarchy of test cases and test suites, along with all the fixtures (global, case or
+suite level), and the respective dependencies within all those elements.
+
+A test tree is composed with:
+
+* Test cases: those are the elements in the tree that contain the body of the tests, and they constitute
+  the [*leaves] of the tree.
+* Test suites: those are the are internal nodes of the tree. These elements that do not have any body or executable code themselves,
+  but fixtures that execute code and tests can be attached to them.
+* The master test suite: this is the root of the tree, and is by definition a test suite. Fixtures attached to the master test suite
+  are [*global] fixtures.
+* fixtures: those are units of code that are executed before and/or after the test units above.
+
+The following hierarchy represents a test tree (further detailed in the [link boost_test.tests_organization.test_tree.test_suite test-suite]
+section) [*without] any fixture:
+
+[$images/class-hier.jpg]
+
+[link boost_test.tests_organization.decorators Decoration] can be added to test suites and cases except for the master test suite. Those
+decoration may modify the way the __UTF__
+handles the tree. For instance, there is no defined order in the execution of test cases enforced by the tree itself, except for the fixtures
+and the elements they relate to (suite, case); decoration may be used to instruct a specific order among the elements of the tree.
+
+[note The test-tree by itself does not give any particular order in the execution of the test-cases. The only implicit order
+ is given by the fixtures. To indicate a particular order, specific decorators should be used.]
+
+[include test_suites.qbk]
+[include master_test_suite.qbk]
+[include test_naming.qbk]
+[include test_tree_content.qbk]
+
+[endsect] [/ test test_tree]

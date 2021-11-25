@@ -199,8 +199,6 @@ function CollectionSuite () {
 
       // unload
       c1.unload();
-      c1 = null;
-      internal.wait(5);
 
       // compare rev
       c1 = db._collection(cn);
@@ -215,8 +213,6 @@ function CollectionSuite () {
 
       // unload
       c1.unload();
-      c1 = null;
-      internal.wait(5);
 
       // compare rev
       c1 = db._collection(cn);
@@ -228,8 +224,6 @@ function CollectionSuite () {
 
       // unload
       c1.unload();
-      c1 = null;
-      internal.wait(5);
 
       // compare rev
       c1 = db._collection(cn);
@@ -816,8 +810,6 @@ function CollectionSuite () {
 
       // unload
       c1.unload();
-      c1 = null;
-      internal.wait(5);
       c1 = db._collection(cn);
 
       var r4 = c1.revision();

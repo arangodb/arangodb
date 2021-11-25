@@ -1,0 +1,16 @@
+{
+    "key": "beast",
+    "name": "Beast",
+    "authors": [
+        "Vinnie Falco"
+    ],
+    "description": "Portable HTTP, WebSocket, and network operations using only C++11 and Boost.Asio",
+    "category": [
+        "Concurrent",
+        "IO"
+    ],
+    "maintainers": [
+        "Vinnie Falco <vinnie.falco@gmail.com>"
+    ],
+    "cxxstd": "11"
+}

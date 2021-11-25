@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_AQL_EXECUTORTESTHELPER_H
-#define TESTS_AQL_EXECUTORTESTHELPER_H
+#pragma once
 
 #include "gtest/gtest.h"
 
@@ -456,5 +455,3 @@ struct ExecutorTestHelper {
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-
-#endif  // TESTS_AQL_EXECUTORTESTHELPER_H

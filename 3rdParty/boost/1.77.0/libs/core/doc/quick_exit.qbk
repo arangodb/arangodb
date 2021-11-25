@@ -1,0 +1,40 @@
+[/
+  Copyright 2018 Peter Dimov
+
+  Distributed under the Boost Software License, Version 1.0.
+
+  See accompanying file LICENSE_1_0.txt
+  or copy at http://boost.org/LICENSE_1_0.txt
+]
+
+[section:quick_exit quick_exit]
+
+[simplesect Authors]
+
+* Peter Dimov
+
+[endsimplesect]
+
+[section Header <boost/core/quick_exit.hpp>]
+
+The header `<boost/core/quick_exit.hpp>` defines the function
+`void boost::quick_exit(int code)`. It calls the standard C++11 function
+[@https://en.cppreference.com/w/cpp/utility/program/quick_exit
+ `std::quick_exit(code)`], if that is available, and otherwise exits the
+ process via [@https://en.cppreference.com/w/cpp/utility/program/_Exit
+ `std::_Exit(code)`] or equivalent.
+
+[section Synopsis]
+
+``
+namespace boost
+{
+    [[noreturn]] void quick_exit(int code) noexcept;
+}
+``
+
+[endsect]
+
+[endsect]
+
+[endsect]

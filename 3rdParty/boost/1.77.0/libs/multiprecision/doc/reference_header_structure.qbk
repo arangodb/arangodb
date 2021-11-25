@@ -1,0 +1,47 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:headers Header File Structure]
+
+[table Top level headers
+[[Header][Contains]]
+[[cpp_int.hpp][The `cpp_int` backend type.]]
+[[gmp.hpp][Defines all [gmp] related backends.]]
+[[miller_rabin.hpp][Miller Rabin primality testing code.]]
+[[number.hpp][Defines the `number` backend, is included by all the backend headers.]]
+[[mpfr.hpp][Defines the mpfr_float_backend backend.]]
+[[random.hpp][Defines code to interoperate with Boost.Random.]]
+[[rational_adaptor.hpp][Defines the `rational_adaptor` backend.]]
+[[cpp_dec_float.hpp][Defines the `cpp_dec_float` backend.]]
+[[tommath.hpp][Defines the `tommath_int` backend.]]
+[[concepts/number_archetypes.hpp][Defines a backend concept archetypes for testing use.]]
+]
+
+[table Implementation Headers
+[[Header][Contains]]
+[[cpp_int/add.hpp][Add and subtract operators for `cpp_int_backend`.]]
+[[cpp_int/bitwise.hpp][Bitwise operators for `cpp_int_backend`.]]
+[[cpp_int/checked.hpp][Helper functions for checked arithmetic for `cpp_int_backend`.]]
+[[cpp_int/comparison.hpp][Comparison operators for `cpp_int_backend`.]]
+[[cpp_int/cpp_int_config.hpp][Basic setup and configuration for `cpp_int_backend`.]]
+[[cpp_int/divide.hpp][Division and modulus operators for `cpp_int_backend`.]]
+[[cpp_int/limits.hpp][`numeric_limits` support for `cpp_int_backend`.]]
+[[cpp_int/misc.hpp][Miscellaneous operators for `cpp_int_backend`.]]
+[[cpp_int/multiply.hpp][Multiply operators for `cpp_int_backend`.]]
+[[detail/default_ops.hpp][Default versions of the optional backend non-member functions.]]
+[[detail/generic_interconvert.hpp][Generic interconversion routines.]]
+[[detail/number_base.hpp][All the expression template code, metaprogramming, and operator overloads for `number`.]]
+[[detail/no_et_ops.hpp][The non-expression template operators.]]
+[[detail/functions/constants.hpp][Defines constants used by the floating-point functions.]]
+[[detail/functions/pow.hpp][Defines default versions of the power and exponential related floating-point functions.]]
+[[detail/functions/trig.hpp][Defines default versions of the trigonometric related floating-point functions.]]
+]
+
+[endsect]

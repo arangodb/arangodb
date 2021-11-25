@@ -31,8 +31,9 @@
 #include "VocBase/voc-types.h"
 
 #include <chrono>
-#include <functional>
 #include <memory>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace network {
@@ -91,6 +92,9 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
       std::string const& leader, SyncerId syncerId,
       TRI_voc_tick_t lastLogTick, 
       std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
+
+  std::shared_ptr<DatabaseTailingSyncer> buildTailingSyncer(TRI_vocbase_t& vocbase, 
+                                                            std::string const& endpoint);
 
   /// @brief Short, informative description of the replication client, passed to the server
   std::string _clientInfoString;
