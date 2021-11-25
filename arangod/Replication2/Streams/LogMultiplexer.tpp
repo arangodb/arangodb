@@ -366,6 +366,10 @@ struct LogMultiplexerImplementation
       block.appendEntry(insertIndex, t);
       return std::make_pair(insertIndex, self.checkWaitFor());
     });
+    // TODO - HACK: because LogLeader::insert can resolve waitFor promises
+    //    we have a possible deadlock with triggerWaitForIndex callback.
+    //    This is circumvented by first inserting the entry but not triggering
+    //    replication immediately. We trigger it here instead.
     this->_interface->triggerAsyncReplication();
 
     if (waitForIndex.has_value()) {
