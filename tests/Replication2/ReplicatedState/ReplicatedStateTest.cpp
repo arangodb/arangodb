@@ -20,6 +20,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <gtest/gtest.h>
 
 #include "Mocks/LogLevels.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"

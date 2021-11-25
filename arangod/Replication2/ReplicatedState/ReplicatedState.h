@@ -22,9 +22,6 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
-
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/Streams/Streams.h"
 
