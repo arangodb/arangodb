@@ -103,6 +103,8 @@ std::atomic<bool> killHard(false);
     // TerminateProcess is async, alright wait here for selfdestruct (we will never exit wait)
     WaitForSingleObject(hSelf, INFINITE);
   } else {
+	// exit will not trigger dump creation. So do this manually.
+	createMiniDump(nullptr);
     exit(255 + signal);
   }
 #else
@@ -688,16 +690,6 @@ void CrashHandler::crash(char const* context) {
   ::logProcessInfo();
   Logger::flush();
   Logger::shutdown();
-
-#ifdef _WIN32
-  if (!::killHard.load(std::memory_order_relaxed)) {
-    //if (IsDebuggerPresent()) {
-    //  DebugBreak();
-    //} //else {
-      createMiniDump(nullptr);
-   // }
-  }
-#endif
 
   // crash from here
   ::killProcess(SIGABRT);
