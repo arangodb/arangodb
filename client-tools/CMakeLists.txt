@@ -53,7 +53,7 @@ add_executable(${BIN_ARANGOBENCH}
   Benchmark/BenchmarkOperation.cpp
   Benchmark/testcases/helpers.cpp
 )
-target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOBENCH}
   arango
@@ -113,7 +113,7 @@ if (USE_ENTERPRISE)
     Backup/arangobackup.cpp
     ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
   )
-  target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+  target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
   target_link_libraries(${BIN_ARANGOBACKUP}
     arango
@@ -174,7 +174,7 @@ add_executable(${BIN_ARANGODUMP}
   Dump/arangodump.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
-target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGODUMP}
   arango
@@ -232,7 +232,7 @@ add_executable(${BIN_ARANGOEXPORT}
   Export/ExportFeature.cpp
   Export/arangoexport.cpp
 )
-target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOEXPORT}
   arango
@@ -292,7 +292,7 @@ add_executable(${BIN_ARANGOIMPORT}
   Import/SenderThread.cpp
   Import/arangoimport.cpp
 )
-target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOIMPORT}
   arango
@@ -354,7 +354,7 @@ endif ()
 add_library(arango_restore
   Restore/RestoreFeature.cpp
 )
-target_include_directories(arango_restore PUBLIC ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(arango_restore PUBLIC ${PROJECT_SOURCE_DIR}/client-tools)
 if (USE_ENTERPRISE)
   target_include_directories(arango_restore PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
@@ -428,7 +428,7 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
 )
-target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOSH}
   arango_v8_deadline
@@ -489,7 +489,7 @@ add_executable(${BIN_ARANGOVPACK}
   VPack/VPackFeature.cpp
   VPack/arangovpack.cpp
 )
-target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
+target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOVPACK}
   arango
