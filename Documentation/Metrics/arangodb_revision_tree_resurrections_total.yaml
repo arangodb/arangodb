@@ -1,0 +1,25 @@
+name: arangodb_revision_tree_resurrections_total
+introducedIn: "3.8.4"
+help: |
+  Number of revision tree resurrections.
+unit: number
+type: counter
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  The revision trees of collections/shards are normally present
+  in RAM in an uncompressed state. However, to reduce the memory
+  usage of keeping all revision trees in RAM at the same time, 
+  revision trees can be put into "hibernation" mode. Any inactive
+  revision tree will automatically be hibernated by ArangoDB after
+  a while. For the hibernation step, a revision tree will be 
+  compressed in RAM, and only the compressed version is then kept.
+  Later accesses of a compressed revision tree require uncompressing
+  the tree again. 
+  This metric is increased whenever a revision tree is restored from
+  its hibernated state back into an uncompressed form in RAM.
+  This can happened many times during the lifetime of a revision tree.

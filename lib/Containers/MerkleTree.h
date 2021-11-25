@@ -116,9 +116,11 @@ class MerkleTreeBase {
 
     Meta meta;
     std::vector<ShardType> shards;
+    std::size_t memoryUsage = 0;
   
     void clear() {
       shards.clear();
+      memoryUsage = 0;
       meta.summary = { 0, 0 };
     }
 
@@ -290,6 +292,8 @@ class MerkleTree : public MerkleTreeBase {
    * @param other Input tree, intended assignment
    */
   MerkleTree& operator=(std::unique_ptr<MerkleTree<Hasher, BranchingBits>>&& other);
+  
+  std::size_t memoryUsage() const;
 
   /**
    * @brief Returns the number of hashed keys contained in the tree

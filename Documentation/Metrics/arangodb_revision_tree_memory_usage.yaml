@@ -1,0 +1,25 @@
+name: arangodb_revision_tree_memory_usage
+introducedIn: "3.8.4"
+help: |
+  Total memory usage of all revision trees (both hibernated and uncompressed).
+unit: bytes
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total memory usage of all revision trees for collections/shards.
+  The revision trees of collections/shards are normally present
+  in RAM in an uncompressed state. However, to reduce the memory
+  usage of keeping all revision trees in RAM at the same time, 
+  revision trees can be put into "hibernation" mode. Any inactive
+  revision tree will automatically be hibernated by ArangoDB after
+  a while. For the hibernation step, a revision tree will be 
+  compressed in RAM, and only the compressed version is then kept.
+  Later accesses of a compressed revision tree require uncompressing
+  the tree again. 
+  This metrics reports the total memory usage of all revision trees,
+  including both the hibernated and uncompressed forms).
