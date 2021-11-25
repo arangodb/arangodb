@@ -69,11 +69,11 @@ class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_
   void OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& /*info*/) override;
   bool storeShaItems(std::string const& fileName, std::string const& checksum);
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
+  void deleteFile(std::string const& pathName);
 
  private:
   template <typename T>
   bool isSstFilename(T const& fileName) const;
-  void deleteShaFile(std::string const& pathName);
 
   std::unordered_map<std::string, std::string> _calculatedHashes;
   Mutex _calculatedHashesMutex;
@@ -82,8 +82,8 @@ class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_
 
 class RocksDBSha256ChecksumFactory : public rocksdb::FileChecksumGenFactory {
  public:
-  RocksDBSha256ChecksumFactory(std::shared_ptr<RocksDBShaFileManager> shaFileManager) :
-    _shaFileManager{shaFileManager}{};
+  RocksDBSha256ChecksumFactory(std::shared_ptr<RocksDBShaFileManager> shaFileManager)
+      : _shaFileManager{shaFileManager} {};
   std::unique_ptr<rocksdb::FileChecksumGenerator> CreateFileChecksumGenerator(
       rocksdb::FileChecksumGenContext const& context) override;
   char const* Name() const override { return "RocksDBSha256ChecksumFactory"; }

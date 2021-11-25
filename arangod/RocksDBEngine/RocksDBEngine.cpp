@@ -60,7 +60,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
-#include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"

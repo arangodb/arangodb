@@ -29,9 +29,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 
-#include "RestServer/DatabasePathFeature.h"
-
-
 namespace arangodb {
 
 RocksDBSha256Checksum::RocksDBSha256Checksum(std::string const& filename, std::shared_ptr<RocksDBShaFileManager> shaFileManager)
@@ -102,10 +99,10 @@ bool RocksDBShaFileManager::writeShaFile(std::string const& fileName, std::strin
   LOG_TOPIC("af088", WARN, arangodb::Logger::ENGINES)
       << "shaCalcFile: computing " << fileName << " " << checksum;
 
-  TRI_ASSERT(fileName.size() > 4);
+  TRI_ASSERT(TRI_Basename(fileName).size() > 4);
+  TRI_ASSERT(isSstFilename(fileName));
 
   std::string newFileName = fileName.substr(0, fileName.size() - 4);
-
   newFileName += ".sha.";
   newFileName += checksum;
   newFileName += ".hash";
@@ -123,11 +120,11 @@ bool RocksDBShaFileManager::writeShaFile(std::string const& fileName, std::strin
 
 template <typename T>
 bool RocksDBShaFileManager::isSstFilename(T const& fileName) const {
-  return fileName.size() >= 4 &&
+  return TRI_Basename(fileName).size() >= 4 &&
          (fileName.compare(fileName.size() - 4, 4, ".sst") == 0);
 }
 
-void RocksDBShaFileManager::deleteShaFile(std::string const& pathName) {
+void RocksDBShaFileManager::deleteFile(std::string const& pathName) {
   std::string fileNameBuilder;
   {
     MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
@@ -155,7 +152,7 @@ void RocksDBShaFileManager::deleteShaFile(std::string const& pathName) {
 }
 
 void RocksDBShaFileManager::OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& info) {
-  deleteShaFile(info.file_path);
+  deleteFile(info.file_path);
 }
 
 void RocksDBShaFileManager::checkMissingShaFiles() {
@@ -193,8 +190,7 @@ void RocksDBShaFileManager::checkMissingShaFiles() {
         MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
         _calculatedHashes.erase(tempname);
       }
-    } else if (it->size() > 4 &&
-               it->compare(it->size() - 4, 4, ".sst") == 0) {
+    } else if (it->size() > 4 && it->compare(it->size() - 4, 4, ".sst") == 0) {
       MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
       auto hashIt = _calculatedHashes.find(*it);
       if (hashIt == _calculatedHashes.end()) {
