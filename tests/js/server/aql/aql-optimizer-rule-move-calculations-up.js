@@ -60,7 +60,6 @@ function optimizerRuleTestSuite () {
       db._drop(collectionName);
     },
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has no effect when explicitly disabled
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +236,7 @@ function optimizerRuleTestSuite () {
 
     },
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule doesn't move subquery up because there's an UPSERT in it, which must read its own writes
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -247,13 +246,14 @@ function optimizerRuleTestSuite () {
       const rulesEnabled = resultEnabled.plan.rules;
       assertNotEqual(rulesEnabled.indexOf(ruleName), -1);
       let nodesEnabled = filterOutRules(resultEnabled.plan.nodes);
-      assertEqual(nodesEnabled.map(node => node.type), ["SubqueryStartNode", "EnumerateCollectionNode", "LimitNode",
-        "SubqueryEndNode", "EnumerateListNode", "SubqueryStartNode", "EnumerateListNode",
-        "UpsertNode", "SubqueryEndNode", "ReturnNode"]);
-      assertEqual(nodesEnabled[4].outVariable.name, "i");
-      assertEqual(nodesEnabled[5].subqueryOutVariable.name, "x");
-      assertEqual(nodesEnabled[6].outVariable.name, "j");
-      assertEqual(nodesEnabled[8].outVariable.name, "x");
+      assertEqual(nodesEnabled.map(node => node.type), 
+        ["EnumerateListNode", "SubqueryStartNode", "EnumerateListNode", 
+         "SubqueryStartNode", "EnumerateCollectionNode", "LimitNode", "SubqueryEndNode", 
+          "UpsertNode", "SubqueryEndNode", "ReturnNode" ]);
+
+      assertEqual(nodesEnabled[0].outVariable.name, "i");
+      assertEqual(nodesEnabled[1].subqueryOutVariable.name, "x");
+      assertEqual(nodesEnabled[2].outVariable.name, "j");
       assertEqual(nodesEnabled[9].inVariable.name, "x");
       const resultDisabled = AQL_EXPLAIN(query, { }, paramDisabled);
       const rulesDisabled = resultDisabled.plan.rules;
