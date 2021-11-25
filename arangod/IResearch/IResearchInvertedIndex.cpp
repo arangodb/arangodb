@@ -48,6 +48,10 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
+irs::bytes_ref refFromSlice(VPackSlice slice) {
+  return {slice.startAs<irs::byte_type>(), slice.byteSize()};
+}
+
 struct CheckFieldsAccess {
   CheckFieldsAccess(QueryContext const& ctx,
                     aql::Variable const& ref,
@@ -168,6 +172,8 @@ class CoveringVector final : public IndexIterator::CoveringData {
     }
     _length = fields;
   }
+
+  CoveringVector(CoveringVector&& other) = default;
 
   void reset(irs::sub_reader const& rdr) {
     std::for_each(_coverage.begin(), _coverage.end(),
@@ -546,7 +552,7 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
       auto& segment = (*_reader)[i];
       irs::doc_iterator::ptr it = segment.mask(_filter->execute(segment));
       TRI_ASSERT(!_projectionsPrototype.empty()); // at least sort column should be here
-      _segments.emplace_back(it, segment, i, _projectionsPrototype);
+      _segments.emplace_back(std::move(it), segment, _projectionsPrototype);
     }
     _heap_it.reset(_segments.size());
   }
@@ -582,7 +588,7 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
       return false;
     }
     TRI_ASSERT(_reader);
-    while (limit && _heap_it->next()) {
+    while (limit && _heap_it.next()) {
       auto& segment = _segments[_heap_it.value()];
       if constexpr (produce) {
         if (segment.doc->value == segment.pkDocItr->seek(segment.doc->value)) {
@@ -621,15 +627,12 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
  private:
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs,
-            irs::sub_reader const* segment,
-            size_t index,
+            irs::sub_reader const& segment,
             CoveringVector const& prototype)
       : itr(std::move(docs)),
-        readerOffset(index),
         projections(prototype) {
-      TRI_ASSERT(segment);
-      projections.reset(*segment);
-      pkDocItr = ::pkColumn(*segment);
+      projections.reset(segment);
+      pkDocItr = ::pkColumn(segment);
       pkValue = irs::get<irs::payload>(*pkDocItr);
       if (ADB_UNLIKELY(!pkValue)) {
         pkValue = &NoPayload;
@@ -645,20 +648,38 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
     irs::doc_iterator::ptr pkDocItr;
     irs::document const* doc{};
     irs::payload const* pkValue{};
-    size_t readerOffset{0};
     CoveringVector projections;
+    VPackSlice sortValue;
   };
 
   class MinHeapContext {
    public:
     MinHeapContext(IResearchViewSort const& sort, size_t sortBuckets,
-                   std::vector<Segment>& segments) noexcept;
+                   std::vector<Segment>& segments) noexcept
+      : _less(sort, sortBuckets), _segments(&segments) {}
 
     // advance
-    bool operator()(size_t i) const;
+    bool operator()(size_t i) const {
+      assert(i < _segments->size());
+      auto& segment = (*_segments)[i];
+      while (segment.itr->next()) {
+        auto const doc = segment.doc->value;
+        segment.projections.seek(doc);
+        segment.sortValue = segment.projections.at(0); // Sort is always first
+        if (!segment.sortValue.isNone()) {
+          return true;
+        }
+      }
+      return false;
+    }
 
     // compare
-    bool operator()(size_t lhs, size_t rhs) const;
+    bool operator()(size_t lhs, size_t rhs) const {
+      assert(lhs < _segments->size());
+      assert(rhs < _segments->size());
+      return _less(refFromSlice((*_segments)[rhs].sortValue),
+                   refFromSlice((*_segments)[lhs].sortValue));
+    }
 
     VPackComparer _less;
     std::vector<Segment>* _segments;
@@ -670,8 +691,6 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
 };
 
 } // namespace
-
-
 
 namespace arangodb {
 namespace iresearch {
