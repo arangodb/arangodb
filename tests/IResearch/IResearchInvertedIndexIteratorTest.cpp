@@ -52,8 +52,6 @@ using StoredFields = std::vector<std::vector<std::string>>;
 using Fields = std::vector<std::string>;
 using SortFields = std::vector<std::pair<std::string, bool>>;
 
-constexpr std::string_view longStringValue {"longlonglonglonglonglonglonglonglonglonglonglonglong"};
-
 class SimpleDataSetProvider {
  public:
   static DocsMap docs() {
