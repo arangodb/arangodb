@@ -663,8 +663,7 @@ void reportPrimaryIndexInconsistency(
     // this to the authorities immediately:
     LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
         << "Found primary index entry for which there is no actual "
-           "document: _key=" << key << ", _rev=" << rev.id()
-        << ", ";
+           "document: _key=" << key << ", _rev=" << rev.id();
     TRI_ASSERT(false);
   }
 }
