@@ -1,5 +1,5 @@
 name: arangodb_revision_tree_resurrections_total
-introducedIn: "3.8.4"
+introducedIn: "3.8.5"
 help: |
   Number of revision tree resurrections.
 unit: number
