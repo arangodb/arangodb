@@ -573,7 +573,6 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(
     _snapshot, envelope);
   VPackSlice content = envelope->slice();
-  LOG_DEVEL << content.toString();
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 2);  // two transactions
 
