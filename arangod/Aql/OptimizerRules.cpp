@@ -3095,7 +3095,20 @@ struct SortToIndexNode final
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
-    if (isOnlyAttributeAccess && isSorted && !isSparse && sortCondition.isUnidirectional() &&
+    // FIXME: why not just call index->supportsSortCondition here always ?
+    if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+      auto support = index->supportsSortCondition(&sortCondition, outVariable, 1);
+      if (support.supportsCondition) {
+        // sort condition is fully covered by index... now we can remove the
+        // sort node from the plan
+        _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+        // we need to have a sorted result later on, so we will need a sorted
+        // GatherNode in the cluster
+        indexNode->needsGatherNodeSort(true);
+        _modified = true;
+        handled = true;
+      }
+    } else if (isOnlyAttributeAccess && isSorted && !isSparse && sortCondition.isUnidirectional() &&
         sortCondition.isAscending() == indexNode->options().ascending) {
       // we have found a sort condition, which is unidirectional and in the same
       // order as the IndexNode...

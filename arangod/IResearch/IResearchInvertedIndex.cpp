@@ -914,6 +914,8 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
       }
     }
     if (_meta._sort.empty()) {
+      // FIXME: we should use non-sorted iterator in case we are not "covering" SORT!
+      //        bot options flag sorted is always true
       return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, mutableConditionIdx,
                                                               extraFieldName);
     } else {
