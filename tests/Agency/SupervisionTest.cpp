@@ -475,7 +475,7 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   // For the other ones either the dbserver is FAILED or its rebootId
   // has changed, in this case we want the job aborted and the lock
   // removed.
-  _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1234567))
+  _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(1234567))
       = createNode(R"=(
 {
   "Timestamp": "2021-02-25T12:38:29Z",
@@ -514,7 +514,7 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0"
 }
         )=");
-  _snapshot("/Current/ServersKnown")
+  _snapshot.getOrCreate("/Current/ServersKnown")
       = createNode(R"=(
 {
   "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
@@ -528,7 +528,7 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   }
 }
         )=");
-  _snapshot("/Supervision/Health")
+  _snapshot.getOrCreate("/Supervision/Health")
       = createNode(R"=(
 {
   "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
