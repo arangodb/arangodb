@@ -47,7 +47,7 @@ struct check_t {
 // This is the functional version which actually does the work, it is
 // called by the private method Supervision::enforceReplication and the
 // unit tests:
-void enforceReplicationFunctional(Node const& snapshot, 
+void enforceReplicationFunctional(Node const& snapshot,
                                   uint64_t& jobId,
                                   std::shared_ptr<VPackBuilder> envelope);
 
@@ -55,7 +55,14 @@ void enforceReplicationFunctional(Node const& snapshot,
 // called by the private method Supervision::cleanupHotbackupTransferJobs
 // and the unit tests:
 void cleanupHotbackupTransferJobsFunctional(
-    Node const& snapshot, 
+    Node const& snapshot,
+    std::shared_ptr<VPackBuilder> envelope);
+
+// This is the second functional version which actually does the work, it is
+// called by the private method Supervision::cleanupHotbackupTransferJobs
+// and the unit tests:
+void finishBrokenHotbackupTransferJobsFunctional(
+    Node const& snapshot,
     std::shared_ptr<VPackBuilder> envelope);
 
 class Supervision : public arangodb::Thread {
@@ -142,6 +149,13 @@ class Supervision : public arangodb::Thread {
   static void setAgencyPrefix(std::string const& prefix) {
     _agencyPrefix = prefix;
   }
+
+  static std::string serverHealthFunctional(Node const& snapshot,
+                                            std::string const&);
+
+  static bool verifyServerRebootID(Node const& snapshot,
+                                   std::string const& serverID,
+                                   uint64_t wantedRebootID, bool& serverFound);
 
  private:
 
@@ -256,8 +270,6 @@ class Supervision : public arangodb::Thread {
 
   bool handleJobs();
   void handleShutdown();
-  bool verifyCoordinatorRebootID(std::string const& coordinatorID,
-                                 uint64_t wantedRebootID, bool& coordinatorFound);
   void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
                             uint64_t rebootID, bool coordinatorFound);
   void deleteBrokenCollection(std::string const& database, std::string const& collection,

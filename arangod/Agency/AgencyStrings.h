@@ -50,6 +50,8 @@ constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 constexpr char const* PLAN_VIEWS = "Plan/Views/";
 constexpr char const* PLAN_ANALYZERS = "Plan/Analyzers/";
 
+constexpr char const* HOTBACKUP_TRANSFER_LOCKS = "/Target/Hotbackup/Transfers/";
+constexpr char const* HOTBACKUP_TRANSFER_JOBS = "/Target/HotBackup/TransferJobs/";
 constexpr char const* HOTBACKUP_KEY = "/Target/HotBackup/Create";
 
 constexpr char const* PREC_IS_READ_LOCKED = "is-read-locked";

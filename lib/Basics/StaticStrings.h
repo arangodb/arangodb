@@ -190,6 +190,7 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
+  static std::string const LockLocation;
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;

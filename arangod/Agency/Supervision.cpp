@@ -1207,12 +1207,17 @@ bool Supervision::isShuttingDown() {
   return false;
 }
 
+std::string Supervision::serverHealthFunctional(Node const& snapshot,
+    std::string const& serverName) {
+  std::string const serverStatus(healthPrefix + serverName + "/Status");
+  return (snapshot.has(serverStatus)) ? snapshot.hasAsString(serverStatus).first
+                                      : std::string();
+}
+
 // Guarded by caller
 std::string Supervision::serverHealth(std::string const& serverName) {
   _lock.assertLockedByCurrentThread();
-  std::string const serverStatus(healthPrefix + serverName + "/Status");
-  return (snapshot().has(serverStatus)) ? snapshot().hasAsString(serverStatus).first
-                                        : std::string();
+  return Supervision::serverHealthFunctional(snapshot(), serverName);
 }
 
 // Guarded by caller
@@ -1721,7 +1726,7 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
   // /Target/HotBackup/TransferJobs according to their time stamp.
   // We keep at most 100 transfer jobs which are completed.
   constexpr uint64_t maximalNumberTransferJobs = 100;
-  constexpr char const* prefix = "/Target/HotBackup/TransferJobs/";
+  constexpr char const* prefix = HOTBACKUP_TRANSFER_JOBS;
 
   auto const& jobs = snapshot.hasAsChildren(prefix).first;
   if (jobs.size() <= maximalNumberTransferJobs + 6) {
@@ -1781,6 +1786,56 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
   }
 }
 
+// Guarded by caller
+void arangodb::consensus::finishBrokenHotbackupTransferJobsFunctional(
+    Node const& snapshot,
+    std::shared_ptr<VPackBuilder> envelope) {
+  // This observes the hotbackup transfer jobs and declares those as failed
+  // whose responsible dbservers have crashed or have been shut down.
+  constexpr char const* prefix = HOTBACKUP_TRANSFER_JOBS;
+  auto const& jobs = snapshot.hasAsChildren(prefix).first;
+  for (auto const& p : jobs) {
+    auto const& dbservers = p.second->hasAsChildren("DBServers");
+    if (!dbservers.second) {
+      continue;
+    }
+    for (auto const& pp : dbservers.first) {
+      auto const& status = pp.second->hasAsString("Status");
+      if (!status.second) {
+        // Should not happen, just be cautious
+        continue;
+      }
+      if (status.first.compare("COMPLETED") == 0 ||
+          status.first.compare("FAILED") == 0 ||
+          status.first.compare("CANCELLED") == 0 ) {
+        // Nothing to do
+        continue;
+      }
+      bool found = false;
+      auto const& rebootId = pp.second->hasAsUInt(StaticStrings::RebootId);
+      auto const& lockLocation = pp.second->hasAsString(StaticStrings::LockLocation);
+      if (rebootId.second && lockLocation.second) {
+        if (!Supervision::verifyServerRebootID(
+              snapshot, pp.first, rebootId.first, found)) {
+          // Cancel job, set status to FAILED and release lock:
+          envelope->add(VPackValue(
+                prefix + p.first + "/DBServers/" + pp.first + "/Status"));
+          {
+            VPackObjectBuilder guard(envelope.get());
+            envelope->add("op", VPackValue("set"));
+            envelope->add("new", VPackValue("FAILED"));
+          }
+          envelope->add(VPackValue(std::string(HOTBACKUP_TRANSFER_LOCKS) + lockLocation.first));
+          {
+            VPackObjectBuilder guard(envelope.get());
+            envelope->add("op", VPackValue("delete"));
+          }
+        }
+      }
+    }
+  }
+}
+
 void Supervision::cleanupHotbackupTransferJobs() {
   _lock.assertLockedByCurrentThread();
 
@@ -1789,6 +1844,8 @@ void Supervision::cleanupHotbackupTransferJobs() {
     VPackArrayBuilder guard1(envelope.get());
     VPackObjectBuilder guard2(envelope.get());
     arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+        snapshot(), envelope);
+    arangodb::consensus::finishBrokenHotbackupTransferJobsFunctional(
         snapshot(), envelope);
   }
   if (envelope->slice()[0].length() > 0) {
@@ -1892,25 +1949,26 @@ void Supervision::workJobs() {
   }
 }
 
-bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID,
-                                            uint64_t wantedRebootID, bool& coordinatorFound) {
-  // check if the coordinator exists in health
-  std::string const& health = serverHealth(coordinatorID);
+bool Supervision::verifyServerRebootID(Node const& snapshot,
+                                       std::string const& serverID,
+                                       uint64_t wantedRebootID, bool& serverFound) {
+  // check if the server exists in health
+  std::string const& health = serverHealthFunctional(snapshot, serverID);
   LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
-      << "verifyCoordinatorRebootID: coordinatorID=" << coordinatorID
+      << "verifyServerRebootID: serverID=" << serverID
       << " health=" << health;
 
   // if the server is not found, health is an empty string
-  coordinatorFound = !health.empty();
+  serverFound = !health.empty();
   if (health != "GOOD" && health != "BAD") {
     return false;
   }
 
   // now lookup reboot id
   std::pair<uint64_t, bool> rebootID =
-      snapshot().hasAsUInt(curServersKnown + coordinatorID + "/" + StaticStrings::RebootId);
+      snapshot.hasAsUInt(curServersKnown + serverID + "/" + StaticStrings::RebootId);
   LOG_TOPIC("54326", DEBUG, Logger::SUPERVISION)
-      << "verifyCoordinatorRebootID: rebootId=" << rebootID.first
+      << "verifyServerRebootID: rebootId=" << rebootID.first
       << " bool=" << rebootID.second;
   return rebootID.second && rebootID.first == wantedRebootID;
 }
@@ -2105,8 +2163,8 @@ void Supervision::resourceCreatorLost(
   bool coordinatorFound = false;
 
   if (rebootIDExists && coordinatorIDExists) {
-    keepResource = Supervision::verifyCoordinatorRebootID(coordinatorID,
-                                                          rebootID, coordinatorFound);
+    keepResource = Supervision::verifyServerRebootID(snapshot(), coordinatorID,
+                                                     rebootID, coordinatorFound);
     // incomplete data, should not happen
   } else {
     //          v---- Please note this awesome log-id
