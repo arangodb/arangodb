@@ -585,7 +585,7 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   EXPECT_EQ(guck.length(), 2);
   EXPECT_EQ(guck["op"].copyString(), "set");
   EXPECT_EQ(guck["new"].copyString(), "FAILED");
-  guck = action.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-fe142532-2536-426f-23aa-123534feb253");
+  guck = action.get("/Target/HotBackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-fe142532-2536-426f-23aa-123534feb253");
   EXPECT_TRUE(guck.isObject());
   EXPECT_EQ(guck["op"].copyString(), "delete");
   VPackSlice precond = trx[1];
@@ -598,7 +598,7 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   EXPECT_TRUE(guck.isObject());
   EXPECT_EQ(guck["op"].copyString(), "set");
   EXPECT_EQ(guck["new"].copyString(), "FAILED");
-  guck = action.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03");
+  guck = action.get("/Target/HotBackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03");
   EXPECT_TRUE(guck.isObject());
   EXPECT_EQ(guck["op"].copyString(), "delete");
   precond = trx[1];
