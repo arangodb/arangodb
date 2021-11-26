@@ -122,7 +122,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-DECLARE_GAUGE(rocksdb_wal_sequence_number, uint64_t, "Current RocksDB WAL sequence number");
+DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
 DECLARE_GAUGE(rocksdb_wal_sequence_lower_bound, uint64_t, "RocksDB WAL sequence number until which background thread has caught up");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t, "Number of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t, "Number of prunable RocksDB WAL files");
@@ -216,8 +216,6 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
-      _metricsWalSequenceNumber(server.getFeature<arangodb::MetricsFeature>().add(
-          rocksdb_wal_sequence_number{})),
       _metricsWalSequenceLowerBound(server.getFeature<arangodb::MetricsFeature>().add(
           rocksdb_wal_sequence_lower_bound{})),
       _metricsArchivedWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
@@ -2922,8 +2920,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
   if (_errorListener) {
     builder.add("rocksdb.read-only", VPackValue(_errorListener->called() ? 1 : 0));
   }
-  
-  builder.add("rocksdb.wal-sequence-number", VPackValue(_db->GetLatestSequenceNumber()));
+
+  auto sequenceNumber = _db->GetLatestSequenceNumber();
+  builder.add("rocksdb.wal-sequence", VPackValue(sequenceNumber));
 
   builder.close();
 }

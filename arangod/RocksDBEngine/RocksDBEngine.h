@@ -585,7 +585,6 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
   
-  Gauge<uint64_t>& _metricsWalSequenceNumber;
   Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   Gauge<uint64_t>& _metricsArchivedWalFiles;
   Gauge<uint64_t>& _metricsPrunableWalFiles;
