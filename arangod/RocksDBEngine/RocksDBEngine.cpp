@@ -1037,13 +1037,13 @@ void RocksDBEngine::trackRevisionTreeResurrection() noexcept {
   ++_metricsTreeResurrections;
 }
   
-void RocksDBEngine::trackRevisionTreeMemoryIncrease(std::size_t value) noexcept {
+void RocksDBEngine::trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept {
   if (value != 0) {
     _metricsTreeMemoryUsage += value;
   }
 }
 
-void RocksDBEngine::trackRevisionTreeMemoryDecrease(std::size_t value) noexcept {
+void RocksDBEngine::trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept {
   if (value != 0) {
     [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
     TRI_ASSERT(old >= value);
