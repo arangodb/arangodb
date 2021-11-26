@@ -338,8 +338,8 @@ class RocksDBEngine final : public StorageEngine {
   void trackRevisionTreeHibernation() noexcept;
   void trackRevisionTreeResurrection() noexcept;
   
-  void trackRevisionTreeMemoryIncrease(std::size_t value) noexcept;
-  void trackRevisionTreeMemoryDecrease(std::size_t value) noexcept;
+  void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
+  void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
   
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
