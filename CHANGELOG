@@ -1,6 +1,10 @@
 v3.8.4 (XXXX-XX-XX)
 -------------------
 
+* Cleanup and properly fail hotbackup upload and download jobs if a dbserver
+  fails or is restarted during the transfer. This gets rid of upload and download
+  blockages in these circumstances.
+
 * Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
   "read-own-writes" flag. Previously the tagging only happened after all query
   optimizations were completed, making the tag unavailable to the optimizer.
