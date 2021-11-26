@@ -96,9 +96,6 @@ bool RocksDBShaFileManager::storeShaItems(std::string const& fileName, std::stri
 }
 
 bool RocksDBShaFileManager::writeShaFile(std::string const& fileName, std::string const& checksum) {
-  LOG_TOPIC("af088", WARN, arangodb::Logger::ENGINES)
-      << "shaCalcFile: computing " << fileName << " " << checksum;
-
   TRI_ASSERT(TRI_Basename(fileName).size() > 4);
   TRI_ASSERT(isSstFilename(fileName));
 
@@ -106,7 +103,7 @@ bool RocksDBShaFileManager::writeShaFile(std::string const& fileName, std::strin
   newFileName += ".sha.";
   newFileName += checksum;
   newFileName += ".hash";
-  LOG_TOPIC("80257", WARN, arangodb::Logger::ENGINES)
+  LOG_TOPIC("80257", DEBUG, arangodb::Logger::ENGINES)
       << "shaCalcFile: done " << fileName << " result: " << newFileName;
   auto res = TRI_WriteFile(newFileName.c_str(), "", 0);
   if (res == TRI_ERROR_NO_ERROR) {
@@ -144,7 +141,7 @@ void RocksDBShaFileManager::deleteFile(std::string const& pathName) {
       LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
           << "deleteCalcFile:  TRI_UnlinkFile succeeded for " << fileNameBuilder;
     } else {
-      LOG_TOPIC("acb34", DEBUG, arangodb::Logger::ENGINES)
+      LOG_TOPIC("acb34", WARN, arangodb::Logger::ENGINES)
           << "deleteCalcFile:  TRI_UnlinkFile failed with " << res << " for "
           << fileNameBuilder;
     }
