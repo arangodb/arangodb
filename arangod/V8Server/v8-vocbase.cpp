@@ -97,7 +97,7 @@
 #include "VocBase/Methods/Transactions.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Auth/AuthPipeFeature.h"
 #endif
 
 using namespace arangodb;
@@ -1809,9 +1809,9 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 #ifdef USE_ENTERPRISE
   TRI_GET_GLOBALS();
-  TRI_ASSERT(v8g->_server.hasFeature<LdapFeature>());
-  auto& ldap = v8g->_server.getFeature<LdapFeature>();
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
+  TRI_ASSERT(v8g->_server.hasFeature<AuthPipeFeature>());
+  auto& authPipe = v8g->_server.getFeature<AuthPipeFeature>();
+  TRI_V8_RETURN(v8::Boolean::New(isolate, authPipe.isEnabled()));
 #else
   // LDAP only enabled in Enterprise Edition
   TRI_V8_RETURN(v8::False(isolate));
