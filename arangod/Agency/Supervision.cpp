@@ -1659,6 +1659,10 @@ bool Supervision::handleJobs() {
       << "Begin cleanupHotbackupTransferJobs";
   cleanupHotbackupTransferJobs();
 
+  LOG_TOPIC("0892c", TRACE, Logger::SUPERVISION)
+      << "Begin failBrokenHotbackupTransferJobs";
+  failBrokenHotbackupTransferJobs();
+
   return true;
 }
 
@@ -1787,11 +1791,12 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
 }
 
 // Guarded by caller
-void arangodb::consensus::finishBrokenHotbackupTransferJobsFunctional(
+void arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(
     Node const& snapshot,
     std::shared_ptr<VPackBuilder> envelope) {
   // This observes the hotbackup transfer jobs and declares those as failed
   // whose responsible dbservers have crashed or have been shut down.
+  VPackArrayBuilder guard(envelope.get());
   constexpr char const* prefix = HOTBACKUP_TRANSFER_JOBS;
   auto const& jobs = snapshot.hasAsChildren(prefix).first;
   for (auto const& p : jobs) {
@@ -1818,17 +1823,30 @@ void arangodb::consensus::finishBrokenHotbackupTransferJobsFunctional(
         if (!Supervision::verifyServerRebootID(
               snapshot, pp.first, rebootId.first, found)) {
           // Cancel job, set status to FAILED and release lock:
-          envelope->add(VPackValue(
-                prefix + p.first + "/DBServers/" + pp.first + "/Status"));
+          VPackArrayBuilder guard(envelope.get());
+          // Action part:
           {
-            VPackObjectBuilder guard(envelope.get());
-            envelope->add("op", VPackValue("set"));
-            envelope->add("new", VPackValue("FAILED"));
+            VPackObjectBuilder guard2(envelope.get());
+            envelope->add(VPackValue(
+                  prefix + p.first + "/DBServers/" + pp.first + "/Status"));
+            {
+              VPackObjectBuilder guard(envelope.get());
+              envelope->add("op", VPackValue("set"));
+              envelope->add("new", VPackValue("FAILED"));
+            }
+            envelope->add(VPackValue(std::string(HOTBACKUP_TRANSFER_LOCKS) + lockLocation.first));
+            {
+              VPackObjectBuilder guard(envelope.get());
+              envelope->add("op", VPackValue("delete"));
+            }
           }
-          envelope->add(VPackValue(std::string(HOTBACKUP_TRANSFER_LOCKS) + lockLocation.first));
+          // Precondition part: status is unchanged
+          // This guards us against the case that a DBserver has finished a job and
+          // was then shut down since we last renewed our snapshot.
           {
-            VPackObjectBuilder guard(envelope.get());
-            envelope->add("op", VPackValue("delete"));
+            VPackObjectBuilder guard2(envelope.get());
+            envelope->add(prefix + p.first + "/DBServers/" + pp.first + "/Status",
+                VPackValue(status.first));
           }
         }
       }
@@ -1845,14 +1863,46 @@ void Supervision::cleanupHotbackupTransferJobs() {
     VPackObjectBuilder guard2(envelope.get());
     arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
         snapshot(), envelope);
-    arangodb::consensus::finishBrokenHotbackupTransferJobsFunctional(
-        snapshot(), envelope);
   }
   if (envelope->slice()[0].length() > 0) {
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
       LOG_TOPIC("1232b", INFO, Logger::SUPERVISION) << "Failed to remove old transfer jobs: " << envelope->toJson();
+    }
+  }
+}
+
+void Supervision::failBrokenHotbackupTransferJobs() {
+  _lock.assertLockedByCurrentThread();
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(
+      snapshot(), envelope);
+  if (envelope->slice().length() > 0) {
+    trans_ret_t res = generalTransaction(_agent, *envelope);
+
+    bool good = true;
+    VPackSlice resSlice = res.result->slice();
+    if (res.accepted) {
+      if (!resSlice.isArray()) {
+        good = false;
+      } else {
+        for (size_t i = 0; i < resSlice.length(); ++i) {
+          if (!resSlice[i].isNumber()) {
+            good = false;
+          } else {
+            uint64_t j = resSlice[i].getNumber<uint64_t>();
+            if (j == 0) {
+              good = false;
+            }
+          }
+        }
+      }
+    }
+    if (!good) {
+      LOG_TOPIC("1232c", INFO, Logger::SUPERVISION) << "Failed to fail bad transfer jobs: " << envelope->toJson()
+        << ", response: " << (res.accepted ? resSlice.toJson() : std::string());
     }
   }
 }

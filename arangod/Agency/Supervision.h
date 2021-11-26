@@ -61,7 +61,7 @@ void cleanupHotbackupTransferJobsFunctional(
 // This is the second functional version which actually does the work, it is
 // called by the private method Supervision::cleanupHotbackupTransferJobs
 // and the unit tests:
-void finishBrokenHotbackupTransferJobsFunctional(
+void failBrokenHotbackupTransferJobsFunctional(
     Node const& snapshot,
     std::shared_ptr<VPackBuilder> envelope);
 
@@ -225,6 +225,9 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Cleanup old hotbackup transfer jobs
   void cleanupHotbackupTransferJobs();
+
+  /// @brief Fail hotbackup transfer jobs when dbservers have failed
+  void failBrokenHotbackupTransferJobs();
 
   // @brief these servers have gone for too long without any responsibility
   //        and this are safely removable and so they are

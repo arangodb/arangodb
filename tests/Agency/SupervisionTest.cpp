@@ -469,18 +469,7 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   EXPECT_EQ(content.length(), 100);
 }
 
-static std::shared_ptr<VPackBuilder> runFinishBrokenHotbackupTransferJobs(
-    Node const& snap) {
-  auto envelope = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder guard(envelope.get());
-    arangodb::consensus::finishBrokenHotbackupTransferJobsFunctional(
-      snap, envelope);
-  }
-  return envelope;
-}
-
-TEST_F(SupervisionTestClass, finish_hotbackup_transfer_jobs) {
+TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   // We put in three transfer jobs. One of the DBServers is healthy
   // and its rebootId has not changed ==> nothing ought to be done.
   // For the other ones either the dbserver is FAILED or its rebootId
@@ -580,25 +569,41 @@ TEST_F(SupervisionTestClass, finish_hotbackup_transfer_jobs) {
   }
 }
         )=");
-  std::shared_ptr<VPackBuilder> envelope = runFinishBrokenHotbackupTransferJobs(
-      _snapshot);
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
   VPackSlice content = envelope->slice();
-  EXPECT_TRUE(content.isObject());
-  EXPECT_EQ(content.length(), 4);  // four keys written
-  VPackSlice guck = content.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-fe142532-2536-426f-23aa-123534feb253/Status");
+  LOG_DEVEL << content.toString();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 2);  // two transactions
+
+  VPackSlice trx = content[0];
+  EXPECT_TRUE(trx.isArray());
+  EXPECT_EQ(trx.length(), 2);  // with precondition
+  VPackSlice action = trx[0];
+  VPackSlice guck = action.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-fe142532-2536-426f-23aa-123534feb253/Status");
   EXPECT_TRUE(guck.isObject());
   EXPECT_EQ(guck.length(), 2);
   EXPECT_EQ(guck["op"].copyString(), "set");
   EXPECT_EQ(guck["new"].copyString(), "FAILED");
-  guck = content.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-fe142532-2536-426f-23aa-123534feb253");
+  guck = action.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-fe142532-2536-426f-23aa-123534feb253");
   EXPECT_TRUE(guck.isObject());
   EXPECT_EQ(guck["op"].copyString(), "delete");
-  guck = content.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03/Status");
+  VPackSlice precond = trx[1];
+  guck = precond.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-fe142532-2536-426f-23aa-123534feb253/Status");
+  EXPECT_EQ(guck.copyString(), "RUNNING");
+
+  trx = content[1];
+  action = trx[0];
+  guck = action.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03/Status");
   EXPECT_TRUE(guck.isObject());
   EXPECT_EQ(guck["op"].copyString(), "set");
   EXPECT_EQ(guck["new"].copyString(), "FAILED");
-  guck = content.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03");
+  guck = action.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03");
   EXPECT_TRUE(guck.isObject());
   EXPECT_EQ(guck["op"].copyString(), "delete");
+  precond = trx[1];
+  guck = precond.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03/Status");
+  EXPECT_EQ(guck.copyString(), "RUNNING");
 }
 
