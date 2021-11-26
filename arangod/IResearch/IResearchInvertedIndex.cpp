@@ -99,14 +99,14 @@ inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
 ///         After the document id has beend found "get" method
 ///         could be used to get Slice for the Projections
 struct CoveringValue {
-  explicit CoveringValue(irs::string_ref col) : _column(col) {}
-  CoveringValue(CoveringValue&& other) noexcept : _column(other._column) {}
+  explicit CoveringValue(irs::string_ref col) : column(col) {}
+  CoveringValue(CoveringValue&& other) noexcept : column(other.column) {}
 
   void reset(irs::sub_reader const& rdr) {
     itr.reset();
     value = &NoPayload;
     // FIXME: this is cheap. Keep it here?
-    auto extraValuesReader = _column.empty() ? rdr.sort() : rdr.column_reader(_column);
+    auto extraValuesReader = column.empty() ? rdr.sort() : rdr.column_reader(column);
     // FIXME: this is expensive - move it to get and do lazily?
     if (ADB_LIKELY(extraValuesReader)) {
       itr = extraValuesReader->iterator();
@@ -154,7 +154,7 @@ struct CoveringValue {
   }
 
   irs::doc_iterator::ptr itr;
-  irs::string_ref _column;
+  irs::string_ref column;
   const irs::payload* value{};
 };
 
@@ -174,6 +174,17 @@ class CoveringVector final : public IndexIterator::CoveringData {
   }
 
   CoveringVector(CoveringVector&& other) = default;
+  CoveringVector(CoveringVector& other) = delete;
+
+  CoveringVector clone() const {
+    CoveringVector res;
+    res._length = this->_length;
+    res._coverage.reserve(this->_coverage.size());
+    for (auto& c : _coverage) {
+      res._coverage.emplace_back(c.first, CoveringValue(c.second.column));
+    }
+    return res;
+  }
 
   void reset(irs::sub_reader const& rdr) {
     std::for_each(_coverage.begin(), _coverage.end(),
@@ -193,6 +204,9 @@ class CoveringVector final : public IndexIterator::CoveringData {
   velocypack::ValueLength length() const override { return _length; }
 
  private:
+  // for prototype cloning
+  CoveringVector() = default;
+
   VPackSlice get(size_t i) {
     TRI_ASSERT(irs::doc_limits::valid(_doc));
     size_t column{0};
@@ -529,6 +543,7 @@ class IResearchInvertedIndexIterator final : public IResearchInvertedIndexIterat
 };
 
 class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexIteratorBase {
+ public:
   IResearchInvertedIndexMergeIterator(LogicalCollection* collection,
                                       transaction::Methods* trx, aql::AstNode const& condition,
                                       IResearchInvertedIndex* index,
@@ -537,9 +552,9 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
       : IResearchInvertedIndexIteratorBase(collection, trx, condition, index, variable,
                                            mutableConditionIdx, extraFieldName),
         _projectionsPrototype(index->meta()),
-    _heap_it({index->meta()._sort, index->meta()._sort.size(), _segments})  {}
+        _heap_it({index->meta()._sort, index->meta()._sort.size(), _segments}) {}
 
-  char const* typeName() const override { return "inverted-index-sorted-iterator"; }
+  char const* typeName() const override { return "inverted-index-merge-iterator"; }
 
   bool hasCovering() const { return !_projectionsPrototype.empty(); }
 
@@ -588,6 +603,9 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
       return false;
     }
     TRI_ASSERT(_reader);
+    if (_segments.empty() && _reader->size()) {
+      reset();
+    }
     while (limit && _heap_it.next()) {
       auto& segment = _segments[_heap_it.value()];
       if constexpr (produce) {
@@ -630,12 +648,17 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
             irs::sub_reader const& segment,
             CoveringVector const& prototype)
       : itr(std::move(docs)),
-        projections(prototype) {
+        projections(prototype.clone()) {
       projections.reset(segment);
+      doc = irs::get<irs::document>(*itr);
+      TRI_ASSERT(doc);
       pkDocItr = ::pkColumn(segment);
-      pkValue = irs::get<irs::payload>(*pkDocItr);
-      if (ADB_UNLIKELY(!pkValue)) {
-        pkValue = &NoPayload;
+      TRI_ASSERT(pkDocItr);
+      if (ADB_LIKELY(pkDocItr)) {
+        pkValue = irs::get<irs::payload>(*pkDocItr);
+        if (ADB_UNLIKELY(!pkValue)) {
+          pkValue = &NoPayload;
+        }
       }
     }
 
@@ -662,7 +685,7 @@ class IResearchInvertedIndexMergeIterator final : public IResearchInvertedIndexI
     bool operator()(size_t i) const {
       assert(i < _segments->size());
       auto& segment = (*_segments)[i];
-      while (segment.itr->next()) {
+      while (segment.doc && segment.itr->next()) {
         auto const doc = segment.doc->value;
         segment.projections.seek(doc);
         segment.sortValue = segment.projections.at(0); // Sort is always first
@@ -750,6 +773,7 @@ Result IResearchInvertedIndex::init(IResearchDataStore::InitCallback const& init
   if (!res.ok()) {
     return res;
   }
+  _comparer.reset(_meta._sort);
   return {};
 }
 
@@ -889,8 +913,13 @@ std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iter
         }
       }
     }
-    return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, mutableConditionIdx,
-                                                            extraFieldName);
+    if (_meta._sort.empty()) {
+      return std::make_unique<IResearchInvertedIndexIterator>(collection, trx, *node, this, reference, mutableConditionIdx,
+                                                              extraFieldName);
+    } else {
+      return std::make_unique<IResearchInvertedIndexMergeIterator>(collection, trx, *node, this, reference, mutableConditionIdx,
+                                                                   extraFieldName);
+    }
   } else {
     TRI_ASSERT(false);
     //sorting  case
