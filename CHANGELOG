@@ -1,6 +1,8 @@
 devel
 -----
 
+* APM-217: deprecate the usage of fulltext indexes.
+
 * Changed "arangosh" directory name to "client-tools", because the directory 
   contains the code for all client tools and not just arangosh.
 
