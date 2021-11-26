@@ -9,7 +9,7 @@ v3.9.0 (XXXX-XX-XX)
   - `arangodb_revision_tree_memory_usage`: total memory usage (in bytes) by
     all active revision trees
 
-* Added metric `rocskdb_wal_sequence_number` to track the current tip of the
+* Added metric `rocskdb_wal_sequence` to track the current tip of the
   WAL's sequence number.
 
 * Upgraded bundled version of RocksDB to 6.27.

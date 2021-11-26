@@ -1,4 +1,4 @@
-name: rocksdb_wal_sequence_number
+name: rocksdb_wal_sequence
 introducedIn: "3.8.5"
 help: |
   Current RocksDB WAL sequence number.
