@@ -65,7 +65,7 @@ CTestTestfile.cmake
 UnitTests/CTestTestfile.cmake
 UnitTests/cmake_install.cmake
 arangod/cmake_install.cmake
-arangosh/cmake_install.cmake
+client-tools/cmake_install.cmake
 cmake_install.cmake
 lib/cmake_install.cmake
 
@@ -120,3 +120,5 @@ perf*
 callgrind*
 
 Documentation/Metrics/allMetrics.yaml
+
+cmake-build*/

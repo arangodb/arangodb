@@ -1,0 +1,203 @@
+[/
+  Copyright 2020 Peter Dimov
+
+  Distributed under the Boost Software License, Version 1.0.
+
+  See accompanying file LICENSE_1_0.txt
+  or copy at http://boost.org/LICENSE_1_0.txt
+]
+
+[section:bit bit]
+
+[simplesect Authors]
+
+* Peter Dimov
+
+[endsimplesect]
+
+[section Header <boost/core/bit.hpp>]
+
+The header `<boost/core/bit.hpp>` implements, in a portable way,
+the C++20 `<bit>` header.
+
+[section Synopsis]
+
+``
+namespace boost
+{
+namespace core
+{
+
+// bit_cast
+
+template<class To, class From>
+To bit_cast(From const& from) noexcept;
+
+// Integral powers of 2
+
+template<class T>
+constexpr bool has_single_bit(T x) noexcept;
+
+template<class T>
+constexpr T bit_ceil(T x) noexcept;
+
+template<class T>
+constexpr T bit_floor(T x) noexcept;
+
+template<class T>
+constexpr T bit_width(T x) noexcept;
+
+// Rotating
+
+template<class T>
+constexpr T rotl(T x, int s) noexcept;
+
+template<class T>
+constexpr T rotr(T x, int s) noexcept;
+
+// Counting
+
+template<class T>
+constexpr int countl_zero(T x) noexcept;
+
+template<class T>
+constexpr int countl_one(T x) noexcept;
+
+template<class T>
+constexpr int countr_zero(T x) noexcept;
+
+template<class T>
+constexpr int countr_one(T x) noexcept;
+
+template<class T>
+constexpr int popcount(T x) noexcept;
+
+// Endian
+
+enum class endian
+{
+    little = see below,
+    big = see below,
+    native = see below
+};
+
+using endian_type = endian; // portable alias for C++03 code
+
+} // namespace core
+} // namespace boost
+``
+
+Note: even though the functions are shown as `constexpr` in the synopsis, since they are implemented
+via compiler-specific intrinsics, portable code cannot generally rely on their being usable in a
+constant expression context.
+
+[endsect]
+
+[section bit_cast]
+
+`template<class To, class From> To bit_cast(From const& from) noexcept;`
+
+* *Requires:* `To` and `From` must be trivially copyable and `sizeof(To)` must be the same as `sizeof(From)`.
+* *Returns:* A value of type `To` with the storage bytes copied from `from`.
+
+[endsect]
+
+[section Integral powers of 2]
+
+`template<class T> constexpr bool has_single_bit(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type (i.e. one of `unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`).
+* *Returns:* `true` if `x` is an integral power of two, `false` otherwise. (`has_single_bit(0u)` is false.)
+
+`template<class T> constexpr T bit_ceil(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* The smallest integral power of 2 greater than or equal to `x`. If this value is not representable in `T`, behavior is undefined.
+
+`template<class T> constexpr T bit_floor(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* If `x == 0`, 0; otherwise the maximal value `y` such that `has_single_bit(y)` is `true` and `y <= x`.
+
+`template<class T> constexpr T bit_width(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* If `x == 0`, 0; otherwise one plus the base-2 logarithm of `x`, with any fractional part discarded.
+
+[endsect]
+
+[section Rotating]
+
+In the following descriptions, `N` denotes `numeric_limits<T>::digits` and `r` denotes `s % N`.
+
+`template<class T> constexpr T rotl(T x, int s) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* If `s` is negative, `rotr(x, -s)`; if `r` is 0, `x`; if `r` is positive, `(x << r) | (x >> (N - r))`.
+
+`template<class T> constexpr T rotr(T x, int s) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* If `s` is negative, `rotl(x, -s)`; if `r` is 0, `x`; if `r` is positive, `(x >> r) | (x << (N - r))`.
+
+[endsect]
+
+[section Counting]
+
+`template<class T> constexpr int countl_zero(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* The number of consecutive 0 bits in the value of `x`, starting from the most significant ("left") bit.
+
+`template<class T> constexpr int countl_one(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* The number of consecutive 1 bits in the value of `x`, starting from the most significant bit.
+
+`template<class T> constexpr int countr_zero(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* The number of consecutive 0 bits in the value of `x`, starting from the least significant ("right") bit.
+
+`template<class T> constexpr int countr_one(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* The number of consecutive 1 bits in the value of `x`, starting from the least significant bit.
+
+`template<class T> constexpr int popcount(T x) noexcept;`
+
+* *Requires:* `T` must be an unsigned integer type.
+* *Returns:* The number of 1 bits in the value of `x`.
+
+[endsect]
+
+[section Endian]
+
+Under C++11, `endian` is defined as `enum class endian` as shown in the synopsis. Under C++03, its definition is
+
+``
+namespace endian
+{
+enum type
+{
+    little = see below,
+    big = see below,
+    native = see below
+};
+}
+
+typedef endian::type endian_type;
+``
+
+The values of `endian::big` and `endian::little` are distinct. `endian::native` is equal to `endian::big` on
+big endian platforms, equal to `endian::little` on little endian platforms, and a distinct value on platforms
+that are neither.
+
+Note that you should not rely on `little` and `big` having any specific values, because the C++20 standard
+leaves these unspecified.
+
+[endsect]
+
+[endsect]
+
+[endsect]

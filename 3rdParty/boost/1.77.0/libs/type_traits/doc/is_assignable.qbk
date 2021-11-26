@@ -1,0 +1,40 @@
+[/ 
+  Copyright 2015 John Maddock.
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:is_assignable is_assignable]
+
+   template <class T, class U>
+   struct is_assignable : public __tof {};
+    
+__inherit If `std::declval<T>() = std::declval<U>()` then inherits from __true_type, 
+otherwise from  __false_type.  Type `T` must be a complete type.
+
+Note that this trait is somewhat tricky to use correctly: for example:
+
+   is_assignable<int, int>::value
+
+is `false` since `std::declval<int>()` is an ['xvalue] which can not be assigned to!
+
+If you're intention is to check for copy-assignment from some type U then use:
+
+   is_assignable<T&, const U&>::value
+
+If you're intention is to check for move-assignment then use:
+
+   is_assignable<T&, U&&>::value
+
+or simply:
+
+   is_assignable<T&, U>::value
+
+
+__compat Requires the C++11 features `decltype` and SFINAE-expressions for full support.
+
+__header ` #include <boost/type_traits/is_assignable.hpp>` or ` #include <boost/type_traits.hpp>`
+
+[endsect]
+

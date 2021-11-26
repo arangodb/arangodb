@@ -1,0 +1,33 @@
+[/
+    Copyright (c) 2019 Vinnie Falco (vinnie.falco@gmail.com)
+    Copyright (c) 2020 Krystian Stasiowski (sdkrystian@gmail.com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/cppalliance/json
+]
+
+[/-----------------------------------------------------------------------------]
+
+[section Allocators]
+
+Here we discuss the various allocator models used in the
+C++ standard, followed by an explanation of the model used in
+this library and its benefits. Finally we discuss how the library
+interoperates with existing code that uses polymorphic allocators.
+
+[note
+    In the sections which follow, the aliases
+    __memory_resource__ and __polymorphic_allocator__
+    refer to either Boost types, or `std` types when
+    `BOOST_JSON_STANDALONE` is defined.
+]
+
+[include 04_01_background.qbk]
+[include 04_02_storage_ptr.qbk]
+[include 04_03_pmr.qbk]
+
+[/-----------------------------------------------------------------------------]
+
+[endsect]

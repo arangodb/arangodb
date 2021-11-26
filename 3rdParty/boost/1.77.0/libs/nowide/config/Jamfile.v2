@@ -1,0 +1,8 @@
+obj attribute_init_priority : check_attribute_init_priority.cpp ;
+explicit attribute_init_priority ;
+
+obj cxx11_moveable_fstreams : check_movable_fstreams.cpp ;
+explicit cxx11_moveable_fstreams ;
+
+exe lfs_support : check_lfs_support.cpp ;
+explicit lfs_support ;

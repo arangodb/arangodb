@@ -1,0 +1,15 @@
+{
+    "key": "assert",
+    "name": "Assert",
+    "authors": [
+        "Peter Dimov"
+    ],
+    "maintainers": [
+        "Peter Dimov <pdimov -at- gmail.com>"
+    ],
+    "description": "Customizable assert macros.",
+    "category": [
+        "Correctness"
+    ],
+    "cxxstd": "03"
+}

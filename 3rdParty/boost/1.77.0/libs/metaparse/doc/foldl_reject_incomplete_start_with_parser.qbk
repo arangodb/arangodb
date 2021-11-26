@@ -1,0 +1,101 @@
+[#foldl_reject_incomplete_start_with_parser]
+[section foldl_reject_incomplete_start_with_parser]
+
+[h1 Synopsis]
+
+  template <class P, class StateP, class ForwardOp>
+  struct foldl_reject_incomplete_start_with_parser;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]         [Type]]
+  [[`P`]          [[link parser parser]]]
+  [[`StateP`]     [[link parser parser]]]
+  [[`ForwardOp`]  [[link metafunction_class template metafunction class] taking two arguments]]
+]
+
+[h1 Description]
+
+The same as [link foldl_start_with_parser `foldl_start_with_parser`], but once
+`P` rejects the input, `foldl_reject_incomplete_start_with_parser` checks if `P`
+consumes any characters before rejecting the input. If so,
+`foldl_reject_incomplete_start_with_parser` rejects the input with the same
+error message this last application of `P` returned. Otherwise
+`foldl_reject_incomplete_start_with_parser` accepts the input and gives the same
+result as [link foldl_start_with_parser `foldl_start_with_parser`].
+
+Here is a diagram showing how `foldl_reject_incomplete_start_with_parser` works
+by example:
+
+  using int_token = token<int_>;
+  using plus_token = token<lit_c<'+'>>;
+  using plus_int = last_of<plus_token, int_token>;
+  using sum_op = mpl::lambda<mpl::plus<mpl::_1, mpl::_2>>::type;
+
+[$images/metaparse/foldl_reject_incomplete_start_with_parser_diag1.png [width 70%]]
+
+Further details can be found in the
+[link introducing-foldl_reject_incomplete_start_with_parser Introducing foldl_reject_incomplete_start_with_parser]
+section of the [link manual User Manual].
+
+[h1 Header]
+
+  #include <boost/metaparse/foldl_reject_incomplete_start_with_parser.hpp>
+
+[h1 Expression semantics]
+
+For any `p` parser, `pt` class, `f` metafunction class taking two arguments,
+`s` compile-time string and `pos` source position
+
+  foldl_reject_incomplete_start_with_parser<p, pt, f>::apply<s, pos>
+
+is equivalent to
+
+  first_of<
+    foldl_start_with_parser<p, pt, f>,
+    fail_at_first_char_expected<p>
+  >::apply<s, pos>
+
+[h1 Example]
+
+  #include <boost/metaparse/foldl_reject_incomplete_start_with_parser.hpp>
+  #include <boost/metaparse/lit_c.hpp>
+  #include <boost/metaparse/last_of.hpp>
+  #include <boost/metaparse/token.hpp>
+  #include <boost/metaparse/int_.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  
+  #include <boost/mpl/lambda.hpp>
+  #include <boost/mpl/plus.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using int_token = token<int_>;
+  using plus_token = token<lit_c<'+'>>;
+  using plus_int = last_of<plus_token, int_token>;
+  using sum_op =
+    boost::mpl::lambda<boost::mpl::plus<boost::mpl::_1, boost::mpl::_2>>::type;
+  
+  using ints =
+    foldl_reject_incomplete_start_with_parser<plus_int, int_token, sum_op>;
+  
+  static_assert(
+    get_result<
+      ints::apply<BOOST_METAPARSE_STRING("11 + 13 + 3 + 21"), start>
+    >::type::value == 48,
+    "ints should sum the numbers"
+  );
+  
+  static_assert(
+    is_error<
+      ints::apply<BOOST_METAPARSE_STRING("11 + 13 + 3 +"), start>
+    >::type::value,
+    "when the last number is missing, it should be an error"
+  );
+
+[endsect]
+

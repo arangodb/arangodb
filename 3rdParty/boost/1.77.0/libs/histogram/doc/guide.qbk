@@ -1,0 +1,477 @@
+[/
+            Copyright Hans Dembinski 2018 - 2019.
+   Distributed under the Boost Software License, Version 1.0.
+      (See accompanying file LICENSE_1_0.txt or copy at
+            https://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:guide User guide]
+
+Boost.Histogram is designed to make simple things simple, yet complex things possible. Correspondingly, this guides covers the basic usage first, and the advanced usage in later sections. For an alternative quick start guide, have a look at the [link histogram.getting_started Getting started] section.
+
+[section Making histograms]
+
+A histogram consists of a collection of [link histogram.concepts.Axis axis objects] and a [link histogram.concepts.Storage storage]. The storage holds a collection of accumulators, one for each cell. The axis objects maps input values to indices, which are combined into a global index that is used to look up the cell in the storage.
+
+To start off you do not have to worry about the storage, the library provides a good default. Learning more about the many interesting axis types to choose from, however, will pay off very quickly (which are discussed further below). For now, let us stick to the most common axis, the [classref boost::histogram::axis::regular regular] axis. It represents equidistant intervals on the real line.
+
+Histograms are created with the convenient factory function [headerref boost/histogram/make_histogram.hpp make_histogram]. The following example shows how to make a histogram with a single axis.
+
+[import ../examples/guide_make_static_histogram.cpp]
+[guide_make_static_histogram]
+
+An axis object defines how input values are mapped to bins, it is a mapping functor of input values to indices. The axis object holds information such as how many bins there are, where the bin edges are, metadata about the axis and so on. The rank of a histogram is given by the number of axes. A histogram with one axis is one-dimensional. If you provide two, it is two-dimensional, and so on.
+
+In the example above, the compiler knows the number of axes and their type at compile-time, the information can be deduced from the arguments to [headerref boost/histogram/make_histogram.hpp make_histogram]. This gives the best performance, but sometimes you only know the axis configuration at run-time, because it depends on information that's only available at run-time. For that case you can also create axes at run-time and pass them to an overload of the [headerref boost/histogram/make_histogram.hpp make_histogram] function. Here is an example.
+
+[import ../examples/guide_make_dynamic_histogram.cpp]
+[guide_make_dynamic_histogram]
+
+[note
+When the axis types are known at compile-time, the histogram internally holds them in a `std::tuple`, which is very efficient and avoids a heap memory allocation. If the number of axes is only known at run-time, they are stored in a `std::vector`. The interface hides this difference very well, but there are a corner cases where the difference becomes apparent. The [link histogram.overview.structure.host overview] has more details on this point.
+]
+
+The factory function named [headerref boost/histogram/make_histogram.hpp make_histogram] uses the default storage type, which provides safe counting, is fast, and memory efficient. If you want to create a histogram with another storage type, use [headerref boost/histogram/make_histogram.hpp make_histogram_with]. To learn more about other storage types and how to create your own, have a look at the section [link histogram.guide.expert Advanced Usage].
+
+[endsect] [/ how to make histograms]
+
+[section Axis guide]
+
+The library provides a number of useful axis types. The builtin axis types can be configured to fit many needs. If you still need something more exotic, no problem, it is easy to write your own axis types, see the [link histogram.guide.expert Advanced usage section] for details. In the following, we give some advice when to use which of the builtin axis types.
+
+[section Overview]
+
+[variablelist
+  [
+    [
+      [classref boost::histogram::axis::regular regular]
+    ]
+    [
+      Axis over intervals on the real line which have equal width. Value-to-index conversion is O(1) and very fast. The axis does not allocate memory dynamically. The axis is very flexible thanks to transforms (see below). Due to finite precision of floating point calculations, bin edges may not be exactly at expected values, though. If you need bin edges at exactly defined floating point values, use the [classref boost::histogram::axis::variable variable] axis. If you need bins at exact consecutive integral values, use the [classref boost::histogram::axis::integer integer] axis.
+    ]
+  ]
+  [
+    [
+      [classref boost::histogram::axis::variable variable]
+    ]
+    [
+      Axis over intervals on the real line of variable width. Value-to-index conversion is O(log(N)). The axis allocates memory dynamically to store the bin edges. Use this if the regular axis with transforms cannot represent the binning you want. If you need bin edges at exactly defined floating point values, use this axis.
+    ]
+  ]
+  [
+    [
+      [classref boost::histogram::axis::integer integer]
+    ]
+    [
+      Axis over an integer sequence [i, i+1, i+2, ...]. It can be configured to handle real input values, too, and then acts like a fast regular axis with a fixed bin width of 1. Value-to-index conversion is O(1) and faster than for the [classref boost::histogram::axis::regular regular] axis. Does not allocate memory dynamically. Use this when your input consists of an integer range or pre-digitized values with low dynamic range, like pixel values for individual colours in an image.
+    ]
+  ]
+  [
+    [
+      [classref boost::histogram::axis::boolean boolean]
+    ]
+    [
+      Axis over the two values [false, true]. It is a common specialization of the [classref boost::histogram::axis::regular regular] axis. Value-to-index conversion is a pass-through operation, so this is the fastest possible axis. The axis has no state other than the metadata (which can be stateless). Does not allocate memory dynamically. Use this when your input consists of binary categories, like signal and background.
+    ]
+  ]
+  [
+    [
+      [classref boost::histogram::axis::category category]
+    ]
+    [
+      Axis over a set of unique values of an arbitrary equal-comparable type. Value-to-index conversion is O(N), but still faster than the O(logN) complexity of the [classref boost::histogram::axis::variable variable] axis for N < 10, the typical use case. The axis allocates memory from the heap to store the values.
+    ]
+  ]
+]
+
+Here is an example which shows the basic use case for each axis type.
+
+[import ../examples/guide_axis_basic_demo.cpp]
+[guide_axis_basic_demo]
+
+[note All builtin axes over a continuous value range use semi-open intervals in their constructors as a convention. As a mnemonic, think of iterator ranges from `begin` to `end`, where `end` is also never included.]
+
+As mentioned in the previous example, you can assign an optional label to any axis to keep track of what the axis is about. Assume you have census data and you want to investigate how yearly income correlates with age, you could do:
+
+[import ../examples/guide_axis_with_labels.cpp]
+[guide_axis_with_labels]
+
+Without the metadata it would be difficult to see which axis was covering which quantity. Metadata is the only axis property that can be modified after construction by the user. Axis objects with different metadata do not compare equal.
+
+By default, strings are used to store the metadata, but any type compatible with the [link histogram.concepts.Axis [*Metadata] concept] can be used.
+
+[endsect]
+
+[section Axis configuration]
+
+All builtin axis types have template arguments for customisation. All arguments have reasonable defaults so you can use empty brackets. If your compiler supports C++17, you can drop the brackets altogether. Suitable arguments are then deduced from the constructor call. The template arguments are in order:
+
+[variablelist
+  [
+    [Value]
+    [
+      The value type is the argument type of the `index()` method. An argument passed to the axis must be implicitly convertible to this type.
+    ]
+  ]
+  [
+    [Transform (only [classref boost::histogram::axis::regular regular] axis)]
+    [
+      A class that implements a monotonic transform between the data space and the space in which the bins are equi-distant. Users can define their own transforms and use them with the axis.
+    ]
+  ]
+  [
+    [Metadata]
+    [
+      The axis uses an instance this type to store metadata. It is a `std::string` by default, but it can by any copyable type. If you want to save a small amount of stack memory per axis, you pass the empty `boost::histogram::axis::null_type` here.
+    ]
+  ]
+  [
+    [Options]
+    [
+       [headerref boost/histogram/axis/option.hpp Compile-time options] for the axis. This is used to enable/disable under- and overflow bins, to make an axis circular, or to enable dynamic growth of the axis beyond the initial range.
+    ]
+  ]
+  [
+    [Allocator (only [classref boost::histogram::axis::variable variable] and [classref boost::histogram::axis::category category] axes)]
+    [
+      Allocator that is used to request memory dynamically to store values. If you don't know what an allocator is you can safely ignore this argument.
+    ]
+  ]
+]
+
+You can use the `boost::histogram::use_default` tag type for any of these options, except for the Value and Allocator, to use the library default.
+
+[section Transforms]
+
+Transforms are a way to customize a [classref boost::histogram::axis::regular regular] axis. Transforms allow you to chose the faster stack-allocated regular axis over the generic [classref boost::histogram::axis::variable variable axis] in some cases. The default is the identity transform which does nothing. A common need is a regular binning in the logarithm of the input value. This can be achieved with a [classref boost::histogram::axis::transform::log log] transform. The follow example shows the builtin transforms.
+
+[import ../examples/guide_axis_with_transform.cpp]
+[guide_axis_with_transform]
+
+Due to the finite precision of floating point calculations, the bin edges of a transformed regular axis may not be exactly at the expected values. If you need exact correspondence, use a [classref boost::histogram::axis::variable variable] axis.
+
+Users may write their own transforms and use them with the builtin [classref boost::histogram::axis::regular regular] axis, by implementing a type that matches the [link histogram.concepts.Transform [*Transform] concept].
+
+[endsect]
+
+[section Options]
+
+[headerref boost/histogram/axis/option.hpp Options] can be used to configure each axis type. The option flags are implemented as tag types with the suffix `_t`. Each tag type has a corresponding value without the suffix. The values have set semantics: You can compute the union with `operator|` and the intersection with `operator&`. When you pass a single option flag to an axis as a template parameter, use the tag type. When you need to pass the union of several options to an axis as a template parameter, surround the union of option values with a `decltype`. Both ways of passing options are shown in the following examples.
+
+[*Under- and overflow bins]
+
+Under- and overflow bins are added automatically for most axis types. If you create an axis with 10 bins, the histogram will actually have 12 bins along that axis. The extra bins are very useful, as explained in the [link histogram.rationale.uoflow rationale]. If the input cannot exceed the axis range or if you are really tight on memory, you can disable the extra bins. A demonstration:
+
+[import ../examples/guide_axis_with_uoflow_off.cpp]
+[guide_axis_with_uoflow_off]
+
+The [classref boost::histogram::axis::category category] axis by default comes only with an overflow bin, which counts all input values that are not part of the initial set.
+
+[*Circular axes]
+
+Each builtin axis except the [classref boost::histogram::axis::category category] axis can be made circular. This means that the axis is periodic at its ends. This is useful if you want make a histogram over a polar angle. Example:
+
+[import ../examples/guide_axis_circular.cpp]
+[guide_axis_circular]
+
+A circular axis cannot have an underflow bin, passing both options together generates a compile-time error. Since the highest bin wraps around to the lowest bin, there is no possibility for overflow either. However, an overflow bin is still added by default if the value is a floating point type, to catch NaNs and infinities.
+
+[*Growing axes]
+
+Each builtin axis has an option to make it grow beyond its initial range when a value outside of that range is passed to it, while the default behaviour is to count this value in the under- or overflow bins (or to discard it). Example:
+
+[import ../examples/guide_axis_growing.cpp]
+[guide_axis_growing]
+
+This feature can be very convenient, but keep two caveats in mind.
+
+* Growing axes come with a run-time cost, since the histogram has to reallocate memory
+  for all cells when an axis changes its size. Whether this performance hit is noticeable depends on your application. This is a minor issue, the next is more severe.
+* If you have unexpected outliers in your data which are far away from the normal range,
+  the axis could grow to a huge size and the corresponding huge memory request could bring the computer to its knees. This is one of the reason why growing axes are not the default.
+
+A growing axis can have under- and overflow bins, but these only count the special floating point values: positive and negative infinity, and NaN.
+
+[endsect] [/ options]
+
+[endsect] [/ axis configuration]
+
+[endsect] [/ choose the right axis]
+
+[section Filling histograms and accessing cells]
+
+A histogram has been created and now you want to insert values. This is done with the flexible [memberref boost::histogram::histogram::operator() call operator] or the [memberref boost::histogram::histogram::fill fill method], which you typically call in a loop. The [memberref boost::histogram::histogram::operator() call operator] accepts `N` arguments or a `std::tuple` with `N` elements, where `N` is equal to the number of axes of the histogram. It finds the corresponding bin for the input and increments the bin counter by one. The [memberref boost::histogram::histogram::fill fill method] accepts a single iterable over other iterables (which must have have elements contiguous in memory) or values, see the method documentation for details.
+
+After the histogram has been filled, use the [memberref boost::histogram::histogram::at at method] (in analogy to `std::vector::at`) to access the cell values. It accepts integer indices, one for each axis of the histogram.
+
+[import ../examples/guide_fill_histogram.cpp]
+[guide_fill_histogram]
+
+For a histogram `hist`, the calls `hist(weight(w), ...)` and `hist(..., weight(w))` increment the bin counter by the value `w` instead, where `w` may be an integer or floating point number. The helper function [funcref boost::histogram::weight() weight()] marks this argument as a weight, so that it can be distinguished from the other inputs. It can be the first or last argument. You can freely mix calls with and without a weight. Calls without `weight` act like the weight is `1`. Why weighted increments are sometimes useful is explained [link histogram.rationale.weights in the rationale].
+
+[note The default storage loses its no-overflow-guarantee when you pass floating point weights, but maintains it for integer weights.]
+
+When the weights come from a stochastic process, it is useful to keep track of the variance of the sum of weights per cell. A specialized histogram can be generated with the [funcref boost::histogram::make_weighted_histogram make_weighted_histogram] factory function which does that.
+
+[import ../examples/guide_fill_weighted_histogram.cpp]
+[guide_fill_weighted_histogram]
+
+To iterate over all cells, the [funcref boost::histogram::indexed indexed] range generator is very convenient and also efficient. For almost all configurations, the range generator iterates /faster/ than a naive for-loop. Under- and overflow are skipped by default.
+
+[import ../examples/guide_indexed_access.cpp]
+[guide_indexed_access]
+
+[endsect] [/ fill a histogram]
+
+[section Using profiles]
+
+Histograms from this library can do more than counting, they can hold arbitrary accumulators which accept samples. We call a histogram with accumulators that compute the mean of samples in each cell a /profile/. Profiles can be generated with the factory function [funcref boost::histogram::make_profile make_profile].
+
+[import ../examples/guide_fill_profile.cpp]
+[guide_fill_profile]
+
+Just like [funcref boost::histogram::weight weight()], [funcref boost::histogram::sample sample()] is a marker function. It must be the first or last argument.
+
+Weights and samples may be combined, if the accumulators can handle weights. When both [funcref boost::histogram::weight weight()] and [funcref boost::histogram::sample sample()] appear in the [memberref boost::histogram::histogram::operator() call operator] or the [memberref boost::histogram::histogram::fill fill method], they can be in any order with respect to other, but they must be the first or last arguments. To make a profile which can compute weighted means with proper uncertainty estimates, use the [funcref boost::histogram::make_weighted_profile make_weighted_profile] factory function.
+
+[import ../examples/guide_fill_weighted_profile.cpp]
+[guide_fill_weighted_profile]
+
+[endsect]
+
+[section Using operators]
+
+The following operators are supported for pairs of histograms `+, -, *, /, ==, !=`. Histograms can also be multiplied and divided by a scalar. Only a subset of the arithmetic operators is available when the underlying accumulator only supports that subset.
+
+The arithmetic operators can only be used when the histograms have the same axis configuration. This checked at run-time. An exception is thrown if the configurations do not match. Two histograms have the same axis configuration, if all axes compare equal, which includes a comparison of their metadata. Two histograms compare equal, when their axis configurations and all their cell values compare equal.
+
+[note If the metadata type has `operator==` defined, it is used in the axis configuration comparison. Metadata types without `operator==` are considered equal, if they are the same type.]
+
+[import ../examples/guide_histogram_operators.cpp]
+[guide_histogram_operators]
+
+[note A histogram with default storage converts its cell values to double when they are to be multiplied with or divided by a real number, or when a real number is added or subtracted. At this point the no-overflow-guarantee is lost.]
+
+[note When the storage tracks weight variances, such as [classref boost::histogram::weight_storage], adding two copies of a histogram produces a different result than scaling the histogram by a factor of two, as shown in the last example. The is a consequence of the mathematical properties of variances. They can be added like normal numbers, but scaling by `s` means that variances are scaled by `s^2`.]
+
+[endsect]
+
+[section Using algorithms]
+
+The library was designed to work with algorithms from the C++ standard library. In addition, a support library of algorithms is included with common operations on histograms.
+
+[section Algorithms from the C++ standard library]
+
+The histogram class has standard random-access iterators which can be used with various algorithms from the standard library. Some things need to be kept in mind:
+
+* The histogram iterators also walk over the under- and overflow bins, if they are present. To skip the extra bins one should use the fast iterators from the [funcref boost::histogram::indexed] range generator instead.
+* The iteration order for histograms with several axes is an implementation-detail, but for histograms with one axis it is guaranteed to be the obvious order: bins are accessed in order from the lowest to the highest index.
+
+[import ../examples/guide_stdlib_algorithms.cpp]
+[guide_stdlib_algorithms]
+
+[endsect]
+
+[section Summation]
+
+It is easy to iterate over all histogram cells to compute the sum of cell values by hand or to use an algorithm from the standard library to do so, but it is not safe. The result may not be accurate or overflow, if the sum is represented by an integer type. The library provides [funcref boost::histogram::algorithm::sum] as a safer, albeit slower, alternative. It uses the [@https://en.wikipedia.org/wiki/Kahan_summation_algorithm Neumaier algorithm] in double precision for integers and floating point cells, and does the naive sum otherwise.
+
+[endsect]
+
+[section Projection]
+
+It is sometimes convenient to generate a high-dimensional histogram first and then extract smaller or lower-dimensional versions from it. Lower-dimensional histograms are obtained by summing the bin contents of the removed axes. This is called a /projection/. If the histogram has under- and overflow bins along all axes, this operation creates a histogram which is identical to one that would have been obtained by filling the original data.
+
+Projection is useful if you found out that there is no interesting structure along an axis, so it is not worth keeping that axis around, or if you want to visualize 1d or 2d summaries of a high-dimensional histogram.
+
+The library provides the [funcref boost::histogram::algorithm::project] function for this purpose. It accepts the original histogram and the indices (one or more) of the axes that are kept and returns the lower-dimensional histogram. If the histogram is static, meaning the axis configuration is known at compile-time, compile-time numbers should be used as indices to obtain another static histogram. Using normal numbers or iterators over indices produces a histogram with a dynamic axis configuration.
+
+[import ../examples/guide_histogram_projection.cpp]
+[guide_histogram_projection]
+
+[endsect]
+
+[section Reduction]
+
+A projection removes an axis completely. A less drastic way to obtain a smaller histogram is the [funcref boost::histogram::algorithm::reduce reduce] function, which allows one to /slice/, /shrink/ or /rebin/ individual axes.
+
+Shrinking means that the value range of an axis is reduced and the number of bins along that axis. Slicing does the same, but is based on axis indices while shrinking is based on the axis values. To /rebin/ means that adjacent bins are merged into larger bins, the histogram is made coarser. For N adjacent bins, a new bin is formed which covers the common interval of the merged bins and has their added content. These two operations can be combined and applied to several axes at once. Doing it in one step is much more efficient than doing it in several steps.
+
+The [funcref boost::histogram::algorithm::reduce reduce] function does not change the total count if all modified axes in the histogram have underflow and overflow bins. Counts in removed bins are added to the corresponding under- and overflow bins. As in case of the [funcref boost::histogram::algorithm::project project] function, such a histogram is guaranteed to be identical to one obtained from filling the original data.
+
+[import ../examples/guide_histogram_reduction.cpp]
+[guide_histogram_reduction]
+
+[endsect]
+
+[endsect] [/ Algorithms]
+
+[section Streaming]
+
+Simple streaming operators are shipped with the library. They are internally used by the unit tests and give simple text representations of axis and histogram configurations and show the histogram content. One-dimensional histograms are rendered as ASCII drawings. The text representations may be useful for debugging or more, but users may want to use their own implementations. Therefore, the headers with the builtin implementations are not included by any other header of the library. The following example shows the effect of output streaming.
+
+[import ../examples/guide_histogram_streaming.cpp]
+[guide_histogram_streaming]
+
+[endsect]
+
+[section Serialization]
+
+The library supports serialization via [@boost:/libs/serialization/index.html Boost.Serialization]. The serialization code is not included by the super header `#include <boost/histogram.hpp>`, so that the library can be used without Boost.Serialization or with another compatible serialization library.
+
+[import ../examples/guide_histogram_serialization.cpp]
+[guide_histogram_serialization]
+
+[endsect]
+
+[section Using histograms in APIs]
+
+Letting the compiler deduce the histogram type is recommended, because the templated type is tedious to write down explicitly. Functions or methods which accept or return histograms should be templated to work with all kinds of histograms. It is also possible to write templated versions which accept only histograms with dynamic axes or only histograms with static axes. The following example demonstrates all this.
+
+[import ../examples/guide_histogram_in_api.cpp]
+[guide_histogram_in_api]
+
+If the histogram type has to be written down explicitly, the types are constructed as follows. In all cases, the `default_storage` type argument may be replaced by any other storage type or omitted entirely.
+
+* Histogram with fixed axis types:
+```
+boost::histogram::histogram<
+  std::tuple<axis_type_1, axis_type_2, ..., axis_type_N>
+  , boost::histogram::default_storage
+>
+```
+* Histogram with a variable number of the same axis type:
+```
+boost::histogram::histogram<
+  std::vector<
+    axis_type_1
+  >
+  , boost::histogram::default_storage
+>
+```
+* Histogram with variable axis types:
+```
+boost::histogram::histogram<
+  std::vector<
+    boost::histogram::axis::variant<
+      axis_type_1, axis_type_2, ..., axis_type_N
+    >
+  >
+  , boost::histogram::default_storage
+>
+```
+
+[endsect] [/Using histograms in APIs]
+
+[section:expert Advanced usage]
+
+The library is customisable and extensible by users. Users can create new axis types and use them with the histogram, or implement a custom storage policy, or use a builtin storage policy with a custom counter type. The library was designed to make this very easy. This section shows how to do this.
+
+[section User-defined axes]
+
+It is easy to make custom axis classes that work with the library. The custom axis class must meet the requirements of the [link histogram.concepts.Axis [*Axis] concept].
+
+Users can create a custom axis by derive from a builtin axis type and customize its behavior. The following examples demonstrates a modification of the [classref boost::histogram::axis::integer integer axis].
+
+[import ../examples/guide_custom_modified_axis.cpp]
+[guide_custom_modified_axis]
+
+How to make an axis completely from scratch is shown in the next example.
+
+[import ../examples/guide_custom_minimal_axis.cpp]
+[guide_custom_minimal_axis]
+
+Such minimal axis types lack many features provided by the builtin axis types, for example, one cannot iterate over them, but this functionality can be added as needed.
+
+[endsect]
+
+[section Axis with several arguments]
+
+Multi-dimensional histograms usually have an orthogonal system of axes. Orthogonal means that each axis takes care of only one value and computes its local index independently of all the other axes and values. A checker-board is such an orthogonal grid in 2D.
+
+There are other interesting grids which are not orthogonal, notably the honeycomb grid. In such a grid, each cell is hexagonal and even though the cells form a perfectly regular pattern, it is not possible to sort values into these cells using two orthogonal axes.
+
+The library supports non-orthogonal grids by allowing axis types to accept a `std::tuple` of values. The axis can compute an index from the values passed to it in an arbitrary way. The following example demonstrates this.
+
+[import ../examples/guide_custom_2d_axis.cpp]
+[guide_custom_2d_axis]
+
+[endsect]
+
+[section User-defined storage class]
+
+Histograms which use a different storage class can easily created with the factory function [headerref boost/histogram/make_histogram.hpp make_histogram_with]. For convenience, this factory function accepts many standard containers as storage backends: vectors, arrays, and maps. These are automatically wrapped with a [classref boost::histogram::storage_adaptor] to provide the storage interface needed by the library. Users may also place custom accumulators in the vector, as described in the next section.
+
+[warning The no-overflow-guarantee is only valid if the [classref boost::histogram::unlimited_storage unlimited_storage] (the default) is used. If you change the storage policy, you need to know what you are doing.]
+
+A `std::vector` may provide higher performance than the [classref boost::histogram::unlimited_storage unlimited_storage] with a carefully chosen counter type. Usually, this would be an integral or floating point type. A `std::vector`-based storage may be faster for low-dimensional histograms (or not, you need to measure).
+
+Users who work exclusively with weighted histograms should chose a `std::vector<double>`, it will be faster. If they also want to track the variance of the sum of weights, a vector-based storage of [classref boost::histogram::accumulators::weighted_sum weighted_sum] accumulators should be used. The factory function [funcref boost::histogram::make_weighted_histogram make_weighted_histogram] is a convenient way to generate a histogram with this storage.
+
+An interesting alternative to a `std::vector` is to use a `std::array`. The latter provides a storage with a fixed maximum capacity (the size of the array). `std::array` allocates the memory on the stack. In combination with a static axis configuration this allows one to create histograms completely on the stack without any dynamic memory allocation. Small stack-based histograms can be created and destroyed very fast.
+
+Finally, a `std::map` or `std::unordered_map` or any other map type that implements the STL interface can be used to generate a histogram with a sparse storage, where empty cells do not consume any memory. This sounds attractive, but the memory consumption per cell in such a data structure is much larger than for a vector or array, so the number of empty cells must be substantial to gain. Moreover, cell lookup in a sparse data structure may be less performant. Whether a sparse storage performs better than a dense storage depends on the use case. The library makes it easy to switch from dense to sparse storage and back, so users are invited to test both options.
+
+The following example shows how histograms are constructed which use an alternative storage classes.
+
+[import ../examples/guide_custom_storage.cpp]
+[guide_custom_storage]
+
+[endsect]
+
+[section Parallelisation options]
+
+There are two ways to generate a single histogram using several threads.
+
+1. Each thread has its own copy of the histogram. Each copy is independently filled. The copies are then added in the main thread. Use this as the default when you can afford having `N` copies of the histogram in memory for `N` threads, because it allows each thread to work on its thread-local memory and utilise the CPU cache without the need to synchronise memory access. The highest performance gains are obtained in this way.
+
+2. There is only one histogram which is filled concurrently by several threads. This requires using a thread-safe storage that can handle concurrent writes. The library provides the [classref boost::histogram::accumulators::count] accumulator with a thread-safe option, which combined with the [classref boost::histogram::dense_storage] provides a thread-safe storage.
+
+[note Filling a histogram with growing axes in a multi-threaded environment is safe, but has poor performance since the histogram must be locked on each fill. The locks are required because an axis could grow each time, which changes the number of cells and cell addressing for all other threads. Even without growing axes, there is only a performance gain if the histogram is either very large or when significant time is spend in preparing the value to fill. For small histograms, threads frequently access the same cell, whose state has to be synchronised between the threads. This is slow even with atomic counters and made worse by the effect of false sharing.]
+
+The next example demonstrates option 2 (option 1 is straight-forward to implement).
+
+[import ../examples/guide_parallel_filling.cpp]
+[guide_parallel_filling]
+
+[endsect]
+
+[section User-defined accumulators]
+
+A storage can hold custom accumulators which can accept an arbitrary number of arguments. The arguments are passed to the accumulator via the [funcref boost::histogram::sample sample] call, for example, `sample(1, 2, 3)` for an accumulator which accepts three arguments. Custom accumulators can be combined with any container supported by [classref boost::histogram::storage_adaptor]. For convenience, the alias template `boost::histogram::dense_storage` is provided to make a standard storage with a custom accumulator type.
+
+The library provides several accumulators:
+
+* [classref boost::histogram::accumulators::sum sum] accepts no samples, but accepts a weight. It is an alternative to a plain arithmetic type as a counter. It provides an advantage when histograms are filled with weights that differ dramatically in magnitude. The sum of weights is computed incrementally with the Neumaier algorithm. The algorithm is more accurate, but consumes more CPU and memory (memory is doubled compared to a normal sum of floating point numbers).
+* [classref boost::histogram::accumulators::weighted_sum weighted_sum] accepts no samples, but accepts a weight. It computes the sum of weights and the sum of weights squared, the variance estimate of the sum of weights. This type is used by the [funcref boost::histogram::make_weighted_histogram make_weighted_histogram].
+* [classref boost::histogram::accumulators::mean mean] accepts a sample and computes the mean of the samples. [funcref boost::histogram::make_profile make_profile] uses this accumulator.
+* [classref boost::histogram::accumulators::weighted_mean weighted_mean] accepts a sample and a weight. It computes the weighted mean of the samples. [funcref boost::histogram::make_weighted_profile make_weighted_profile] uses this accumulator.
+
+Users can easily write their own accumulators and plug them into the histogram, if they adhere to the [link histogram.concepts.Accumulator [*Accumulator] concept]. All accumulators from [@boost:/libs/accumulators/index.html Boost.Accumulators] that accept a single argument and no weights work out of the box. Other accumulators from Boost.Accumulators can be made to work by using them inside a wrapper class that implements the concept.
+
+The first example shows how to make and use a histogram that uses one of the the builtin accumulators.
+[import ../examples/guide_custom_accumulators_builtin.cpp]
+[guide_custom_accumulators_builtin]
+
+The simplest way to make a custom accumulator is to inherit from one of the builtin accumulators. The following example shows how to add arbitrary metadata to each histogram cell by inheriting a custom accumulator from a builtin accumulator.
+[import ../examples/guide_custom_accumulators_with_metadata.cpp]
+[guide_custom_accumulators_with_metadata]
+
+The next example shows how to making a custom accumulators completely from scratch. The library was designed to make this as easy as possible.
+[import ../examples/guide_custom_accumulators_simple.cpp]
+[guide_custom_accumulators_simple]
+
+The next example shows a more complex custom accumulator that accepts two samples at once and an optional weight. It independently computes the mean for each sample. This is more efficient than filling two separate profiles, because the cell lookup has to be done only once.
+[import ../examples/guide_custom_accumulators_advanced.cpp]
+[guide_custom_accumulators_advanced]
+
+And finally, just for fun, we use a histogram as the accumulator for another histogram.
+[import ../examples/guide_custom_accumulators_ouroboros.cpp]
+[guide_custom_accumulators_ouroboros]
+Note that the axis size of the nested histogram differs from bin to bin. Creating a 2D histogram in this way is not as efficient as the normal way, but it allows one to create a histograms with such a non-rectangular layout of cells.
+
+[endsect]
+
+[endsect]
+
+[endsect]
