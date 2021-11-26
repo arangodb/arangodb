@@ -469,3 +469,136 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   EXPECT_EQ(content.length(), 100);
 }
 
+static std::shared_ptr<VPackBuilder> runFinishBrokenHotbackupTransferJobs(
+    Node const& snap) {
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder guard(envelope.get());
+    arangodb::consensus::finishBrokenHotbackupTransferJobsFunctional(
+      snap, envelope);
+  }
+  return envelope;
+}
+
+TEST_F(SupervisionTestClass, finish_hotbackup_transfer_jobs) {
+  // We put in three transfer jobs. One of the DBServers is healthy
+  // and its rebootId has not changed ==> nothing ought to be done.
+  // For the other ones either the dbserver is FAILED or its rebootId
+  // has changed, in this case we want the job aborted and the lock
+  // removed.
+  _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1234567))
+      = createNode(R"=(
+{
+  "Timestamp": "2021-02-25T12:38:29Z",
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 4
+      },
+      "rebootId": 1,
+      "lockLocation": "Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27",
+      "Status": "RUNNING"
+    },
+    "PRMR-fe142532-2536-426f-23aa-123534feb253": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 2
+      },
+      "rebootId": 1,
+      "lockLocation": "Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-fe142532-2536-426f-23aa-123534feb253",
+      "Status": "RUNNING"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 3
+      },
+      "rebootId": 1,
+      "lockLocation": "Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03",
+      "Status": "RUNNING"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0"
+}
+        )=");
+  _snapshot("/Current/ServersKnown")
+      = createNode(R"=(
+{
+  "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+    "rebootId": 1
+  },
+  "PRMR-fe142532-2536-426f-23aa-123534feb253": {
+    "rebootId": 1
+  },
+  "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    "rebootId": 2
+  }
+}
+        )=");
+  _snapshot("/Supervision/Health")
+      = createNode(R"=(
+{
+  "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+    "ShortName": "DBServer0001",
+    "Endpoint": "tcp://[::1]:8629",
+    "Host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "SyncStatus": "SERVING",
+    "Status": "GOOD",
+    "Version": "3.8.4",
+    "Engine": "rocksdb",
+    "Timestamp": "2021-11-26T11:05:22Z",
+    "SyncTime": "2021-11-26T11:05:22Z",
+    "LastAckedTime": "2021-11-26T11:05:22Z"
+  },
+  "PRMR-fe142532-2536-426f-23aa-123534feb253": {
+    "ShortName": "DBServer0002",
+    "Endpoint": "tcp://[::1]:8630",
+    "Host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "SyncStatus": "SERVING",
+    "Status": "FAILED",
+    "Version": "3.8.4",
+    "Engine": "rocksdb",
+    "Timestamp": "2021-11-26T11:05:22Z",
+    "SyncTime": "2021-11-26T11:05:22Z",
+    "LastAckedTime": "2021-11-26T11:05:22Z"
+  },
+  "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    "ShortName": "DBServer0003",
+    "Endpoint": "tcp://[::1]:8631",
+    "Host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "SyncStatus": "SERVING",
+    "Status": "GOOD",
+    "Version": "3.8.4",
+    "Engine": "rocksdb",
+    "Timestamp": "2021-11-26T11:05:22Z",
+    "SyncTime": "2021-11-26T11:05:22Z",
+    "LastAckedTime": "2021-11-26T11:05:22Z"
+  }
+}
+        )=");
+  std::shared_ptr<VPackBuilder> envelope = runFinishBrokenHotbackupTransferJobs(
+      _snapshot);
+  VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isObject());
+  EXPECT_EQ(content.length(), 4);  // four keys written
+  VPackSlice guck = content.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-fe142532-2536-426f-23aa-123534feb253/Status");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_EQ(guck.length(), 2);
+  EXPECT_EQ(guck["op"].copyString(), "set");
+  EXPECT_EQ(guck["new"].copyString(), "FAILED");
+  guck = content.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-fe142532-2536-426f-23aa-123534feb253");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_EQ(guck["op"].copyString(), "delete");
+  guck = content.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03/Status");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_EQ(guck["op"].copyString(), "set");
+  EXPECT_EQ(guck["new"].copyString(), "FAILED");
+  guck = content.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_EQ(guck["op"].copyString(), "delete");
+}
+
