@@ -1659,7 +1659,7 @@ bool Supervision::handleJobs() {
       << "Begin cleanupHotbackupTransferJobs";
   cleanupHotbackupTransferJobs();
 
-  LOG_TOPIC("0892c", TRACE, Logger::SUPERVISION)
+  LOG_TOPIC("0892d", TRACE, Logger::SUPERVISION)
       << "Begin failBrokenHotbackupTransferJobs";
   failBrokenHotbackupTransferJobs();
 
