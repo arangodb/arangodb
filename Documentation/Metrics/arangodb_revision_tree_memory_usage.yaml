@@ -1,5 +1,5 @@
 name: arangodb_revision_tree_memory_usage
-introducedIn: "3.8.4"
+introducedIn: "3.8.5"
 help: |
   Total memory usage of all revision trees (both hibernated and uncompressed).
 unit: bytes

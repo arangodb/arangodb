@@ -1,5 +1,5 @@
 name: rocksdb_wal_sequence_number
-introducedIn: "3.8.4"
+introducedIn: "3.8.5"
 help: |
   Current RocksDB WAL sequence number.
 unit: number
