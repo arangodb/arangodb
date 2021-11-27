@@ -1772,7 +1772,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  size_t numDocs = rocksutils::countKeyRange(_db, bounds, true);
+  size_t numDocs = rocksutils::countKeyRange(_db, bounds, nullptr, true);
 
   if (numDocs > 0) {
     std::string errorMsg(
@@ -2391,7 +2391,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // check if documents have been deleted
-        numDocsLeft += rocksutils::countKeyRange(db, bounds, prefixSameAsStart);
+        numDocsLeft += rocksutils::countKeyRange(db, bounds, /*snapshot*/ nullptr, prefixSameAsStart);
 #endif
       }
     }
@@ -2423,7 +2423,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // check if documents have been deleted
-    numDocsLeft += rocksutils::countKeyRange(db, bounds, true);
+    numDocsLeft += rocksutils::countKeyRange(db, bounds, /*snapshot*/ nullptr, true);
 #endif
   });
 

@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Make `db.<collection>.figures(true)` operate on the same snapshot when
+  counting the number of documents in the documents column family and the
+  indexes. This ensures consistency for the results of a single figures result.
+
 * Upgraded bundled version of RocksDB to 6.27.
 
 * Improved sync protocol to commit after each chunk and get rid of potentially
