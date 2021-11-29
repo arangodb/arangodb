@@ -1748,18 +1748,23 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
     if (!dbservers.second) {
       continue;
     }
+    // Now check if everything is completed or failed, or if the job
+    // has no status information whatsoever:
     bool completed = true;
+    bool hasStatus = false;
     for (auto const& pp : dbservers.first) {
       auto const& status = pp.second->hasAsString("Status");
       if (!status.second) {
         completed = false;
       } else {
-        if (status.first.compare("COMPLETED") != 0) {
+        hasStatus = true;
+        if (status.first.compare("COMPLETED") != 0 ||
+            status.first.compare("FAILED") != 0) {
           completed = false;
         }
       }
     }
-    if (!completed) {
+    if ((!completed && hasStatus) || !hasStatus) {
       continue;
     }
     auto created = p.second->hasAsString("Timestamp");
