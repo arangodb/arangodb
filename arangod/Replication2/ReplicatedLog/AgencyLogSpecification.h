@@ -68,6 +68,8 @@ struct LogPlanSpecification {
   LogPlanSpecification() = default;
 
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config);
+  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
+                       LogConfig config, ParticipantsConfig participantsConfig);
 };
 
 struct LogCurrentLocalState {
