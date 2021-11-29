@@ -106,17 +106,11 @@ std::atomic<bool> killHard(false);
     WaitForSingleObject(hSelf, INFINITE);
   } else {
     // exit will not trigger dump creation. So do this manually.
-    //createMiniDump(nullptr);
-    if (SIGABRT == signal) {
-      auto filter = [](EXCEPTION_POINTERS* pointers) {
-        createMiniDump(pointers);
-        return EXCEPTION_EXECUTE_HANDLER;
-      };
-      __try {
-        RaiseException(0xFFFFFFFF, EXCEPTION_NONCONTINUABLE, 0, nullptr);
-      } __except (filter(GetExceptionInformation())) {}
-    }
-    exit(255 + signal);
+    createMiniDump(nullptr);
+    auto hSelf = GetCurrentProcess();
+    TerminateProcess(hSelf, 255 + signal);
+    // TerminateProcess is async, alright wait here for selfdestruct (we will never exit wait)
+    WaitForSingleObject(hSelf, INFINITE);
   }
 #else
   if (::killHard.load(std::memory_order_relaxed)) {
