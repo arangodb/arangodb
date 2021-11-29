@@ -154,6 +154,7 @@ add_library(arango STATIC
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
   Containers/MerkleTree.cpp
+  Containers/MerkleTreeHelpers.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
