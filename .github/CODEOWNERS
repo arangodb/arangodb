@@ -3,6 +3,9 @@
 
 # `documentation-team` ownership
 /Documentation/ @arangodb/documentation
+/utils/*Documentation* @arangodb/documentation
+/utils/*Examples* @arangodb/documentation
+/utils/*Swagger* @arangodb/documentation
 
 # `qa-team` ownership
 /Installation/ @arangodb/team-qa
