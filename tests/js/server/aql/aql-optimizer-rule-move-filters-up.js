@@ -71,6 +71,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 FILTER i > 1 RETURN i",
         "LET a = 99 FOR i IN 1..10 FILTER i > a RETURN i",
         "LET a = 1 FOR i IN 1..10 FILTER a != i RETURN i",
+        "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i",
         "FOR i IN 1..10 LET a = i LET b = i FILTER a == b RETURN i",
         "FOR i IN 1..10 FOR j IN 1..10 FILTER i > j RETURN i",
         "FOR i IN 1..10 LET a = 2 * i FILTER a == 1 RETURN i",
@@ -92,24 +93,16 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
-      var queries = [ 
+      const queries = [ 
         "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i",
-        "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i",
         "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a",
         "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 LIMIT 1 RETURN a",
         "FOR i IN 1..10 FOR l IN 1..10 LET a = MIN([1, l]) FILTER i == 1 LIMIT 1 RETURN a",
       ];
 
-
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        if (query !== queries[1]) { // because of the optimization rules for moving subqueries up,
-                                    // there's a dependency of the subquery on the variable i of the outer query,
-                                    // filter is not going to be moved up
-          assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        } else {
-          assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        }
+        let result = AQL_EXPLAIN(query, { }, paramEnabled);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
@@ -119,21 +112,22 @@ function optimizerRuleTestSuite () {
 
 
     testPlans : function () {
-      var plans = [ 
-        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SubqueryStartNode", "EnumerateListNode", "SubqueryEndNode", "CalculationNode", "FilterNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i == 1 FILTER j == 2 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ] ]
+      const plans = [ 
+        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ], true ],
+        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SubqueryStartNode", "EnumerateListNode", "SubqueryEndNode", "CalculationNode", "FilterNode", "ReturnNode" ], false ],
+        [ "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ], true ],
+        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i == 1 FILTER j == 2 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ], true ]
       ];
 
       plans.forEach(function(plan) {
-        var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
-        if (plan[0] !== plans[1][0]) { // because of the optimization rules for moving subqueries up,
-                                       // there's a dependency of the subquery on the variable i of the outer query,
-                                       // filter is not going to be moved up
-          assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
-        } else {
+        let result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
+        if (!plan[2]) {
           assertEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
+        } else {
+         // because of the optimization rules for moving subqueries up,
+         // there's a dependency of the subquery on the variable i of the outer query,
+         // filter is not going to be moved up
+          assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
         }
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
@@ -144,11 +138,11 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testResults : function () {
-      var queries = [ 
-        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 9 RETURN j", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
-        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 9 RETURN x", [ [ 10 ] ] ],
-        [ "FOR i IN 1..10 FOR l IN 1..1 LET a = 2 * i FILTER i == 1 RETURN a", [ 2 ] ],
-        [ "FOR i IN 1..10 LET a = i FOR j IN 1..10 LET b = j FILTER a == 1 FILTER b == 2 RETURN [ a, b ]", [ [ 1, 2 ] ] ]
+      const queries = [ 
+        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 9 RETURN j", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], true ],
+        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 9 RETURN x", [ [ 10 ] ], false ],
+        [ "FOR i IN 1..10 FOR l IN 1..1 LET a = 2 * i FILTER i == 1 RETURN a", [ 2 ], true ],
+        [ "FOR i IN 1..10 LET a = i FOR j IN 1..10 LET b = j FILTER a == 1 FILTER b == 2 RETURN [ a, b ]", [ [ 1, 2 ] ], true ]
       ];
 
       queries.forEach(function(query) {
@@ -159,15 +153,14 @@ function optimizerRuleTestSuite () {
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
 
-
-
         assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
-        if (query[0] !== queries[1][0]) { // because of the optimization rules for moving subqueries up,
-                                          // there's a dependency of the subquery on the variable i of the outer query,
-                                          // filter is not going to be moved up
-          assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
-        } else {
+        if (!query[2]) {
           assertEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
+        } else {
+          // because of the optimization rules for moving subqueries up,
+          // there's a dependency of the subquery on the variable i of the outer query,
+          // filter is not going to be moved up
+          assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
         }
         assertEqual(resultDisabled, query[1]);
         assertEqual(resultEnabled, query[1]);

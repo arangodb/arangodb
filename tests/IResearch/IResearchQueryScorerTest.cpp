@@ -445,7 +445,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     }
     EXPECT_TRUE(expectedDocs.empty());
   }
-
+  
   // FIXME
   // inline subqueries aren't supported, e.g. the query below will be transformed into
   //
@@ -453,13 +453,52 @@ TEST_P(IResearchQueryScorerTest, test) {
   // LET #2 = (FOR j IN testView SEARCH j.name == 'A' SORT BM25(j) RETURN j)
   // RETURN { d, 'score' : #1 ) }
   {
+    std::map<size_t, irs::string_ref> expectedDocs{{0, "B"}};
+
     std::string const query =
         "FOR d in testView SEARCH d.name == 'B' "
         "RETURN { d, 'score' : customscorer(d, (FOR j IN testView SEARCH "
         "j.name == 'A' SORT BM25(j) RETURN j)[0].seq) }";
 
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query, nullptr, "{ \"optimizer\": { \"rules\": [\"-move-calculations-up\", \"-move-calculations-up-2\"]}}");
+    // need to turn off certain optimizations so that the independent subquery is not moved 
+    // out of the FOR loop
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query, nullptr, 
+        "{ \"optimizer\": { \"rules\": [\"-move-calculations-up\", \"-move-calculations-up-2\"]}}");
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_INTERNAL));
+  }
+
+  // test that moves an unrelated subquery out of the loop (same case as above, but
+  // with the subquery moved)
+  {
+    std::map<size_t, irs::string_ref> expectedDocs{{0, "B"}};
+
+    std::string const query =
+        "FOR d in testView SEARCH d.name == 'B' "
+        "RETURN { d, 'score' : customscorer(d, (FOR j IN testView SEARCH "
+        "j.name == 'A' SORT BM25(j) RETURN j)[0].seq) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+   
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(1, resultIt.size());
+
+    for (; resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+      ASSERT_TRUE(actualValue.isObject());
+    
+      auto actualScoreSlice = actualValue.get("score");
+      ASSERT_TRUE(actualScoreSlice.isNumber());
+      auto const actualScore = actualScoreSlice.getNumber<size_t>();
+      auto expectedValue = expectedDocs.find(actualScore);
+      ASSERT_NE(expectedValue, expectedDocs.end());
+
+      auto const actualName = actualValue.get("d").get("name");
+      ASSERT_EQ(expectedValue->second, actualName.copyString());
+    }
   }
 
   // test case covers:

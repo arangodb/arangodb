@@ -133,23 +133,22 @@ function sortTestSuite () {
           )
           RETURN COUNT(sq)
       `;
+      const result = AQL_EXECUTE(query);
 
-      const result = AQL_EXECUTE(query, {}, {optimizer: {rules: ["-move-calculations-up", "-move-calculations-up-2"]}});
       assertEqual([
           'SingletonNode',
           'CalculationNode',
-          'EnumerateListNode',
-          'SubqueryStartNode',
           'CalculationNode',
+          'SubqueryStartNode',
           'EnumerateListNode',
           'SortNode',
-          'CalculationNode',
           'SubqueryEndNode',
           'CalculationNode',
+          'CalculationNode',
+          'EnumerateListNode',
           'ReturnNode',
         ],
-        AQL_EXPLAIN(query, {},  {optimizer: {rules: ["-move-calculations-up", "-move-calculations-up-2"]}})
-          .plan.nodes.map(node => node.type)
+        AQL_EXPLAIN(query).plan.nodes.map(node => node.type)
       );
       assertEqual([500, 500], result.json);
     },
