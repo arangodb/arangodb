@@ -1,6 +1,8 @@
 devel
 -----
 
+* Changed arangobench concurrency flag name from `--concurrency` to `--threads`.
+
 * Added the following metrics for revision trees:
   - `arangodb_revision_tree_hibernations_total`: number of times a revision
     tree was compressed in RAM and set to hibernation
