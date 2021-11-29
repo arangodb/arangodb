@@ -1764,14 +1764,13 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
         }
       }
     }
-    if ((!completed && hasStatus) || !hasStatus) {
-      continue;
-    }
-    auto created = p.second->hasAsString("Timestamp");
-    if (created.second) {
-      v.emplace_back(p.first, created.first);
-    } else {
-      v.emplace_back(p.first, "1970");  // will be sorted very early
+    if (completed || !hasStatus) {
+      auto created = p.second->hasAsString("Timestamp");
+      if (created.second) {
+        v.emplace_back(p.first, created.first);
+      } else {
+        v.emplace_back(p.first, "1970");  // will be sorted very early
+      }
     }
   }
   std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
