@@ -113,7 +113,7 @@ std::atomic<bool> killHard(false);
         return EXCEPTION_EXECUTE_HANDLER;
       };
       __try {
-        DebugBreak();
+        RaiseException(0xFFFFFFFF, EXCEPTION_NONCONTINUABLE, 0, nullptr);
       } __except (filter(GetExceptionInformation())) {}
     }
     exit(255 + signal);
