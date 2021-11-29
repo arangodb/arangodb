@@ -1,6 +1,8 @@
 devel
 -----
 
+* Changed arangobench concurrency flag name from `--concurrency` to `--threads`.
+
 * APM-217: deprecate the usage of fulltext indexes.
 
 * Improve visibility in case of potential data corruption between primary
