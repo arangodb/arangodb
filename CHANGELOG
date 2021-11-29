@@ -9,8 +9,13 @@ devel
   - `arangodb_revision_tree_memory_usage`: total memory usage (in bytes) by
     all active revision trees
 
-* Added metric `rocskdb_wal_sequence` to track the current tip of the
+* Added metric `rocksdb_wal_sequence` to track the current tip of the
   WAL's sequence number.
+
+* APM-217: deprecate the usage of fulltext indexes.
+
+* Improve visibility in case of potential data corruption between primary
+  index and actual document store in documents column family.
 
 * Changed "arangosh" directory name to "client-tools", because the directory 
   contains the code for all client tools and not just arangosh.
