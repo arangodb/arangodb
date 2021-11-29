@@ -1758,7 +1758,7 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
         completed = false;
       } else {
         hasStatus = true;
-        if (status.first.compare("COMPLETED") != 0 ||
+        if (status.first.compare("COMPLETED") != 0 &&
             status.first.compare("FAILED") != 0) {
           completed = false;
         }
