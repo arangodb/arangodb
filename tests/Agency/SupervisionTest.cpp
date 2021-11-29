@@ -496,7 +496,7 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
     std::string st = std::string(job)
         + "\"Timestamp\": \"" + std::to_string(1900 + i)
         + "-02-25T12:38:29Z\"\n}";
-    _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
+    _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
       = createNode(st.c_str());
   }
   std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
