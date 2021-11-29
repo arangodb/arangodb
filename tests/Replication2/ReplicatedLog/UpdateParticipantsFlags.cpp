@@ -51,7 +51,7 @@ struct UpdateParticipantsFlagsTest : ReplicatedLogTest {
 };
 
 TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
-  // This test creates three participants with wc = 3.
+  // This test creates three participants with wc = 2.
   // Then it establishes leadership. After that, it updates the
   // participant configuration such that follower2 is forced.
   // After that we only run the leader and follower1 and expect
@@ -76,7 +76,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
   {
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
-    // make follower2 excluded
+    // make follower2 forced
     newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
     leader->updateParticipantsConfig(newConfig);
   }
@@ -107,7 +107,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
 }
 
 TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
-  // This test creates three participants with wc = 3.
+  // This test creates three participants with wc = 2.
   // Then it establishes leadership. After that, it updates the
   // participant configuration such that follower1 is excluded.
   // After that we only run the leader and follower1 and expect
@@ -175,7 +175,7 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
   {
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
-    // make follower2 excluded
+    // make follower2 forced
     newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
     leader->updateParticipantsConfig(newConfig);
   }

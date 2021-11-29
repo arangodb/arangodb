@@ -1128,7 +1128,11 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
       try {
         result.throwIfFailed();
         if (auto guard = self->_guardedLeaderData.getLockedGuard();
-            guard->committedParticipantConfig->generation < config->generation) {
+             guard->activeParticipantConfig->generation == config->generation) {
+          // Make sure config is the currently active configuration. It could
+          // happen that activeParticipantConfig was changed before config got
+          // any chance to see anything committed, thus never being considered
+          // an actual committedParticipantConfig. In this case we skip it.
           guard->committedParticipantConfig = config;
           LOG_CTX("536f5", DEBUG, self->_logContext)
               << "configuration committed, generation " << config->generation;
