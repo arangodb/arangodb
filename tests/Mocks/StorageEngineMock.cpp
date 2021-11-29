@@ -77,8 +77,8 @@ arangodb::LocalDocumentId generateDocumentId(arangodb::LogicalCollection const& 
 /// note that the attribute names must be hard-coded here to avoid an init-order
 /// fiasco with StaticStrings::FromString etc.
 std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttributes{
-    {arangodb::basics::AttributeName("_from", false)},
-    {arangodb::basics::AttributeName("_to", false)}};
+    {arangodb::basics::AttributeName(std::string_view("_from"), false)},
+    {arangodb::basics::AttributeName(std::string_view("_to"), false)}};
 
 /// @brief add a single value node to the iterator's keys
 void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) {
