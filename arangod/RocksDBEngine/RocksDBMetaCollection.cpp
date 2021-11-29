@@ -1761,8 +1761,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
       return;
     }
   
-    if (oldMemoryUsage <= 64) {
-      // tree uses so little memory that it won't be worth to compress it
+    if (oldMemoryUsage == 0) {
+      // tree is empty so it won't be worth to compress it
       return;
     }
     
