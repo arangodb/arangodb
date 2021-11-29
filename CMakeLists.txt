@@ -90,7 +90,7 @@ set(ARANGODB_VERSION_MINOR "7")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "16")
+  set(ARANGODB_VERSION_PATCH "17")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -634,6 +634,11 @@ else ()
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
   )
+  # We currently need to disable ICF because unfortunately we have some code
+  # that depends on unique addresses for functions or read-only data members.
+  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:NOICF")
 endif ()
 
 # broken clock_gettime on MacOSX

@@ -47,6 +47,7 @@ class ColumnFamilyHandle;
 class DB;
 class Iterator;
 struct ReadOptions;
+class Snapshot;
 class TransactionDB;
 }  // namespace rocksdb
 
@@ -84,10 +85,12 @@ RocksDBEngine::IndexTriple mapObjectToIndex(uint64_t);
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
+std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, 
+                          rocksdb::Snapshot const* snapshot, bool prefixSameAsStart);
 
 /// @brief whether or not the specified range has keys
-bool hasKeys(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
+bool hasKeys(rocksdb::DB*, RocksDBKeyBounds const&, 
+             rocksdb::Snapshot const* snapshot, bool prefixSameAsStart);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call

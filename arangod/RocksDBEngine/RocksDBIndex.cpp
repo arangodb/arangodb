@@ -219,7 +219,7 @@ Result RocksDBIndex::drop() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                             this->getBounds(), prefixSameAsStart);
+                                             this->getBounds(), nullptr, prefixSameAsStart);
   if (numDocs > 0) {
     std::string errorMsg(
         "deletion check in index drop failed - not all documents in the index "
