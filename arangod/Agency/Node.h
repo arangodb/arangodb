@@ -334,7 +334,7 @@ class Node final {
   /// @brief Get array value
   std::optional<Slice> getArray() const;
 
-  /// @brief Get insigned value (throws if type NODE or if conversion fails)
+  /// @brief Get unsigned value (throws if type NODE or if conversion fails)
   std::optional<uint64_t> getUInt() const noexcept;
 
   /// @brief Get integer value (throws if type NODE or if conversion fails)

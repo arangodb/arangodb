@@ -396,7 +396,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   if (inKeyRegister.isValid()) {
     readableInputRegisters.emplace(inKeyRegister);
   }
-  auto writableOutputRegisters = RegIdSet{};;
+  auto writableOutputRegisters = RegIdSet{};
   if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
@@ -494,7 +494,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDoc, insert, update};
-  auto writableOutputRegisters = RegIdSet{};;
+  auto writableOutputRegisters = RegIdSet{};
   if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }

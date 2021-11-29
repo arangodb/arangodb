@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_AQL_AQLITEMROWPRINTER_H
-#define TESTS_AQL_AQLITEMROWPRINTER_H
+#pragma once
 
 #include <iosfwd>
 #include <type_traits>
@@ -38,5 +37,3 @@ std::ostream& operator<<(std::ostream& stream, RowType const& row);
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif  // TESTS_AQL_AQLITEMROWPRINTER_H
