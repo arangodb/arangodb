@@ -228,15 +228,6 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::Application
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
 
-void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
-  //_dbNameContext = LogContext::current().push(LogContext::makeValue().with<logContextKeyDatabaseName>(_vocbase.name()));
-}
-
-void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
-  //LogContext::current().pop(_dbNameContext);
-  _dbNameContext = nullptr;
-}
-  
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestVocbaseBaseHandler::forwardingTarget() {
   bool found = false;

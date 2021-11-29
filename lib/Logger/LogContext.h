@@ -286,7 +286,7 @@ struct LogContext::Entry {
 
   friend class LogContext;
   std::atomic<std::size_t> _refCount{0};
-  Entry* _prev;
+  Entry* _prev{nullptr};
 };
 
 template <class Vals>
@@ -301,7 +301,8 @@ struct LogContext::EntryImpl final : Entry {
 
 struct LogContext::EntryCache {
   struct CachedEntryAlloc {
-    CachedEntryAlloc* next;
+    explicit CachedEntryAlloc(CachedEntryAlloc* n) noexcept : next(n) {}
+    CachedEntryAlloc* const next;
   };
   
   ~EntryCache() {
@@ -317,8 +318,7 @@ struct LogContext::EntryCache {
   bool isFull() const noexcept { return _numCachedEntries >= MaxCachedEntries; }
 
   void addToCache(void* p) noexcept {
-    auto* c = new (p) CachedEntryAlloc;
-    c->next = _cachedEntries;
+    auto* c = new (p) CachedEntryAlloc(_cachedEntries);
     _cachedEntries = c;
     ++_numCachedEntries;
   }
@@ -424,12 +424,12 @@ struct LogContext::ScopedContext {
 
 template <class Vals>
 inline void LogContext::EntryImpl<Vals>::release(EntryCache& cache) noexcept {
+  void* p = this;
+  this->~EntryImpl();
   if (sizeof(*this) <= LogContext::EntryCache::MinEntryCacheSize && !cache.isFull()) {
-    this->~EntryImpl();
-    cache.addToCache(this);
+    cache.addToCache(p);
   } else {
-    this->~EntryImpl();
-    ::operator delete(this);
+    ::operator delete(p);
   }
 }
 
@@ -520,6 +520,7 @@ inline LogContext& LogContext::current() noexcept {
 }
 
 inline LogContext::Entry* LogContext::pushEntry(std::unique_ptr<Entry> entry) noexcept {
+  TRI_ASSERT(entry->_refCount.load() == 0); 
   entry->_prev = _tail;
   entry->_refCount.store(1, std::memory_order_relaxed);
   _tail = entry.release();

@@ -202,7 +202,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  protected:
   // This alias allows the RestHandler and derived classes to add values to the LogContext.
-  // The intention behind RestHandler beeing a friend of LogContext::Accessor and defining
+  // The intention behind RestHandler being a friend of LogContext::Accessor and defining
   // this alias as protected is to restrict usage of ScopedValues to RestHandlers only in
   // order to prevent ScopedValues to be created in some inner function where they might
   // cause significant performance overhead.
