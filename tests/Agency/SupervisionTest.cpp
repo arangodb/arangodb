@@ -470,7 +470,6 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
       _snapshot);
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 100);
-  LOG_DEVEL << "Habakuk:" << content.toJson();
   // We expect the first 100 jobs to be deleted:
   for (size_t i = 0; i < 100; ++i) {
     std::string jobId = "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
