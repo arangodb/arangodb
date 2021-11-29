@@ -8,6 +8,11 @@ devel
   execution of a query with this option (after version 3.8, this option cannot
   be switched off). 
 
+* APM-217: deprecate the usage of fulltext indexes.
+
+* Improve visibility in case of potential data corruption between primary
+  index and actual document store in documents column family.
+
 * Changed "arangosh" directory name to "client-tools", because the directory 
   contains the code for all client tools and not just arangosh.
 
