@@ -765,6 +765,15 @@ bool parseDateTime(std::string_view dateTime, ParsedDateTime& result) {
   return dateTime.empty();
 }
 
+bool regexIsoDuration(std::string_view isoDuration,
+                      std::match_results<char const*>& durationParts) {
+  if (isoDuration.length() <= 1) {
+    return false;
+  }
+
+  return std::regex_match<char const*>(isoDuration.begin(), isoDuration.end(), durationParts, durationRegex);
+}
+
 }  // namespace
 
 bool arangodb::basics::parseDateTime(std::string_view dateTime,
@@ -811,15 +820,6 @@ bool arangodb::basics::parseDateTime(std::string_view dateTime,
   return true;
 }
 
-bool arangodb::basics::regexIsoDuration(std::string_view isoDuration,
-                                        std::match_results<char const*>& durationParts) {
-  if (isoDuration.length() <= 1) {
-    return false;
-  }
-
-  return std::regex_match(isoDuration.begin(), isoDuration.end(), durationParts, ::durationRegex);
-}
-
 std::string arangodb::basics::formatDate(std::string const& formatString,
                                          arangodb::tp_sys_clock_ms const& dateValue) {
   return ::executeDateFormatRegex(formatString, dateValue);
@@ -830,7 +830,7 @@ bool arangodb::basics::parseIsoDuration(std::string_view duration,
   using namespace arangodb;
 
   std::match_results<char const*> durationParts;
-  if (!arangodb::basics::regexIsoDuration(duration, durationParts)) {
+  if (!::regexIsoDuration(duration, durationParts)) {
     return false;
   }
 
