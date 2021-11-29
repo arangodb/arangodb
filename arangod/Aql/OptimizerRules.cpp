@@ -3095,7 +3095,7 @@ struct SortToIndexNode final
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
-    // FIXME: why not just call index->supportsSortCondition here always ?
+    // FIXME: why not just call index->supportsSortCondition here always?
     if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
       auto support = index->supportsSortCondition(&sortCondition, outVariable, 1);
       if (support.supportsCondition) {

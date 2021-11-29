@@ -355,6 +355,11 @@ Index::IndexType Index::type(std::string const& type) {
   return Index::type(type.c_str(), type.size());
 }
 
+bool Index::onlyHintForced(IndexType type) {
+  // inverted index is eventually consistent, so usage must be explicilty permitted by the user
+  return type == TRI_IDX_TYPE_INVERTED_INDEX;
+}
+
 /// @brief return the name of an index type
 char const* Index::oldtypeName(Index::IndexType type) {
   switch (type) {

@@ -254,6 +254,9 @@ class Index {
 
   static IndexType type(std::string const& type);
 
+  /// @brief checks if the index could be used without explicit hint
+  static bool onlyHintForced(IndexType type);
+
  public:
 
   virtual char const* typeName() const = 0;

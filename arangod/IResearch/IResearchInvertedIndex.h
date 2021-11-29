@@ -181,7 +181,7 @@ class IResearchInvertedIndex  : public IResearchDataStore {
   Result init(InitCallback const& initCallback = {});
 
   static std::vector<std::vector<arangodb::basics::AttributeName>> fields(InvertedIndexFieldMeta const& meta);
-  static std::vector<std::vector<arangodb::basics::AttributeName>> storedFields(InvertedIndexFieldMeta const& meta);
+  static std::vector<std::vector<arangodb::basics::AttributeName>> sortedFields(InvertedIndexFieldMeta const& meta);
 
   bool matchesFieldsDefinition(VPackSlice other) const;
 

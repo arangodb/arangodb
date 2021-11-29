@@ -443,7 +443,9 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
   if (bestIndex == nullptr) {
     for (auto const& idx : indexes) {
-      considerIndex(idx);
+      if (!Index::onlyHintForced(idx->type())) {
+       considerIndex(idx);
+      }
     }
   }
 
@@ -693,9 +695,9 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
   // Give it a try
   for (auto& index : indexes) {
     if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
-        (!hint.isForced() || (hint.type() == IndexHint::Simple && // apply this index only if the hint approves
-                              std::find(hint.hint().begin(), hint.hint().end(),
-                                        index->name()) != hint.hint().end()))) {
+        ((hint.type() == IndexHint::Simple && // apply this index only if the hint-а
+          std::find(hint.hint().begin(), hint.hint().end(),
+                    index->name()) != hint.hint().end()))) {
       auto costs = index.get()->supportsFilterCondition(indexes, root, reference, itemsInCollection);
       if (costs.supportsCondition) {
         // we need to find 'root' in 'ast' and replace it with specialized version
@@ -704,7 +706,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
         usedIndexes.emplace_back(index);
         isAllCoveredByIndex = true;
         // FIXME: we should somehow consider other indices and calculate here "overall" score
-        // Also a question: if sort is covered but filter is not ? What is more optimal ?
+        // Also a question: if sort is covered but filter is not ? What is more optimal?
         auto const sortSupport = index.get()->supportsSortCondition(sortCondition, reference, itemsInCollection);
         return std::make_pair(true, sortSupport.supportsCondition);
       }
@@ -775,7 +777,6 @@ bool getIndexForSortCondition(
     auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
                           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
       TRI_ASSERT(!idx->inProgress());
-
       Index::SortCosts costs =
           idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition &&
@@ -816,7 +817,9 @@ bool getIndexForSortCondition(
 
     if (bestIndex == nullptr) {
       for (auto const& idx : indexes) {
-        considerIndex(idx);
+        if (!Index::onlyHintForced(idx->type())) {
+          considerIndex(idx);
+        }
       }
     }
 
