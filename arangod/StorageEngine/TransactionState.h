@@ -189,6 +189,16 @@ class TransactionState {
   [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const {
     return _hints.has(hint);
   }
+  
+  /// @brief set a hint in the transaction
+  void setHint(transaction::Hints::Hint hint) {
+    _hints.set(hint);
+  }
+  
+  /// @brief unset a hint in the transaction
+  void unsetHint(transaction::Hints::Hint hint) {
+    _hints.unset(hint);
+  }
 
   /// @brief begin a transaction
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;

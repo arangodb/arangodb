@@ -631,7 +631,7 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     _agency_comm_request_time_ms(
       _server.getFeature<arangodb::ClusterFeature>().agency_comm_request_time_ms()) {}
 
-  AgencyCommResult AgencyComm::sendServerState(double timeout) {
+AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
 

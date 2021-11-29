@@ -61,6 +61,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBIncrementalSync.cpp
   RocksDBEngine/RocksDBIndex.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
+  RocksDBEngine/RocksDBIntermediateCommitsHandler.cpp
   RocksDBEngine/RocksDBIterators.cpp
   RocksDBEngine/RocksDBKey.cpp
   RocksDBEngine/RocksDBKeyBounds.cpp

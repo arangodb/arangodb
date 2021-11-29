@@ -128,6 +128,10 @@ std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
   return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
 }
 
+std::unique_ptr<transaction::IntermediateCommitsHandler> ClusterEngine::createIntermediateCommitsHandler(
+    transaction::Methods*, DataSourceId) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
   if (isRocksDB()) {

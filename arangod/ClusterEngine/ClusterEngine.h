@@ -35,6 +35,10 @@
 
 namespace arangodb {
 
+namespace transaction {
+class IntermediateCommitsHandler;
+}
+
 class ClusterEngine final : public StorageEngine {
  public:
   // create the storage engine
@@ -68,6 +72,9 @@ class ClusterEngine final : public StorageEngine {
   std::shared_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
                                                            TransactionId tid,
                                                            transaction::Options const& options) override;
+
+  std::unique_ptr<transaction::IntermediateCommitsHandler> createIntermediateCommitsHandler(transaction::Methods* trx, 
+                                                                                            DataSourceId id) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(

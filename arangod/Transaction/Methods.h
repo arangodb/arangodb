@@ -71,6 +71,7 @@ struct Variable;
 
 namespace transaction {
 class Context;
+class IntermediateCommitsHandler;
 struct Options;
 }  // namespace transaction
 
@@ -499,12 +500,12 @@ class Methods {
   bool _mainTransaction;
 
   Future<Result> replicateOperations(
-      LogicalCollection* collection,
+      std::shared_ptr<LogicalCollection> collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
       std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops,
       std::unordered_set<size_t> const& excludePositions,
-      FollowerInfo& followerInfo);
+      std::unique_ptr<IntermediateCommitsHandler> intermediateCommitsDelayer);
 
   /// @brief transaction hints
   transaction::Hints _localHints;

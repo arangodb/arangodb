@@ -36,6 +36,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/IntermediateCommitsHandler.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -165,6 +166,13 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
   arangodb::Result doUnlock(arangodb::AccessMode::Type type) override;
 };
 
+class IntermediateCommitsHandlerMock : public arangodb::transaction::IntermediateCommitsHandler {
+ public:
+  IntermediateCommitsHandlerMock(arangodb::transaction::Methods* trx, arangodb::DataSourceId id); 
+ protected:
+  arangodb::Result commit() override;
+};
+
 class TransactionStateMock : public arangodb::TransactionState {
  public:
   static size_t abortTransactionCount;
@@ -219,6 +227,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options) override;
+  virtual std::unique_ptr<arangodb::transaction::IntermediateCommitsHandler> createIntermediateCommitsHandler(
+      arangodb::transaction::Methods*, arangodb::DataSourceId) override;
   virtual arangodb::Result createView(TRI_vocbase_t& vocbase, arangodb::DataSourceId id,
                                       arangodb::LogicalView const& view) override;
   virtual arangodb::Result compactAll(bool changeLevels, bool compactBottomMostLevel) override;
