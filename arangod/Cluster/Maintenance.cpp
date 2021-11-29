@@ -557,19 +557,17 @@ void arangodb::maintenance::diffReplicatedLogs(
       } else {
         // check if the term is the same
         bool const requiresUpdate = std::invoke([&, &status = localIt->second, &spec = spec] {
-          if (spec.currentTerm.has_value()) {
-            // check if term has changed
-            auto currentTerm = status.getCurrentTerm();
-            if (!currentTerm.has_value() || *currentTerm != spec.currentTerm->term) {
-              return true;
-            }
+          // check if term has changed
+          auto currentTerm = status.getCurrentTerm();
+          if (!currentTerm.has_value() || *currentTerm != spec.currentTerm->term) {
+            return true;
+          }
 
-            // check if participants generation has changed (in case we are the leader)
-            if (auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
-              if (leaderStatus->acceptedParticipantConfig.generation <
-                  spec.participantsConfig.generation) {
-                return true;
-              }
+          // check if participants generation has changed (in case we are the leader)
+          if (auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
+            if (leaderStatus->acceptedParticipantConfig.generation <
+                spec.participantsConfig.generation) {
+              return true;
             }
           }
           return false;
