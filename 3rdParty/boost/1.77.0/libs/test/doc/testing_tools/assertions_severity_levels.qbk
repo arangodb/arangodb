@@ -1,0 +1,70 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:tools_assertion_severity_level Assertion severity level]
+
+There are three *levels* of assertions and all the testing tools are supplied in these three flavours/levels. These levels
+have different meaning on the consistency of the test case:
+
+* `REQUIRE` which implements a *requirements* : this is a strong condition for the operations following the assertion to be valid.
+  This type of assertions should be used when a pre-condition for running the test is not met or when the test-case cannot continue.
+  If such as assertion fails, the test case execution stops immediately, and the test-case is flagged as /failed/.
+* `CHECK` for standard *checks*: this is the most commonly used assertion level. If the statement evaluates to `false`, the test case is
+  flagged as failed but its execution continues.
+* `WARN` which stands for *warnings*: this is an assertion providing information. The test case execution continues and a warning message is logged.
+  The warning does not change the success status of a test case. This level of assertion can be used
+  to validate aspects less important then correctness: performance, portability, usability, etc.
+
+For example:
+
+* [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_throw `BOOST_REQUIRE_THROW`], __BOOST_TEST_REQUIRE__
+* `BOOST_CHECK_THROW`, `BOOST_TEST` [footnote __BOOST_TEST__ is equivalent to `BOOST_TEST_CHECK`]
+* `BOOST_WARN_THROW`, `BOOST_TEST_WARN`
+
+These three levels of assertions are filtered by the framework and reported into the test log and output:
+
+# If an assertion designated by the tool passes, confirmation message can be printed in log output
+  [footnote to manage what messages appear in the test log stream, set the proper [link boost_test.utf_reference.rt_param_reference.log_level `log_level`]].
+# If an assertion designated by the tool fails, the following will happen, depending on the assertion level
+  [footnote in some cases log message can be slightly different to reflect failed tool specifics, see [link boost_test.testing_tools.reports here]]:
+
+[table:assertions_severity_levels Assertions severity levels
+  [
+    [Level]
+    [Test log content]
+    [Errors counter]
+    [Test execution]
+  ]
+
+  [
+    [WARN]
+    [warning in `<test-case-name>`: condition `<assertion description>` is not satisfied]
+    [not affected]
+    [continues]
+  ]
+  [
+    [CHECK]
+    [error in `<test-case-name>`: test `<assertion description>` failed]
+    [increased]
+    [continues]
+  ]
+  [
+    [REQUIRE]
+    [fatal error in `<test-case-name>`: critical test `<assertion description>` failed]
+    [increased]
+    [aborts]
+  ]
+]
+
+The granularity of the report depends on the current [link boost_test.utf_reference.rt_param_reference.log_level log level] and
+[link boost_test.utf_reference.rt_param_reference.report_level report level].
+
+[note in the above table, the ['test execution] is related to the current test case ['only]. Hence ['"aborts"] means
+ that the current test case is aborted, but other test cases in the test tree are still executed.]
+
+[endsect] [/ assertions severity level]

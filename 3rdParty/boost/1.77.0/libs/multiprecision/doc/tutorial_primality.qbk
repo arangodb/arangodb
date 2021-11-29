@@ -1,0 +1,40 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:primetest Primality Testing]
+
+The library implements a Miller-Rabin test for primality:
+
+   #include <boost/multiprecision/miller_rabin.hpp>
+
+   template <class Backend, expression_template_option ExpressionTemplates, class Engine>
+   bool miller_rabin_test(const number<Backend, ExpressionTemplates>& n, unsigned trials, Engine& gen);
+
+   template <class Backend, expression_template_option ExpressionTemplates, class Engine>
+   bool miller_rabin_test(const number<Backend, ExpressionTemplates>& n, unsigned trials);
+
+These functions perform a Miller-Rabin test for primality, if the result is `false` then /n/ is definitely composite,
+while if the result is true then n is probably prime. The probability to declare a composite n as probable prime is
+at most 0.25[super trials]. Note that this does not allow a statement about the probability of n being actually
+prime (for that, the prior probability would have to be known).  The algorithm used performs some
+trial divisions to exclude small prime factors, does one Fermat test to exclude many more composites, and then
+uses the Miller-Rabin algorithm straight out of
+Knuth Vol 2, which recommends 25 trials for a pretty strong likelihood that /n/ is prime.
+
+The third optional argument is for a Uniform Random Number Generator from Boost.Random.  When not provided the `mt19937`
+generator is used.   Note that when producing random primes then you should probably use a different random number generator
+to produce candidate prime numbers for testing, than is used internally by `miller_rabin_test` for determining
+whether the value is prime.  It also helps of course to seed the generators with some source of randomness.
+
+The following example searches for a prime `p` for which `(p-1)/2` is also probably prime:
+
+[safe_prime]
+
+[endsect] [/section:primetest Primality Testing]

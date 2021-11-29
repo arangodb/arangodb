@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_WAITING_EXECUTION_BLOCK_MOCK_H
-#define ARANGODB_TESTS_WAITING_EXECUTION_BLOCK_MOCK_H 1
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
@@ -101,5 +100,3 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
 
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

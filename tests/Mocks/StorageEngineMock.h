@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H
-#define ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H 1
+#pragma once
 
 #include <velocypack/StringRef.h>
 
@@ -289,5 +288,3 @@ class StorageEngineMock : public arangodb::StorageEngine {
  private:
   TRI_voc_tick_t _releasedTick;
 };
-
-#endif

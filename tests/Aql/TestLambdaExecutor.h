@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TEST_LAMBDA_EXECUTOR_H
-#define ARANGOD_AQL_TEST_LAMBDA_EXECUTOR_H
+#pragma once
 
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
@@ -195,5 +194,3 @@ class TestLambdaSkipExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

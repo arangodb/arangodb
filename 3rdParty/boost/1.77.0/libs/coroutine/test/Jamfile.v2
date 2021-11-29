@@ -1,0 +1,33 @@
+# Boost.Coroutine Library Tests Jamfile
+
+#          Copyright Oliver Kowalke 2009.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import common ;
+import feature ;
+import indirect ;
+import modules ;
+import os ;
+import testing ;
+import toolset ;
+
+project boost/coroutine/test
+    : requirements
+      <library>/boost/context//boost_context
+      <library>/boost/coroutine//boost_coroutine
+      <library>/boost/program_options//boost_program_options
+      <library>/boost/test///boost_unit_test_framework
+      <target-os>linux,<toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <target-os>linux,<toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>static
+      <threading>multi
+    ;
+
+test-suite "coroutine" :
+    [ run test_asymmetric_coroutine.cpp ]
+    [ run test_symmetric_coroutine.cpp ]
+    ;

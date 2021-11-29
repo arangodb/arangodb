@@ -1,0 +1,84 @@
+[section boost/python/exec.hpp]
+[section Introduction]
+Exposes a mechanism for embedding the python interpreter into C++ code.
+[endsect]
+[section Function `eval`]
+``
+object eval(str expression,
+            object globals = object(),
+            object locals = object());
+``
+[variablelist
+[[Effects][Evaluate Python expression from expression in the context specified by the dictionaries globals and locals. ]]
+[[Returns][An instance of object which holds the value of the expression.]]
+]
+[endsect]
+[section Function `exec`]
+``
+object exec(str code,
+            object globals = object(),
+            object locals = object());
+``
+[variablelist
+[[Effects][Execute Python source code from code in the context specified by the dictionaries globals and locals. ]]
+[[Returns][ An instance of object which holds the result of executing the code. ]]
+]
+[endsect]
+[section Function `exec_file`]
+``
+object exec_file(str filename,
+                 object globals = object(),
+                 object locals = object());
+``
+[variablelist
+[[Effects][Execute Python source code from the file named by filename in the context specified by the dictionaries globals and locals.]]
+[[Returns][An instance of object which holds the result of executing the code. ]]
+]
+[endsect]
+[section Examples]
+The following example demonstrates the use of import and exec to define a function in python, and later call it from within C++.
+
+``
+#include <iostream>
+#include <string>
+
+using namespace boost::python;
+
+void greet()
+{ 
+  // Retrieve the main module.
+  object main = import("__main__");
+  
+  // Retrieve the main module's namespace
+  object global(main.attr("__dict__"));
+
+  // Define greet function in Python.
+  object result = exec(
+    "def greet():                   \n"
+    "   return 'Hello from Python!' \n",
+    global, global);
+
+  // Create a reference to it.
+  object greet = global["greet"];
+
+  // Call it.
+  std::string message = extract<std::string>(greet());
+  std::cout << message << std::endl;
+} 
+ ``
+ Instead of embedding the python script into a string, we could also store it in an a file...
+``
+def greet():
+   return 'Hello from Python!'
+``
+ ... and execute that instead. 
+ 
+``
+  // ...
+  // Load the greet function from a file.
+  object result = exec_file(script, global, global);
+  // ...
+}
+``
+[endsect]
+[endsect]

@@ -106,7 +106,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
     graph::EdgeDocumentToken edge;
 
     Neighbor(arangodb::velocypack::StringRef v, graph::EdgeDocumentToken e) noexcept
-      : vertex(v), edge(e) {};
+      : vertex(v), edge(e) {}
     
     static constexpr size_t itemMemoryUsage() {
       return sizeof(decltype(vertex)) + sizeof(decltype(edge));

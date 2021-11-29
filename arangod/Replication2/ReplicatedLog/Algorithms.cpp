@@ -287,8 +287,8 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
   }
 }
 
-auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
-                                     RebootId rebootId, LogId logId,
+auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
+                                     RebootId myRebootId, LogId logId,
                                      agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result {
   return basics::catchToResult([&]() -> Result {
@@ -301,16 +301,16 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
     auto& leader = spec->currentTerm->leader;
     auto log = ctx.ensureReplicatedLog(logId);
 
-    if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
+    if (leader.has_value() && leader->serverId == myServerId && leader->rebootId == myRebootId) {
       auto followers =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
-        if (participant != serverId) {
+        if (participant != myServerId) {
           followers.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
         }
       }
 
-      auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
+      auto newLeader = log->becomeLeader(spec->currentTerm->config, myServerId,
                                          spec->currentTerm->term, followers);
       newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
     } else {
@@ -319,7 +319,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
         leaderString = spec->currentTerm->leader->serverId;
       }
 
-      std::ignore = log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
+      std::ignore = log->becomeFollower(myServerId, spec->currentTerm->term, leaderString);
     }
 
     return {};
@@ -418,10 +418,12 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
   // if there are no forced participants, this component is just
   // the spearhead (the furthest we could commit to)
   auto minForcedCommitIndex = spearhead;
+  auto minForcedParticipantId = std::optional<ParticipantId>{};
   for (auto const& pt : indexes) {
     if (pt.isForced()) {
       if (pt.index < minForcedCommitIndex) {
         minForcedCommitIndex = pt.index;
+        minForcedParticipantId = pt.id;
       }
     }
   }
@@ -455,13 +457,22 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
     if (spearhead == commitIndex) {
       return {commitIndex, CommitFailReason::withNothingToCommit(), quorum};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
-      return {commitIndex, CommitFailReason::withForcedParticipantNotInQuorum(), {}};
+      TRI_ASSERT(minForcedParticipantId.has_value());
+      return {commitIndex,
+              CommitFailReason::withForcedParticipantNotInQuorum(minForcedParticipantId.value()),
+              {}};
     } else {
-      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(), quorum};
+      // Report the participant whose id is the furthest away from the spearhead
+      auto const& who = nth->id;
+      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(who), quorum};
     }
   }
 
-  // This case happens when all servers are either excluded or failed;
-  // this certainly means we could not reach a quorum
-  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(), {}};
+  // This happens when all servers are either excluded or failed;
+  // this certainly means we could not reach a quorum;
+  // indexes cannot be empty because this particular case would've been handled
+  // above by comparing actualWriteConcern to 0;
+  TRI_ASSERT(!indexes.empty());
+  auto const& who = indexes.front().id;
+  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(who), {}};
 }

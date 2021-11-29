@@ -1,0 +1,28 @@
+[/ 
+  (C) Copyright Edward Diener 2011,2013
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:tti_tests Testing TTI]
+
+In the libs/tti/test subdirectory there is a jamfile 
+which can be used to test TTI functionality.
+
+Executing the jamfile without a target, or specifying the target 
+'tti', will run tests for both basic TTI and for the variadic macro 
+portion of TTI. You can run tests for only the basic TTI, 
+which is the vast majority of TTI functionality, by specifying 
+only the 'ttinovm' target when executing the jamfile. If you 
+just want to run the tests for the variadic macro portion 
+of TTI, specify the target as 'ttivm'.
+
+The TTI library has been successfully tested with:
+
+* VC++ 8, 9, 10, 11, 12, 14.0, 14.1, 14.2
+* gcc 3.4.2 through 9.2
+* clang 2.8 through 9.0
+* Intel-linux 12.1 through 19.0
+
+[endsect]

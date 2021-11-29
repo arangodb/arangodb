@@ -1,0 +1,51 @@
+[/
+    Copyright 2014 Neil Groves
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+/]
+[section:formatted formatted]
+
+[table
+    [[Syntax] [Code]]
+    [[Pipe] [`rng | boost::adaptors::formatted()`]]
+    [[Pipe] [`rng | boost::adaptors::formatted(sep)`]]
+    [[Pipe] [`rng | boost::adaptors::formatted(sep, prefix)`]]
+    [[Pipe] [`rng | boost::adaptors::formatted(sep, prefix, postfix)`]]
+    [[Function] [`boost::adaptors::format(rng)`]]
+    [[Function] [`boost::adaptors::format(rng, sep)`]]
+    [[Function] [`boost::adaptors::format(rng, sep, prefix)`]]
+    [[Function] [`boost::adaptors::format(rng, sep, prefix, postfix)`]]
+]
+
+This adaptor produces a range that can be output streamed to a
+`std::basic_ostream` to produce the output string formatted output. With the
+default paramters given numbers 1 to 5 inclusively in a range the output when
+streamed would be "{0,1,2,3,4,5}". The prefix, separator and postfix may be
+passed as parameters.
+
+The general format of the output is thus:
+<prefix><element_1><sep><element_2><sep>...<element_n><postfix>
+
+* [*Precondition:]
+    * `0 <= n`.
+    * `sep` has a type that is CopyConstructible and able to be streamed to `std::basic_ostream<Char,Traits>`
+    * `prefix` has a type that is CopyConstructible and able to be streamed to `std::basic_ostream<Char,Traits>`
+    * `postfix` has a type that is CopyConstructible and able to be streamed to `std::basic_ostream<Char,Traits>`
+* [*Returns:] `boost::range::formatted_range<Iter, Sep, Prefix, Postfix>` where
+`Iter` is `typename boost::range_iterator<Rng>::type`, `Sep` is the separator
+type, `Prefix` is the prefix type and `Postfix` is the postfix type.
+* [*Range Category:] __single_pass_range__
+* [*Returned Range Category:] The range category of `rng`.
+
+[section:formatted_example formatted example]
+[import ../../../test/adaptor_test/formatted_example.cpp]
+[separated_example]
+[endsect]
+
+This would produce the output:
+``
+{1,2,3,4,5}
+``
+[endsect]
+
+

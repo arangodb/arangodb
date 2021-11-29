@@ -1,0 +1,50 @@
+#  Boost.Atomic Library test Jamfile
+#
+#  Copyright (c) 2011 Helge Bahmann
+#  Copyright (c) 2012 Tim Blechmann
+#  Copyright (c) 2020 Andrey Semashev
+#
+#  Distributed under the Boost Software License, Version 1.0. (See
+#  accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+project boost/atomic/test
+    : requirements
+      <threading>multi
+      <library>/boost/chrono//boost_chrono
+      <library>/boost/thread//boost_thread
+      <library>/boost/atomic//boost_atomic
+      <target-os>windows:<define>BOOST_USE_WINDOWS_H
+      <toolset>gcc,<target-os>windows:<linkflags>"-lkernel32"
+      # Variadic macros and empty macro arguments are used by Boost.Preprocessor even in C++03 mode, which makes gcc and clang complain
+      <toolset>gcc:<cxxflags>"-Wno-variadic-macros"
+      <toolset>clang:<cxxflags>"-Wno-c99-extensions"
+    ;
+
+test-suite atomic
+    : [ run atomic_api.cpp ]
+      [ run atomic_ref_api.cpp ]
+      [ run atomic_api.cpp : : : <define>BOOST_ATOMIC_FORCE_FALLBACK : fallback_atomic_api ]
+      [ run atomic_ref_api.cpp : : : <define>BOOST_ATOMIC_FORCE_FALLBACK : fallback_atomic_ref_api ]
+      [ run wait_api.cpp ]
+      [ run wait_ref_api.cpp ]
+      [ run wait_api.cpp : : : <define>BOOST_ATOMIC_FORCE_FALLBACK : fallback_wait_api ]
+      [ run wait_ref_api.cpp : : : <define>BOOST_ATOMIC_FORCE_FALLBACK : fallback_wait_ref_api ]
+      [ run wait_fuzz.cpp ]
+      [ run wait_fuzz.cpp : : : <define>BOOST_ATOMIC_FORCE_FALLBACK : fallback_wait_fuzz ]
+      [ run ipc_atomic_api.cpp ]
+      [ run ipc_atomic_ref_api.cpp ]
+      [ run ipc_wait_api.cpp ]
+      [ run ipc_wait_ref_api.cpp ]
+      [ run atomicity.cpp ]
+      [ run atomicity_ref.cpp ]
+      [ run ordering.cpp ]
+      [ run ordering_ref.cpp ]
+      [ run lockfree.cpp ]
+      [ compile-fail cf_arith_void_ptr.cpp ]
+      [ compile-fail cf_arith_func_ptr.cpp ]
+      [ compile-fail cf_arith_mem_ptr.cpp ]
+      [ compile c_implicit_ctor.cpp ]
+    ;

@@ -41,7 +41,6 @@ using namespace arangodb::replication2;
 
 
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
-
   struct LogActionContextMaintenance : algorithms::LogActionContext {
     LogActionContextMaintenance(TRI_vocbase_t& vocbase, network::ConnectionPool* pool)
         : vocbase(vocbase), pool(pool) {}
@@ -54,8 +53,9 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
       return vocbase.ensureReplicatedLog(id, std::nullopt);
     }
     auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
-    -> std::shared_ptr<replicated_log::AbstractFollower> override {
-      return std::make_shared<replicated_log::NetworkAttachedFollower>(pool, std::move(participantId), vocbase.name(), id);
+        -> std::shared_ptr<replicated_log::AbstractFollower> override {
+      return std::make_shared<replicated_log::NetworkAttachedFollower>(
+          pool, std::move(participantId), vocbase.name(), id);
     }
 
     TRI_vocbase_t& vocbase;

@@ -1,0 +1,240 @@
+[/==============================================================================
+    Copyright (C) 2001-2018 Joel de Guzman
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    I would like to thank Rainbowverse, llc (https://primeorbial.com/)
+    for sponsoring this work and donating it to the community.
+===============================================================================/]
+
+[section:minimal X3 Program Structure]
+
+As a prerequisite in understanding this tutorial, please review the previous
+[tutorial_employee employee example]. This example builds on top of that
+example.
+
+So far, to keep things simple, all of the tutorial programs are self
+contained in one cpp file. In reality, you will want to separate various
+logical modules of the parser into separate cpp and header files, decoupling
+the interface from the implememtation.
+
+There are many ways to structure an X3 parser, but the "minimal" example in
+this tutorial shows the preferred way. This example basically reuses the same
+parser as the [tutorial_employee employee example] for the sake of
+familiarity, but structured to allow separate compilation of the actual
+parser in its own definition file and cpp file. The cpp files, including main
+see only the header files --the interfaces. This is a good example on how X3
+parsers are structured in a C++ application.
+
+[heading Structure]
+
+The program is structured in a directory with the following header and cpp
+files:
+
+[table
+    [[`File`            ]                                               [Description            ]]
+    [[[@../../../example/x3/minimal/ast.hpp ast.hpp]]                   [The AST                ]]
+    [[[@../../../example/x3/minimal/ast_adapted.hpp ast_adapted.hpp]]   [Fusion adapters        ]]
+    [[[@../../../example/x3/minimal/config.hpp config.hpp]]             [Configuration          ]]
+    [[[@../../../example/x3/minimal/employee.hpp employee.hpp]]         [Main parser API        ]]
+    [[[@../../../example/x3/minimal/employee_def.hpp employee_def.hpp]] [Parser definitions     ]]
+    [[[@../../../example/x3/minimal/employee.cpp employee.cpp]]         [Parser instantiation   ]]
+    [[[@../../../example/x3/minimal/main.cpp main.cpp]]                 [Main program           ]]
+]
+
+The contents of the files should already be familiar. It's essentially the
+same [tutorial_employee employee example]. So I will skip the details on how
+the parser works and focus only on the features needed for refactoring the
+program into a modular structure suitable for real-world deployment.
+
+[heading AST]
+
+We place the AST declaration here:
+
+    namespace client { namespace ast
+    {
+        struct employee
+        {
+            int age;
+            std::string forename;
+            std::string surname;
+            double salary;
+        };
+
+        using boost::fusion::operator<<;
+    }}
+
+[heading Fusion adapters]
+
+Here, we adapt the AST for Fusion, making it a first-class fusion citizen:
+
+   BOOST_FUSION_ADAPT_STRUCT(client::ast::employee,
+      age, forename, surname, salary
+   )
+
+[heading Main parser API]
+
+This is the main header file that all other cpp files need to include.
+
+[#__tutorial_spirit_declare__]
+[heading BOOST_SPIRIT_DECLARE]
+
+Remember [link __tutorial_spirit_define__ `BOOST_SPIRIT_DEFINE`]? If not,
+then you probably want to go back and review that section to get a better
+understanding of what's happening.
+
+Here in the header file, instead of `BOOST_SPIRIT_DEFINE`, we use
+`BOOST_SPIRIT_DECLARE` for the *top* rule. Behind the scenes, what's actually
+happening is that we are declaring a `parse_rule` function in the client
+namespace.
+
+If you went back and reviewed [link __tutorial_spirit_define__
+BOOST_SPIRIT_DEFINE], you'll see why it is exactly what we need to use for
+header files. `BOOST_SPIRIT_DECLARE` generates function declarations that are
+meant to be placed in hpp (header) files while `BOOST_SPIRIT_DEFINE`
+generates function definitions that are meant to be placed in cpp files.
+
+[note `BOOST_SPIRIT_DECLARE` is variadic and may be used for one or more rules.
+Example: `BOOST_SPIRIT_DECLARE(r1, r2, r3);`]
+
+In this example, the top rule is `employee`. We declare `employee` in this
+header file:
+
+    namespace client
+    {
+        namespace parser
+        {
+            namespace x3 = boost::spirit::x3;
+            using employee_type = x3::rule<class employee, ast::employee>;
+            BOOST_SPIRIT_DECLARE(employee_type);
+        }
+
+        parser::employee_type employee();
+    }
+
+We also provide a function that returns an `employee` object. This is the
+parser that we will use anywhere it is needed. X3 parser objects are very
+lightweight. They are basically simple tags with no data other than the name
+of the rule (e.g. "employee"). Notice that we are passing this by value.
+
+[heading Parser Definitions]
+
+Here is where we place the actual rules that make up our grammar:
+
+    namespace parser
+    {
+        namespace x3 = boost::spirit::x3;
+        namespace ascii = boost::spirit::x3::ascii;
+
+        using x3::int_;
+        using x3::lit;
+        using x3::double_;
+        using x3::lexeme;
+        using ascii::char_;
+
+        x3::rule<class employee, ast::employee> const employee = "employee";
+
+        auto const quoted_string = lexeme['"' >> +(char_ - '"') >> '"'];
+
+        auto const employee_def =
+            lit("employee")
+            >> '{'
+            >>  int_ >> ','
+            >>  quoted_string >> ','
+            >>  quoted_string >> ','
+            >>  double_
+            >>  '}'
+            ;
+
+        BOOST_SPIRIT_DEFINE(employee);
+    }
+
+    parser::employee_type employee()
+    {
+        return parser::employee;
+    }
+
+In the parser definition, we use [link __tutorial_spirit_define__
+`BOOST_SPIRIT_DEFINE`] just like we did in the [tutorial_employee employee
+example].
+
+While this is another header file, it is not meant to be included by the
+client. Its purpose is to be included by an instantiations cpp file (see
+below). We place this in an `.hpp` file for flexibility, so we have the
+freedom to instantiate the parser with different iterator types.
+
+[#tutorial_configuration]
+[heading Configuration]
+
+Here, we declare some types for instatntaiting our X3 parser with. Rememeber
+that Spirit parsers can work with any __fwditer__. We'll also need to provide
+the initial context type. This is the context that X3 will use to initiate a
+parse. For calling `phrase_parse`, you will need the `phrase_parse_context`
+like we do below, passing in the skipper type.
+
+    using iterator_type = std::string::const_iterator;
+    using context_type = x3::phrase_parse_context<x3::ascii::space_type>::type;
+
+For plain `parse`, we simply use `x3::unused_type`.
+
+[heading Parser Instantiation]
+
+Now we instantiate our parser here, for our specific configuration:
+
+    namespace client { namespace parser
+    {
+        BOOST_SPIRIT_INSTANTIATE(employee_type, iterator_type, context_type);
+    }}
+
+For that, we use `BOOST_SPIRIT_INSTANTIATE`, passing in the parser type,
+the iterator type, and the context type.
+
+[heading BOOST_SPIRIT_INSTANTIATE]
+
+Go back and review [link __tutorial_spirit_define__ `BOOST_SPIRIT_DEFINE`]
+and [link __tutorial_spirit_declare__ `BOOST_SPIRIT_DECLARE`] to get a better
+grasp of what's happening with `BOOST_SPIRIT_INSTANTIATE` and why it is
+needed.
+
+So what the heck is `BOOST_SPIRIT_INSTANTIATE`? What we want is to isolate
+the instantiation of our parsers (rules and all that), into separate
+translation units (or cpp files, if you will). In this example, we want to
+place our x3 employee stuff in [@../../../example/x3/minimal/employee.cpp
+employee.cpp]. That way, we have separate compilation. Every time we update
+our employee parser source code, we only have to build the `employee.cpp`
+file. All the rest will not be affected. By compiling only once in one
+translation unit, we save on build times and avoid code bloat. There is no
+code duplication, which can happen otherwise if you simply include the
+employee parser ([@../../../example/x3/minimal/employee.hpp employee.hpp])
+everywhere.
+
+But how do you do that. Remember that our parser definitions are also placed
+in its own header file for flexibility, so we have the freedom to instantiate
+the parser with different iterator types.
+
+What we need to do is explicitly instantiate the `parse_rule` function we
+declared and defined via `BOOST_SPIRIT_DECLARE` and `BOOST_SPIRIT_DEFINE`
+respectively, using `BOOST_SPIRIT_INSTANTIATE`. For our particular example,
+`BOOST_SPIRIT_INSTANTIATE` expands to this code:
+
+    template bool parse_rule<iterator_type, context_type>(
+        employee_type rule_
+      , iterator_type& first, iterator_type const& last
+      , context_type const& context, employee_type::attribute_type& attr);
+
+[heading Main Program]
+
+Finally, we have our main program. The code is the same as single cpp file
+[tutorial_employee employee example], but here, we simply include three
+header files:
+
+    #include "ast.hpp"
+    #include "ast_adapted.hpp"
+    #include "employee.hpp"
+
+# `ast.hpp` for the AST declaration
+# `ast_adapted.hpp` if you need to traverse the AST using fusion
+# `employee.hpp` the main parser API
+
+[endsect]

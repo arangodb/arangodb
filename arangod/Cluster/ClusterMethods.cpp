@@ -110,6 +110,7 @@ std::string const vertexUrl = "/_internal/traverser/vertex/";
 // with a shard leader and we always have to assume that some follower has
 // stopped writes for some time to get in sync:
 static double const CL_DEFAULT_LONG_TIMEOUT = 900.0;
+static double const CL_PERSIST_COLLECTION_TIMEOUT = 240.0;
 
 namespace {
 template <typename T>
@@ -2564,7 +2565,7 @@ Result compactOnAllDBServers(ClusterFeature& feature,
 }
 
 #ifndef USE_ENTERPRISE
-std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollectionOnCoordinator(
+std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollectionsOnCoordinator(
     TRI_vocbase_t& vocbase, velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
     bool waitForSyncReplication, bool enforceReplicationFactor,
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
@@ -2603,7 +2604,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         "Trying to create an empty list of collections on coordinator.");
   }
 
-  double const realTimeout = ClusterInfo::getTimeout(240.0);
+  double const realTimeout = ClusterInfo::getTimeout(CL_PERSIST_COLLECTION_TIMEOUT);
   double const endTime = TRI_microtime() + realTimeout;
 
   // We have at least one, take this collection's DB name

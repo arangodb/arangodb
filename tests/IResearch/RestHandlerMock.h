@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__REST_HANDLER_MOCK_H
-#define ARANGODB_IRESEARCH__REST_HANDLER_MOCK_H 1
+#pragma once
 
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
@@ -69,5 +68,3 @@ struct GeneralResponseMock: public arangodb::GeneralResponse {
   ErrorCode deflate() override;
   bool isCompressionAllowed() override { return false; }
 };
-
-#endif

@@ -115,7 +115,7 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
 
 void ViewTrxState::add(arangodb::DataSourceId cid,
                        arangodb::iresearch::IResearchLink::Snapshot&& snapshot) {
-  auto& reader = static_cast<irs::index_reader const&>(snapshot);
+  auto& reader = snapshot.getDirectoryReader();
   for (auto& entry : reader) {
     _subReaders.emplace_back(std::piecewise_construct, std::forward_as_tuple(cid),
                              std::forward_as_tuple(&entry));
@@ -876,7 +876,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
         snapshot = link->snapshot();
       }
 
-      if (!static_cast<irs::directory_reader const&>(snapshot)) {
+      if (!snapshot.getDirectoryReader()) {
         LOG_TOPIC("e76eb", ERR, arangodb::iresearch::TOPIC)
             << "failed to get snaphot of arangosearch link in collection '"
             << cid << "' for arangosearch view '" << name() << "', skipping it";
@@ -1043,28 +1043,17 @@ Result IResearchView::updateProperties(
     // ...........................................................................
 
     std::unordered_set<DataSourceId> collections;
-
-    if (partialUpdate) {
-      mtx.unlock(); // release lock
-
-      auto lock = irs::make_lock_guard(_updateLinksLock);
-
-      return IResearchLinkHelper::updateLinks(
-        collections, *this, links, getDefaultVersion(isUserRequest));
-    }
-
     std::unordered_set<DataSourceId> stale;
-
-    for (auto& entry: _links) {
-      stale.emplace(entry.first);
+    if (!partialUpdate) {
+      for (auto& entry : _links) {
+        stale.emplace(entry.first);
+      }
     }
-
-    mtx.unlock(); // release lock
+    mtx.unlock();  // release lock
 
     auto lock = irs::make_lock_guard(_updateLinksLock);
-
-    return IResearchLinkHelper::updateLinks(
-      collections, *this, links, getDefaultVersion(isUserRequest), stale);
+    return IResearchLinkHelper::updateLinks(collections, *this, links,
+                                            getDefaultVersion(isUserRequest), stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("74705", WARN, iresearch::TOPIC)
       << "caught exception while updating properties for arangosearch view '" << name() << "': " << e.code() << " " << e.what();
