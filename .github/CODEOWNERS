@@ -4,3 +4,6 @@
 /3rdParty/iresearch @arangodb/team-reed
 
 /3rdParty/velocypack @jsteemann
+
+/arangod/Replication2 @arangodb/team-cinfra
+/tests/Replication2 @arangodb/team-cinfra
