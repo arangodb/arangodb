@@ -766,12 +766,12 @@ bool parseDateTime(std::string_view dateTime, ParsedDateTime& result) {
 }
 
 bool regexIsoDuration(std::string_view isoDuration,
-                      std::match_results<char const*>& durationParts) {
+                      std::match_results<std::string_view::iterator>& durationParts) {
   if (isoDuration.length() <= 1) {
     return false;
   }
 
-  return std::regex_match<char const*>(isoDuration.begin(), isoDuration.end(), durationParts, durationRegex);
+  return std::regex_match(isoDuration.begin(), isoDuration.end(), durationParts, durationRegex);
 }
 
 }  // namespace
@@ -829,7 +829,7 @@ bool arangodb::basics::parseIsoDuration(std::string_view duration,
                                         arangodb::basics::ParsedDuration& ret) {
   using namespace arangodb;
 
-  std::match_results<char const*> durationParts;
+  std::match_results<std::string_view::iterator> durationParts;
   if (!::regexIsoDuration(duration, durationParts)) {
     return false;
   }
