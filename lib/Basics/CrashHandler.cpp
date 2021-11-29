@@ -106,7 +106,16 @@ std::atomic<bool> killHard(false);
     WaitForSingleObject(hSelf, INFINITE);
   } else {
     // exit will not trigger dump creation. So do this manually.
-    createMiniDump(nullptr);
+    //createMiniDump(nullptr);
+    if (SIGABRT == signal) {
+      auto filter = [](EXCEPTION_POINTERS* pointers) {
+        createMiniDump(pointers);
+        return EXCEPTION_EXECUTE_HANDLER;
+      };
+      __try {
+        DebugBreak();
+      } __except (filter(GetExceptionInformation())) {}
+    }
     exit(255 + signal);
   }
 #else
