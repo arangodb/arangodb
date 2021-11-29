@@ -1772,7 +1772,7 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
     if (!completed) {
       continue;
     }
-    auto created = p.second->hasAsString("timestamp");
+    auto created = p.second->hasAsString("Timestamp");
     if (created) {
       v.emplace_back(p.first, *created);
     } else {
