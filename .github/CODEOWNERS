@@ -31,5 +31,15 @@
 /arangod/Actions/ @arangodb/team-clifton
 /arangod/Agency/ @arangodb/team-clifton
 
-# Jan Steemann's ownership
-/3rdParty/velocypack @jsteemann
+# `team-orco` ownership
+/3rdParty/velocypack @arangodb/team-orco
+/arangod/Aql/grammar.y @arangodb/team-orco
+/arangod/Aql/tokens.ll @arangodb/team-orco
+/arangod/RocksDBEngine/ @arangodb/team-orco
+/arangod/StorageEngine/ @arangodb/team-orco 
+/arangod/Transaction/ @arangodb/team-orco
+/client-tools/ @arangodb/team-orco
+/lib/Basics/ReadWriteLock.h @arangodb/team-orco @mpoeter 
+/lib/Basics/ReadWriteLock.cpp @arangodb/team-orco @mpoeter 
+/lib/Basics/ReadWriteSpinLock.h @arangodb/team-orco @mpoeter 
+/lib/Basics/ReadWriteSpinLock.cpp @arangodb/team-orco @mpoeter 
