@@ -35,6 +35,7 @@
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
+#include <velocypack/Parser.h>
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -225,6 +226,12 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           new StringParameter(&_customQueryFile))
       .setIntroducedIn(30800);
 
+  options
+      ->addOption("--custom-query-bindvars",
+                  "bind parameters to be used in the 'custom-query' testcase.",
+                  new StringParameter(&_customQueryBindVars))
+      .setIntroducedIn(31000);
+
   options->addOption("--quiet", "suppress status messages", new BooleanParameter(&_quiet));
 
   options->addObsoleteOption(
@@ -247,6 +254,20 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       LOG_TOPIC("ad47b", WARN, arangodb::Logger::BENCH)
           << "For flag '--histogram.percentiles "
           << _percentiles << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+    }
+  }
+  LOG_DEVEL << _customQuery;
+  if (!_customQueryBindVars.empty()) {
+    _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
+  }
+  //dogs {"dogName": "nanico"} FOR dog in dogs FILTER dog.name == @dogName
+  //{"@collectionName": "dogs", "dogName": "nanico"} FOR dog IN @@collectionName FILTER dog.name == @dogName
+  //--custom-query-bindvars '{"tjaetja": "lalala" }'   FOR doc in docs FILTER doc.value == @tjaetja
+  if(!options->processingResult().touched("--custom-query") && !options->processingResult().touched("--custom-query-file")) {
+    if(options->processingResult().touched("--custom-query-bindvars")) {
+      LOG_TOPIC("d06cf", WARN, arangodb::Logger::BENCH)
+          << "For flag '--custom-query-bindvars "
+          << _customQueryBindVars << "': custom query must be provided with flag '--custom-query' or 'custom-query-file'.";
     }
   }
 }
