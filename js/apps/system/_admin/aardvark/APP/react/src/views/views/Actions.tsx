@@ -36,7 +36,6 @@ const EditButton = ({ view, modalCid }: ButtonProps) => {
   const { data } = useSWR(state.show
     ? `/view/${view.name}/properties`
     : null, (path) => getApiRouteForCurrentDB().get(path));
-  const cacheRef = useRef({});
 
   useEffect(() => {
     const fullView = data
@@ -127,7 +126,7 @@ const EditButton = ({ view, modalCid }: ButtonProps) => {
                 <Cell size={'1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Link Properties</legend>
-                    <LinkPropertiesForm formState={formState} dispatch={dispatch} cache={cacheRef.current}/>
+                    <LinkPropertiesForm formState={formState} dispatch={dispatch}/>
                   </fieldset>
                 </Cell>
                 <Cell size={'1'}>

@@ -1,9 +1,8 @@
 import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { FormState, LinkProperties } from "../constants";
-import React, { ChangeEvent, Dispatch, useEffect, useState } from "react";
+import React, { Dispatch, useEffect, useState } from "react";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
-import { isEmpty, map, negate, pickBy, without } from 'lodash';
-import Checkbox from "../../../components/pure-css/form/Checkbox";
+import { isEmpty, map, without } from 'lodash';
 import LinkPropertiesInput from "./inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
 import { useLinkState } from "../helpers";
@@ -11,20 +10,10 @@ import AutoCompleteTextInput from "../../../components/pure-css/form/AutoComplet
 import useSWR from 'swr';
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
-type LinkPropertiesFormProps = FormProps<FormState> & {
-  cache?: { [key: string]: any };
-};
-
-const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkPropertiesFormProps) => {
+const LinkPropertiesForm = ({ formState, dispatch, disabled }: FormProps<FormState>) => {
   const [collection, setCollection, addDisabled, links] = useLinkState(formState, 'links');
   const { data } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) => getApiRouteForCurrentDB().get(path, qs));
   const [options, setOptions] = useState<string[]>([]);
-
-  useEffect(() => {
-    cache.links = cache.links || {};
-
-    Object.assign(cache.links, pickBy(links, negate(isEmpty)));
-  }, [cache, links]);
 
   useEffect(() => {
     if (data) {
@@ -36,20 +25,6 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
     setCollection(value);
   };
 
-  const toggleLink = (collection: string, checked: boolean) => {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: `links[${collection}]`,
-        value: checked ? null : cache.links[collection]
-      }
-    });
-  };
-
-  const getLinkToggler = (collection: string) => (event: ChangeEvent<HTMLInputElement>) => {
-    toggleLink(collection, event.target.checked);
-  };
-
   const addLink = () => {
     dispatch({
       type: 'setField',
@@ -59,8 +34,21 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
       }
     });
     setCollection('');
-    cache.links[collection] = {};
     setOptions(without(options, collection));
+  };
+
+  const removeLink = (collection: string) => {
+    dispatch({
+      type: 'setField',
+      field: {
+        path: `links[${collection}]`,
+        value: null
+      }
+    });
+  };
+
+  const getLinkRemover = (collection: string) => () => {
+    removeLink(collection);
   };
 
   return disabled && isEmpty(links)
@@ -80,22 +68,24 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled, cache = {} }: LinkP
       <tbody>
       {
         map(links, (properties, coll) => {
-          return <tr key={coll} style={{ borderBottom: '1px  solid #DDD' }}>
-            {
-              disabled
-                ? null
-                : <ArangoTD seq={0} valign={'middle'}>
-                  <Checkbox onChange={getLinkToggler(coll)} checked={!links[coll]}/>
-                </ArangoTD>
-            }
-            <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
-            <ArangoTD seq={disabled ? 1 : 2}>
-              <LinkPropertiesInput formState={properties || cache.links[coll]}
-                                   disabled={disabled || !properties}
-                                   dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}
-                                   basePath={`links[${coll}]`}/>
-            </ArangoTD>
-          </tr>;
+          return properties
+            ? <tr key={coll} style={{ borderBottom: '1px  solid #DDD' }}>
+              {
+                disabled
+                  ? null
+                  : <ArangoTD seq={0} valign={'middle'}>
+                    <IconButton icon={'trash-o'} type={'danger'} onClick={getLinkRemover(coll)}/>
+                  </ArangoTD>
+              }
+              <ArangoTD seq={disabled ? 0 : 1}>{coll}</ArangoTD>
+              <ArangoTD seq={disabled ? 1 : 2}>
+                <LinkPropertiesInput formState={properties}
+                                     disabled={disabled || !properties}
+                                     dispatch={dispatch as unknown as Dispatch<DispatchArgs<LinkProperties>>}
+                                     basePath={`links[${coll}]`}/>
+              </ArangoTD>
+            </tr>
+            : null;
         })
       }
       {

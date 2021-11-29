@@ -33,7 +33,7 @@ const LinkPropertiesInput = ({ formState, dispatch, disabled, basePath }: LinkPr
     }
   }, [analyzers, data]);
 
-  const updateField = (event: ChangeEvent<HTMLSelectElement>) => {
+  const updateField = (event: ChangeEvent<HTMLInputElement>) => {
     setField(event.target.value);
   };
 

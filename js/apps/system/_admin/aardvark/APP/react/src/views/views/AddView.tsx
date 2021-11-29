@@ -1,4 +1,4 @@
-import React, { Dispatch, useReducer, useRef } from 'react';
+import React, { Dispatch, useReducer } from 'react';
 import { FormState, ViewProperties } from "./constants";
 import { DispatchArgs, State } from '../../utils/constants';
 import { cloneDeep, uniqueId } from "lodash";
@@ -40,7 +40,6 @@ interface AddViewProps {
 
 const AddView = ({ views }: AddViewProps) => {
   const [state, dispatch] = useReducer(getReducer<FormState>(initialState, postProcessor), initialState);
-  const cacheRef = useRef({});
 
   const formState = state.formState;
 
@@ -108,7 +107,7 @@ const AddView = ({ views }: AddViewProps) => {
                 <Cell size={'1'}>
                   <fieldset>
                     <legend style={{ fontSize: '12pt' }}>Link Properties</legend>
-                    <LinkPropertiesForm formState={formState} dispatch={dispatch} cache={cacheRef.current}/>
+                    <LinkPropertiesForm formState={formState} dispatch={dispatch}/>
                   </fieldset>
                 </Cell>
                 <Cell size={'1'}>

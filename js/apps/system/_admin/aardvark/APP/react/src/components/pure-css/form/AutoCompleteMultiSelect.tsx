@@ -67,11 +67,13 @@ const AutoCompleteMultiSelect = ({
         flexWrap: 'wrap'
       }}>
         {
-          values.map(value => <li className={'select2-search-choice'} key={value}>
-            <div>{value}</div>
-            <a href={'#'} className={'select2-search-choice-close'} tabIndex={-1}
-               onClick={getRemoveHandler(value)}/>
-          </li>)
+          values.map(value =>
+            <li className={'select2-search-choice'} key={value}>
+              <div>{value}</div>
+              <a href={'#'} className={'select2-search-choice-close'} tabIndex={-1}
+                 onClick={getRemoveHandler(value)}/>
+            </li>
+          )
         }
         <li className={'select2-search-field'} key={'_search'} style={{
           flexGrow: 1,
