@@ -83,14 +83,17 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
 
 /// @brief iterate over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
-                          bool prefix_same_as_start) {
+                          rocksdb::Snapshot const* snapshot,
+                          bool prefixSameAsStart) {
+  // note: snapshot may be a nullptr!
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
 
   rocksdb::ReadOptions readOptions;
-  readOptions.prefix_same_as_start = prefix_same_as_start;
+  readOptions.snapshot = snapshot;
+  readOptions.prefix_same_as_start = prefixSameAsStart;
   readOptions.iterate_upper_bound = &upper;
-  readOptions.total_order_seek = !prefix_same_as_start;
+  readOptions.total_order_seek = !prefixSameAsStart;
   readOptions.verify_checksums = false;
   readOptions.fill_cache = false;
 
@@ -108,14 +111,18 @@ std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 }
 
 /// @brief whether or not the specified range has keys
-bool hasKeys(rocksdb::DB* db, RocksDBKeyBounds const& bounds, bool prefix_same_as_start) {
+bool hasKeys(rocksdb::DB* db, RocksDBKeyBounds const& bounds, 
+             rocksdb::Snapshot const* snapshot,
+             bool prefixSameAsStart) {
+  // note: snapshot may be a nullptr!
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
 
   rocksdb::ReadOptions readOptions;
-  readOptions.prefix_same_as_start = prefix_same_as_start;
+  readOptions.snapshot = snapshot;
+  readOptions.prefix_same_as_start = prefixSameAsStart;
   readOptions.iterate_upper_bound = &upper;
-  readOptions.total_order_seek = !prefix_same_as_start;
+  readOptions.total_order_seek = !prefixSameAsStart;
   readOptions.verify_checksums = false;
   readOptions.fill_cache = false;
 
