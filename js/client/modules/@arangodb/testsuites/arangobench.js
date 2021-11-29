@@ -58,68 +58,68 @@ const testPaths = {
 const benchTodos = [{
   'histogram.generate': true,
   'requests': '10000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'version',
   'keep-alive': 'false'
 }, {
   'histogram.generate': true,
   'requests': '10000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'version',
   'async': 'true'
 }, {
   'histogram.generate': true,
   'requests': '20000',
-  'concurrency': '1',
+  'threads': '1',
   'test-case': 'version',
   'async': 'true'
 }, {
   'histogram.generate': true,
   'requests': '1000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'version',
   'batch-size': '16'
 }, {
   'histogram.generate': true,
   'requests': '100',
-  'concurrency': '1',
+  'threads': '1',
   'test-case': 'version',
   'batch-size': '0'
 }, {
   'histogram.generate': true,
   'requests': '100',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'document',
   'batch-size': '10',
   'complexity': '1'
 }, {
   'histogram.generate': true,
   'requests': '2000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'crud',
   'complexity': '1'
 }, {
   'histogram.generate': true,
   'requests': '4000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'crud-append',
   'complexity': '4'
 }, {
   'histogram.generate': true,
   'requests': '4000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'edge',
   'complexity': '4'
 }, {
   'histogram.generate': true,
   'requests': '5000',
-  'concurrency': '2',
+  'threads': '2',
   'test-case': 'persistent-index',
   'complexity': '1'
 },{
   'histogram.generate': true,
   'requests': '1',
-  'concurrency': '1',
+  'threads': '1',
   'test-case': 'version',
   'keep-alive': 'true',
   'server.database': 'arangobench_testdb',
@@ -127,7 +127,7 @@ const benchTodos = [{
 },{
   'histogram.generate': true,
   'requests': '100',
-  'concurrency': '1',
+  'threads': '1',
   'test-case': 'custom-query',
   'custom-query': 'RETURN 1',
   'keep-alive': 'true',
@@ -137,7 +137,7 @@ const benchTodos = [{
 },{
   'histogram.generate': true,
   'requests': '100',
-  'concurrency': '1',
+  'threads': '1',
   'test-case': 'version',
   'keep-alive': 'true',
   // test with Unicode database name
