@@ -1,0 +1,18 @@
+//[example_output
+> example
+Running 1 test case...
+test.cpp(19): error: in "test_multi_context": check level < rand_value has failed [7 >= 5]
+Failure occurred in a following context:
+    With level 7
+    Random value=42
+test.cpp(19): error: in "test_multi_context": check level < rand_value has failed [8 >= 6]
+Failure occurred in a following context:
+    With level 8
+    Random value=49
+test.cpp(19): error: in "test_multi_context": check level < rand_value has failed [9 >= 5]
+Failure occurred in a following context:
+    With level 9
+    Random value=21
+
+*** 3 failures are detected in the test module "example83 multicontext"
+//]

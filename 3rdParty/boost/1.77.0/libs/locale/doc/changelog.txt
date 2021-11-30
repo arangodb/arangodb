@@ -1,0 +1,43 @@
+//
+//  Copyright (c) 2009-2011 Artyom Beilis (Tonkikh)
+//
+//  Distributed under the Boost Software License, Version 1.0. (See
+//  accompanying file LICENSE_1_0.txt or copy at
+//  http://www.boost.org/LICENSE_1_0.txt)
+//
+
+// vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4 filetype=cpp.doxygen
+/*!
+\page changelog Changelog
+
+- 1.67.0 
+    - Added support of unique_ptr interface in addition to C++2003 auto_ptr - in order to support C++2017, now you can use BOOST_LOCALE_HIDE_AUTO_PTR definiton to remove auto_ptr from the interfaces and prevent deprecated watnings
+    - Fixed test problem with ICU >60.1
+    - Fix of solaris build
+    - Fixed wired FreeBSD/clang issue on optimized build. Probably compiler workaround
+    - Added workaround for failing MSVC tests due to 932 codepage codecvt issue
+    - Fixed bugs 6851, 12572, 12453
+    - Fixed missing throw in case of failure in icu/date_time
+    - Fixed build agains Boost.Thread v4
+    - Fixed Year of week instead of year ICU backend formatting
+    - Fixed formatting test for ICU 56.1 and above
+- 1.60.0 
+    - Implemented generic codecvt facet and add general purpose utf8_codecvt facet
+    - Added posix locale support for FreeBSD 10.0 and above
+    - Fixed issues 10017 (sun redefinition on SunOS), 11163 (set_default_messages_domain incorrect behavior), 11673 - build issues
+    - Some warning cleanup 
+    - Fixed tests for latest ICU versions
+    - Added workaround for `libc++` issues
+    - Added new defines `BOOST_LOCALE_ENABLE_CHAR16_T` and `BOOST_LOCALE_ENABLE_CHAR32_T` to enable C++11 `char16_t` and `char32_t` instead of deprecated ones
+- 1.53.0 - Bug fixes: 7743, 7386, 7734, 7701, 7368, 7762:
+    -  7743 - security related bug fix, some invalid UTF-8 sequences where accepted as valid 
+    -  7386 - invalid Windows codepage names used
+    -  7734 - fixed missing documentation, caused by a error in Doxygen formatting
+    -  7701 - fixed missing \c std:: in some places
+    -  7368, 7762 - Spelling, grammar, typos
+- 1.49.0
+   - Fixed incorrect use of MultiByteToWideChar in detection of invalid input sequences 
+- 1.48.0 - First Release
+
+
+*/

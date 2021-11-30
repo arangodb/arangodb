@@ -24,6 +24,8 @@
 
 #include "Mocks/Servers.h"  // this must be first because windows
 
+#include "src/objects/objects.h" // must be included before src/api/api.h to avoid errors with MSVC
+
 #include "src/api/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 // #include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 #include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken

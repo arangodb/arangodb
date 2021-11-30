@@ -1,0 +1,134 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:link_references Build scenarios and behaviors]
+
+[/-----------------------------------------------------------------]
+[section:link_boost_test_main_macro `BOOST_TEST_MAIN`]
+
+When defined, this macro creates a stub for the test module initialization (the main entry part). This
+macro also expands properly into a `main` function in case the shared library variant of the __UTF__ is used.
+
+
+[caution This macro should
+
+# be defined before any inclusion directive to __UTF__ headers
+# be defined exactly for one compilation unit of your test module
+
+]
+
+[tip The macro __BOOST_TEST_MODULE__ should be preferred]
+
+[endsect]
+
+[/-----------------------------------------------------------------]
+[section:link_boost_test_module_macro `BOOST_TEST_MODULE`]
+Serves the same purpose as the macro __BOOST_TEST_MAIN__ but, in addition, defines the name of the master test suite.
+
+[caution As __BOOST_TEST_MAIN__, this macro should
+
+# be defined before any inclusion directive to __UTF__ headers
+# be defined exactly for one compilation unit of your test module
+
+]
+
+An example may be found [link ref_BOOST_TEST_MODULE here].
+
+[endsect]
+
+[/-----------------------------------------------------------------]
+[section:link_boost_test_alternative_init_macro `BOOST_TEST_ALTERNATIVE_INIT_API`]
+
+[warning This macro should be defined before any include directive to the __UTF__ headers and is
+mutually exclusive with the __BOOST_TEST_MODULE__ macro.]
+
+In case of custom initialization of the test module entry point, this macro indicates the __UTF__ to
+use the new API. The differences between the new and old APIs are described in [link
+boost_test.adv_scenarios.obsolete_init_func this section].
+
+The way to customize the entry point of the test-module depends on the variant of the __UTF__ in use.
+Several sections in the documentation are devoted to this:
+
+* [link boost_test.adv_scenarios.single_header_customizations.entry_point this section] for single header variant,
+* [link boost_test.adv_scenarios.static_lib_customizations.init_func this section] for static link variant,
+* [link boost_test.adv_scenarios.shared_lib_customizations.init_func this section] for shared link variant
+
+[endsect]
+
+[/-----------------------------------------------------------------]
+[section:link_boost_test_no_lib `BOOST_TEST_NO_LIB`]
+Define this flag to prevent auto-linking.
+[note The same flag is used for the __UTF__ and the __PEM__ components.]
+[endsect]
+
+[/-----------------------------------------------------------------]
+[section:link_boost_test_dyn_link `BOOST_TEST_DYN_LINK`]
+Define this flag to link against the __UTF__ shared library.
+[note The same flag is used for the __UTF__ and the __PEM__ components.]
+[endsect]
+
+[/-----------------------------------------------------------------]
+[section:link_boost_test_no_main `BOOST_TEST_NO_MAIN`]
+Prevents the auto generation of the test module initialization functions. This macro is particularly relevant for
+manually registered tests in conjunction with dynamic variant of the __UTF__. When defined, a `main` function
+registering all the tests should be implemented.
+
+An example of a module initialization would be
+``
+#define __BOOST_TEST_NO_MAIN__
+#include <boost/test/unit_test.hpp>
+
+// a function in another compilation unit registering tests under the master test suite.
+void register_some_tests_manually(test_suite* test);
+
+bool registering_all_tests()
+{
+  test_suite* test_master_suite = &boost::unit_test::framework::master_test_suite();
+  register_some_tests_manually(test_master_suite);
+
+  // register any other tests function or test suite to the master test suite
+  // ...
+  return true;
+}
+
+int main(int argc, char* argv[])
+{
+  return ::boost::unit_test::unit_test_main(&registering_all_tests, argc, argv);
+}
+``
+[endsect]
+
+[/-----------------------------------------------------------------]
+[section:link_boost_test_global_configuration `BOOST_TEST_GLOBAL_CONFIGURATION`]
+Declares a class that will be constructed during the initialization of the test framework, and destructed afterwards.
+The framework will not call any other member function than the constructor and destructor.
+In particular the constructor and destructor will be called prior and after to the [link boost_test.tests_organization.fixtures.global global fixtures]
+setup and teardown.
+
+This facility is provided to perform additional configuration, in particular programmatic configuration
+of the loggers and reporters. See [link boost_test.test_output.logging_api this section] for more details.
+
+[warning No logging or any other call to the framework assertion is allowed in the constructor and destructor, as its purpose is
+ to set-up the loggers/reporters, and the assertions are calling the logging/reporting facility.
+ Any such assertion during the execution of the will result in the abortion of the test module .]
+
+[endsect]
+
+[/-----------------------------------------------------------------]
+[section:config_disable_alt_stack `BOOST_TEST_DISABLE_ALT_STACK`]
+Disables the support of the alternative stack.
+
+Define this macro before the inclusion of any __UTF__ header to disable the support
+of the [@http://www.gnu.org/software/libc/manual/html_node/Signal-Stack.html alternative stack],
+in case your compiler does not support it and the __UTF__ cannot automatically guess the lack of support.
+
+See [link boost_test.utf_reference.rt_param_reference.use_alt_stack `use_alt_stack`]
+and [macroref BOOST_TEST_DISABLE_ALT_STACK `BOOST_TEST_DISABLE_ALT_STACK`] for more details.
+[endsect]
+
+[endsect]

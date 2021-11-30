@@ -89,6 +89,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
 
   // @brief #databases last time we checked allDatabases
   size_t lastNumberOfDatabases() const;

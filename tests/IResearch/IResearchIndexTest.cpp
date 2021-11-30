@@ -527,7 +527,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
         builder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       } catch (...) {
         return;  // velocyPackFromFile(...) may throw exception
       }
@@ -567,7 +567,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
         builder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+            arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       } catch (...) {
         return;  // velocyPackFromFile(...) may throw exception
       }

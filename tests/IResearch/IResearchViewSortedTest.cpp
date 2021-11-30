@@ -225,7 +225,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
       resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -515,7 +515,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 

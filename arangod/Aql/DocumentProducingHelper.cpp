@@ -259,13 +259,13 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
   TRI_ASSERT(_checkUniqueness);
   if (!_isLastIndex) {
     // insert & check for duplicates in one go
-    if (!_alreadyReturned.insert(token).second) {
+    if (!_alreadyReturned.emplace(token).second) {
       // Document already in list. Skip this
       return false;
     }
   } else {
     // only check for duplicates
-    if (_alreadyReturned.find(token) != _alreadyReturned.end()) {
+    if (_alreadyReturned.contains(token)) {
       // Document found, skip
       return false;
     }

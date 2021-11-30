@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGODB_MOCK_TRX_MANAGER
-#define ARANGODB_MOCK_TRX_MANAGER
 
 #include "Aql/OptimizerRulesFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -63,4 +61,3 @@ struct TransactionManagerSetup {
 }  // namespace mocks
 }  // namespace tests
 }  // namespace arangodb
-#endif

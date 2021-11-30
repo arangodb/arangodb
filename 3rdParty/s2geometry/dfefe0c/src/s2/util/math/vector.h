@@ -92,11 +92,11 @@ class BasicVector {
   }
 
   // TODO(user): Relationals should be nonmembers.
-  bool operator==(const D& b) const {
-    const T* ap = static_cast<const D&>(*this).Data();
-    return std::equal(ap, ap + this->Size(), b.Data());
+  friend bool operator==(const D&  a, const D& b) {
+    const T* ap = a.Data();
+    return std::equal(ap, ap + a.Size(), b.Data());
   }
-  bool operator!=(const D& b) const { return !(AsD() == b); }
+  friend bool operator!=(const D& a, const D& b) { return !(a == b); }
   bool operator<(const D& b) const {
     const T* ap = static_cast<const D&>(*this).Data();
     const T* bp = b.Data();

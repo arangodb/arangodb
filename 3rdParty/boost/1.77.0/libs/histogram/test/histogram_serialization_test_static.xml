@@ -1,0 +1,85 @@
+<!--
+	Copyright 2018-2019 Hans Dembinski
+
+	Distributed under the Boost Software License, Version 1.0.
+	(See accompanying file LICENSE_1_0.txt
+	or copy at http://www.boost.org/LICENSE_1_0.txt)
+-->
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="17">
+<item class_id="0" tracking_level="0" version="0">
+	<axes class_id="1" tracking_level="0" version="0">
+		<item class_id="2" tracking_level="0" version="0">
+			<transform class_id="3" tracking_level="0" version="0"></transform>
+			<size>1</size>
+			<meta>reg</meta>
+			<min>-1.00000000000000000e+00</min>
+			<delta>2.00000000000000000e+00</delta>
+		</item>
+		<item class_id="4" tracking_level="0" version="0">
+			<transform></transform>
+			<size>1</size>
+			<meta>cir</meta>
+			<min>0.000000000e+00</min>
+			<delta>1.000000000e+00</delta>
+		</item>
+		<item class_id="5" tracking_level="0" version="0">
+			<transform class_id="6" tracking_level="0" version="0"></transform>
+			<size>1</size>
+			<meta>reg-log</meta>
+			<min>0.00000000000000000e+00</min>
+			<delta>2.00000000000000000e+00</delta>
+		</item>
+		<item class_id="7" tracking_level="0" version="0">
+			<transform class_id="8" tracking_level="0" version="0">
+				<power>5.00000000000000000e-01</power>
+			</transform>
+			<size>1</size>
+			<meta>
+				<count>3</count>
+				<item_version>0</item_version>
+				<item>1</item>
+				<item>2</item>
+				<item>3</item>
+			</meta>
+			<min>1.00000000000000000e+00</min>
+			<delta>9.00000000000000000e+00</delta>
+		</item>
+		<item class_id="10" tracking_level="0" version="0">
+			<seq>
+				<count>2</count>
+				<item_version>0</item_version>
+				<item>1.50000000000000000e+00</item>
+				<item>2.50000000000000000e+00</item>
+			</seq>
+			<meta>var</meta>
+		</item>
+		<item class_id="12" tracking_level="0" version="0">
+			<seq>
+				<count>2</count>
+				<item_version>0</item_version>
+				<item>3</item>
+				<item>1</item>
+			</seq>
+			<meta></meta>
+		</item>
+		<item class_id="13" tracking_level="0" version="0">
+			<size>1</size>
+			<meta class_id="14" tracking_level="0" version="0"></meta>
+			<min>1</min>
+		</item>
+	</axes>
+	<storage class_id="15" tracking_level="0" version="0">
+		<type>0</type>
+		<size>4</size>
+		<buffer>
+			<item>0</item>
+			<item>0</item>
+			<item>1</item>
+			<item>0</item>
+		</buffer>
+	</storage>
+</item>
+</boost_serialization>

@@ -1,0 +1,10 @@
+codecov:
+  max_report_age: off
+  require_ci_to_pass: yes
+  notify:
+    after_n_builds: 2
+    wait_for_ci: yes
+comment:
+  layout: "diff, files"
+ignore:
+  - "test/test.hpp"

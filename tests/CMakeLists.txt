@@ -28,6 +28,7 @@ target_link_libraries(fuertetest
     boost_boost
     arango
     arango_v8server
+    arango_v8
     ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
@@ -338,6 +339,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
   Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
+  Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
 )
 
 if (LINUX)

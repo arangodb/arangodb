@@ -141,7 +141,7 @@ TEST_P(IResearchQueryNumericTermTest, test) {
       resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 

@@ -16,8 +16,8 @@
 ### Boost
 
 * Name: Boost
-* Version: 1.71.0
-* Date: 2019-08-19 15:31:00Z
+* Version: 1.77.0
+* Date: 2021-8-11 14:25:00
 * Project Home: http://www.boost.org/
 * License: http://www.boost.org/LICENSE_1_0.txt
 * License Name: Boost Software License 1.0
@@ -349,10 +349,10 @@ _Enterprise Edition only_
 ### immer
 
 * Name: immer
-* Version: 0.6.2
-* Date: 2019-06-05 14:46:00 +0200
+* Version: 0.7.0
+* Date: 2021-11-08 17:27:00 UTC
 * Project Home: https://github.com/arximboldi/immer
-* License: https://github.com/arximboldi/immer/blob/v0.6.2/LICENSE
+* License: https://github.com/arximboldi/immer/blob/v0.7.0/LICENSE
 * License Name: Boost Software License 1.0
 
 ### jemalloc
@@ -444,10 +444,10 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.26.0 (f72fd5856585774063ac3fc8926f70626963d488)
-* Date: 2021-10-20 21:33:32 2021 -0700
+* Version: 6.27.0 (81016436110944d4763f0397aefe939c1254ff1b)
+* Date: 2021-11-19 22:10:43 -0800
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.26/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.27/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 

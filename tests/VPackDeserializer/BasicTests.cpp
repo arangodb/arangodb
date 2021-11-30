@@ -172,8 +172,6 @@ constexpr const char str_min_replication_factor[] = "minReplicationFactor";
 
 struct graph_options_validator {
   struct context_type {
-    context_type(context_type const&) = delete;
-
     uint32_t maxNumberOfShards;
     uint32_t maxReplicationFactor;
   };
@@ -265,7 +263,7 @@ TEST_F(VPackDeserializerBasicTest, test05) {
   auto buffer = R"=({"name":"myGraph","edgeDefinitions":[{"collection":"edges","from":["startVertices"],"to":["endVertices"]},{"collection":"edges","from":[],"to":["bla"]}],"options":{"replicationFactor":2,"minReplicationFactor":2}})="_vpack;
   auto slice = recording_slice::from_buffer(buffer);
 
-  graph_options_validator::context_type ctx = {2, 3};
+  graph_options_validator::context_type ctx{.maxNumberOfShards = 2, .maxReplicationFactor = 3};
 
   auto result = deserialize_with_context<graph_definition_deserializer>(slice.slice, ctx);
 

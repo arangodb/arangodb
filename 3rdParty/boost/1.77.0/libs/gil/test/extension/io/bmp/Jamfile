@@ -1,0 +1,26 @@
+# Boost.GIL (Generic Image Library) - IO tests
+#
+# Copyright (c) 2012 Christian Henning
+# Copyright (c) 2017 Stefan Seefeld
+# Copyright (c) 2012-2020 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+# TODO: Download BMP test suite images and build with <define>BOOST_GIL_IO_USE_BMP_TEST_SUITE_IMAGES
+
+project
+   : requirements
+      <library>/boost/filesystem//boost_filesystem
+   ;
+
+run bmp_make.cpp ;
+
+run bmp_test.cpp ;
+run bmp_read_test.cpp ;
+run bmp_write_test.cpp ;
+
+run bmp_old_test.cpp ;

@@ -688,7 +688,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config, std::function<void()> 
       << numT << " threads";
 
   for (size_t i = 0; i < numT; ++i) {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=] {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=, this] {
       size_t startI = i * (numSegments / numT);
       size_t endI = (i + 1) * (numSegments / numT);
       TRI_ASSERT(endI <= numSegments);

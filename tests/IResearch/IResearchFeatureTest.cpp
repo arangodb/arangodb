@@ -1671,7 +1671,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
@@ -1755,7 +1755,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
@@ -2175,13 +2175,19 @@ class IResearchFeatureTestCoordinator
   arangodb::consensus::index_t agencyTrx(std::string const& key, std::string const& value) {
     // Build an agency transaction:
     auto b2 = VPackParser::fromJson(value);
-    auto b = std::make_shared<VPackBuilder>();
-    { VPackArrayBuilder trxs(b.get());
-      { VPackArrayBuilder trx(b.get());
-        { VPackObjectBuilder op(b.get());
-          b->add(key, b2->slice()); }}}
+    VPackBuilder b;
+    { 
+      VPackArrayBuilder trxs(&b);
+      { 
+        VPackArrayBuilder trx(&b);
+        { 
+          VPackObjectBuilder op(&b);
+          b.add(key, b2->slice()); 
+        }
+      }
+    }
     return std::get<1>(
-      server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b));
+      server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b.slice()));
   }
 
   void agencyCreateDatabase(std::string const& name) {
@@ -2338,12 +2344,18 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                     .setValue(path, value->slice(), 0.0)
                     .successful());
 
-    auto b = std::make_shared<VPackBuilder>();
-    { VPackArrayBuilder trxs(b.get());
-      { VPackArrayBuilder trx(b.get());
-        { VPackObjectBuilder op(b.get());
-          b->add(path, value->slice()); }}}
-    server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b);
+    VPackBuilder b;
+    { 
+      VPackArrayBuilder trxs(&b);
+      { 
+        VPackArrayBuilder trx(&b);
+        { 
+          VPackObjectBuilder op(&b);
+          b.add(path, value->slice()); 
+        }
+      }
+    }
+    server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b.slice());
 
   }
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
@@ -2449,18 +2461,24 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  auto bogus = std::make_shared<VPackBuilder>();
-  { VPackArrayBuilder trxs(bogus.get());
-    { VPackArrayBuilder trx(bogus.get());
-      { VPackObjectBuilder op(bogus.get());
-        bogus->add("a", VPackValue(12)); }}}
+  VPackBuilder bogus;
+  { 
+    VPackArrayBuilder trxs(&bogus);
+    { 
+      VPackArrayBuilder trx(&bogus);
+      { 
+        VPackObjectBuilder op(&bogus);
+        bogus.add("a", VPackValue(12)); 
+      }
+    }
+  }
   server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
-    bogus);
+    bogus.slice());
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -2520,7 +2538,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
@@ -2529,13 +2547,19 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
   engine.views.clear();
 
-  auto bogus = std::make_shared<VPackBuilder>();
-  { VPackArrayBuilder trxs(bogus.get());
-    { VPackArrayBuilder trx(bogus.get());
-      { VPackObjectBuilder op(bogus.get());
-        bogus->add("a", VPackValue(12)); }}}
+  VPackBuilder bogus;
+  { 
+    VPackArrayBuilder trxs(&bogus);
+    { 
+      VPackArrayBuilder trx(&bogus);
+      { 
+        VPackObjectBuilder op(&bogus);
+        bogus.add("a", VPackValue(12)); 
+      }
+    }
+  }
   server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
-    bogus);
+    bogus.slice());
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -2600,7 +2624,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
+      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
 
   auto& engine = *static_cast<StorageEngineMock*>(

@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.integer">
+  <title>Integer&lt;T&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section>
+    <title>Description</title>
+
+    <para>A type fulfills the requirements of an Integer if it has the
+    properties of a integer.</para>
+
+    <para>More specifically, a type T is Integer if there exists a
+    specialization of <code>std::numeric_limits&lt;T&gt; for which
+    std::numeric_limits&lt;T&gt;::is_integer</code> is equal to
+    <code>true</code>. See the documentation for standard library class
+    <code>numeric_limits</code>. The standard library includes such
+    specializations for all built-in numeric types. Note that this concept is
+    distinct from the C++ standard library type traits
+    <code>is_integral</code> and <code>is_arithmetic</code>. These latter
+    fulfill the requirements of the concept Numeric. But there are types which
+    fulfill this concept for which <code>is_arithmetic&lt;T&gt;::value ==
+    false</code>. For example see <code>safe&lt;int&gt;</code>.</para>
+  </section>
+
+  <section>
+    <title>Refinement of</title>
+
+    <para><link linkend="safe_numerics.numeric_concept">Numeric</link></para>
+  </section>
+
+  <section>
+    <title>Notation</title>
+
+    <informaltable>
+      <tgroup cols="2" colsep="1" rowsep="1">
+        <colspec align="left" colwidth="2*"/>
+
+        <colspec align="left" colwidth="4*"/>
+
+        <tbody>
+          <row>
+            <entry><code>T, U, V</code></entry>
+
+            <entry>A type that is a model of an Integer type</entry>
+          </row>
+
+          <row>
+            <entry><code>t, u</code></entry>
+
+            <entry>An object of type modeling an Integer type</entry>
+          </row>
+
+          <row>
+            <entry><code>OS, IS</code></entry>
+
+            <entry>A type that is a model of an output or input stream</entry>
+          </row>
+
+          <row>
+            <entry><code>os, is</code></entry>
+
+            <entry>An object of a type modeling output or input stream</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Valid Expressions</title>
+
+    <para>In addition to the expressions defined in Integer, the following
+    expression must be true. <table>
+        <title>General</title>
+
+        <tgroup cols="2">
+          <colspec align="left" colwidth="2*"/>
+
+          <colspec align="left" colwidth="2*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry>Value</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>std::numeric_limits&lt;T&gt;::is_integer</code></entry>
+
+              <entry>true</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>Any or all of the following unary operators MAY be defined. Any
+    such defined operators shall implement the semantics as described
+    below<table>
+        <title>Unary Operator</title>
+
+        <tgroup cols="3">
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="4*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry>Return Type</entry>
+
+              <entry>Semantics</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>~t</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>bitwise complement</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>Any or all of the following binary operators MAY be defined. Any
+    defined operators shall implement the semantics as described bellow<table>
+        <title>Binary Operators</title>
+
+        <tgroup cols="3">
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="4*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry>Return Type</entry>
+
+              <entry>Semantics</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>t % u</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>t modulus u. t can be a Numeric type.</entry>
+            </row>
+
+            <row>
+              <entry><code>t &lt;&lt; u</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>shift t left u bits</entry>
+            </row>
+
+            <row>
+              <entry><code>t &gt;&gt; u</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>shift t right by u bits</entry>
+            </row>
+
+            <row>
+              <entry><code>t &amp; u</code></entry>
+
+              <entry><code>V</code></entry>
+
+              <entry>and of t and u padded out to max # bits in t, u</entry>
+            </row>
+
+            <row>
+              <entry><code>t | u</code></entry>
+
+              <entry><code>V</code></entry>
+
+              <entry>or of t and u padded out to max # bits in t, u</entry>
+            </row>
+
+            <row>
+              <entry><code>t ^ u</code></entry>
+
+              <entry><code>V</code></entry>
+
+              <entry>exclusive or of t and u padded out to max # bits in t,
+              u</entry>
+            </row>
+
+            <row>
+              <entry><code>t &lt;&lt;= u</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>left shift the value of t by u bits</entry>
+            </row>
+
+            <row>
+              <entry><code>t &gt;&gt;= u</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>right shift the value of t by u bits</entry>
+            </row>
+
+            <row>
+              <entry><code>t &amp;= u</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>and the value of t with u and assign to t</entry>
+            </row>
+
+            <row>
+              <entry><code>t |= u</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>or the value of t with u and assign to t</entry>
+            </row>
+
+            <row>
+              <entry><code>t ^= u</code></entry>
+
+              <entry><code>T</code></entry>
+
+              <entry>exclusive or the value of t with u and assign to
+              t</entry>
+            </row>
+
+            <row>
+              <entry><code>os &lt;&lt; t</code></entry>
+
+              <entry><code><code>OS &amp;</code></code></entry>
+
+              <entry>write contents of t to output stream</entry>
+            </row>
+
+            <row>
+              <entry><code>is &gt;&gt; t</code></entry>
+
+              <entry><code><code>IS &amp;</code></code></entry>
+
+              <entry>read contents of an input stream into t</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table></para>
+  </section>
+
+  <section>
+    <title>Models</title>
+
+    <para><code>int, safe&lt;int&gt;, safe_unsigned_range&lt;0, 11&gt;,
+    checked_result&lt;int&gt; etc.</code></para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/concept/numeric.hpp"><code>#include
+    &lt;boost/safe_numerics/concepts/integer.hpp&gt; </code></ulink></para>
+  </section>
+</section>

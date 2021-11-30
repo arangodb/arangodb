@@ -22,9 +22,9 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef METRICS_FEATURE_TEST_H
-#define METRICS_FEATURE_TEST_H
+#pragma once
 #include <RestServer/MetricsFeature.h>
+
 struct HISTOGRAMLOGSCALE {
   static log_scale_t<double> scale() { return { 10.0, 0, 1000.0, 8 }; }
 };
@@ -43,4 +43,3 @@ struct HISTOGRAMLIN : arangodb::metrics::HistogramBuilder<HISTOGRAMLIN, HISTOGRA
 struct GAUGE : arangodb::metrics::GaugeBuilder<GAUGE, uint64_t> {
   GAUGE() { _name = "GAUGE", _help = "one gauge"; }
 };
-#endif

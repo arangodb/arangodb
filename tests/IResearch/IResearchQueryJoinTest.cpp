@@ -372,7 +372,7 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
       resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -399,7 +399,7 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
       resource /= std::string_view("simple_sequential_order.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -544,7 +544,7 @@ TEST_P(IResearchQueryJoinTest, test) {
       resource /= std::string_view("simple_sequential.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
@@ -569,7 +569,7 @@ TEST_P(IResearchQueryJoinTest, test) {
       resource /= std::string_view("simple_sequential_order.json");
 
       auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 

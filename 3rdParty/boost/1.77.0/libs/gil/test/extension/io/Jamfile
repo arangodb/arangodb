@@ -1,0 +1,49 @@
+# Boost.GIL (Generic Image Library) - IO tests
+#
+# Copyright (c) 2012 Christian Henning
+# Copyright (c) 2017 Stefan Seefeld
+# Copyright (c) 2012-2020 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import ac ;
+import testing ;
+
+using libjpeg : : : : true ; # work around bug on master
+using zlib ;
+using libpng : : : : true ;
+using libtiff : : : : true ;
+
+lib libraw : : <name>raw ;
+
+project
+  :
+    requirements
+      <include>.
+  ;
+
+alias headers : [ generate_self_contained_headers extension/io ] ;
+explicit headers ;
+
+# The `simple` in names of targets, somewhat misleading, means two things:
+# - minimal set of tests
+# - set of tests that require third-party libraries which are de-facto ubiquitous
+alias simple
+  :
+    [
+      run simple_all_formats.cpp
+      : # args
+      : # input files
+      : # requirements
+        <library>/boost/filesystem//boost_filesystem
+        [ ac.check-library /libjpeg//libjpeg : <library>/libjpeg//libjpeg : <build>no ]
+        [ ac.check-library /zlib//zlib : <library>/zlib//zlib : <build>no ]
+        [ ac.check-library /libpng//libpng : <library>/libpng//libpng : <build>no ]
+        [ ac.check-library /libtiff//libtiff : <library>/libtiff//libtiff : <build>no ]
+    ]
+  ;
+
+alias full : bmp jpeg png pnm raw targa tiff ;
+explicit full ;
