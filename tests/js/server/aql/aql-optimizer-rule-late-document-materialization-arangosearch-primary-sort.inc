@@ -177,16 +177,14 @@
                     "SORT CONCAT(a, e) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        if (!isCluster) {
-          let result = AQL_EXECUTE(query);
-          assertEqual(4, result.json.length);
-          let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
-          result.json.forEach(function(doc) {
-            assertTrue(expectedKeys.has(doc._key));
-            expectedKeys.delete(doc._key);
-          });
-          assertEqual(0, expectedKeys.size);
-        }
+        let result = AQL_EXECUTE(query);
+        assertEqual(4, result.json.length);
+        let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+        result.json.forEach(function(doc) {
+          assertTrue(expectedKeys.has(doc._key));
+          expectedKeys.delete(doc._key);
+        });
+        assertEqual(0, expectedKeys.size);
       },
       testQueryResultsWithFilter() {
         let query = "FOR d IN " + svn + " FILTER d.value IN [1, 2] SORT d.foo DESC LIMIT 10 RETURN d";
