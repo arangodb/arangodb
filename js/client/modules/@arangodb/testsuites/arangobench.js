@@ -155,7 +155,7 @@ const benchTodos = [{
   'collection': 'testCollection',
   //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
   //the double @s will be removed when this feature is deprecated
-  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name',
+  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc',
   'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}'
 }, {
   'histogram.generate': true,
@@ -169,8 +169,23 @@ const benchTodos = [{
   'collection': 'testCollection',
   //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
   //the double @s will be removed when this feature is deprecated
-  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name',
+  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc',
   'custom-query-bindvars': '{"@@collectionName": "testCollection", "value": "test"}',
+  'expected-failure': true
+}, {
+  'histogram.generate': true,
+  'requests': '100',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true,
+  'collection': 'testCollection',
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@testCollection FILTER doc.name == @@name RETURN doc',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}',
   'expected-failure': true
 }
 ];
@@ -236,7 +251,7 @@ function arangobench (options) {
         args = Object.assign(args, options.benchargs);
       }
       let oneResult = pu.run.arangoBenchmark(options, instanceInfo, args, instanceInfo.rootDir, options.coreCheck);
-      if (benchTodo.hasOwnProperty('expected-failure')) {
+      if (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']) {
         continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
         if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
           if (internal.db._databases().find(

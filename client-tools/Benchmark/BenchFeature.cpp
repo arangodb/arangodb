@@ -258,14 +258,13 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
   }
   if (!_customQueryBindVars.empty()) {
-    _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
-  }
-
-  if(!options->processingResult().touched("--custom-query") && !options->processingResult().touched("--custom-query-file")) {
-    if(options->processingResult().touched("--custom-query-bindvars")) {
-      LOG_TOPIC("d06cf", WARN, arangodb::Logger::BENCH)
+    try {
+      _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
+    } catch (...) {
+      LOG_TOPIC("a3468", FATAL, arangodb::Logger::BENCH)
           << "For flag '--custom-query-bindvars "
-          << _customQueryBindVars << "': custom query must be provided with flag '--custom-query' or '--custom-query-file'.";
+          << _customQueryBindVars << "': invalid JSON format. ";
+      FATAL_ERROR_EXIT();
     }
   }
 }
