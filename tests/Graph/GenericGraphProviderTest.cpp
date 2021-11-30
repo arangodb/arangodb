@@ -131,7 +131,7 @@ class GraphProviderTest : public ::testing::Test {
         arangodb::tests::mocks::MockDBServer server{true, true};
         graph.prepareServer(server);
 
-        auto queryString = arangodb::aql::QueryString("RETURN 1");
+        auto queryString = arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
@@ -190,7 +190,7 @@ class GraphProviderTest : public ::testing::Test {
           ->addPreparedResponses(dbServerEndpoint, std::move(preparedResponses));
 
       {
-        auto queryString = arangodb::aql::QueryString("RETURN 1");
+        auto queryString = arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server->getSystemDatabase());
