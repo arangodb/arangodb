@@ -41,13 +41,15 @@ using namespace arangodb::replication2::test;
 struct ReplicatedStateTest
     : test::ReplicatedLogTest,
       tests::LogSuppressor<Logger::REPLICATED_STATE, LogLevel::TRACE> {
+  ReplicatedStateTest() {
+    feature->registerStateType<MyState>("my-state");
+  }
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
 };
 
 
 TEST_F(ReplicatedStateTest, simple_become_follower_test) {
-  feature->registerStateType<MyState>("my-state");
   auto log = makeReplicatedLog(LogId{1});
   auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");
   auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
@@ -75,7 +77,6 @@ TEST_F(ReplicatedStateTest, simple_become_follower_test) {
 }
 
 TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
-  feature->registerStateType<MyState>("my-state");
   auto log = makeReplicatedLog(LogId{1});
   auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");
   auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
@@ -113,8 +114,6 @@ TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
 }
 
 TEST_F(ReplicatedStateTest, simple_become_leader_test) {
-  feature->registerStateType<MyState>("my-state");
-
   auto followerLog = makeReplicatedLog(LogId{1});
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
@@ -136,7 +135,6 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
 }
 
 TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
-  feature->registerStateType<MyState>("my-state");
   auto log = makeReplicatedLog(LogId{1});
   auto leaderLog = makeReplicatedLog(LogId{1});
 
@@ -185,7 +183,6 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
 }
 
 TEST_F(ReplicatedStateTest, stream_test) {
-  feature->registerStateType<MyState>("my-state");
 
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto followerLog = makeReplicatedLog(LogId{1});

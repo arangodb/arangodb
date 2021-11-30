@@ -19,19 +19,44 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include "ReplicatedStateFeature.h"
 
-#include "Basics/Exceptions.h"
+#pragma once
 
-using namespace arangodb;
-using namespace arangodb::replication2;
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Basics/ErrorCode.h"
 
-auto replicated_state::ReplicatedStateFeature::createReplicatedState(
-    std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log)
-    -> std::shared_ptr<ReplicatedStateBase> {
-  auto name_str = std::string{name};  // TODO C++20 transparent hashing not yet available
-  if (auto iter = factories.find(name_str); iter != std::end(factories)) {
-    return iter->second->createReplicatedState(std::move(log));
-  }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);  // TODO fix error code
-}
+namespace arangodb::replication2::replicated_state::agency {
+
+struct Current {
+  LogId id;
+
+  struct ParticipantStatus {
+    std::size_t generation;
+
+    struct Snapshot {
+
+      enum class Status {
+        kInProgress,
+        kCompleted,
+        kFailed,
+      };
+
+      using clock = std::chrono::system_clock;
+
+      struct Error {
+        ErrorCode error;
+        std::optional<std::string> message;
+        clock::time_point retryAt;
+      };
+
+
+      Status status{Status::kInProgress};
+      clock::time_point timestamp;
+      std::optional<Error> error;
+    };
+  };
+
+  std::unordered_map<ParticipantId, ParticipantStatus> participants;
+};
+
+}  // namespace arangodb::replication2::replicated_state::agency

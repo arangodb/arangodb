@@ -28,6 +28,8 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 
+#include "Basics/debugging.h"
+
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
@@ -35,10 +37,15 @@ class LogFollower;
 class LogLeader;
 }
 
-
 namespace arangodb::replication2::replicated_state {
 
 struct ReplicatedStateFeature {
+  /**
+   * Registers a new State implementation with the given name.
+   * @tparam S State Machine
+   * @param name Name of the implementation
+   * @param args Arguments forwarded to the constructor of the factory type, i.e. ReplicatedStateTraits<S>::FactoryType.
+   */
   template <typename S, typename... Args>
   void registerStateType(std::string name, Args&&... args) {
     using Factory =
@@ -47,9 +54,16 @@ struct ReplicatedStateFeature {
     auto factory =
         std::make_shared<InternalFactory<S, Factory>>(std::in_place,
                                                       std::forward<Args>(args)...);
-    factories.emplace(std::move(name), std::move(factory));
+    auto [iter, was_inserted] = factories.try_emplace(std::move(name), std::move(factory));
+    TRI_ASSERT(was_inserted) << "duplicated state implementation name?";
   }
 
+  /**
+   * Create a new replicated state using the implementation specified by the name.
+   * @param name Which implementation to use.
+   * @param log ReplicatedLog to use.
+   * @return
+   */
   auto createReplicatedState(std::string_view name,
                              std::shared_ptr<replicated_log::ReplicatedLog> log)
       -> std::shared_ptr<ReplicatedStateBase>;
@@ -64,7 +78,7 @@ struct ReplicatedStateFeature {
   template <typename S, typename Factory>
   struct InternalFactory;
 
-  std::unordered_map<std::string, std::shared_ptr<InternalFactoryBase>, basics::TransparentStringHash, std::equal_to<void>> factories;
+  std::unordered_map<std::string, std::shared_ptr<InternalFactoryBase>> factories;
 };
 
 template <typename S, typename Factory = typename ReplicatedStateTraits<S>::FactoryType>

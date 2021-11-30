@@ -32,24 +32,6 @@ class Future;
 namespace arangodb {
 class Result;
 }
-namespace arangodb::basics {
-
-template <typename Char>
-struct TransparentBasicStringHash {
-  using is_transparent = void;
-  using hash_type = std::hash<std::basic_string_view<Char>>;
-  auto operator()(std::basic_string<Char> const& str) const noexcept {
-    return hash_type{}(str);
-  }
-  auto operator()(std::basic_string_view<Char> const& str) const noexcept {
-    return hash_type{}(str);
-  }
-  auto operator()(const Char* str) const noexcept { return hash_type{}(str); }
-};
-
-using TransparentStringHash = TransparentBasicStringHash<char>;
-
-}  // namespace arangodb::basics
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
@@ -79,10 +61,20 @@ struct ReplicatedState : ReplicatedStateBase,
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
 
+  /**
+   * Forces to rebuild the state machine depending on the replicated log state.
+   */
   void flush();
 
+  /**
+   * Returns the follower state machine. Returns nullptr if no follower state
+   * machine is present. (i.e. this server is not a follower)
+   */
   auto getFollower() const -> std::shared_ptr<FollowerType>;
-
+  /**
+   * Returns the leader state machine. Returns nullptr if no leader state
+   * machine is present. (i.e. this server is not a leader)
+   */
   auto getLeader() const -> std::shared_ptr<LeaderType>;
 
  private:
@@ -94,11 +86,9 @@ struct ReplicatedState : ReplicatedStateBase,
   };
 
   struct LeaderState;
-
-  void runLeader(std::shared_ptr<replicated_log::LogLeader> logLeader);
-
   struct FollowerState;
 
+  void runLeader(std::shared_ptr<replicated_log::LogLeader> logLeader);
   void runFollower(std::shared_ptr<replicated_log::LogFollower> logFollower);
 
   std::shared_ptr<StateBase> currentState;
@@ -114,15 +104,33 @@ struct ReplicatedLeaderState {
   virtual ~ReplicatedLeaderState() = default;
 
  protected:
-  friend struct ReplicatedState<S>::LeaderState;
+  /**
+   * Called whenever a snapshot transfer shall be initiated. Once the snapshot
+   * transfer has ended (either failed or succeeded) the future shall be resolved.
+   * If the operation failed, it will eventually be retried.
+   *
+   * @param destination id of the participant the snapshot should be sent to
+   * @return Future to be fulfilled when snapshot transfer is done.
+   */
   virtual auto installSnapshot(ParticipantId const& destination)
       -> futures::Future<Result> = 0;
+
+  /**
+   * This function is called once on a leader instance. The iterator contains
+   * all log entries currently present in the replicated log. The state machine
+   * manager awaits the return value. If the result is ok, the leader instance
+   * is made available to the outside world.
+   *
+   * If the recovery fails, the server aborts.
+   * @return Future to be fulfilled when recovery is done.
+   */
   virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
       -> futures::Future<Result> = 0;
 
-  auto getStream() const -> std::shared_ptr<Stream>;
+  auto getStream() const -> std::shared_ptr<Stream> const&;
 
  private:
+  friend struct ReplicatedState<S>::LeaderState;
   std::shared_ptr<Stream> _stream;
 };
 
@@ -135,13 +143,24 @@ struct ReplicatedFollowerState {
   virtual ~ReplicatedFollowerState() = default;
 
  protected:
-  friend struct ReplicatedState<S>::FollowerState;
+  /**
+   * Called by the state machine manager if new log entries have been committed
+   * and are ready to be applied to the state machine. The implementation ensures
+   * that this function not called again until the future returned is fulfilled.
+   *
+   * Entries are not released after they are consumed by this function. Its the
+   * state machines implementations responsibility to call release on the stream.
+   *
+   * @return Future with Result value. If the result contains an error, the
+   *    operation is retried.
+   */
   virtual auto applyEntries(std::unique_ptr<EntryIterator>)
       -> futures::Future<Result> = 0;
 
-  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream>;
+  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;
 
  private:
+  friend struct ReplicatedState<S>::FollowerState;
   std::shared_ptr<Stream> _stream;
 };
 

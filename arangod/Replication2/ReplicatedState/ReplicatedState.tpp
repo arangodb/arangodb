@@ -198,7 +198,7 @@ void ReplicatedState<S, Factory>::runLeader(std::shared_ptr<replicated_log::LogL
 
 
 template <typename S>
-auto ReplicatedLeaderState<S>::getStream() const -> std::shared_ptr<Stream> {
+auto ReplicatedLeaderState<S>::getStream() const -> std::shared_ptr<Stream> const& {
   if (_stream) {
     return _stream;
   }
@@ -207,7 +207,7 @@ auto ReplicatedLeaderState<S>::getStream() const -> std::shared_ptr<Stream> {
 }
 
 template <typename S>
-auto ReplicatedFollowerState<S>::getStream() const -> std::shared_ptr<Stream> {
+auto ReplicatedFollowerState<S>::getStream() const -> std::shared_ptr<Stream> const& {
   if (_stream) {
     return _stream;
   }
