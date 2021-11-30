@@ -265,7 +265,7 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     if(options->processingResult().touched("--custom-query-bindvars")) {
       LOG_TOPIC("d06cf", WARN, arangodb::Logger::BENCH)
           << "For flag '--custom-query-bindvars "
-          << _customQueryBindVars << "': custom query must be provided with flag '--custom-query' or 'custom-query-file'.";
+          << _customQueryBindVars << "': custom query must be provided with flag '--custom-query' or '--custom-query-file'.";
     }
   }
 }
