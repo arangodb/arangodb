@@ -25,6 +25,15 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Basics/ErrorCode.h"
 
+#include <optional>
+#include <chrono>
+#include <string>
+
+namespace arangodb::velocypack {
+class Builder;
+class Slice;
+}  // namespace arangodb::velocypack
+
 namespace arangodb::replication2::replicated_state::agency {
 
 struct Current {
@@ -47,8 +56,13 @@ struct Current {
         ErrorCode error;
         std::optional<std::string> message;
         clock::time_point retryAt;
+        void toVelocyPack(velocypack::Builder& builder) const;
+        [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
       };
 
+
+      void toVelocyPack(velocypack::Builder& builder) const;
+      [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Snapshot;
 
       Status status{Status::kInProgress};
       clock::time_point timestamp;
@@ -58,5 +72,8 @@ struct Current {
 
   std::unordered_map<ParticipantId, ParticipantStatus> participants;
 };
+
+static auto to_string(Current::ParticipantStatus::Snapshot::Status status) -> std::string_view;
+static auto from_string(std::string_view string) -> Current::ParticipantStatus::Snapshot::Status;
 
 }  // namespace arangodb::replication2::replicated_state::agency
