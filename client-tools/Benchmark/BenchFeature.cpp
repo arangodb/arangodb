@@ -261,9 +261,7 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_customQueryBindVars.empty()) {
     _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
   }
-  //dogs {"dogName": "nanico"} FOR dog in dogs FILTER dog.name == @dogName
-  //{"@collectionName": "dogs", "dogName": "nanico"} FOR dog IN @@collectionName FILTER dog.name == @dogName
-  //--custom-query-bindvars '{"tjaetja": "lalala" }'   FOR doc in docs FILTER doc.value == @tjaetja
+
   if(!options->processingResult().touched("--custom-query") && !options->processingResult().touched("--custom-query-file")) {
     if(options->processingResult().touched("--custom-query-bindvars")) {
       LOG_TOPIC("d06cf", WARN, arangodb::Logger::BENCH)
