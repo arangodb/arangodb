@@ -1,8 +1,8 @@
 devel
 -----
 
-* Added new flag `custom-query-bindvars` to arangobench, so queries given as 
-  argument with the flag `custom-query` can have bind variables in them.
+* Added new option `--custom-query-bindvars` to arangobench, so queries given via 
+  option `--custom-query` can have bind variables in them.
 
 * BTS-624: The `move-calculations-up` optimization rule is now also applied to
   subqueries, when they don't have dependencies on the outer nodes, don't have
