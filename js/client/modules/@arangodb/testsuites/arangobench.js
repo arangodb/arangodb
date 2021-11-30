@@ -153,8 +153,10 @@ const benchTodos = [{
   'server.database': '이것은 테스트입니까 ! @abc " mötör',
   'create-database': true,
   'collection': 'testCollection',
-  'custom-query': 'FOR doc IN @@collectionName FILTER doc.name == @name',
-  'custom-query-bindvars': '{"@collectionName": "testCollection", "name": "test"}'
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}'
 }, {
   'histogram.generate': true,
   'requests': '100',
@@ -165,8 +167,10 @@ const benchTodos = [{
   'server.database': '이것은 테스트입니까 ! @abc " mötör',
   'create-database': true,
   'collection': 'testCollection',
-  'custom-query': 'FOR doc IN @@collectionName FILTER doc.name == @name',
-  'custom-query-bindvars': '{"@collectionName": "testCollection", "value": "test"}',
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "value": "test"}',
   'expected-failure': true
 }
 ];
