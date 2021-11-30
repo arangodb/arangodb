@@ -1,5 +1,5 @@
-v3.9.0 (XXXX-XX-XX)
--------------------
+v3.9.0-alpha.1 (2021-11-30)
+---------------------------
 
 * Cleanup and properly fail hotbackup upload and download jobs if a dbserver
   fails or is restarted during the transfer. This gets rid of upload and
