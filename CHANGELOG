@@ -5,9 +5,6 @@ v3.8.4 (XXXX-XX-XX)
   fails or is restarted during the transfer. This gets rid of upload and
   download blockages in these circumstances.
 
-* Improve visibility in case of potential data corruption between primary index
-  and actual document store in documents column family.
-
 * Reduce memory usage for in-memory revision trees. Previously, a revision tree
   instance for a non-empty collection/shard was using 4 MB of memory when
   uncompressed. Trees that were unused for a while were compressed on the fly to
