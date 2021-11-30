@@ -1,0 +1,30 @@
+////
+Copyright 2003-2017 Beman Dawes
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#history]
+# History
+:idprefix: history_
+
+http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1975.html[N1975],
+Filesystem Library Proposal for TR2, accepted for Library Technical
+Report 2 (TR2) at the Berlin meeting, included additional components to
+supplement the Standard Library's Diagnostics clause. Since then, these error
+reporting components have received wider public scrutiny and enhancements have
+been made to the design. The enhanced version has been used by
+http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n2054.pdf[N2054],
+Networking  Library Proposal for TR2, demonstrating that these error reporting
+components are useful beyond the original Filesystem Library.
+
+The original proposal viewed error categories as a binary choice between
+`errno` (i.e. POSIX-style) and the native operating system's error
+codes. The proposed components now allow as many additional error categories as
+are needed by either implementations or by users. The need to support additional
+error categories, for example, occurs in some networking library implementations
+because they are built on top of the POSIX `getaddrinfo` API that
+uses error codes not based on `errno`.

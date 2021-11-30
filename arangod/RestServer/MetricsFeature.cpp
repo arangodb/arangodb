@@ -390,7 +390,7 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
         "arangodb_scheduler_jobs_submitted",
         "arangodb_scheduler_jobs_done",
     };
-    
+
     v1suppressions = {
         "arangodb_scheduler_jobs_dequeued_total",
         "arangodb_scheduler_jobs_submitted_total",
@@ -438,6 +438,11 @@ auto MetricsFeature::doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metri
   return metric;
 }
 
+bool MetricsFeature::doRemove(const metrics::Builder& builder) {
+  auto const& key = builder.key();
+  std::lock_guard guard{_lock};
+  return _registry.erase(key) != 0;
+}
 
 bool MetricsFeature::exportAPI() const {
   return _export;
@@ -462,7 +467,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
   q.updateMetrics();
   {
     bool changed = false;
-    
+
     std::lock_guard<std::recursive_mutex> guard(_lock);
     if (_globalLabels.find("shortname") == _globalLabels.end()) {
       std::string shortName = ServerState::instance()->getShortName();
@@ -486,7 +491,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
       bool first = true;
       for (auto const& i : _globalLabels) {
         if (!first) {
-          _globalLabelsStr += ","; 
+          _globalLabelsStr += ",";
         } else {
           first = false;
         }
@@ -502,7 +507,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
         if (v1suppressions.find(name) != v1suppressions.end()) {
           continue;
         }
-        // In v1 we do a name conversion. Note that we set 
+        // In v1 we do a name conversion. Note that we set
         // alternativeName == name in the end, in v2 though,
         // alternativeName is empty and no conversion happens.
         auto it = nameVersionTable.find(name);
@@ -529,8 +534,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
         continue;
       }
       if (lastType != name) {
-        result += "# HELP " + name + " " + i.second->help() + "\n";
-        result += "# TYPE " + name + " " + i.second->type() + "\n";
+        i.second->toPrometheusBegin(result, name);
         lastType = name;
       }
       i.second->toPrometheus(result, _globalLabelsStr, alternativeName);
@@ -553,6 +557,14 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
 
 ServerStatistics& MetricsFeature::serverStatistics() noexcept {
   return *_serverStatistics;
+}
+
+Metric* MetricsFeature::get(const metrics_key& key) {
+  auto it = _registry.find(key);
+  if (it == _registry.end()) {
+    return nullptr;
+  }
+  return it->second.get();
 }
 
 metrics_key::metrics_key(std::string const& name, std::initializer_list<std::string> const& il) : name(name) {

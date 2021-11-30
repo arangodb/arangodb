@@ -1,0 +1,42 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:cpp_dec_ref cpp_dec_float]
+
+   namespace boost{ namespace multiprecision{
+
+   template <unsigned Digits10, class ExponentType = std::int32_t, class Allocator = void>
+   class cpp_dec_float;
+
+   typedef number<cpp_dec_float<50> > cpp_dec_float_50;
+   typedef number<cpp_dec_float<100> > cpp_dec_float_100;
+
+   }} // namespaces
+
+Class template `cpp_dec_float` fulfils all of the requirements for a [link boost_multiprecision.ref.backendconc Backend] type.
+Its members and non-member functions are deliberately not documented: these are considered implementation details that are subject
+to change.
+
+The class takes three template parameters:
+
+[variablelist
+[[Digits10][The number of decimal digits precision the type
+should support.  Note that this type does not normally perform any dynamic memory allocation, and as a result the `Digits10`
+template argument should not be set too high or the class's size will grow unreasonably large.]]
+[[ExponentType][A signed integer type that represents the exponent of the number]]
+[[Allocator][The allocator used: defaults to type `void`, meaning all storage is within the class, and no dynamic
+allocation is performed, but can be set to a standard library allocator if dynamic allocation makes more sense.]]
+]
+
+The type of `number_category<cpp_dec_float<Args...> >::type` is `std::integral_constant<int, number_kind_floating_point>`.
+
+More information on this type can be found in the [link boost_multiprecision.tut.floats.cpp_dec_float tutorial].
+
+[endsect]

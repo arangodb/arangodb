@@ -78,9 +78,9 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("transaction", "transactions");
 
   options->addOption("--transaction.streaming-lock-timeout", "lock timeout in seconds "
-		     "in case of parallel access to the same streaming transaction",
+                     "in case of parallel access to the same streaming transaction",
                      new DoubleParameter(&_streamingLockTimeout),
-		     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+         arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30605).setIntroducedIn(30701);
   
   options->addOption("--transaction.streaming-idle-timeout", "idle timeout for streaming "

@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCK_TYPED_NODE_H
-#define ARANGODB_TESTS_MOCK_TYPED_NODE_H 1
+#pragma once
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -56,5 +55,3 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
 };
 
 }  // namespace arangodb::tests::aql
-
-#endif  // ARANGODB_TESTS_MOCK_TYPED_NODE_H

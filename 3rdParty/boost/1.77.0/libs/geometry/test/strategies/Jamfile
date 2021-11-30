@@ -1,0 +1,45 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2007-2015 Barend Gehrels, Amsterdam, the Netherlands.
+# Copyright (c) 2008-2015 Bruno Lalande, Paris, France.
+# Copyright (c) 2009-2015 Mateusz Loskot, London, UK.
+#
+# This file was modified by Oracle on 2014-2020.
+# Modifications copyright (c) 2014-2020, Oracle and/or its affiliates.
+#
+# Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
+# Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
+# Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-strategies
+    :
+    [ run andoyer.cpp                        : : : : strategies_andoyer ]
+    [ run cross_track.cpp                    : : : : strategies_cross_track ]
+    [ run crossings_multiply.cpp             : : : : strategies_crossings_multiply ]
+    [ run distance_default_result.cpp        : : : : strategies_distance_default_result ]
+    [ run distance_cross_track.cpp           : : : : strategies_distance_cross_track ]
+    [ run douglas_peucker.cpp                : : : : strategies_douglas_peucker ]
+    [ run envelope_segment.cpp               : : : : strategies_envelope_segment ]
+    [ run franklin.cpp                       : : : : strategies_franklin ]
+    [ run haversine.cpp                      : : : : strategies_haversine ]
+    [ run point_in_box.cpp                   : : : : strategies_point_in_box ]
+    [ run projected_point.cpp                : : : : strategies_projected_point ]
+    [ run projected_point_ax.cpp             : : : : strategies_projected_point_ax ]
+    [ run pythagoras.cpp                     : : : : strategies_pythagoras ]
+    [ run pythagoras_point_box.cpp           : : : : strategies_pythagoras_point_box ]
+    [ run segment_intersection.cpp           : : : : strategies_segment_intersection           ]
+    [ run segment_intersection_collinear.cpp : : : : strategies_segment_intersection_collinear ]
+    [ run segment_intersection_geo.cpp       : : : : strategies_segment_intersection_geo ]
+    [ run segment_intersection_sph.cpp       : : : : strategies_segment_intersection_sph ]
+    [ run spherical_side.cpp                 : : : : strategies_spherical_side ]
+    [ run thomas.cpp                         : : : : strategies_thomas ]
+    [ run transform_cs.cpp                   : : : : strategies_transform_cs ]
+    [ run transformer.cpp                    : : : : strategies_transformer ]
+    [ run matrix_transformer.cpp             : : : : strategies_matrix_transformer ]
+    [ run vincenty.cpp                       : : : : strategies_vincenty ]
+    [ run winding.cpp                        : : : : strategies_winding ]
+    ;

@@ -1,0 +1,102 @@
+[/===========================================================================
+ Copyright (c) 2013-2015 Kyle Lutz <kyle.r.lutz@gmail.com>
+
+ Distributed under the Boost Software License, Version 1.0
+ See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt
+=============================================================================/]
+
+[section Porting Guide]
+
+[section OpenCL API]
+
+[table OpenCL API Translation Table
+    [[OpenCL Function] [Boost.Compute Function]]
+    [[*Buffers*]]
+    [[`clCreateBuffer()`] [[classref boost::compute::buffer buffer::buffer()]]]
+    [[`clReleaseMemObject()`] [[classref boost::compute::buffer buffer::~buffer()]]]
+    [[`clGetMemObjectInfo()`] [[memberref boost::compute::buffer::get_info buffer::get_info<T>()]]]
+
+    [[*Command Queues*]]
+    [[`clCreateCommandQueue()`] [[classref boost::compute::command_queue command_queue::command_queue()]]]
+    [[`clReleaseCommandQueue()`] [[classref boost::compute::command_queue command_queue::~command_queue()]]]
+    [[`clGetCommandQueueInfo()`] [[memberref boost::compute::command_queue::get_info command_queue::get_info<T>()]]]
+    [[`clEnqueueReadBuffer()`] [[memberref boost::compute::command_queue::enqueue_read_buffer command_queue::enqueue_read_buffer()]]]
+    [[`clEnqueueWriteBuffer()`] [[memberref boost::compute::command_queue::enqueue_write_buffer command_queue::enqueue_write_buffer()]]]
+    [[`clEnqueueCopyBuffer()`] [[memberref boost::compute::command_queue::enqueue_copy_buffer command_queue::enqueue_copy_buffer()]]]
+    [[`clEnqueueNDRangeKernel()`] [[memberref boost::compute::command_queue::enqueue_nd_range_kernel command_queue::enqueue_nd_range_kernel()]]]
+    [[`clEnqueueTask()`] [[memberref boost::compute::command_queue::enqueue_task command_queue::enqueue_task()]]]
+    [[`clEnqueueBarrier()`] [[memberref boost::compute::command_queue::enqueue_barrier command_queue::enqueue_barrier()]]]
+    [[`clEnqueueMarker()`] [[memberref boost::compute::command_queue::enqueue_marker command_queue::enqueue_marker()]]]
+    [[`clFlush()`] [[memberref boost::compute::command_queue::enqueue_task command_queue::flush()]]]
+    [[`clFinish()`] [[memberref boost::compute::command_queue::enqueue_task command_queue::finish()]]]
+
+    [[*Contexts*]]
+    [[`clCreateContext()`] [[classref boost::compute::context context::context()]]]
+    [[`clReleaseContext()`] [[classref boost::compute::context context::~context()]]]
+    [[`clGetContextInfo()`] [[memberref boost::compute::context::get_info context::get_info<T>()]]]
+
+    [[*Devices*]]
+    [[`clGetDeviceInfo()`] [[memberref boost::compute::device::get_info device::get_info<T>()]]]
+
+    [[*Events*]]
+    [[`clReleaseEvent()`] [[classref boost::compute::event event::~event()]]]
+    [[`clGetEventInfo()`] [[memberref boost::compute::event::get_info event::get_info<T>()]]]
+    [[`clGetEventProfilingInfo()`] [[memberref boost::compute::event::get_profiling_info event::get_profiling_info<T>()]]]
+    [[`clWaitForEvents()`] [[memberref boost::compute::wait_list::wait() wait_list::wait()]]]
+    [[`clCreateUserEvent()`] [[classref boost::compute::user_event user_event::user_event()]]]
+    [[`clSetUserEventStatus()`] [[memberref boost::compute::user_event::set_status() user_event::set_status()]]]
+
+    [[*Kernels*]]
+    [[`clCreateKernel()`] [[classref boost::compute::kernel kernel::kernel()]]]
+    [[`clReleaseKernel()`] [[classref boost::compute::kernel kernel::~kernel()]]]
+    [[`clGetKernelInfo()`] [[memberref boost::compute::kernel::get_info kernel::get_info<T>()]]]
+    [[`clGetKernelArgInfo()`] [[memberref boost::compute::kernel::get_arg_info kernel::get_arg_info<T>()]]]
+    [[`clGetKernelWorkGroupInfo()`] [[memberref boost::compute::kernel::get_work_group_info kernel::get_work_group_info<T>()]]]
+    [[`clSetKernelArg()`] [[memberref boost::compute::kernel::set_arg kernel::set_arg()]]]
+    [[`clSetKernelExecInfo()`] [[memberref boost::compute::kernel::set_exec_info kernel::set_exec_info()]]]
+
+    [[*Pipes*]]
+    [[`clCreatePipe()`] [[classref boost::compute::pipe pipe::pipe()]]]
+    [[`clGetPipeInfo()`] [[memberref boost::compute::pipe::get_info pipe::get_info<T>()]]]
+
+    [[*Platforms*]]
+    [[`clGetDeviceIDs()`] [[memberref boost::compute::platform::devices platform::devices()]]]
+    [[`clGetPlatformInfo()`] [[memberref boost::compute::platform::get_info platform::get_info<T>()]]]
+    [[`clGetExtensionFunctionAddress()`] [[memberref boost::compute::platform::get_extension_function_address platform::get_extension_function_address()]]]
+    [[`clUnloadCompiler()`] [[memberref boost::compute::platform::unload_compiler platform::unload_compiler()]]]
+
+    [[*Programs*]]
+    [[`clCreateProgramWithSource()`] [[memberref boost::compute::program::create_with_source program::create_with_source()]]]
+    [[`clCreateProgramWithBinary()`] [[memberref boost::compute::program::create_with_binary program::create_with_binary()]]]
+    [[`clCreateProgramWithBuiltInKernels()`] [[memberref boost::compute::program::create_with_builtin_kernels program::create_with_builtin_kernels()]]]
+    [[`clReleaseProgram()`] [[classref boost::compute::program program::~program()]]]
+    [[`clGetProgramInfo()`] [[memberref boost::compute::program::get_info program::get_info<T>()]]]
+    [[`clBuildProgram()`] [[memberref boost::compute::program::build program::build()]]]
+    [[`clCompileProgram()`] [[memberref boost::compute::program::compile program::compile()]]]
+    [[`clLinkProgram()`] [[memberref boost::compute::program::link program::link()]]]
+
+    [[*Shared Virtual Memory*]]
+    [[`clSVMAlloc()`] [[funcref boost::compute::svm_alloc svm_alloc<T>()]]]
+    [[`clSVMFree()`] [[funcref boost::compute::svm_free svm_free<T>()]]]
+    [[`clEnqueueSVMFree()`] [[memberref boost::compute::command_queue::enqueue_svm_free command_queue::enqueue_svm_free()]]]
+    [[`clEnqueueSVMMemcpy()`] [[memberref boost::compute::command_queue::enqueue_svm_memcpy command_queue::enqueue_svm_memcpy()]]]
+    [[`clEnqueueSVMMemFill()`] [[memberref boost::compute::command_queue::enqueue_svm_fill command_queue::enqueue_svm_fill()]]]
+    [[`clEnqueueSVMMap()`] [[memberref boost::compute::command_queue::enqueue_svm_map command_queue::enqueue_svm_map()]]]
+    [[`clEnqueueSVMUnmap()`] [[memberref boost::compute::command_queue::enqueue_svm_unmap command_queue::enqueue_svm_unmap()]]]
+
+    [[*System*]]
+    [[`clGetPlatformIDs()`] [[memberref boost::compute::system::platforms system::platforms()]]]
+
+    [[*OpenGL Sharing*]]
+    [[`clCreateFromGLBuffer()`] [[classref boost::compute::opengl_buffer opengl_buffer::opengl_buffer()]]]
+    [[`clCreateFromGLRenderbuffer()`] [[classref boost::compute::opengl_renderbuffer opengl_renderbuffer::opengl_renderbuffer()]]]
+    [[`clCreateFromGLTexture()`] [[classref boost::compute::opengl_texture opengl_texture::opengl_texture()]]]
+    [[`clGetGLTextureInfo()`] [[classref boost::compute::opengl_texture opengl_texture::get_texture_info<T>()]]]
+    [[`clEnqueueAcquireGLObjects()`] [[funcref boost::compute::opengl_enqueue_acquire_gl_objects opengl_enqueue_acquire_gl_objects()]]]
+    [[`clEnqueueReleaseGLObjects()`] [[funcref boost::compute::opengl_enqueue_release_gl_objects opengl_enqueue_release_gl_objects()]]]
+]
+
+[endsect] [/ opencl api]
+
+[endsect]

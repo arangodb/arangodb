@@ -394,7 +394,7 @@ bool ServerState::logoff(double timeout) {
 
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
-  int maxTries = static_cast<int>(timeout / 3.0);;
+  int maxTries = static_cast<int>(timeout / 3.0);
   int tries = 0;
   while (true) {
     AgencyCommResult res = comm.sendTransactionWithFailover(unregisterTransaction, 3.0);

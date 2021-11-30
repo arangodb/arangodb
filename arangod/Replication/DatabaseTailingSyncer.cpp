@@ -179,7 +179,7 @@ Result DatabaseTailingSyncer::inheritFromInitialSyncer(DatabaseInitialSyncer con
   TRI_ASSERT(!leaderInfo.engine.empty());
   TRI_ASSERT(leaderInfo.version() > 0);
 
-  _state.leader.serverId = leaderInfo.serverId;;
+  _state.leader.serverId = leaderInfo.serverId;
   _state.leader.engine = leaderInfo.engine;
   _state.leader.majorVersion = leaderInfo.majorVersion;
   _state.leader.minorVersion = leaderInfo.minorVersion;
