@@ -32,7 +32,8 @@ class Methods;
 // helper class to delay intermediate commits if required. 
 // this is useful to run a full array of insert/update/replace/remove
 // operations without an interruption in the middle by an intermediate
-// commit. this is especially useful for synchronous replication, where
+// commit (a.k.a. coitus interruptus). 
+// this is especially useful for synchronous replication, where
 // we do not want to make an intermediate commit halfway into an array
 // of operations on the leader, because the intermediate commit will
 // unlock all previously locked keys in RocksDB. 
@@ -48,10 +49,17 @@ class IntermediateCommitsHandler {
   IntermediateCommitsHandler& operator=(IntermediateCommitsHandler const&) = delete;
 
   virtual ~IntermediateCommitsHandler();
-  
+
+  // temporarily turn off intermediate commits
+  void suppressIntermediateCommits();
+ 
+  // will execute a commit if an intermediate commit is necessary, and do
+  // nothing otherwise. for performing the intermediate commit, this method
+  // will call the pure virtual commit() method
   arangodb::Result commitIfRequired();
 
  protected:
+  // perform the commit. this has to be implemented by derived classes
   virtual arangodb::Result commit() = 0;
 
   void restorePreviousState() noexcept;

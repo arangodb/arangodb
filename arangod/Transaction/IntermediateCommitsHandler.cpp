@@ -33,23 +33,28 @@ namespace arangodb::transaction {
 IntermediateCommitsHandler::IntermediateCommitsHandler(Methods* trx, DataSourceId id)
     : _trx(trx), 
       _id(id), 
-      _isResponsibleForCommit(_trx->state()->hasHint(Hints::Hint::INTERMEDIATE_COMMITS)) {
-
-  if (_isResponsibleForCommit) {
-    // temporarily disable intermediate commits
-    _trx->state()->unsetHint(Hints::Hint::INTERMEDIATE_COMMITS);
-  }
-}
+      _isResponsibleForCommit(false) {}
 
 IntermediateCommitsHandler::~IntermediateCommitsHandler() {
   // turn intermediate commits back on if required
   restorePreviousState();
 }
+
+void IntermediateCommitsHandler::suppressIntermediateCommits() {
+  TRI_ASSERT(!_isResponsibleForCommit);
+  if (_trx->state()->hasHint(Hints::Hint::INTERMEDIATE_COMMITS)) {
+    // temporarily disable intermediate commits
+    _trx->state()->unsetHint(Hints::Hint::INTERMEDIATE_COMMITS);
+    _isResponsibleForCommit = true;
+  }
+}
   
 Result IntermediateCommitsHandler::commitIfRequired() {
   Result res;
   if (_isResponsibleForCommit) {
+    TRI_ASSERT(!_trx->state()->hasHint(Hints::Hint::INTERMEDIATE_COMMITS));
     restorePreviousState();
+    TRI_ASSERT(_trx->state()->hasHint(Hints::Hint::INTERMEDIATE_COMMITS));
     res = commit();
   }
   return res;

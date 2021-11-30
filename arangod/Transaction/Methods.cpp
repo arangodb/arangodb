@@ -1173,6 +1173,14 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       vocbase().server().getFeature<EngineSelectorFeature>().engine().createIntermediateCommitsHandler(this, collection->id());
 
   if (value.isArray()) {
+    // turn off intermediate commits (temporarily, if enabled) in case
+    // we are processing an array of operations. disabling intermediate
+    // commits here ensures that all operations from the array will be
+    // executed in the same RocksDB transaction. if we hit any thresholds
+    // for intermediate commits, the transaction will be committed
+    // directly after
+    intermediateCommitsHandler->suppressIntermediateCommits();
+
     VPackArrayBuilder b(&resultBuilder);
     VPackArrayIterator it(value);
     while (it.valid()) {
@@ -1211,9 +1219,9 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
       // Now replicate the good operations on all followers:
       return replicateOperations(collection, followers, options, value,
-                                 TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs,
-                                 excludePositions, std::move(intermediateCommitsHandler))
-          .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
+                                 TRI_VOC_DOCUMENT_OPERATION_INSERT, std::move(resDocs),
+                                 std::move(excludePositions), std::move(intermediateCommitsHandler))
+          .thenValue([options, errs = std::move(errorCounter), resDocs = std::move(resDocs)](Result res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
@@ -1225,6 +1233,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
                                    std::move(errs));
           });
     }
+
+    // execute a deferred intermediate commit, if required.
     res = intermediateCommitsHandler->commitIfRequired();
   }
 
@@ -1434,6 +1444,14 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       vocbase().server().getFeature<EngineSelectorFeature>().engine().createIntermediateCommitsHandler(this, collection->id());
 
   if (newValue.isArray()) {
+    // turn off intermediate commits (temporarily, if enabled) in case
+    // we are processing an array of operations. disabling intermediate
+    // commits here ensures that all operations from the array will be
+    // executed in the same RocksDB transaction. if we hit any thresholds
+    // for intermediate commits, the transaction will be committed
+    // directly after
+    intermediateCommitsHandler->suppressIntermediateCommits();
+
     VPackArrayBuilder guard(&resultBuilder);
     VPackArrayIterator it(newValue);
     while (it.valid()) {
@@ -1468,8 +1486,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
       // Now replicate the good operations on all followers:
       return replicateOperations(collection, followers, options, newValue,
-                                 operation, resDocs, {}, std::move(intermediateCommitsHandler))
-          .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) mutable {
+                                 operation, std::move(resDocs), {}, std::move(intermediateCommitsHandler))
+          .thenValue([options, errs = std::move(errorCounter), resDocs = std::move(resDocs)](Result&& res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
@@ -1482,6 +1500,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
           });
     }
 
+    // execute a deferred intermediate commit, if required.
     res = intermediateCommitsHandler->commitIfRequired();
   }
 
@@ -1654,6 +1673,14 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       vocbase().server().getFeature<EngineSelectorFeature>().engine().createIntermediateCommitsHandler(this, collection->id());
 
   if (value.isArray()) {
+    // turn off intermediate commits (temporarily, if enabled) in case
+    // we are processing an array of operations. disabling intermediate
+    // commits here ensures that all operations from the array will be
+    // executed in the same RocksDB transaction. if we hit any thresholds
+    // for intermediate commits, the transaction will be committed
+    // directly after
+    intermediateCommitsHandler->suppressIntermediateCommits();
+
     VPackArrayBuilder guard(&resultBuilder);
     for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
@@ -1663,7 +1690,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     }
     
     // it is ok to clobber res here!
-    res.reset();;
+    res.reset();
   } else {
     res = workForOneDocument(value, false);
   }
@@ -1683,9 +1710,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
       // Now replicate the good operations on all followers:
       return replicateOperations(collection, followers, options, value,
-                                 TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs, {},
+                                 TRI_VOC_DOCUMENT_OPERATION_REMOVE, std::move(resDocs), {},
                                  std::move(intermediateCommitsHandler))
-          .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
+          .thenValue([options, errs = std::move(errorCounter), resDocs = std::move(resDocs)](Result res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
@@ -1698,6 +1725,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
           });
     }
 
+    // execute a deferred intermediate commit, if required.
     res = intermediateCommitsHandler->commitIfRequired();
   }
 
@@ -2284,8 +2312,8 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, VPackSlice value,
     TRI_voc_document_operation_e operation,
-    std::shared_ptr<VPackBuffer<uint8_t>> const& ops,
-    std::unordered_set<size_t> const& excludePositions,
+    std::shared_ptr<VPackBuffer<uint8_t>> ops,
+    std::unordered_set<size_t> excludePositions,
     std::unique_ptr<IntermediateCommitsHandler> intermediateCommitsHandler) {
   TRI_ASSERT(followerList != nullptr);
   TRI_ASSERT(!followerList->empty());
@@ -2352,7 +2380,7 @@ Future<Result> Methods::replicateOperations(
   }
 
   transaction::BuilderLeaser payload(this);
-  auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
+  auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
     VPackObjectBuilder guard(payload.get());
     VPackSlice s = result.get(StaticStrings::KeyString);
     payload->add(StaticStrings::KeyString, s);
@@ -2430,10 +2458,11 @@ Future<Result> Methods::replicateOperations(
     if (followingTermId == 0) {
       reqOpts.param(StaticStrings::IsSynchronousReplicationString,
                     ServerState::instance()->getId());
-    } else {reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                  ServerState::instance()->getId() + "_" +
+    } else {
+      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+                    ServerState::instance()->getId() + "_" +
                       basics::StringUtils::itoa(followingTermId));
-                          }
+    }
     // reqOpts is copied deep in sendRequestRetry, so we are OK to
     // change it in the loop!
     network::Headers headers;
@@ -2578,6 +2607,7 @@ Future<Result> Methods::replicateOperations(
     if (didRefuse) {  // case (1), caller may abort this transaction
       res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
     } else if (intermediateCommitsHandler != nullptr) {
+      // execute a deferred intermediate commit, if required.
       res = intermediateCommitsHandler->commitIfRequired();
     }
     return res;

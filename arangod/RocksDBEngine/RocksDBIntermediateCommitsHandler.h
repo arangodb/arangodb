@@ -35,7 +35,8 @@ class Methods;
 // helper class to delay intermediate commits if required. 
 // this is useful to run a full array of insert/update/replace/remove
 // operations without an interruption in the middle by an intermediate
-// commit. this is especially useful for synchronous replication, where
+// commit (a.k.a. coitus interruptus). 
+// this is especially useful for synchronous replication, where
 // we do not want to make an intermediate commit halfway into an array
 // of operations on the leader, because the intermediate commit will
 // unlock all previously locked keys in RocksDB. 
@@ -48,6 +49,8 @@ class RocksDBIntermediateCommitsHandler : public arangodb::transaction::Intermed
   RocksDBIntermediateCommitsHandler(transaction::Methods* trx, arangodb::DataSourceId id); 
   
  protected:
+  // do the actual commit in RocksDB. called only if an intermediate commit has
+  // to be performed.
   Result commit() override;
 };
 
