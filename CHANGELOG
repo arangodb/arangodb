@@ -4,6 +4,31 @@ devel
 * Fix deadlocked shard synchronisations when planned shard leader has
   not yet taken over leadership.
 
+* Changed arangobench concurrency flag name from `--concurrency` to `--threads`.
+
+* Added the following metrics for revision trees:
+  - `arangodb_revision_tree_hibernations_total`: number of times a revision
+    tree was compressed in RAM and set to hibernation
+  - `arangodb_revision_tree_resurrections_total`: number of times a revision
+    tree was resurrected from hibernation and uncompressed in RAM
+  - `arangodb_revision_tree_memory_usage`: total memory usage (in bytes) by
+    all active revision trees
+
+* Added metric `rocksdb_wal_sequence` to track the current tip of the
+  WAL's sequence number.
+
+* APM-217: deprecate the usage of fulltext indexes.
+
+* Improve visibility in case of potential data corruption between primary
+  index and actual document store in documents column family.
+
+* Changed "arangosh" directory name to "client-tools", because the directory 
+  contains the code for all client tools and not just arangosh.
+
+* Make `db.<collection>.figures(true)` operate on the same snapshot when 
+  counting the number of documents in the documents column family and the
+  indexes. This ensures consistency for the results of a single figures result.
+
 * Upgraded bundled version of RocksDB to 6.27.
 
 * Updated immer to version 0.7.0.

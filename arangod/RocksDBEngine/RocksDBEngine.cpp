@@ -122,12 +122,16 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
 DECLARE_GAUGE(rocksdb_wal_sequence_lower_bound, uint64_t, "RocksDB WAL sequence number until which background thread has caught up");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t, "Number of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t, "Number of prunable RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t, "Whether or not RocksDB WAL file pruning is active");
+DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t, "Total memory consumed by all revision trees");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total, "Number of successful revision tree rebuilds");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_failure_total, "Number of failed revision tree rebuilds");
+DECLARE_COUNTER(arangodb_revision_tree_hibernations_total, "Number of revision tree hibernations");
+DECLARE_COUNTER(arangodb_revision_tree_resurrections_total, "Number of revision tree resurrections");
           
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
@@ -220,10 +224,16 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
           rocksdb_prunable_wal_files{})),
       _metricsWalPruningActive(server.getFeature<arangodb::MetricsFeature>().add(
           rocksdb_wal_pruning_active{})),
+      _metricsTreeMemoryUsage(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_revision_tree_memory_usage{})),
       _metricsTreeRebuildsSuccess(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_revision_tree_rebuilds_success_total{})),
       _metricsTreeRebuildsFailure(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_revision_tree_rebuilds_failure_total{})) {
+          arangodb_revision_tree_rebuilds_failure_total{})),
+      _metricsTreeHibernations(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_revision_tree_hibernations_total{})),
+      _metricsTreeResurrections(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_revision_tree_resurrections_total{})) {
 
   server.addFeature<RocksDBOptionFeature>();
 
@@ -236,7 +246,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
-
+  
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
 void RocksDBEngine::shutdownRocksDBInstance() noexcept {
@@ -1018,6 +1028,27 @@ void RocksDBEngine::unprepare() {
   waitForCompactionJobsToFinish();
   shutdownRocksDBInstance();
 }
+
+void RocksDBEngine::trackRevisionTreeHibernation() noexcept {
+  ++_metricsTreeHibernations;
+}
+
+void RocksDBEngine::trackRevisionTreeResurrection() noexcept {
+  ++_metricsTreeResurrections;
+}
+  
+void RocksDBEngine::trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept {
+  if (value != 0) {
+    _metricsTreeMemoryUsage += value;
+  }
+}
+
+void RocksDBEngine::trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept {
+  if (value != 0) {
+    [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
+    TRI_ASSERT(old >= value);
+  }
+}
   
 bool RocksDBEngine::hasBackgroundError() const {
   return _errorListener != nullptr && _errorListener->called();
@@ -1771,7 +1802,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  size_t numDocs = rocksutils::countKeyRange(_db, bounds, true);
+  size_t numDocs = rocksutils::countKeyRange(_db, bounds, nullptr, true);
 
   if (numDocs > 0) {
     std::string errorMsg(
@@ -2390,7 +2421,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // check if documents have been deleted
-        numDocsLeft += rocksutils::countKeyRange(db, bounds, prefixSameAsStart);
+        numDocsLeft += rocksutils::countKeyRange(db, bounds, /*snapshot*/ nullptr, prefixSameAsStart);
 #endif
       }
     }
@@ -2422,7 +2453,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // check if documents have been deleted
-    numDocsLeft += rocksutils::countKeyRange(db, bounds, true);
+    numDocsLeft += rocksutils::countKeyRange(db, bounds, /*snapshot*/ nullptr, true);
 #endif
   });
 
@@ -2889,6 +2920,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
   if (_errorListener) {
     builder.add("rocksdb.read-only", VPackValue(_errorListener->called() ? 1 : 0));
   }
+
+  auto sequenceNumber = _db->GetLatestSequenceNumber();
+  builder.add("rocksdb.wal-sequence", VPackValue(sequenceNumber));
 
   builder.close();
 }
