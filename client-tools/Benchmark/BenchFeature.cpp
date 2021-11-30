@@ -257,7 +257,6 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
           << _percentiles << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
     }
   }
-  LOG_DEVEL << _customQuery;
   if (!_customQueryBindVars.empty()) {
     _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
   }
