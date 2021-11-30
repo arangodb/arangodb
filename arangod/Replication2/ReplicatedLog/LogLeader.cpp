@@ -110,7 +110,7 @@ replicated_log::LogLeader::~LogLeader() {
 }
 
 auto replicated_log::LogLeader::instantiateFollowers(
-    LoggerContext logContext, std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+    LoggerContext const& logContext, std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
     -> std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>> {
   auto initLastIndex = lastEntry.index.saturatedDecrement();
@@ -833,7 +833,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
 
   auto [newCommitIndex, commitFailReason, quorum] = algorithms::calculateCommitIndex(
       indexes,
-      algorithms::CalculateCommitIndexOptions{quorum_size, quorum_size, indexes.size()},
+      algorithms::CalculateCommitIndexOptions{quorum_size,
+                                              _self._config.softWriteConcern,
+                                              indexes.size()},
       _commitIndex, _inMemoryLog.getLastIndex());
   _lastCommitFailReason = commitFailReason;
 
@@ -977,6 +979,7 @@ auto replicated_log::LogLeader::construct(
     std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
   LogConfig config;
   config.writeConcern = writeConcern;
+  config.softWriteConcern = writeConcern;
   config.waitForSync = false;
   return LogLeader::construct(config, std::move(logCore), followers, std::move(id), term,
                               logContext, std::move(logMetrics), std::move(options));

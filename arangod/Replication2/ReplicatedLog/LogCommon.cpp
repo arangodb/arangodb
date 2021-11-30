@@ -280,8 +280,10 @@ LogConfig::LogConfig(VPackSlice slice) {
   replicationFactor = slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
 }
 
-LogConfig::LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept
+LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
+                     std::size_t replicationFactor, bool waitForSync) noexcept
     : writeConcern(writeConcern),
+      softWriteConcern(softWriteConcern),
       replicationFactor(replicationFactor),
       waitForSync(waitForSync) {}
 

@@ -322,7 +322,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   void establishLeadership();
 
   [[nodiscard]] static auto instantiateFollowers(
-      LoggerContext, std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+      LoggerContext const&, std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
       -> std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>;
 
