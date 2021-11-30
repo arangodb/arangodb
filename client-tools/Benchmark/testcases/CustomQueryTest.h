@@ -73,11 +73,9 @@ namespace arangodb::arangobench {
       requestData.payload.openObject();
       requestData.payload.add("query", Value(_query));
       if (_queryBindVars != nullptr) {
-     //   LOG_DEVEL << _queryBindVars->slice().toString();
         requestData.payload.add("bindVars", _queryBindVars->slice());
       }
       requestData.payload.close();
-    //  LOG_DEVEL << requestData.payload.toString();
     }
     char const* getDescription() const noexcept override {
       return "executes a custom AQL query, that can be specified either via the --custom-query option or be read from a file specified via the --custom-query-file option. The query will be executed as many times as the value of --requests. The --complexity parameter is not used.";
