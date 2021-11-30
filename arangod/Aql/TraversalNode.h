@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <Graph/Types/UniquenessLevel.h>
 #include "Aql/Condition.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
@@ -36,7 +37,8 @@ struct Collection;
 
 namespace graph {
 struct BaseOptions;
-}
+struct IndexAccessor;
+}  // namespace graph
 
 namespace traverser {
 struct TraverserOptions;
@@ -192,6 +194,9 @@ class TraversalNode : public virtual GraphNode {
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
+
+  std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
+  std::pair<arangodb::graph::VertexUniquenessLevel, arangodb::graph::EdgeUniquenessLevel> convertUniquenessLevels() const;
 
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)

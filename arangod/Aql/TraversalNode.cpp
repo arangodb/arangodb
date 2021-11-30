@@ -45,8 +45,12 @@
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
 #endif
 #include "Graph/BaseOptions.h"
+#include "Graph/Providers/BaseProviderOptions.h"
+#include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/SingleServerTraverser.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/TraverserOptions.h"
+#include "Graph/Types/UniquenessLevel.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ticks.h"
@@ -54,6 +58,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Graph/algorithm-aliases.h>
 #include <memory>
 
 using namespace arangodb;
@@ -536,6 +541,75 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 }
 
+std::pair<arangodb::graph::VertexUniquenessLevel, arangodb::graph::EdgeUniquenessLevel>
+TraversalNode::convertUniquenessLevels() const {
+  auto vertexUniquenessLevel = graph::VertexUniquenessLevel::NONE;
+  auto edgeUniquenessLevel = graph::EdgeUniquenessLevel::NONE;
+
+  if (options()->uniqueVertices == traverser::TraverserOptions::PATH) {
+    vertexUniquenessLevel = graph::VertexUniquenessLevel::PATH;
+  } else if (options()->uniqueVertices == traverser::TraverserOptions::GLOBAL) {
+    vertexUniquenessLevel = graph::VertexUniquenessLevel::GLOBAL;
+  }
+
+  if (options()->uniqueEdges == traverser::TraverserOptions::PATH) {
+    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
+  } else if (options()->uniqueVertices == traverser::TraverserOptions::GLOBAL) {
+    edgeUniquenessLevel = graph::EdgeUniquenessLevel::GLOBAL;
+  }
+
+  return std::make_pair(vertexUniquenessLevel, edgeUniquenessLevel);
+}
+
+std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes() const {
+  std::vector<IndexAccessor> indexAccessors{};
+
+  size_t numEdgeColls = _edgeColls.size();
+  bool onlyEdgeIndexes = true;
+
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    switch (dir) {
+      case TRI_EDGE_IN: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
+        }
+
+        indexAccessors.emplace_back(indexToUse,
+                                    _toCondition->clone(options()->query().ast()),
+                                    0, nullptr, std::nullopt, i);
+        break;
+      }
+      case TRI_EDGE_OUT: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
+        }
+
+        indexAccessors.emplace_back(indexToUse,
+                                    _fromCondition->clone(options()->query().ast()),
+                                    0, nullptr, std::nullopt, i);
+        break;
+      }
+      case TRI_EDGE_ANY:
+        TRI_ASSERT(false);
+        break;
+    }
+  }
+  return indexAccessors;
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
@@ -552,14 +626,16 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(getStartVertex().empty());
   }
   auto outputRegisters = RegIdSet{};
-  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> outputRegisterMapping;
+  std::unordered_map<TraversalExecutorInfos<traverser::Traverser>::OutputName, RegisterId,
+                     TraversalExecutorInfos<traverser::Traverser>::OutputNameHash>
+      outputRegisterMapping;
 
   if (isVertexOutVariableUsedLater()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
-    outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::VERTEX,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfos<traverser::Traverser>::OutputName::VERTEX,
                                       it->second.registerId);
   }
   if (isEdgeOutVariableUsedLater()) {
@@ -567,7 +643,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
-    outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::EDGE,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfos<traverser::Traverser>::OutputName::EDGE,
                                       it->second.registerId);
   }
   if (isPathOutVariableUsedLater()) {
@@ -575,7 +651,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
-    outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfos<traverser::Traverser>::OutputName::PATH,
                                       it->second.registerId);
   }
   TraverserOptions* opts = this->options();
@@ -642,26 +718,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                              vertexRegIdx, edgeRegIdx, postFilterExpression());
   }
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-#ifdef USE_ENTERPRISE
-    waitForSatelliteIfRequired(&engine);
-    if (isSmart() && !isDisjoint()) {
-      traverser =
-          std::make_unique<arangodb::traverser::SmartGraphTraverser>(opts, engines());
-    } else {
-#endif
-      traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
-          opts, engines(), engine.getQuery().vocbase().name());
-#ifdef USE_ENTERPRISE
-    }
-#endif
-  } else {
-    if (isDisjoint()) {
-      opts->setDisjoint();
-    }
-    traverser = std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
-  }
-
   // Optimized condition
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
   filterConditionVariables.reserve(_conditionVariables.size());
@@ -677,16 +733,76 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+#ifdef USE_ENTERPRISE
+    /*
+     * SmartGraph Traverser
+     */
+    waitForSatelliteIfRequired(&engine);
+    if (isSmart() && !isDisjoint()) {
+      traverser =
+          std::make_unique<arangodb::traverser::SmartGraphTraverser>(opts, engines());
+    } else {
+#endif
+      /*
+       * Default Cluster Traverser
+       */
+      traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
+          opts, engines(), engine.getQuery().vocbase().name());
+#ifdef USE_ENTERPRISE
+    }
+#endif
+  } else {
+    if (isDisjoint()) {
+      opts->setDisjoint();
+    }
+    /*
+     * Default SingleServer Traverser
+     */
+    LOG_DEVEL << "[GraphRefactor] Refactor enabled: " << std::boolalpha
+              << opts->refactor();
+    if (opts->refactor()) {
+      std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> usedIndexes{};
+      usedIndexes.first = buildUsedIndexes();
+
+      arangodb::graph::BaseProviderOptions baseProviderOptions{
+          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
+          opts->collectionToShard()};
+
+      // auto uniqueVerticesAndEdges = convertUniquenessLevels();
+
+      arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth, opts->maxDepth};
+      PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx()};
+      using SingleServerDFSRefactored =
+          DFSEnumerator<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE>;
+
+      auto dfsUnique =
+          SingleServerDFSRefactored({opts->query(), std::move(baseProviderOptions),
+                                     opts->query().resourceMonitor()},
+                                    std::move(options), std::move(validatorOptions),
+                                    opts->query().resourceMonitor());
+      auto executorInfos =
+          TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
+                                 getStartVertex(), inputRegister,
+                                 std::move(filterConditionVariables), plan()->getAst());
+      return std::make_unique<ExecutionBlockImpl<TraversalExecutor<SingleServerDFSRefactored>>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+
+    } else {
+      traverser = std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
+    }
+  }
+
   TRI_ASSERT(traverser != nullptr);
-  auto executorInfos = TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
-                                              getStartVertex(), inputRegister,
-                                              std::move(filterConditionVariables),
-                                              plan()->getAst());
+  auto executorInfos =
+      TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
+                             getStartVertex(), inputRegister,
+                             std::move(filterConditionVariables), plan()->getAst());
 
   // We need to prepare the variable accesses before we ask the index nodes.
   initializeIndexConditions();
 
-  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+  return std::make_unique<ExecutionBlockImpl<TraversalExecutor<traverser::Traverser>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 

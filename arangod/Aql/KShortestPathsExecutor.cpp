@@ -375,8 +375,6 @@ template <class FinderType>
   }
 }
 
-template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KShortestPathsFinder>;
-
 /* SingleServerProvider Section */
 
 template class ::arangodb::aql::KShortestPathsExecutorInfos<KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
@@ -395,4 +393,5 @@ template class ::arangodb::aql::KShortestPathsExecutor<TracedKPathEnumerator<Clu
 
 /* Fallback Section - Can be removed completely after refactor is done */
 
+template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KShortestPathsFinder>;
 template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>;

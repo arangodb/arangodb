@@ -31,6 +31,7 @@
 #include "Aql/TraversalStats.h"
 #include "Aql/Variable.h"
 #include "Graph/Traverser.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 class Result;
@@ -43,6 +44,7 @@ class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
+template <class FinderType>
 class TraversalExecutorInfos {
  public:
   enum OutputName { VERTEX, EDGE, PATH };
@@ -50,7 +52,7 @@ class TraversalExecutorInfos {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  TraversalExecutorInfos(std::unique_ptr<traverser::Traverser>&& traverser,
+  TraversalExecutorInfos(std::unique_ptr<FinderType>&& finder,
                          std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
                          std::string fixedSource, RegisterId inputRegister,
                          std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
@@ -62,7 +64,7 @@ class TraversalExecutorInfos {
   TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
   ~TraversalExecutorInfos() = default;
 
-  traverser::Traverser& traverser();
+  [[nodiscard]] auto finder() const -> FinderType&;
 
   bool usesOutputRegister(OutputName type) const;
 
@@ -91,10 +93,12 @@ class TraversalExecutorInfos {
   Ast* getAst() const;
 
  private:
+  std::string typeToString(OutputName type) const;
   RegisterId findRegisterChecked(OutputName type) const;
 
  private:
-  std::unique_ptr<traverser::Traverser> _traverser;
+  /// @brief the shortest path finder.
+  std::unique_ptr<FinderType> _finder;
   std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
   std::string _fixedSource;
   RegisterId _inputRegister;
@@ -105,6 +109,7 @@ class TraversalExecutorInfos {
 /**
  * @brief Implementation of Traversal Node
  */
+template <class FinderType>
 class TraversalExecutor {
  public:
   struct Properties {
@@ -113,7 +118,7 @@ class TraversalExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = TraversalExecutorInfos;
+  using Infos = TraversalExecutorInfos<FinderType>;
   using Stats = TraversalStats;
 
   TraversalExecutor() = delete;
@@ -133,13 +138,18 @@ class TraversalExecutor {
 
   [[nodiscard]] bool initTraverser(AqlItemBlockInputRange& input);
 
+  [[nodiscard]] auto stats() -> Stats;
+
  private:
   Infos& _infos;
+  transaction::Methods _trx;
   InputAqlItemRow _inputRow;
 
-  traverser::Traverser& _traverser;
+  // traverser::Traverser& _traverser;
+
+  /// @brief the refactored finder variant.
+  FinderType& _finder;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
