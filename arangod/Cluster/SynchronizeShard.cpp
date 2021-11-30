@@ -753,7 +753,7 @@ bool SynchronizeShard::first() {
       return false;
     } else {
       // we need to immediately exit, as the planned leader is not yet leading in current
-      LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+      LOG_TOPIC("4acdc", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
       result(TRI_ERROR_FAILED, "Planned leader has not taken over leadership");
       return false;
     }
