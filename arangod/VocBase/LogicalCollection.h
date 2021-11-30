@@ -365,7 +365,7 @@ class LogicalCollection : public LogicalDataSource {
    * Enterprise only method. See enterprise code for implementation
    * Community has a dummy stub.
    */
-  std::string createKeyBetweenSmartAndSat(arangodb::velocypack::Slice edgeSlice) const;
+  std::string createKeyBetweenSmartAndSat(arangodb::velocypack::Slice edgeSlice);
 
   void decorateWithInternalEEValidators();
 

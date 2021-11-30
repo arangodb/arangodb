@@ -409,7 +409,7 @@ std::string LogicalCollection::createKey(VPackSlice input) {
 }
 
 #ifndef USE_ENTERPRISE
-std::string LogicalCollection::createKeyBetweenSmartAndSat(VPackSlice) const {
+std::string LogicalCollection::createKeyBetweenSmartAndSat(VPackSlice) {
   return keyGenerator()->generate();
 }
 #endif
