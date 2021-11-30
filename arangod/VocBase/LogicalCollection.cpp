@@ -51,7 +51,6 @@
 #include "VocBase/Validators.h"
 
 #include <velocypack/Collection.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -115,13 +114,13 @@ arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice in
                                                   std::string const& key,
                                                   TRI_col_type_e def) {
   static const auto& document = arangodb::LogicalDataSource::Type::emplace(
-      arangodb::velocypack::StringRef("document"));
+      std::string_view("document"));
   static const auto& edge =
-      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("edge"));
+      arangodb::LogicalDataSource::Type::emplace(std::string_view("edge"));
 
   // arbitrary system-global value for unknown
   static const auto& unknown =
-      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef());
+      arangodb::LogicalDataSource::Type::emplace(std::string_view());
 
   switch (Helper::getNumericValue<TRI_col_type_e, int>(info, key, def)) {
     case TRI_col_type_e::TRI_COL_TYPE_DOCUMENT:
@@ -388,13 +387,13 @@ ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice sli
 ErrorCode LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID, usesDefaultShardKeys,
-                             VPackStringRef(key.data(), key.size()));
+                             std::string_view(key.data(), key.size()));
 }
 
 ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                                  bool docComplete, std::string& shardID,
                                                  bool& usesDefaultShardKeys,
-                                                 VPackStringRef const& key) {
+                                                 std::string_view const& key) {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->getResponsibleShard(slice, docComplete, shardID,
                                         usesDefaultShardKeys, key);

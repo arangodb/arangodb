@@ -45,7 +45,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
@@ -639,17 +638,6 @@ std::string AstNode::getString() const {
   return std::string(getStringValue(), getStringLength());
 }
 
-/// @brief return the string value of a node, as a arangodb::velocypack::StringRef
-arangodb::velocypack::StringRef AstNode::getStringRef() const noexcept {
-  TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
-             type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
-             type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_COLLECTION ||
-             type == NODE_TYPE_VIEW || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
-             type == NODE_TYPE_FCALL_USER);
-  TRI_ASSERT(value.type == VALUE_TYPE_STRING);
-  return arangodb::velocypack::StringRef(getStringValue(), getStringLength());
-}
-
 /// @brief return the string value of a node
 std::string_view AstNode::getStringView() const noexcept {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
@@ -964,13 +952,13 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
 
-    std::unordered_set<VPackStringRef> keys;
+    std::unordered_set<std::string_view> keys;
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {
-        VPackStringRef key(member->getStringValue(), member->getStringLength());
+        std::string_view key(member->getStringValue(), member->getStringLength());
 
         if (n > 1 && !keys.emplace(key).second) {
           // duplicate key, skip it
@@ -1533,7 +1521,7 @@ bool AstNode::willUseV8() const {
     if (func->name == "CALL" || func->name == "APPLY") {
       // CALL and APPLY can call arbitrary other functions...
       if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
-        auto s = getMemberUnchecked(0)->getStringRef();
+        auto s = getMemberUnchecked(0)->getStringView();
         if (s.find(':') != std::string::npos) {
           // a user-defined function.
           // this will use V8

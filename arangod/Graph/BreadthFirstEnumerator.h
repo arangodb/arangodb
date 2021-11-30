@@ -45,13 +45,13 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   struct PathStep {
     size_t sourceIdx;
     graph::EdgeDocumentToken edge;
-    arangodb::velocypack::StringRef /* const */ vertex;
+    std::string_view /* const */ vertex;
 
    public:
-    explicit PathStep(arangodb::velocypack::StringRef vertex);
+    explicit PathStep(std::string_view vertex);
 
     PathStep(size_t sourceIdx, graph::EdgeDocumentToken&& edge,
-             arangodb::velocypack::StringRef vertex);
+             std::string_view vertex);
 
     ~PathStep() = default;
 
@@ -105,7 +105,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   ~BreadthFirstEnumerator();
 
-  void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
+  void setStartVertex(std::string_view startVertex) override;
 
   /// @brief Get the next Path element from the traversal.
   bool next() override;
@@ -126,7 +126,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    *
    * @return true if the vertex is already in the path
    */
-  bool pathContainsVertex(size_t index, arangodb::velocypack::StringRef vertex) const;
+  bool pathContainsVertex(size_t index, std::string_view vertex) const;
 
   /**
    * @brief Helper function to validate if the path contains the given
@@ -162,7 +162,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   constexpr size_t pathStepSize() const noexcept;
 
   bool validDisjointPath(size_t nextVertexIndex,
-                         arangodb::velocypack::StringRef const& vertex) const;
+                         std::string_view const& vertex) const;
 };
 }  // namespace graph
 }  // namespace arangodb

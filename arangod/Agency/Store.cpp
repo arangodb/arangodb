@@ -40,7 +40,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <ctime>
@@ -813,7 +812,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
   size_t counter = 0;
   while (it.valid()) {
-    VPackStringRef key = it.key().stringRef();
+    std::string_view key = it.key().stringRef();
 
     // push back an empty string first, so we can avoid a later move
     abskeys.emplace_back();
@@ -1041,7 +1040,7 @@ void Store::removeTTL(std::string const& uri) {
 }
 
 std::string Store::normalize(char const* key, size_t length) {
-  VPackStringRef const path(key, length);
+  std::string_view const path(key, length);
 
   std::string normalized;
   normalized.reserve(path.size() + 1);

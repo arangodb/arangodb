@@ -167,7 +167,7 @@ void addToShardStatistics(arangodb::ShardStatistics& stats,
 
 void addToShardStatistics(std::unordered_map<arangodb::ServerID, arangodb::ShardStatistics>& stats, 
                           arangodb::velocypack::Slice databaseSlice) {
-  std::unordered_set<VPackStringRef> serversSeenForDatabase;
+  std::unordered_set<std::string_view> serversSeenForDatabase;
 
   for (auto it : VPackObjectIterator(databaseSlice)) {
     VPackSlice collection = it.value;
@@ -177,7 +177,7 @@ void addToShardStatistics(std::unordered_map<arangodb::ServerID, arangodb::Shard
       hasDistributeShardsLike = dsl.getStringLength() > 0;
     }
 
-    std::unordered_set<VPackStringRef> serversSeenForCollection;
+    std::unordered_set<std::string_view> serversSeenForCollection;
 
     VPackSlice shards = collection.get("shards");
     for (auto pair : VPackObjectIterator(shards)) {

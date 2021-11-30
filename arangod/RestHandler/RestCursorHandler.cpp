@@ -489,7 +489,7 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       if (!it.key.isString() || it.value.isNone()) {
         continue;
       }
-      velocypack::StringRef keyName = it.key.stringRef();
+      std::string_view keyName = it.key.stringRef();
       if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" || keyName == "stream" ||
           (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys

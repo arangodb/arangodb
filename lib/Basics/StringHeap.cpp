@@ -29,7 +29,8 @@
 #include "Containers/Helpers.h"
 
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/StringRef.h>
+
+#include <string_view>
 
 using namespace arangodb;
 
@@ -48,9 +49,9 @@ StringHeap::~StringHeap() {
 
 /// @brief register a string
 template <>
-arangodb::velocypack::StringRef StringHeap::registerString<arangodb::velocypack::StringRef>(arangodb::velocypack::StringRef const& value) {
+std::string_view StringHeap::registerString<std::string_view>(std::string_view const& value) {
   char const* p = registerString(value.data(), value.size());
-  return arangodb::velocypack::StringRef(p, value.size());
+  return std::string_view(p, value.size());
 }
 
 template <>

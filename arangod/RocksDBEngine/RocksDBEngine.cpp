@@ -1723,7 +1723,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
       RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(),
-                                      arangodb::velocypack::StringRef(coll.guid()));
+                                      std::string_view(coll.guid()));
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
@@ -1842,7 +1842,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
   Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
-                                        arangodb::velocypack::StringRef(oldName)));
+                                        std::string_view(oldName)));
 
   return res;
 }
@@ -1893,7 +1893,7 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
 
   auto logValue =
       RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
-                                arangodb::velocypack::StringRef(view.guid()));
+                                std::string_view(view.guid()));
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
@@ -2497,7 +2497,7 @@ bool RocksDBEngine::systemDatabaseExists() {
     TRI_ASSERT(item.isObject());
     TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
     if (item.get(StaticStrings::DatabaseName)
-            .compareString(arangodb::velocypack::StringRef(StaticStrings::SystemDatabase)) == 0) {
+            .compareString(std::string_view(StaticStrings::SystemDatabase)) == 0) {
       return true;
     }
   }

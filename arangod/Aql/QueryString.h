@@ -24,9 +24,10 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include <velocypack/StringRef.h>
 
 #include <iosfwd>
+#include <string>
+#include <string_view>
 
 namespace arangodb {
 namespace aql {
@@ -40,10 +41,7 @@ class QueryString {
   QueryString(char const* data, size_t length)
       : _queryString(data, length), _hash(0), _hashed(false) {}
 
-  explicit QueryString(arangodb::velocypack::StringRef const& ref)
-      : QueryString(ref.data(), ref.size()) {}
-
-  explicit QueryString(std::string const& val)
+  explicit QueryString(std::string_view val)
       : QueryString(val.data(), val.size()) {}
 
   explicit QueryString(std::string&& val)

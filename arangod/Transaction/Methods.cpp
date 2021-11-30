@@ -426,7 +426,7 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
 /// added to the builder in the argument as a single object.
 void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, DataSourceId cid,
-    arangodb::velocypack::StringRef const& key, RevisionId rid, RevisionId oldRid,
+    std::string_view const& key, RevisionId rid, RevisionId oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
   StringLeaser leased(_transactionContext.get());
   std::string& temp(*leased.get());
@@ -715,7 +715,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
       addCollectionAtRuntime(translateName(collectionName), AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
-  arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
+  std::string_view key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
@@ -737,7 +737,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(std::string const& collectionName,
-                                                   arangodb::velocypack::StringRef const& key,
+                                                   std::string_view const& key,
                                                    IndexIterator::DocumentCallback const& cb) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
@@ -787,7 +787,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
     std::string const& collectionName, VPackSlice value,
     OperationOptions const& options, MethodsApi api) {
   if (!value.isArray()) {
-    arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
+    std::string_view key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
     }
@@ -823,7 +823,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
   auto workForOneDocument = [&](VPackSlice value, bool isMultiple) -> Result {
     Result res;
 
-    arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
+    std::string_view key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     } else {
@@ -1146,13 +1146,13 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       TRI_ASSERT(!options.returnNew || !docResult.empty());
       TRI_ASSERT(!showReplaced || !prevDocResult.empty());
 
-      arangodb::velocypack::StringRef keyString;
+      std::string_view keyString;
       if (didReplace) {  // docResult may be empty, but replace requires '_key' in value
-        keyString = value.get(StaticStrings::KeyString);
+        keyString = value.get(StaticStrings::KeyString).stringView();
         TRI_ASSERT(!keyString.empty());
       } else {
         keyString =
-            transaction::helpers::extractKeyFromDocument(VPackSlice(docResult.vpack()));
+            transaction::helpers::extractKeyFromDocument(VPackSlice(docResult.vpack())).stringView();
       }
 
       buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
@@ -1248,7 +1248,7 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
     std::string const& cname, VPackSlice newValue, OperationOptions const& options,
     TRI_voc_document_operation_e operation, MethodsApi api) {
   if (!newValue.isArray()) {
-    arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(newValue));
+    std::string_view key(transaction::helpers::extractKeyPart(newValue));
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
     }
@@ -1394,7 +1394,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         TRI_ASSERT(previous.revisionId().isSet());
-        arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
+        std::string_view key = newVal.get(StaticStrings::KeyString).stringView();
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
                               previous.revisionId(), RevisionId::none(),
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1407,7 +1407,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       TRI_ASSERT(!options.returnNew || !result.empty());
       TRI_ASSERT(result.revisionId().isSet() && previous.revisionId().isSet());
 
-      arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
+      std::string_view key = newVal.get(StaticStrings::KeyString).stringView();
       buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
                             result.revisionId(), previous.revisionId(),
                             options.returnOld ? &previous : nullptr,
@@ -1582,9 +1582,9 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
     transaction::BuilderLeaser builder(this);
-    arangodb::velocypack::StringRef key;
+    std::string_view key;
     if (value.isString()) {
-      key = value;
+      key = value.stringView();
       size_t pos = key.find('/');
       if (pos != std::string::npos) {
         key = key.substr(pos + 1);
@@ -1596,7 +1596,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       if (!keySlice.isString()) {
         return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      key = keySlice;
+      key = keySlice.stringView();
     } else {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     }

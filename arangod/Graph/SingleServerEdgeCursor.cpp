@@ -39,7 +39,7 @@ using namespace arangodb::graph;
 
 namespace {
 void PrepareIndexCondition(BaseOptions::LookupInfo const& info,
-    arangodb::velocypack::StringRef vertex) {
+    std::string_view vertex) {
   auto& node = info.indexCondition;
   TRI_ASSERT(node->numMembers() > 0);
   if (info.conditionNeedUpdate) {
@@ -93,10 +93,10 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
   // for skipInaccessibleCollections we need to check the edge
   // document, in that case nextWithExtra has no benefit
   TRI_ASSERT(edge.isString());
-  arangodb::velocypack::StringRef str(edge);
+  std::string_view str(edge.stringView());
   size_t pos = str.find('/');
   TRI_ASSERT(pos != std::string::npos);
-  return trx->isInaccessibleCollection(str.substr(0, pos).toString());
+  return trx->isInaccessibleCollection(std::string(str.substr(0, pos)));
 }
 #endif
 
@@ -273,7 +273,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   }
 }
   
-void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint64_t /*depth*/) {
+void SingleServerEdgeCursor::rearm(std::string_view vertex, uint64_t /*depth*/) {
   _currentCursor = 0;
   _currentSubCursor = 0;
   _cache.clear();
@@ -310,7 +310,7 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
   }
 }
 
-void SingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef vertex) { 
+void SingleServerEdgeCursor::buildLookupInfo(std::string_view vertex) { 
   TRI_ASSERT(_cursors.empty());
   _cursors.reserve(_lookupInfo.size());
     
@@ -329,7 +329,7 @@ void SingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef ver
 }
 
 void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
-                                       arangodb::velocypack::StringRef vertex) {
+                                       std::string_view vertex) {
   ::PrepareIndexCondition(info, vertex);
   IndexIteratorOptions defaultIndexIteratorOptions;
   

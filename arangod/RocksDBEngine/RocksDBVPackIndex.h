@@ -29,7 +29,6 @@
 #include <rocksdb/iterator.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
@@ -72,7 +71,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
+  double selectivityEstimate(std::string_view const& = std::string_view()) const override;
 
   RocksDBCuckooIndexEstimatorType* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;

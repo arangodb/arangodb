@@ -130,7 +130,7 @@ std::string QueryString::extractRegion(int line, int column) const {
 
   // copy query part
   std::string result;
-  result.reserve(SNIPPET_LENGTH + strlen("..."));
+  result.reserve(SNIPPET_LENGTH + 3 /*...*/);
   result.append(s + offset, SNIPPET_LENGTH);
   result.append("...");
 

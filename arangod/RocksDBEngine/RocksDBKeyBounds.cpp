@@ -61,7 +61,7 @@ RocksDBKeyBounds RocksDBKeyBounds::EdgeIndex(uint64_t indexId) {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(uint64_t indexId,
-                                                   arangodb::velocypack::StringRef const& vertexId) {
+                                                   std::string_view const& vertexId) {
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
 }
 
@@ -120,7 +120,7 @@ RocksDBKeyBounds RocksDBKeyBounds::DatabaseViews(TRI_voc_tick_t databaseId) {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
-                                                       arangodb::velocypack::StringRef const& word) {
+                                                       std::string_view const& word) {
   // I did not want to pass a bool to the constructor for this
   RocksDBKeyBounds b(RocksDBEntryType::FulltextIndexValue);
 
@@ -144,7 +144,7 @@ RocksDBKeyBounds RocksDBKeyBounds::LogRange(uint64_t objectId) {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
-                                                         arangodb::velocypack::StringRef const& word) {
+                                                         std::string_view const& word) {
   return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId, word);
 }
 
@@ -406,7 +406,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool s
 
 /// bounds to iterate over specified word or edge
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   arangodb::velocypack::StringRef const& second)
+                                   std::string_view const& second)
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::FulltextIndexValue:

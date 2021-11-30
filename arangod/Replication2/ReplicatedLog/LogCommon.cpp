@@ -404,21 +404,21 @@ auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(velocypac
     -> NothingToCommit {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(NothingToCommitEnum)))
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(std::string_view(NothingToCommitEnum)))
       << "Expected string `" << NothingToCommitEnum << "`, found: " << s.stringView();
   return {};
 }
 
 void replicated_log::CommitFailReason::NothingToCommit::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(VPackStringRef(ReasonFieldName), VPackValue(NothingToCommitEnum));
+  builder.add(std::string_view(ReasonFieldName), VPackValue(NothingToCommitEnum));
 }
 
 auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(velocypack::Slice s)
     -> QuorumSizeNotReached {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(QuorumSizeNotReachedEnum)))
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(std::string_view(QuorumSizeNotReachedEnum)))
       << "Expected string `" << QuorumSizeNotReachedEnum
       << "`, found: " << s.stringView();
   TRI_ASSERT(s.get(WhoFieldName).isString())
@@ -428,15 +428,15 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(velo
 
 void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(VPackStringRef(ReasonFieldName), VPackValue(QuorumSizeNotReachedEnum));
-  builder.add(VPackStringRef(WhoFieldName), VPackValue(who));
+  builder.add(std::string_view(ReasonFieldName), VPackValue(QuorumSizeNotReachedEnum));
+  builder.add(std::string_view(WhoFieldName), VPackValue(who));
 }
 
 auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::fromVelocyPack(velocypack::Slice s)
   -> ForcedParticipantNotInQuorum {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(ForcedParticipantNotInQuorumEnum)))
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(std::string_view(ForcedParticipantNotInQuorumEnum)))
       << "Expected string `" << ForcedParticipantNotInQuorumEnum
       << "`, found: " << s.stringView();
   TRI_ASSERT(s.get(WhoFieldName).isString())
@@ -446,8 +446,8 @@ auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::fromVelocyP
 
 void replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(VPackStringRef(ReasonFieldName), VPackValue(ForcedParticipantNotInQuorumEnum));
-  builder.add(VPackStringRef(WhoFieldName), VPackValue(who));
+  builder.add(std::string_view(ReasonFieldName), VPackValue(ForcedParticipantNotInQuorumEnum));
+  builder.add(std::string_view(WhoFieldName), VPackValue(who));
 }
 
 auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> CommitFailReason {

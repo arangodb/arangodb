@@ -164,10 +164,10 @@ class PhysicalCollection {
   ///        it at that moment.
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
 
-  virtual Result lookupKey(transaction::Methods*, arangodb::velocypack::StringRef,
+  virtual Result lookupKey(transaction::Methods*, std::string_view,
                            std::pair<LocalDocumentId, RevisionId>&, ReadOwnWrites readOwnWrites) const = 0;
 
-  virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
+  virtual Result read(transaction::Methods*, std::string_view const& key,
                       IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const = 0;
   
   /// @brief read a documument referenced by token (internal method)

@@ -127,7 +127,7 @@ aql::AqlValue contextFunc(aql::ExpressionContext* ctx,
 }
 
 /// Check whether prefix is a value prefix
-inline bool isPrefix(velocypack::StringRef const& prefix, velocypack::StringRef const& value) {
+inline bool isPrefix(std::string_view const& prefix, std::string_view const& value) {
   return prefix.size() <= value.size() && value.substr(0, prefix.size()) == prefix;
 }
 

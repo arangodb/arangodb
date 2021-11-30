@@ -36,7 +36,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -55,15 +54,15 @@ void preventUseOnSmartEdgeCollection(LogicalCollection const* collection,
   }
 }
 
-inline void parseAttributeAndPart(std::string const& attr, arangodb::velocypack::StringRef& realAttr, Part& part) {
+inline void parseAttributeAndPart(std::string const& attr, std::string_view& realAttr, Part& part) {
   if (!attr.empty() && attr.back() == ':') {
-    realAttr = arangodb::velocypack::StringRef(attr.data(), attr.size() - 1);
+    realAttr = std::string_view(attr.data(), attr.size() - 1);
     part = Part::FRONT;
   } else if (!attr.empty() && attr.front() == ':') {
-    realAttr = arangodb::velocypack::StringRef(attr.data() + 1, attr.size() - 1);
+    realAttr = std::string_view(attr.data() + 1, attr.size() - 1);
     part = Part::BACK;
   } else {
-    realAttr = arangodb::velocypack::StringRef(attr.data(), attr.size());
+    realAttr = std::string_view(attr.data(), attr.size());
     part = Part::ALL;
   }
 }
@@ -72,7 +71,7 @@ template <bool returnNullSlice>
 VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
                                VPackBuilder& temporaryBuilder, bool splitSlash) {
   if (sub.isString()) {
-    arangodb::velocypack::StringRef key(sub);
+    std::string_view key = sub.stringView();
     if (splitSlash) {
       size_t pos = key.find('/');
       if (pos != std::string::npos) {
@@ -128,7 +127,7 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
 template <bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& attributes,
                               bool docComplete, ErrorCode& error,
-                              VPackStringRef const& key) {
+                              std::string_view const& key) {
   uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
@@ -138,7 +137,7 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
 
   if (slice.isObject()) {
     for (auto const& attr : attributes) {
-      arangodb::velocypack::StringRef realAttr;
+      std::string_view realAttr;
       ::Part part;
       ::parseAttributeAndPart(attr, realAttr, part);
       VPackSlice sub = slice.get(realAttr).resolveExternal();
@@ -170,7 +169,7 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
     
     // optimization for `_key` and `_id` with default sharding
     if (attributes.size() == 1) {
-      arangodb::velocypack::StringRef realAttr;
+      std::string_view realAttr;
       ::Part part;
       ::parseAttributeAndPart(attributes[0], realAttr, part);
       if (realAttr == StaticStrings::KeyString) {
@@ -221,7 +220,7 @@ ShardingStrategyNone::ShardingStrategyNone() : ShardingStrategy() {
 /// calling getResponsibleShard on this class will always throw an exception
 ErrorCode ShardingStrategyNone::getResponsibleShard(
     arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
+    bool& usesDefaultShardKeys, std::string_view const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "unexpected invocation of ShardingStrategyNone");
 }
@@ -237,7 +236,7 @@ ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(std::string c
 /// is only available in the Enterprise Edition
 ErrorCode ShardingStrategyOnlyInEnterprise::getResponsibleShard(
     arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
+    bool& usesDefaultShardKeys, std::string_view const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ONLY_ENTERPRISE,
       std::string("sharding strategy '") + _name +
@@ -268,7 +267,7 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
 
 ErrorCode ShardingStrategyHashBase::getResponsibleShard(
     arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
+    bool& usesDefaultShardKeys, std::string_view const& key) {
   static constexpr char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static constexpr size_t magicLength = 52;
@@ -320,7 +319,7 @@ void ShardingStrategyHashBase::determineShards() {
 uint64_t ShardingStrategyHashBase::hashByAttributes(VPackSlice slice,
                                                     std::vector<std::string> const& attributes,
                                                     bool docComplete, ErrorCode& error,
-                                                    VPackStringRef const& key) {
+                                                    std::string_view const& key) {
   return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error, key);
 }
 
@@ -365,7 +364,7 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sha
 /// will affect the data distribution, which we want to avoid
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, ErrorCode& error, VPackStringRef const& key) {
+    bool docComplete, ErrorCode& error, std::string_view const& key) {
   return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error, key);
 }
 

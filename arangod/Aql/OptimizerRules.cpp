@@ -2202,7 +2202,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       TRI_ASSERT(accessed != nullptr);
 
       if (accessed->type == NODE_TYPE_OBJECT) {
-        arangodb::velocypack::StringRef const attributeName(node->getStringValue(),
+        std::string_view const attributeName(node->getStringValue(),
                                                             node->getStringLength());
         bool isDynamic = false;
         size_t const n = accessed->numMembers();
@@ -2210,7 +2210,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              arangodb::velocypack::StringRef(member->getStringValue(),
+              std::string_view(member->getStringValue(),
                                               member->getStringLength()) == attributeName) {
             // found the attribute!
             AstNode* next = member->getMember(0);
@@ -2263,20 +2263,20 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       }
 
       if (accessed->type == NODE_TYPE_OBJECT) {
-        arangodb::velocypack::StringRef attributeName;
+        std::string_view attributeName;
         std::string indexString;
 
         if (indexValue->isStringValue()) {
           // string index, e.g. ['123']
           attributeName =
-              arangodb::velocypack::StringRef(indexValue->getStringValue(),
+              std::string_view(indexValue->getStringValue(),
                                               indexValue->getStringLength());
         } else {
           // numeric index, e.g. [123]
           TRI_ASSERT(indexValue->isNumericValue());
           // convert the numeric index into a string
           indexString = std::to_string(indexValue->getIntValue());
-          attributeName = arangodb::velocypack::StringRef(indexString);
+          attributeName = std::string_view(indexString);
         }
 
         bool isDynamic = false;
@@ -2285,7 +2285,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              arangodb::velocypack::StringRef(member->getStringValue(),
+              std::string_view(member->getStringValue(),
                                               member->getStringLength()) == attributeName) {
             // found the attribute!
             AstNode* next = member->getMember(0);

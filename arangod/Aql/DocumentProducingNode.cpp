@@ -33,7 +33,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,8 +40,8 @@
 using namespace arangodb::aql;
 
 namespace {
-arangodb::velocypack::StringRef const filterKey("filter");
-arangodb::velocypack::StringRef const producesResultKey("producesResult");
+std::string_view const filterKey("filter");
+std::string_view const producesResultKey("producesResult");
 }
 
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)

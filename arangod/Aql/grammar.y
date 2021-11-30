@@ -33,8 +33,6 @@
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 
-#include <velocypack/StringRef.h>
-
 %}
 
 %union {
@@ -1371,7 +1369,7 @@ upsert_statement:
         for (size_t i = 0; i < $10->numMembers(); ++i) {
           auto nodeMember = $10->getMember(i);
           if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
-            arangodb::velocypack::StringRef nodeMemberName = nodeMember->getStringRef();
+            std::string_view nodeMemberName = nodeMember->getStringView();
             if (nodeMemberName == "indexHint" || nodeMemberName == "forceIndexHint") {
               forOptionsNode->addMember(nodeMember);
             } else {

@@ -100,8 +100,6 @@
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 
-#include <velocypack/StringRef.h>
-
 
 #line 107 "Aql/grammar.cpp"
 
@@ -3813,7 +3811,7 @@ yyreduce:
         for (size_t i = 0; i < (yyvsp[0].node)->numMembers(); ++i) {
           auto nodeMember = (yyvsp[0].node)->getMember(i);
           if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
-            arangodb::velocypack::StringRef nodeMemberName = nodeMember->getStringRef();
+            std::string_view nodeMemberName = nodeMember->getStringView();
             if (nodeMemberName == "indexHint" || nodeMemberName == "forceIndexHint") {
               forOptionsNode->addMember(nodeMember);
             } else {

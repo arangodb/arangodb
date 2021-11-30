@@ -37,8 +37,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-#include <velocypack/StringRef.h>
-
 using namespace arangodb::application_features;
 
 namespace arangodb {
@@ -48,7 +46,7 @@ namespace aql {
 std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 
 // @brief lookup from rule name to rule level
-std::unordered_map<velocypack::StringRef, int> OptimizerRulesFeature::_ruleLookup;
+std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(arangodb::application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "OptimizerRules"),
@@ -126,7 +124,7 @@ void OptimizerRulesFeature::registerRule(char const* name, RuleFunction func,
   TRI_ASSERT(!_fixed);
 #endif
 
-  velocypack::StringRef ruleName(name);
+  std::string_view ruleName(name);
   // duplicate rules are not allowed
   TRI_ASSERT(_ruleLookup.find(ruleName) == _ruleLookup.end());
 
@@ -497,12 +495,12 @@ void OptimizerRulesFeature::addStorageEngineRules() {
 }
 
 /// @brief translate a list of rule ids into rule names
-std::vector<velocypack::StringRef> OptimizerRulesFeature::translateRules(std::vector<int> const& rules) {
-  std::vector<velocypack::StringRef> names;
+std::vector<std::string_view> OptimizerRulesFeature::translateRules(std::vector<int> const& rules) {
+  std::vector<std::string_view> names;
   names.reserve(rules.size());
 
   for (auto const& rule : rules) {
-    velocypack::StringRef name = translateRule(rule);
+    std::string_view name = translateRule(rule);
 
     if (!name.empty()) {
       names.emplace_back(name);
@@ -512,18 +510,18 @@ std::vector<velocypack::StringRef> OptimizerRulesFeature::translateRules(std::ve
 }
 
 /// @brief translate a single rule
-velocypack::StringRef OptimizerRulesFeature::translateRule(int level) {
+std::string_view OptimizerRulesFeature::translateRule(int level) {
   // do a binary search in the sorted rules database
   auto it = std::lower_bound(_rules.begin(), _rules.end(), level);
   if (it != _rules.end() && (*it).level == level) {
     return (*it).name;
   }
 
-  return velocypack::StringRef();
+  return std::string_view();
 }
 
 /// @brief translate a single rule
-int OptimizerRulesFeature::translateRule(velocypack::StringRef name) {
+int OptimizerRulesFeature::translateRule(std::string_view name) {
   auto it = _ruleLookup.find(name);
 
   if (it != _ruleLookup.end()) {
@@ -536,7 +534,7 @@ int OptimizerRulesFeature::translateRule(velocypack::StringRef name) {
 void OptimizerRulesFeature::enableOrDisableRules() {
   // turn off or on specific optimizer rules, based on startup parameters
   for (auto const& name : _optimizerRules) {
-    arangodb::velocypack::StringRef n(name);
+    std::string_view n(name);
     if (!n.empty() && n[0] == '+') {
       // strip initial + sign
       n = n.substr(1);

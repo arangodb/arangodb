@@ -97,13 +97,13 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief returns the LocalDocumentId and the revision id for the document with the 
   /// specified key.
-  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+  Result lookupKey(transaction::Methods* trx, std::string_view key,
                    std::pair<LocalDocumentId, RevisionId>& result, ReadOwnWrites readOwnWrites) const override;
 
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
-  Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
+  Result read(transaction::Methods*, std::string_view const& key,
               IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const override;
   
   /// @brief lookup with callback, not thread-safe on same transaction::Context

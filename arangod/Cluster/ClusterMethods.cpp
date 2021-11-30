@@ -82,7 +82,6 @@
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include "velocypack/StringRef.h"
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/uuid/uuid.hpp>
@@ -552,7 +551,7 @@ struct CreateOperationCtx {
     } else {
       // we pass in the generated _key so we do not need to rebuild the input slice
       error = collinfo.getResponsibleShard(value, /*docComplete*/true, shardID,
-                                           usesDefaultShardingAttributes, VPackStringRef(_key));
+                                           usesDefaultShardingAttributes, std::string_view(_key));
     }
     if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -1385,7 +1384,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
 
     // add to the total
     for (auto pair : VPackObjectIterator(answer, true)) {
-      velocypack::StringRef shardIndexId(pair.key);
+      std::string_view shardIndexId(pair.key.stringView());
       auto split = std::find(shardIndexId.begin(), shardIndexId.end(), '/');
       if (split != shardIndexId.end()) {
         std::string index(split + 1, shardIndexId.end());
@@ -1868,7 +1867,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           if (slice.isObject()) {
             keySlice = slice.get(StaticStrings::KeyString);
           }
-          VPackStringRef ref = keySlice.stringRef();
+          std::string_view ref = keySlice.stringRef();
           // We send to single endpoint
           url.append("/_api/document/").append(StringUtils::urlEncode(it.first)).push_back('/');
           url.append(StringUtils::urlEncode(ref.data(), ref.length()));
@@ -1927,7 +1926,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   const size_t expectedLen = useMultiple ? slice.length() : 0;
   if (!useMultiple) {
-    VPackStringRef const key(slice.isObject() ? slice.get(StaticStrings::KeyString) : slice);
+    std::string_view const key((slice.isObject() ? slice.get(StaticStrings::KeyString) : slice).stringView());
 
     const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
     for (auto const& shardServers : *shardIds) {
@@ -1983,7 +1982,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 Result fetchEdgesFromEngines(transaction::Methods& trx,
                              graph::ClusterTraverserCache& travCache,
                              arangodb::aql::FixedVarExpressionContext const& expressionContext,
-                             arangodb::velocypack::StringRef vertexId,
+                             std::string_view vertexId,
                              size_t depth,
                              std::vector<VPackSlice>& result) {
   auto const* engines = travCache.engines();
@@ -2389,7 +2388,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
         if (!useMultiple) {
           TRI_ASSERT(it.second.size() == 1);
           TRI_ASSERT(slice.isObject());
-          VPackStringRef const ref(slice.get(StaticStrings::KeyString));
+          std::string_view const ref(slice.get(StaticStrings::KeyString).stringView());
           // We send to single endpoint
           url = "/_api/document/" + StringUtils::urlEncode(it.first) + "/" +
                 StringUtils::urlEncode(ref.data(), ref.length());
@@ -2460,7 +2459,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 
       std::string url;
       if (!useMultiple) { // send to single API
-        VPackStringRef const key(slice.get(StaticStrings::KeyString));
+        std::string_view const key(slice.get(StaticStrings::KeyString).stringView());
         url = "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
               StringUtils::urlEncode(key.data(), key.size());
       } else {

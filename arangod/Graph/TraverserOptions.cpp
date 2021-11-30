@@ -36,7 +36,6 @@
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -680,7 +679,7 @@ bool TraverserOptions::hasVertexCollectionRestrictions() const {
 }
 
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
-                                              arangodb::velocypack::StringRef vertexId,
+                                              std::string_view vertexId,
                                               uint64_t depth, size_t cursorId) {
   arangodb::aql::Expression* expression = nullptr;
 
@@ -744,8 +743,8 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 #endif
 
 auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
-                                          arangodb::velocypack::StringRef origin) const
-    -> arangodb::velocypack::StringRef {
+                                          std::string_view origin) const
+    -> std::string_view {
   if (edge.isString()) {
     return edge.stringRef();
   }
@@ -798,13 +797,13 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
 }
 
 #ifndef USE_ENTERPRISE
-bool TraverserOptions::checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const {
+bool TraverserOptions::checkSmartDestination(VPackSlice edge, std::string_view sourceVertex) const {
   return false;
 }
 #endif
 
 bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
-                                                    velocypack::StringRef sourceVertex) const {
+                                                    std::string_view sourceVertex) const {
   if (hasVertexCollectionRestrictions()) {
     auto destination = getEdgeDestination(edge, sourceVertex);
     auto collection = transaction::helpers::extractCollectionFromId(destination);

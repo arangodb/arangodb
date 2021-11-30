@@ -172,9 +172,9 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     if (shardKeysSlice.isArray()) {
       for (VPackSlice sk : VPackArrayIterator(shardKeysSlice)) {
         if (sk.isString()) {
-          velocypack::StringRef key = sk.stringRef();
+          std::string_view key = sk.stringRef();
           // remove : char at the beginning or end (for enterprise)
-          velocypack::StringRef stripped;
+          std::string_view stripped;
           if (!key.empty()) {
             if (key.front() == ':') {
               stripped = key.substr(1);
@@ -192,7 +192,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
           }
 
           if (!stripped.empty()) {
-            _shardKeys.emplace_back(key.toString());
+            _shardKeys.emplace_back(std::string(key));
           }
         }
       }
@@ -494,7 +494,7 @@ void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
 ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
                                             bool docComplete, ShardID& shardID,
                                             bool& usesDefaultShardKeys,
-                                            VPackStringRef const& key) {
+                                            std::string_view const& key) {
   return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
                                                 usesDefaultShardKeys, key);
 }

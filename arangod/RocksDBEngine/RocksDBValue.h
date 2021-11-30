@@ -29,7 +29,6 @@
 #include <s2/s2point.h>
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
@@ -60,7 +59,7 @@ class RocksDBValue {
   static RocksDBValue Collection(VPackSlice const& data);
   static RocksDBValue ReplicatedLog(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, RevisionId revision);
-  static RocksDBValue EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId);
+  static RocksDBValue EdgeIndexValue(std::string_view const& vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue ZkdIndexValue();
   static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
@@ -101,7 +100,7 @@ class RocksDBValue {
   ///
   /// May be called only on EdgeIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::velocypack::StringRef vertexId(rocksdb::Slice const&);
+  static std::string_view vertexId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the VelocyPack data from a value
@@ -161,14 +160,14 @@ class RocksDBValue {
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
-  RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data);
+  RocksDBValue(RocksDBEntryType type, std::string_view const& data);
   RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
   explicit RocksDBValue(S2Point const&);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
   static LocalDocumentId documentId(char const* data, uint64_t size);
-  static arangodb::velocypack::StringRef vertexId(char const* data, size_t size);
+  static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
 
  private:

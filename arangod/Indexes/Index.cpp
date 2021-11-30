@@ -26,7 +26,6 @@
 
 #include <date/date.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -397,7 +396,7 @@ bool Index::validateId(std::string_view id) {
 }
 
 /// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept {
+bool Index::validateHandle(bool extendedNames, std::string_view handle) noexcept {
   std::size_t pos = handle.find('/');
   if (pos == std::string::npos) {
     // no prefix
@@ -413,7 +412,7 @@ bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef h
 }
 
 /// @brief validate an index handle (collection name + / + index name)
-bool Index::validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept {
+bool Index::validateHandleName(bool extendedNames, std::string_view name) noexcept {
   std::size_t pos = name.find('/');
   if (pos == std::string::npos) {
     // no prefix
@@ -542,8 +541,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  arangodb::velocypack::StringRef typeStr(typeSlice);
-  TRI_ASSERT(typeStr == oldtypeName());
+  TRI_ASSERT(typeSlice.stringView() == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
 
@@ -554,8 +552,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid.id());
+    return value.stringView() == std::to_string(_iid.id());
   }
 
   value = info.get(arangodb::StaticStrings::IndexFields);
@@ -588,8 +585,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::velocypack::StringRef in(f);
-    TRI_ParseAttributeString(in, translate, true);
+    TRI_ParseAttributeString(f.stringView(), translate, true);
     if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
     }
@@ -598,7 +594,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double Index::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
+double Index::selectivityEstimate(std::string_view const&) const {
   if (_unique) {
     return 1.0;
   }

@@ -27,7 +27,6 @@
 #include <rocksdb/slice.h>
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
@@ -54,9 +53,9 @@ class RocksDBLogValue {
 
   static RocksDBLogValue CollectionCreate(TRI_voc_tick_t dbid, DataSourceId cid);
   static RocksDBLogValue CollectionDrop(TRI_voc_tick_t dbid, DataSourceId cid,
-                                        arangodb::velocypack::StringRef const& uuid);
+                                        std::string_view const& uuid);
   static RocksDBLogValue CollectionRename(TRI_voc_tick_t dbid, DataSourceId cid,
-                                          arangodb::velocypack::StringRef const& oldName);
+                                          std::string_view const& oldName);
   static RocksDBLogValue CollectionChange(TRI_voc_tick_t dbid, DataSourceId cid);
   static RocksDBLogValue CollectionTruncate(TRI_voc_tick_t dbid,
                                             DataSourceId cid, uint64_t objectId);
@@ -67,7 +66,7 @@ class RocksDBLogValue {
 
   static RocksDBLogValue ViewCreate(TRI_voc_tick_t, DataSourceId);
   static RocksDBLogValue ViewDrop(TRI_voc_tick_t, DataSourceId,
-                                  arangodb::velocypack::StringRef const& uuid);
+                                  std::string_view const& uuid);
   static RocksDBLogValue ViewChange(TRI_voc_tick_t, DataSourceId);
 
   static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId, TransactionId tid);
@@ -101,12 +100,12 @@ class RocksDBLogValue {
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
   static velocypack::Slice viewSlice(rocksdb::Slice const&);
   /// @brief get UUID from collection drop marker
-  static arangodb::velocypack::StringRef collectionUUID(rocksdb::Slice const&);
+  static std::string_view collectionUUID(rocksdb::Slice const&);
   /// @brief get UUID from view drop marker
-  static arangodb::velocypack::StringRef viewUUID(rocksdb::Slice const&);
+  static std::string_view viewUUID(rocksdb::Slice const&);
 
   /// @deprecated method for old collection drop marker
-  static arangodb::velocypack::StringRef oldCollectionName(rocksdb::Slice const&);
+  static std::string_view oldCollectionName(rocksdb::Slice const&);
   
   /// @brief get slice from tracked document
   static std::pair<LocalDocumentId, velocypack::Slice> trackedDocument(rocksdb::Slice const&);
@@ -131,7 +130,7 @@ class RocksDBLogValue {
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, VPackSlice const&);
-  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, arangodb::velocypack::StringRef const& data);
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, std::string_view const& data);
 
  private:
   std::string _buffer;

@@ -108,7 +108,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 
@@ -211,7 +210,7 @@ bool isValidDocument(VPackSlice slice) {
   slice = slice.resolveExternals();
 
   if (slice.isObject()) {
-    containers::FlatHashSet<VPackStringRef> keys;
+    containers::FlatHashSet<std::string_view> keys;
 
     auto it = VPackObjectIterator(slice, true);
 
@@ -4292,7 +4291,7 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  velocypack::StringRef s = durationType.slice().stringRef();
+  std::string_view s = durationType.slice().stringRef();
 
   int64_t factor = 1;
   if (s == "milliseconds" || s == "millisecond" || s == "f") {
@@ -7282,7 +7281,7 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode 
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (value.isString()) {
-    VPackStringRef v = value.slice().stringRef();
+    std::string_view v = value.slice().stringRef();
     char const* p = v.data();
     char const* e = p + v.size();
 
@@ -8672,7 +8671,7 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
   }
 }
 
-static void buildKeyObject(VPackBuilder& builder, VPackStringRef key, bool closeObject = true) {
+static void buildKeyObject(VPackBuilder& builder, std::string_view key, bool closeObject = true) {
   builder.openObject(true);
   builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(), VPackValueType::String));
   if (closeObject) {
@@ -8805,7 +8804,7 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
   if (buildNewObject) {
     transaction::BuilderLeaser builder(&trx);
     buildKeyObject(*builder.get(),
-                   VPackStringRef(logicalCollection->createKey(input)), false);
+                   std::string_view(logicalCollection->createKey(input)), false);
     for (auto cur : VPackObjectIterator(input)) {
       builder->add(cur.key.stringRef(), cur.value);
     }
@@ -8826,9 +8825,9 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
     // Need to fix this document.
     // We need id and key as input.
 
-    VPackStringRef s(input);
+    std::string_view s(input.stringView());
     size_t pos = s.find('/');
-    if (pos == std::string::npos) {
+    if (pos == s.npos) {
       transaction::BuilderLeaser builder(&trx);
       buildKeyObject(*builder.get(), s);
       return AqlValue{builder->slice()};
@@ -8865,7 +8864,7 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
     // We can work with _id value only however so let us do this.
     auto keyPart = transaction::helpers::extractKeyPart(idSlice);
     transaction::BuilderLeaser builder(&trx);
-    buildKeyObject(*builder.get(), VPackStringRef(keyPart), false);
+    buildKeyObject(*builder.get(), std::string_view(keyPart), false);
     for (auto cur : VPackObjectIterator(input)) {
       builder->add(cur.key.stringRef(), cur.value);
     }

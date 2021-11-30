@@ -449,7 +449,7 @@ void RocksDBIndexFactory::prepareIndexes(
           from.openObject();
 
           for (auto f : VPackObjectIterator(v)) {
-            if (velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
+            if (f.key.stringView() == StaticStrings::IndexFields) {
               from.add(VPackValue(StaticStrings::IndexFields));
               from.openArray();
               from.add(VPackValue(StaticStrings::FromString));
@@ -466,12 +466,12 @@ void RocksDBIndexFactory::prepareIndexes(
 
           to.openObject();
           for (auto f : VPackObjectIterator(v)) {
-            if (velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
+            if (f.key.stringView() == StaticStrings::IndexFields) {
               to.add(VPackValue(StaticStrings::IndexFields));
               to.openArray();
               to.add(VPackValue(StaticStrings::ToString));
               to.close();
-            } else if (velocypack::StringRef(f.key) == StaticStrings::IndexId) {
+            } else if (f.key.stringView() == StaticStrings::IndexId) {
               IndexId iid{basics::StringUtils::uint64(f.value.copyString()) + 1};
               last = iid;
               to.add(StaticStrings::IndexId, VPackValue(std::to_string(iid.id())));
@@ -500,7 +500,7 @@ void RocksDBIndexFactory::prepareIndexes(
         b.openObject();
 
         for (auto const& f : VPackObjectIterator(v)) {
-          if (velocypack::StringRef(f.key) == StaticStrings::IndexId) {
+          if (f.key.stringView() == StaticStrings::IndexId) {
             last = IndexId{last.id() + 1};
             b.add(StaticStrings::IndexId, VPackValue(std::to_string(last.id())));
           } else {

@@ -26,8 +26,6 @@
 #include <iosfwd>
 #include <string_view>
 
-#include <velocypack/StringRef.h>
-
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
@@ -268,10 +266,10 @@ class Index {
   static char const* oldtypeName(IndexType);
 
   /// @brief validate an index handle (collection name + / + index id)
-  static bool validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept;
+  static bool validateHandle(bool extendedNames, std::string_view handle) noexcept;
 
   /// @brief validate an index handle (by name) (collection name + / + index name)
-  static bool validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept;
+  static bool validateHandleName(bool extendedNames, std::string_view name) noexcept;
   
   /// @brief validate an index id (i.e. ^[0-9]+$)
   static bool validateId(std::string_view id);
@@ -319,10 +317,10 @@ class Index {
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
   ///
-  /// The extra arangodb::velocypack::StringRef is only used in the edge index
+  /// The extra std::string_view is only used in the edge index
   /// as direction attribute attribute, a Slice would be more flexible.
-  virtual double selectivityEstimate(arangodb::velocypack::StringRef const& extra =
-                                         arangodb::velocypack::StringRef()) const;
+  virtual double selectivityEstimate(std::string_view const& extra =
+                                         std::string_view()) const;
 
   /// @brief update the cluster selectivity estimate
   virtual void updateClusterSelectivityEstimate(double /*estimate*/) {

@@ -39,14 +39,14 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-WeightedEnumerator::PathStep::PathStep(arangodb::velocypack::StringRef vertex)
+WeightedEnumerator::PathStep::PathStep(std::string_view vertex)
     : fromIndex(0),
       fromEdgeToken(EdgeDocumentToken()),
       currentVertexId(std::move(vertex)),
       accumWeight(0.0) {}
 
 WeightedEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&& edge,
-                                       arangodb::velocypack::StringRef vertex, double weight)
+                                       std::string_view vertex, double weight)
     : fromIndex(sourceIdx),
       fromEdgeToken(edge),
       currentVertexId(std::move(vertex)),
@@ -57,7 +57,7 @@ WeightedEnumerator::WeightedEnumerator(Traverser* traverser, TraverserOptions* o
   _schreier.reserve(32);
 }
 
-void WeightedEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+void WeightedEnumerator::setStartVertex(std::string_view startVertex) {
   PathEnumerator::setStartVertex(startVertex);
 
   _schreier.clear();
@@ -69,7 +69,7 @@ void WeightedEnumerator::setStartVertex(arangodb::velocypack::StringRef startVer
 }
 
 bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
-  VPackStringRef const toVertex = nextEdge.forwardVertexId;
+  std::string_view const toVertex = nextEdge.forwardVertexId;
 
   // we already have the toVertex, so we don't need to load the edge again
   // getSingleVertex does nothing but that and checking conditions
@@ -100,7 +100,7 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
 
 void WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
   PathStep const& currentStep = _schreier[vertexIndex];
-  VPackStringRef vertex = currentStep.currentVertexId;
+  std::string_view vertex = currentStep.currentVertexId;
 
   if (depth >= _opts->maxDepth) {
     return;
@@ -128,7 +128,7 @@ void WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
     }
 
     double forwardWeight = currentStep.accumWeight + weightEdge(e);
-    VPackStringRef toVertex = _opts->cache()->persistString(getToVertex(e, vertex));
+    std::string_view toVertex = _opts->cache()->persistString(getToVertex(e, vertex));
     _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid), toVertex);
   });
 
@@ -279,7 +279,7 @@ arangodb::aql::AqlValue WeightedEnumerator::pathToIndexToAqlValue(arangodb::velo
 }
 
 bool WeightedEnumerator::pathContainsVertex(size_t index,
-                                            arangodb::velocypack::StringRef vertex) const {
+                                            std::string_view vertex) const {
   while (true) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
@@ -349,8 +349,8 @@ double WeightedEnumerator::weightEdge(VPackSlice edge) const {
   return _opts->weightEdge(edge);
 }
 
-velocypack::StringRef WeightedEnumerator::getToVertex(velocypack::Slice edge,
-                                                      velocypack::StringRef from) {
+std::string_view WeightedEnumerator::getToVertex(velocypack::Slice edge,
+                                                      std::string_view from) {
   TRI_ASSERT(edge.isObject());
   VPackSlice resSlice = transaction::helpers::extractToFromDocument(edge);
   if (resSlice.isEqualString(from)) {
@@ -361,7 +361,7 @@ velocypack::StringRef WeightedEnumerator::getToVertex(velocypack::Slice edge,
 
 #ifndef USE_ENTERPRISE
 bool WeightedEnumerator::validDisjointPath(size_t index,
-                                           arangodb::velocypack::StringRef vertex) const {
+                                           std::string_view vertex) const {
   return true;
 }
 #endif

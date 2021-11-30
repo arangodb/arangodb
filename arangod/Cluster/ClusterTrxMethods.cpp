@@ -42,7 +42,6 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -184,9 +183,9 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
       return r.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
     }
 
-    VPackStringRef idRef = idSlice.stringRef();
+    std::string_view idRef = idSlice.stringRef();
     TransactionId tid{StringUtils::uint64(idRef.data(), idRef.size())};
-    VPackStringRef statusRef = statusSlice.stringRef();
+    std::string_view statusRef = statusSlice.stringRef();
     if (tid == desiredTid && transaction::statusFromString(statusRef.data(), statusRef.size()) == desStatus) {
       // all good
       return r.reset();

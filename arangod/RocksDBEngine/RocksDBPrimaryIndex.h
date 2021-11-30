@@ -31,7 +31,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -70,7 +69,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override {
+  double selectivityEstimate(std::string_view const& = std::string_view()) const override {
     return 1.0;
   }
 
@@ -79,7 +78,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx,
-                            arangodb::velocypack::StringRef key,
+                            std::string_view key,
                             ReadOwnWrites readOwnWrites) const;
 
   /// @brief reads a revision id from the primary index
@@ -90,7 +89,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// the case for older collections
   /// in this case the caller must fetch the revision id from the actual
   /// document
-  bool lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef key,
+  bool lookupRevision(transaction::Methods* trx, std::string_view key,
                       LocalDocumentId& id, RevisionId& revisionId, ReadOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,

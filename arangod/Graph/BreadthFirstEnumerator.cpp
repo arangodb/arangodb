@@ -38,11 +38,11 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-BreadthFirstEnumerator::PathStep::PathStep(arangodb::velocypack::StringRef vertex)
+BreadthFirstEnumerator::PathStep::PathStep(std::string_view vertex)
     : sourceIdx(0), edge(EdgeDocumentToken()), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&& edge,
-                                           arangodb::velocypack::StringRef vertex)
+                                           std::string_view vertex)
     : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
 
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, TraverserOptions* opts)
@@ -56,7 +56,7 @@ BreadthFirstEnumerator::~BreadthFirstEnumerator() {
   _opts->resourceMonitor().decreaseMemoryUsage(_schreier.capacity() * pathStepSize());
 }
 
-void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+void BreadthFirstEnumerator::setStartVertex(std::string_view startVertex) {
   PathEnumerator::setStartVertex(startVertex);
 
   _schreier.clear();
@@ -152,7 +152,7 @@ bool BreadthFirstEnumerator::next() {
         }
       }
 
-      arangodb::velocypack::StringRef vId;
+      std::string_view vId;
 
       if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
         if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
@@ -258,7 +258,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
 }
 
 bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
-                                                arangodb::velocypack::StringRef vertex) const {
+                                                std::string_view vertex) const {
   while (true) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
@@ -364,7 +364,7 @@ constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
 
 #ifndef USE_ENTERPRISE
 bool BreadthFirstEnumerator::validDisjointPath(size_t /*index*/,
-                                               arangodb::velocypack::StringRef const& /*vertex*/) const {
+                                               std::string_view const& /*vertex*/) const {
   return true;
 }
 #endif

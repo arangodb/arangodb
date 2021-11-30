@@ -29,8 +29,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/OptimizerRule.h"
 
-#include <velocypack/StringRef.h>
-
 namespace arangodb {
 namespace aql {
 
@@ -48,13 +46,13 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   bool parallelizeGatherWrites() const { return _parallelizeGatherWrites; }
 
   /// @brief translate a list of rule ids into rule name
-  static std::vector<velocypack::StringRef> translateRules(std::vector<int> const&);
+  static std::vector<std::string_view> translateRules(std::vector<int> const&);
 
   /// @brief translate a single rule
-  static velocypack::StringRef translateRule(int rule);
+  static std::string_view translateRule(int rule);
   
   /// @brief translate a single rule
-  static int translateRule(velocypack::StringRef name);
+  static int translateRule(std::string_view name);
 
   /// @brief return a reference to all rules
   static std::vector<OptimizerRule> const& rules() { return _rules; }
@@ -93,7 +91,7 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   static std::vector<OptimizerRule> _rules;
 
   /// @brief map to look up rule id by name
-  static std::unordered_map<velocypack::StringRef, int> _ruleLookup;
+  static std::unordered_map<std::string_view, int> _ruleLookup;
 };
 
 }  // namespace aql

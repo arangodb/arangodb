@@ -33,7 +33,6 @@ struct ResourceMonitor;
 
 namespace velocypack {
 class HashedStringRef;
-class StringRef;
 }
 
 class StringHeap {
@@ -46,7 +45,7 @@ class StringHeap {
   explicit StringHeap(ResourceMonitor& resourceMonitor, size_t blockSize);
   ~StringHeap();
 
-  /// @brief register a string - implemented for StringRef and HashedStringRef
+  /// @brief register a string - implemented for std::string_view and HashedStringRef
   template <typename T>
   T registerString(T const& str);
  

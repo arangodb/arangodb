@@ -29,7 +29,6 @@
 
 #if defined(USE_MEMORY_PROFILE)
 #include <jemalloc/jemalloc.h>
-#include <velocypack/StringRef.h>
 #endif
 
 #include <velocypack/Builder.h>

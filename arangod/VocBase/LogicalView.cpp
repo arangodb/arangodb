@@ -41,7 +41,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 

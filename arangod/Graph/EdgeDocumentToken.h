@@ -30,7 +30,6 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
 

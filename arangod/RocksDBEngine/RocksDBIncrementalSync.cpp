@@ -86,7 +86,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
   TRI_ASSERT(chunk.isObject());
   auto lowSlice = chunk.get("low");
   TRI_ASSERT(lowSlice.isString());
-  arangodb::velocypack::StringRef lowRef(lowSlice);
+  std::string_view lowRef = lowSlice.stringView();
 
   // last high
   chunk = chunkSlice.at(numChunks - 1);
@@ -94,7 +94,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   auto highSlice = chunk.get("high");
   TRI_ASSERT(highSlice.isString());
-  arangodb::velocypack::StringRef highRef(highSlice);
+  std::string_view highRef = highSlice.stringView();
 
   auto iterator = createPrimaryIndexIterator(&trx, coll);
 
@@ -105,7 +105,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
   // remote key
   iterator.next(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-        arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(rocksKey));
+        std::string_view docKey(RocksDBKey::primaryKey(rocksKey));
         if (docKey.compare(lowRef) < 0) {
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
@@ -141,7 +141,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   iterator.next(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-        arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(rocksKey));
+        std::string_view docKey(RocksDBKey::primaryKey(rocksKey));
         if (docKey.compare(highRef) > 0) {
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
@@ -857,7 +857,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           ++documentsFound;
-          std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
+          std::string docKey = std::string(RocksDBKey::primaryKey(rocksKey));
           RevisionId docRev;
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
             // for collections that do not have the revisionId in the value

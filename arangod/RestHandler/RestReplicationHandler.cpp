@@ -1495,7 +1495,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
         for (auto it : VPackObjectIterator(doc, true)) {
           // only check for "_key" attribute here if we still have to.
           // once we have seen it, it will not show up again in the same document
-          bool const isKey = checkKey && (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString);
+          bool const isKey = checkKey && (it.key.stringView() == StaticStrings::KeyString);
   
           if (isKey) {
             // _key attribute
@@ -1519,7 +1519,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
           
             documentsToInsert.add(it.key);
             documentsToInsert.add(it.value);
-          } else if (checkRev && arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
+          } else if (checkRev && (it.key.stringView() == StaticStrings::RevString)) {
             // _rev attribute
 
             // prevent checking for _rev twice in the same document

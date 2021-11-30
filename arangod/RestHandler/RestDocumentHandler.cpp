@@ -158,7 +158,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
   if (!mode.empty()) {
-    auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
+    auto overwriteMode = OperationOptions::determineOverwriteMode(std::string_view(mode));
 
     if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
       opOptions.overwriteMode = overwriteMode;

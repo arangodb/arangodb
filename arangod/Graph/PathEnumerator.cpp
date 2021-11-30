@@ -67,7 +67,7 @@ void EnumeratedPath::growStorage(std::vector<T>& data) {
   }
 }
 
-void EnumeratedPath::pushVertex(arangodb::velocypack::StringRef const& v) {
+void EnumeratedPath::pushVertex(std::string_view const& v) {
   growStorage(_vertices);
   _vertices.emplace_back(v);
 }
@@ -96,7 +96,7 @@ size_t EnumeratedPath::numVertices() const noexcept { return _vertices.size(); }
 
 size_t EnumeratedPath::numEdges() const noexcept { return _edges.size(); }
 
-std::vector<arangodb::velocypack::StringRef> const& EnumeratedPath::vertices() const noexcept {
+std::vector<std::string_view> const& EnumeratedPath::vertices() const noexcept {
   return _vertices;
 }
 
@@ -104,7 +104,7 @@ std::vector<graph::EdgeDocumentToken> const& EnumeratedPath::edges() const noexc
   return _edges;
 }
 
-arangodb::velocypack::StringRef const& EnumeratedPath::lastVertex() const noexcept {
+std::string_view const& EnumeratedPath::lastVertex() const noexcept {
   TRI_ASSERT(!_vertices.empty());
   return _vertices.back();
 }
@@ -126,7 +126,7 @@ PathEnumerator::PathEnumerator(Traverser* traverser, TraverserOptions* opts)
 
 PathEnumerator::~PathEnumerator() = default;
 
-void PathEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+void PathEnumerator::setStartVertex(std::string_view startVertex) {
   _isFirst = true;
   _httpRequests = 0;
 
@@ -157,7 +157,7 @@ bool PathEnumerator::usePostFilter(aql::PruneExpressionEvaluator* evaluator) {
 
 bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
                               arangodb::velocypack::Slice edge,
-                              arangodb::velocypack::StringRef sourceVertex,
+                              std::string_view sourceVertex,
                               size_t depth, size_t cursorId) {
   if (_opts->hasEdgeFilter(depth, cursorId)) {
     VPackSlice e = edge;
@@ -173,7 +173,7 @@ bool PathEnumerator::keepEdge(arangodb::graph::EdgeDocumentToken& eid,
   return _opts->destinationCollectionAllowed(edge, sourceVertex);
 }
 
-graph::EdgeCursor* PathEnumerator::getCursor(arangodb::velocypack::StringRef nextVertex,
+graph::EdgeCursor* PathEnumerator::getCursor(std::string_view nextVertex,
                                              uint64_t currentDepth) {
   if (currentDepth >= _cursors.size()) {
     _cursors.emplace_back(_opts->buildCursor(currentDepth));
@@ -188,7 +188,7 @@ DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, TraverserOption
 
 DepthFirstEnumerator::~DepthFirstEnumerator() = default;
 
-void DepthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+void DepthFirstEnumerator::setStartVertex(std::string_view startVertex) {
   PathEnumerator::setStartVertex(startVertex);
 
   _activeCursors = 0;
@@ -222,7 +222,7 @@ bool DepthFirstEnumerator::next() {
       // We are not done with this path, so
       // we reserve the cursor for next depth
       graph::EdgeCursor* cursor =
-          getCursor(arangodb::velocypack::StringRef(_enumeratedPath.lastVertex()),
+          getCursor(std::string_view(_enumeratedPath.lastVertex()),
                     _enumeratedPath.numEdges());
       incHttpRequests(cursor->httpRequests());
       ++_activeCursors;
@@ -238,7 +238,7 @@ bool DepthFirstEnumerator::next() {
     bool foundPath = false;
 
     auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge, size_t cursorId) {
-      if (!keepEdge(eid, edge, arangodb::velocypack::StringRef(_enumeratedPath.lastVertex()),
+      if (!keepEdge(eid, edge, std::string_view(_enumeratedPath.lastVertex()),
                     _enumeratedPath.numEdges(), cursorId)) {
         return;
       }
@@ -340,7 +340,7 @@ bool DepthFirstEnumerator::next() {
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastVertexToAqlValue() {
   return _traverser->fetchVertexData(
-      arangodb::velocypack::StringRef(_enumeratedPath.lastVertex()));
+      std::string_view(_enumeratedPath.lastVertex()));
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
@@ -363,7 +363,7 @@ VPackSlice DepthFirstEnumerator::pathToSlice(VPackBuilder& result, bool fromPrun
   if (fromPrune || _opts->producePathsVertices()) {
     result.add(StaticStrings::GraphQueryVertices, VPackValue(VPackValueType::Array));
     for (auto const& it : _enumeratedPath.vertices()) {
-      _traverser->addVertexToVelocyPack(VPackStringRef(it), result);
+      _traverser->addVertexToVelocyPack(std::string_view(it), result);
     }
     result.close();
   }

@@ -51,7 +51,7 @@ RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId, Revis
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, docId, rev);
 }
 
-RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId) {
+RocksDBValue RocksDBValue::EdgeIndexValue(std::string_view const& vertexId) {
   return RocksDBValue(RocksDBEntryType::EdgeIndexValue, vertexId);
 }
 
@@ -133,7 +133,7 @@ RevisionId RocksDBValue::revisionId(rocksdb::Slice const& slice) {
       TRI_ERROR_INTERNAL, "Could not extract revisionId from rocksdb::Slice");
 }
 
-arangodb::velocypack::StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
+std::string_view RocksDBValue::vertexId(rocksdb::Slice const& s) {
   return vertexId(s.data(), s.size());
 }
 
@@ -217,7 +217,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, std::string_view const& data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::EdgeIndexValue: {
@@ -252,10 +252,10 @@ LocalDocumentId RocksDBValue::documentId(char const* data, uint64_t size) {
   return LocalDocumentId(uint64FromPersistent(data));
 }
 
-arangodb::velocypack::StringRef RocksDBValue::vertexId(char const* data, size_t size) {
+std::string_view RocksDBValue::vertexId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
-  return arangodb::velocypack::StringRef(data, size);
+  return std::string_view(data, size);
 }
 
 VPackSlice RocksDBValue::data(char const* data, size_t size) {

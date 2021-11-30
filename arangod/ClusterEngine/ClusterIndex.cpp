@@ -153,7 +153,7 @@ bool ClusterIndex::hasSelectivityEstimate() const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double ClusterIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
+double ClusterIndex::selectivityEstimate(std::string_view const&) const {
   TRI_ASSERT(hasSelectivityEstimate());
   if (_unique) {
     return 1.0;

@@ -44,7 +44,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 #ifdef USE_ENTERPRISE
 #define ENTERPRISE_VIRT virtual
@@ -261,7 +260,7 @@ class Methods {
   ///        not care for revision handling! Must only be called on a local
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
-                                               arangodb::velocypack::StringRef const& key,
+                                               std::string_view const& key,
                                                IndexIterator::DocumentCallback const& cb);
 
   /// @brief return one or multiple documents from a collection
@@ -382,7 +381,7 @@ class Methods {
 
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              velocypack::Builder& builder, DataSourceId cid,
-                             arangodb::velocypack::StringRef const& key, RevisionId rid,
+                             std::string_view const& key, RevisionId rid,
                              RevisionId oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 

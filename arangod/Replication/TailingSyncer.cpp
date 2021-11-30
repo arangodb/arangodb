@@ -61,7 +61,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -71,10 +70,10 @@ using namespace arangodb::rest;
 
 namespace {
 
-static arangodb::velocypack::StringRef const cnameRef("cname");
-static arangodb::velocypack::StringRef const dataRef("data");
-static arangodb::velocypack::StringRef const tickRef("tick");
-static arangodb::velocypack::StringRef const dbRef("db");
+static std::string_view const cnameRef("cname");
+static std::string_view const dataRef("data");
+static std::string_view const tickRef("tick");
+static std::string_view const dbRef("db");
 
 bool hasHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response,
                std::string const& name) {
@@ -175,7 +174,7 @@ size_t TailingSyncer::countOngoingTransactions(VPackSlice slice) const {
   if (nameSlice.isString()) {
     for (auto const& it : _ongoingTransactions) {
       auto const& trx = it.second;
-      if (trx != nullptr && arangodb::velocypack::StringRef(nameSlice) == trx->vocbase().name()) {
+      if (trx != nullptr && nameSlice.stringView() == trx->vocbase().name()) {
         ++result;
       }
     }

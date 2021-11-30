@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <list>
+#include <string_view>
 
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
@@ -176,24 +177,24 @@ EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
   }
 
   if (key.isString()) {
-    return slice.get(key.stringRef());
+    return slice.get(key.stringView());
   } else if (key.isArray()) {
     struct Iter : VPackArrayIterator {
       using VPackArrayIterator::difference_type;
-      using value_type = VPackStringRef;
+      using value_type = std::string_view;
       using VPackArrayIterator::iterator_category;
       using VPackArrayIterator::pointer;
       using VPackArrayIterator::reference;
 
       value_type operator*() const {
-        return VPackArrayIterator::operator*().stringRef();
+        return VPackArrayIterator::operator*().stringView();
       }
       Iter begin() const { return Iter{VPackArrayIterator::begin()}; }
       Iter end() const { return Iter{VPackArrayIterator::end()}; }
     };
 
     Iter i{VPackArrayIterator(key)};
-    return slice.get(i);
+    return slice.get(i.begin(), i.end());
   } else {
     return EvalError("key is neither array nor string");
   }

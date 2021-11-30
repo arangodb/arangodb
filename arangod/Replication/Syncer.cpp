@@ -59,15 +59,14 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
 
-arangodb::velocypack::StringRef const cuidRef("cuid");
-arangodb::velocypack::StringRef const dbRef("db");
-arangodb::velocypack::StringRef const databaseRef("database");
-arangodb::velocypack::StringRef const globallyUniqueIdRef("globallyUniqueId");
+std::string_view const cuidRef("cuid");
+std::string_view const dbRef("db");
+std::string_view const databaseRef("database");
+std::string_view const globallyUniqueIdRef("globallyUniqueId");
 
 /// @brief extract the collection id from VelocyPack
 arangodb::DataSourceId getCid(arangodb::velocypack::Slice const& slice) {

@@ -218,13 +218,13 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, std::string const& doc
   // figure out if we got this vertex locally
   PregelID _id = config->documentIdToPregel(documentID);
   if (config->isLocalVertexShard(_id.shard)) {
-    loadDocument(config, _id.shard, VPackStringRef(_id.key));
+    loadDocument(config, _id.shard, std::string_view(_id.key));
   }
 }
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                                    VPackStringRef const& _key) {
+                                    std::string_view const& _key) {
   // Apparently this code has not been implemented yet; find out whether it's
   // needed at all or remove
   TRI_ASSERT(false);
@@ -462,15 +462,15 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
 
   std::string collectionName; // will be reused
   size_t addedEdges = 0;
-  auto buildEdge = [&](Edge<E>* edge, VPackStringRef toValue) {
+  auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
     if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "too many edges for vertex");
     }
 
     std::size_t pos = toValue.find('/');
-    collectionName = toValue.substr(0, pos).toString();
-    VPackStringRef key = toValue.substr(pos + 1);
+    collectionName = std::string(toValue.substr(0, pos));
+    std::string_view key = toValue.substr(pos + 1);
     edge->_toKey = keyBuff->end();
     edge->_toKeyLength = static_cast<uint16_t>(key.size());
     TRI_ASSERT(key.size() <= std::numeric_limits<uint16_t>::max());
@@ -514,7 +514,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
     while (cursor->nextExtra([&](LocalDocumentId const& /*token*/, VPackSlice edgeSlice) {
       TRI_ASSERT(edgeSlice.isString());
 
-      VPackStringRef toValue(edgeSlice);
+      std::string_view toValue = edgeSlice.stringView();
       size_t space = toValue.size();
       allocateSpace(space);
       Edge<E>* edge = edgeBuff->appendElement();
@@ -526,7 +526,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
     while (cursor->nextDocument([&](LocalDocumentId const& /*token*/, VPackSlice slice) {
       slice = slice.resolveExternal();
 
-      VPackStringRef toValue(transaction::helpers::extractToFromDocument(slice));
+      std::string_view toValue = transaction::helpers::extractToFromDocument(slice).stringView();
       allocateSpace(toValue.size());
       Edge<E>* edge = edgeBuff->appendElement();
       auto res = buildEdge(edge, toValue);
@@ -645,7 +645,7 @@ void GraphStore<V, E>::storeVertices(std::vector<ShardID> const& globalShards,
       }
     }
 
-    VPackStringRef const key = it->key();
+    std::string_view const key = it->key();
     V const& data = it->data();
 
     builder.openObject(true);

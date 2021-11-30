@@ -32,7 +32,6 @@
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -42,7 +41,7 @@ ConstantWeightShortestPathFinder::PathSnippet::PathSnippet() noexcept
     : _pred(), 
       _path() {}
 
-ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(arangodb::velocypack::StringRef pred,
+ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(std::string_view pred,
                                                            EdgeDocumentToken&& path) noexcept
     : _pred(pred), 
       _path(std::move(path)) {}
@@ -71,8 +70,8 @@ bool ConstantWeightShortestPathFinder::shortestPath(
   result.clear();
   TRI_ASSERT(s.isString());
   TRI_ASSERT(e.isString());
-  arangodb::velocypack::StringRef start(s);
-  arangodb::velocypack::StringRef end(e);
+  std::string_view start(s.stringView());
+  std::string_view end(e.stringView());
   // Init
   if (start == end) {
     result._vertices.emplace_back(start);
@@ -102,7 +101,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  arangodb::velocypack::StringRef n;
+  std::string_view n;
   while (!_leftClosure.empty() && !_rightClosure.empty()) {
     options().isQueryKilledCallback();
 
@@ -123,7 +122,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
 
 bool ConstantWeightShortestPathFinder::expandClosure(
     Closure& sourceClosure, Snippets& sourceSnippets, Snippets const& targetSnippets,
-    bool isBackward, arangodb::velocypack::StringRef& result) {
+    bool isBackward, std::string_view& result) {
   _nextClosure.clear();
   for (auto const& v : sourceClosure) {
     // populates _neighbors
@@ -152,14 +151,14 @@ bool ConstantWeightShortestPathFinder::expandClosure(
   return false;
 }
 
-void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRef n,
+void ConstantWeightShortestPathFinder::fillResult(std::string_view n,
                                                   arangodb::graph::ShortestPathResult& result) {
   ResourceUsageScope guard(_resourceMonitor);
 
   result._vertices.emplace_back(n);
   auto it = _leftFound.find(n);
   TRI_ASSERT(it != _leftFound.end());
-  arangodb::velocypack::StringRef next;
+  std::string_view next;
   while (it != _leftFound.end() && !it->second.empty()) {
     guard.increase(arangodb::graph::ShortestPathResult::resultItemMemoryUsage());
 
@@ -191,7 +190,7 @@ void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRe
 }
 
 void ConstantWeightShortestPathFinder::expandVertex(bool backward,
-                                                    arangodb::velocypack::StringRef vertex) {
+                                                    std::string_view vertex) {
   EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
   cursor->rearm(vertex, 0);
  
@@ -205,8 +204,8 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
       if (edge.compareString(vertex.data(), vertex.length()) != 0) {
         guard.increase(Neighbor::itemMemoryUsage());
 
-        arangodb::velocypack::StringRef id =
-            _options.cache()->persistString(arangodb::velocypack::StringRef(edge));
+        std::string_view id = 
+            _options.cache()->persistString(edge.stringView());
 
         if (_neighbors.capacity() == 0) {
           // avoid a few reallocations for the first members
@@ -215,16 +214,15 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
         _neighbors.emplace_back(id, std::move(eid));
       }
     } else {
-      arangodb::velocypack::StringRef other(
-          transaction::helpers::extractFromFromDocument(edge));
+    std::string_view other(
+          transaction::helpers::extractFromFromDocument(edge).stringView());
       if (other == vertex) {
-        other = arangodb::velocypack::StringRef(
-            transaction::helpers::extractToFromDocument(edge));
+        other = transaction::helpers::extractToFromDocument(edge).stringView();
       }
       if (other != vertex) {
         guard.increase(Neighbor::itemMemoryUsage());
 
-        arangodb::velocypack::StringRef id = _options.cache()->persistString(other);
+        std::string_view id = _options.cache()->persistString(other);
         
         if (_neighbors.capacity() == 0) {
           // avoid a few reallocations for the first members
@@ -249,6 +247,6 @@ void ConstantWeightShortestPathFinder::clearVisited() {
 
 size_t ConstantWeightShortestPathFinder::pathSnippetMemoryUsage() const noexcept {
   return 16 /*arbitrary overhead*/ + 
-         sizeof(arangodb::velocypack::StringRef) + 
+         sizeof(std::string_view) + 
          sizeof(PathSnippet);
 }

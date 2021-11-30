@@ -37,7 +37,6 @@
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -290,37 +289,6 @@ class VelocyPackHelper {
     return defaultValue;
   }
 
-  /// @return string ref, or the defaultValue if slice is not a string
-  /// this is deprecated. do not use this anymore for new code
-  [[deprecated]] static arangodb::velocypack::StringRef getStringRef(
-      arangodb::velocypack::Slice slice,
-      arangodb::velocypack::StringRef const& defaultValue) noexcept {
-    if (slice.isExternal()) {
-      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
-    }
-
-    if (slice.isString()) {
-      return slice.stringRef();
-    }
-    return defaultValue;
-  }
-
-  /// @return string ref, or the defaultValue if slice[key] is not a string
-  /// this is deprecated. do not use this anymore for new code
-  template <typename T>
-  [[deprecated]] static arangodb::velocypack::StringRef getStringRef(
-      arangodb::velocypack::Slice slice, T const& key,
-      arangodb::velocypack::StringRef const& defaultValue) noexcept {
-    if (slice.isExternal()) {
-      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
-    }
-
-    if (slice.isObject()) {
-      return getStringRef(slice.get(key), defaultValue);
-    }
-    return defaultValue;
-  }
-
   /// @brief returns a string value, or the default value if it is not a string
   static std::string getStringValue(VPackSlice slice, std::string const& defaultValue);
 
@@ -441,18 +409,6 @@ inline ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::st
 
 }  // namespace basics
 }  // namespace arangodb
-
-namespace std {
-
-template <>
-struct less<arangodb::velocypack::StringRef> {
-  bool operator()(arangodb::velocypack::StringRef const& lhs,
-                  arangodb::velocypack::StringRef const& rhs) const noexcept {
-    return lhs.compare(rhs) < 0;
-  }
-};
-
-}  // namespace std
 
 /// @brief Simple and limited logging of VelocyPack slices
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
