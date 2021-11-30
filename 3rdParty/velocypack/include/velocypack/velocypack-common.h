@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_COMMON_H
-#define VELOCYPACK_COMMON_H 1
+#pragma once
 
 #include <cstdint>
 // for size_t:
@@ -129,8 +128,7 @@ static constexpr uint64_t _wyp[4] = {0xa0761d6478bd642full, 0xe7037ed1a0b428dbul
 #pragma messsage("unsupported os or compiler")
 #endif
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 #ifdef __APPLE__
 #define bswap_16(x) OSSwapInt16(x)
@@ -425,6 +423,5 @@ static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {
 }
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackValueLength = arangodb::velocypack::ValueLength;

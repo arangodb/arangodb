@@ -24,6 +24,7 @@
 #include "token_stopwords_stream.hpp"
 
 #include <cctype> // for std::isspace(...)
+#include <string_view>
 
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
@@ -52,11 +53,11 @@ constexpr char HEX_DECODE_MAP[256] = {
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 240 - 255
 };
 
-bool hex_decode(std::string& buf, VPackStringRef value) {
+bool hex_decode(std::string& buf, std::string_view value) {
   if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      value.toString().c_str());
+      value.data());
 
     return false;
   }
