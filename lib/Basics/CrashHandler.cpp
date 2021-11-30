@@ -107,18 +107,9 @@ std::atomic<bool> killHard(false);
   } else {
     // exit will not trigger dump creation. So do this manually.
     if (SIGABRT == signal) {
-      auto filter = [](EXCEPTION_POINTERS* pointers) {
-        createMiniDump(pointers);
-        return EXCEPTION_EXECUTE_HANDLER;
-      };
-      __try {
-        DebugBreak();
-      } __except (filter(GetExceptionInformation())) {
-      }
-      auto hSelf = GetCurrentProcess();
-      TerminateProcess(hSelf, 255 + signal);
-      // TerminateProcess is async, alright wait here for selfdestruct (we will never exit wait)
-      WaitForSingleObject(hSelf, INFINITE);
+      SetUnhandledExceptionFilter(NULL);
+      // produce intentional segfault to trigger WER (and attached debugger if any)
+      *static_cast<volatile int*>(nullptr) = 1;
     }
     exit(255 + signal);
   }
