@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/RowFetcherHelper.h"
@@ -54,6 +53,8 @@
 #include "Graph/TraverserOptions.h"
 
 #include "../Mocks/Servers.h"
+
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::aql;

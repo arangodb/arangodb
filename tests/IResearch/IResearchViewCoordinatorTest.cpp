@@ -114,7 +114,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchViewCoordinatorTest, test_type) {
-  EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
+  EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(std::string_view(
                    "arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
 

@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/RowFetcherHelper.h"
@@ -53,6 +52,8 @@
 
 #include "../Mocks/Servers.h"
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -70,7 +71,7 @@ class TokenTranslator : public TraverserCache {
                arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() = default;
 
-  arangodb::velocypack::StringRef makeVertex(std::string const& id) {
+  std::string_view makeVertex(std::string const& id) {
     VPackBuilder vertex;
     vertex.openObject();
     vertex.add(StaticStrings::IdString, VPackValue(id));
@@ -78,7 +79,7 @@ class TokenTranslator : public TraverserCache {
     vertex.add(StaticStrings::RevString, VPackValue("123"));  // just to have it there
     vertex.close();
     auto vslice = vertex.slice();
-    arangodb::velocypack::StringRef ref(vslice.get(StaticStrings::IdString));
+    std::string_view ref(vslice.get(StaticStrings::IdString));
     _dataLake.emplace_back(vertex.steal());
     _vertices.emplace(ref, vslice);
     return ref;
@@ -99,18 +100,18 @@ class TokenTranslator : public TraverserCache {
     return EdgeDocumentToken{eslice};
   }
 
-  VPackSlice translateVertex(arangodb::velocypack::StringRef idString) {
+  VPackSlice translateVertex(std::string_view idString) {
     auto it = _vertices.find(idString);
     TRI_ASSERT(it != _vertices.end());
     return it->second;
   }
   
-  bool appendVertex(arangodb::velocypack::StringRef idString, VPackBuilder& builder) override {
+  bool appendVertex(std::string_view idString, VPackBuilder& builder) override {
     builder.add(translateVertex(idString));
     return true;
   }
 
-  bool appendVertex(arangodb::velocypack::StringRef idString, AqlValue& result) override {
+  bool appendVertex(std::string_view idString, AqlValue& result) override {
     result = AqlValue(translateVertex(idString));
     return true;
   }
@@ -123,7 +124,7 @@ class TokenTranslator : public TraverserCache {
 
  private:
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _dataLake;
-  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
+  std::unordered_map<std::string_view, VPackSlice> _vertices;
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual> _edges;
 };
 
@@ -458,7 +459,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
             EXPECT_TRUE(value.isObject());
             EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
                             value.slice(),
-                            translator.translateVertex(arangodb::velocypack::StringRef(
+                            translator.translateVertex(std::string_view(
                                 expectedRowsFound[expectedRowsIndex])),
                             false) == 0);
           }
@@ -473,9 +474,9 @@ class ShortestPathExecutorTest : public ::testing::Test {
               EXPECT_TRUE(value.isObject());
               VPackSlice edge = value.slice();
               // FROM and TO checks are enough here.
-              EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::FromString))
+              EXPECT_TRUE(std::string_view(edge.get(StaticStrings::FromString))
                               .compare(expectedRowsFound[expectedRowsIndex - 1]) == 0);
-              EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::ToString))
+              EXPECT_TRUE(std::string_view(edge.get(StaticStrings::ToString))
                               .compare(expectedRowsFound[expectedRowsIndex]) == 0);
             }
           }

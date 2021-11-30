@@ -445,7 +445,7 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
 ) {
   std::unordered_set<std::string> expectedRules;
   for (auto ruleId : expectedRulesIds) {
-    arangodb::velocypack::StringRef translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
+    std::string_view translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
     expectedRules.emplace(translated.toString());
   }
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);

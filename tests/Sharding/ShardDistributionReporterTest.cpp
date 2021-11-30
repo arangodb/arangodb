@@ -381,7 +381,7 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
+            if (std::string_view(firstFollower) == dbserver2short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -419,7 +419,7 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
+            if (std::string_view(firstFollower) == dbserver1short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -457,7 +457,7 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
+            if (std::string_view(firstFollower) == dbserver1short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
@@ -503,7 +503,7 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
+            if (std::string_view(firstFollower) == dbserver2short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -605,7 +605,7 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
+            if (std::string_view(firstFollower) == dbserver2short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -643,7 +643,7 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
+            if (std::string_view(firstFollower) == dbserver1short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -695,7 +695,7 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
+            if (std::string_view(firstFollower) == dbserver1short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
@@ -755,7 +755,7 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
+            if (std::string_view(firstFollower) == dbserver2short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
