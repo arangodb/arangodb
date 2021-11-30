@@ -1,4 +1,4 @@
-v3.8.4 (XXXX-XX-XX)
+v3.8.4 (2021-11-30)
 -------------------
 
 * Cleanup and properly fail hotbackup upload and download jobs if a dbserver
