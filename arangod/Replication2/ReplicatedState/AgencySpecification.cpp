@@ -22,9 +22,11 @@
 
 #include "AgencySpecification.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
@@ -32,20 +34,31 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::agency;
 
+namespace {
+auto const StringMessage = velocypack::StringRef{"message"};
+auto const String_Status = velocypack::StringRef{"status"};
+auto const String_Snapshot = velocypack::StringRef{"snapshot"};
+auto const String_Generation = velocypack::StringRef{"generation"};
+auto const String_InProgress = std::string_view{"InProgress"};
+auto const String_Completed = std::string_view{"Completed"};
+auto const String_Failed = std::string_view{"Failed"};
+}  // namespace
+
 void Current::ParticipantStatus::Snapshot::Error::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  ob->add("error", velocypack::Value(error));
+  ob->add(StaticStrings::Error, velocypack::Value(error));
+  ob->add(StaticStrings::ErrorMessage, velocypack::Value(TRI_errno_string(error)));
   if (message) {
-    ob->add("message", velocypack::Value(*message));
+    ob->add(StringMessage, velocypack::Value(*message));
   }
   // TODO timestamp
 }
 
 auto Current::ParticipantStatus::Snapshot::Error::fromVelocyPack(velocypack::Slice slice)
     -> Error {
-  auto errorCode = ErrorCode{slice.get("error").extract<int>()};
+  auto errorCode = ErrorCode{slice.get(StaticStrings::Error).extract<int>()};
   std::optional<std::string> message;
-  if (auto message_slice = slice.get("message"); !message_slice.isNone()) {
+  if (auto message_slice = slice.get(StringMessage); !message_slice.isNone()) {
     message = message_slice.copyString();
   }
   return Error{errorCode, message, {}};
@@ -56,22 +69,22 @@ using Status = Current::ParticipantStatus::Snapshot::Status;
 auto agency::to_string(Status status) -> std::string_view {
   switch (status) {
     case Status::kInProgress:
-      return "InProgress";
+      return String_InProgress;
     case Status::kCompleted:
-      return "Completed";
+      return String_Completed;
     case Status::kFailed:
-      return "Failed";
+      return String_Failed;
     default:
       TRI_ASSERT(false) << "status value was " << static_cast<int>(status);
   }
 }
 
 auto agency::from_string(std::string_view string) -> Status {
-  if (string == "InProgress") {
+  if (string == String_InProgress) {
     return Status::kInProgress;
-  } else if (string == "Completed") {
+  } else if (string == String_Completed) {
     return Status::kCompleted;
-  } else if (string == "Failed") {
+  } else if (string == String_Failed) {
     return Status::kFailed;
   }
   // TODO make a proper error code
@@ -82,19 +95,88 @@ void Current::ParticipantStatus::Snapshot::toVelocyPack(velocypack::Builder& bui
   // TODO add timestamp
   VPackObjectBuilder ob(&builder);
   if (error) {
-    ob->add(velocypack::Value("error"));
+    ob->add(velocypack::Value(StaticStrings::Error));
     error->toVelocyPack(*ob);
   }
-  ob->add("status", velocypack::Value(to_string(status)));
+  ob->add(String_Status, velocypack::Value(to_string(status)));
 }
 
-auto Current::ParticipantStatus::Snapshot::fromVelocyPack(velocypack::Slice slice)
-    -> Snapshot {
-
+auto Current::ParticipantStatus::Snapshot::fromVelocyPack(velocypack::Slice slice) -> Snapshot {
   std::optional<Error> error;
-  if (auto error_slice = slice.get("error"); !error_slice.isNone()) {
+  if (auto error_slice = slice.get(StaticStrings::Error); !error_slice.isNone()) {
     error = Error::fromVelocyPack(error_slice);
   }
-  Status status = agency::from_string(slice.get("status").stringView());
-  return Snapshot{status, {}, std::move(error)};
+  Status status = agency::from_string(slice.get(String_Status).stringView());
+  return Snapshot{.status = status, .timestamp = {}, .error = std::move(error)};
+}
+
+void Current::ParticipantStatus::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add(String_Generation, velocypack::Value(generation));
+  builder.add(velocypack::Value(String_Snapshot));
+  snapshot.toVelocyPack(builder);
+}
+
+auto Current::ParticipantStatus::fromVelocyPack(velocypack::Slice slice) -> ParticipantStatus {
+  auto generation = slice.get(String_Generation).extract<std::size_t>();
+  auto snapshot = Snapshot::fromVelocyPack(slice.get(String_Snapshot));
+  return ParticipantStatus{.generation = generation, .snapshot = std::move(snapshot)};
+}
+
+void Current::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Id, velocypack::Value(id));
+  {
+    VPackObjectBuilder ab(&builder, StaticStrings::Participants);
+    for (auto const& [pid, status] : participants) {
+      builder.add(velocypack::Value(pid));
+      status.toVelocyPack(builder);
+    }
+  }
+}
+
+auto Current::fromVelocyPack(velocypack::Slice slice) -> Current {
+  Current c;
+  c.id = slice.get(StaticStrings::Id).extract<LogId>();
+  for (auto [key, value] :
+       velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
+    auto status = ParticipantStatus::fromVelocyPack(value);
+    c.participants.emplace(key.copyString(), std::move(status));
+  }
+  return c;
+}
+
+auto Plan::Participant::fromVelocyPack(velocypack::Slice slice) -> Participant {
+  return Participant{.generation = slice.get(String_Generation).extract<std::size_t>()};
+}
+
+void Plan::Participant::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+  builder.add(String_Generation, velocypack::Value(generation));
+}
+
+void Plan::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Id, velocypack::Value(id));
+  builder.add(String_Generation, velocypack::Value(generation));
+  {
+    velocypack::ObjectBuilder pob(&builder, StaticStrings::Participants);
+    for (auto const& [pid, state] : participants) {
+      builder.add(velocypack::Value(pid));
+      state.toVelocyPack(builder);
+    }
+  }
+}
+
+auto Plan::fromVelocyPack(velocypack::Slice slice) -> Plan {
+  auto id = slice.get(StaticStrings::Id).extract<LogId>();
+  auto generation = slice.get(String_Generation).extract<std::size_t>();
+  auto participants = std::unordered_map<ParticipantId, Participant>{};
+  for (auto [key, value] :
+       velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
+    auto status = Participant::fromVelocyPack(value);
+    participants.emplace(key.copyString(), status);
+  }
+
+  return Plan{.id = id, .generation = generation, .participants = std::move(participants)};
 }

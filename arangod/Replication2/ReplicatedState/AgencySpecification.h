@@ -22,11 +22,11 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Basics/ErrorCode.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
-#include <optional>
 #include <chrono>
+#include <optional>
 #include <string>
 
 namespace arangodb::velocypack {
@@ -36,6 +36,23 @@ class Slice;
 
 namespace arangodb::replication2::replicated_state::agency {
 
+struct Plan {
+  LogId id;
+  std::size_t generation;
+
+  struct Participant {
+    std::size_t generation;
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
+  };
+
+  std::unordered_map<ParticipantId, Participant> participants;
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Plan;
+};
+
 struct Current {
   LogId id;
 
@@ -43,7 +60,6 @@ struct Current {
     std::size_t generation;
 
     struct Snapshot {
-
       enum class Status {
         kInProgress,
         kCompleted,
@@ -58,22 +74,37 @@ struct Current {
         clock::time_point retryAt;
         void toVelocyPack(velocypack::Builder& builder) const;
         [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
-      };
 
+        friend auto operator==(Error const&, Error const&) noexcept -> bool = default;
+      };
 
       void toVelocyPack(velocypack::Builder& builder) const;
       [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Snapshot;
+
+      friend auto operator==(Snapshot const&, Snapshot const&) noexcept -> bool = default;
 
       Status status{Status::kInProgress};
       clock::time_point timestamp;
       std::optional<Error> error;
     };
+
+    // TODO might become an array later?
+    Snapshot snapshot;
+
+    friend auto operator==(ParticipantStatus const&, ParticipantStatus const&) noexcept
+        -> bool = default;
+    void toVelocyPack(velocypack::Builder& builder) const;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> ParticipantStatus;
   };
 
   std::unordered_map<ParticipantId, ParticipantStatus> participants;
+
+  friend auto operator==(Current const&, Current const&) noexcept -> bool = default;
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
 
-static auto to_string(Current::ParticipantStatus::Snapshot::Status status) -> std::string_view;
-static auto from_string(std::string_view string) -> Current::ParticipantStatus::Snapshot::Status;
+auto to_string(Current::ParticipantStatus::Snapshot::Status status) -> std::string_view;
+auto from_string(std::string_view string) -> Current::ParticipantStatus::Snapshot::Status;
 
 }  // namespace arangodb::replication2::replicated_state::agency
