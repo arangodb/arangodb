@@ -136,7 +136,7 @@ extern int Aqldebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 40 "Aql/grammar.y"
+#line 38 "Aql/grammar.y"
 
   arangodb::aql::AstNode*  node;
   struct {
