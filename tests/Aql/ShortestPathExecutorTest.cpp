@@ -79,7 +79,7 @@ class TokenTranslator : public TraverserCache {
     vertex.add(StaticStrings::RevString, VPackValue("123"));  // just to have it there
     vertex.close();
     auto vslice = vertex.slice();
-    std::string_view ref(vslice.get(StaticStrings::IdString));
+    std::string_view ref(vslice.get(StaticStrings::IdString).stringView());
     _dataLake.emplace_back(vertex.steal());
     _vertices.emplace(ref, vslice);
     return ref;
@@ -474,9 +474,9 @@ class ShortestPathExecutorTest : public ::testing::Test {
               EXPECT_TRUE(value.isObject());
               VPackSlice edge = value.slice();
               // FROM and TO checks are enough here.
-              EXPECT_TRUE(std::string_view(edge.get(StaticStrings::FromString))
+              EXPECT_TRUE(std::string_view(edge.get(StaticStrings::FromString).stringView())
                               .compare(expectedRowsFound[expectedRowsIndex - 1]) == 0);
-              EXPECT_TRUE(std::string_view(edge.get(StaticStrings::ToString))
+              EXPECT_TRUE(std::string_view(edge.get(StaticStrings::ToString).stringView())
                               .compare(expectedRowsFound[expectedRowsIndex]) == 0);
             }
           }

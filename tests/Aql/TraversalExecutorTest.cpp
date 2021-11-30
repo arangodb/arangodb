@@ -69,7 +69,7 @@ class TestGraph {
     vertex.add(StaticStrings::RevString, VPackValue("123"));  // just to have it there
     vertex.close();
     auto vslice = vertex.slice();
-    std::string_view id(vslice.get(StaticStrings::IdString));
+    std::string_view id(vslice.get(StaticStrings::IdString).stringView());
     _dataLake.emplace_back(vertex.steal());
     _vertices.emplace(id, vslice);
   }
@@ -86,9 +86,9 @@ class TestGraph {
     edge.add(StaticStrings::ToString, VPackValue(toVal));
     edge.close();
     auto eslice = edge.slice();
-    _outEdges[std::string_view(eslice.get(StaticStrings::FromString))]
+    _outEdges[std::string_view(eslice.get(StaticStrings::FromString).stringView())]
         .emplace_back(eslice);
-    _inEdges[std::string_view(eslice.get(StaticStrings::ToString))]
+    _inEdges[std::string_view(eslice.get(StaticStrings::ToString).stringView())]
         .emplace_back(eslice);
     _dataLake.emplace_back(edge.steal());
   }
@@ -155,8 +155,8 @@ class GraphEnumerator : public PathEnumerator {
     ++_idx;
     while (true) {
       if (_idx < _edges.size()) {
-        _nextDepth.emplace_back(std::string_view(
-            _edges.at(_idx).get(StaticStrings::ToString)));
+        _nextDepth.emplace_back(
+            _edges.at(_idx).get(StaticStrings::ToString).stringView());
         return true;
       } else {
         if (_currentDepth.empty()) {
