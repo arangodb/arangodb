@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix deadlocked shard synchronisations when planned shard leader has
+  not yet taken over leadership.
+
 * Upgraded bundled version of RocksDB to 6.27.
 
 * Updated immer to version 0.7.0.
