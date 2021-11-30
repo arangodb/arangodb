@@ -1158,7 +1158,7 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   TRI_ASSERT(newSlice.isObject());
   VPackSlice newKey = newSlice.get(arangodb::StaticStrings::KeyString);
   if (newKey.isString()) {
-    if (_documents.find(std::string_view{newKey}) != _documents.end()) {
+    if (_documents.find(newKey.stringView()) != _documents.end()) {
       return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
     }
   }
@@ -1175,7 +1175,7 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   }
   TRI_ASSERT(builder.slice().get(arangodb::StaticStrings::KeyString).isString());
 
-  std::string_view key{builder.slice().get(arangodb::StaticStrings::KeyString)};
+  std::string_view key{builder.slice().get(arangodb::StaticStrings::KeyString).stringView()};
   arangodb::LocalDocumentId id =
       ::generateDocumentId(_logicalCollection, revisionId, _lastDocumentId);
   auto const& [ref, didInsert] =
@@ -1380,7 +1380,7 @@ arangodb::Result PhysicalCollectionMock::remove(arangodb::transaction::Methods& 
 
   auto key = slice.get(arangodb::StaticStrings::KeyString);
   TRI_ASSERT(key.isString());
-  std::string_view keyRef{key};
+  std::string_view keyRef{key.stringView()};
   auto old = _documents.find(keyRef);
   if (old != _documents.end()) {
     previous.setManaged(old->second.vptr());
@@ -1431,7 +1431,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
   }
 
   before();
-  std::string_view keyRef{key};
+  std::string_view keyRef{key.stringView()};
   auto it = _documents.find(keyRef);
   if (it != _documents.end()) {
     auto doc = it->second.data();
