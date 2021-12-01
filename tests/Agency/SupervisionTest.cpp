@@ -300,17 +300,6 @@ static std::shared_ptr<VPackBuilder> runEnforceReplication(Node const& snap) {
   return envelope;
 }
 
-static std::shared_ptr<VPackBuilder> runCleanupHotbackupTransferJobs(
-    Node const& snap) {
-  auto envelope = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder guard(envelope.get());
-    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
-      snap, envelope);
-  }
-  return envelope;
-}
-
 static void checkSupervisionJob(VPackSlice v, std::string const& type,
                                 std::string const& database,
                                 std::string const& coll,
@@ -466,9 +455,13 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
     _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
       = createNode(st.c_str());
   }
-  std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
-      _snapshot);
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
   VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 1);
+  content = content[0];
   EXPECT_EQ(content.length(), 100);
   // We expect the first 100 jobs to be deleted:
   for (size_t i = 0; i < 100; ++i) {
@@ -499,9 +492,13 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
     _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
       = createNode(st.c_str());
   }
-  std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
-      _snapshot);
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
   VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 1);
+  content = content[0];
   EXPECT_EQ(content.length(), 100);
   // We expect the first 100 jobs to be deleted:
   for (size_t i = 0; i < 100; ++i) {
