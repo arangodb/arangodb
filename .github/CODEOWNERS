@@ -1,0 +1,45 @@
+# please check the following Github page for documentation:
+#   https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# `documentation-team` ownership
+/Documentation/ @arangodb/documentation
+/utils/*Documentation* @arangodb/documentation
+/utils/*Examples* @arangodb/documentation
+/utils/*Swagger* @arangodb/documentation
+
+# `qa-team` ownership
+/Installation/ @arangodb/team-qa
+/scripts/ @arangodb/team-qa
+/etc/ @arangodb/team-qa
+
+# `team-cinfra` ownership
+/arangod/Replication2/ @arangodb/team-cinfra
+/tests/Replication2/ @arangodb/team-cinfra
+
+# `team-reed` ownership
+/arangod/IResearch/ @arangodb/team-reed
+/3rdParty/iresearch/ @arangodb/team-reed
+
+# `team-gordo` ownership
+/arangod/Graph/  @arangodb/team-gordo
+/arangod/Pregel/ @arangodb/team-gordo
+
+# `team-clifton` ownership
+/arangod/Cluster/ @arangodb/team-clifton
+/arangod/ClusterEngine/ @arangodb/team-clifton
+/arangod/Sharding/ @arangodb/team-clifton
+/arangod/Actions/ @arangodb/team-clifton
+/arangod/Agency/ @arangodb/team-clifton
+
+# `team-orco` ownership
+/3rdParty/velocypack @arangodb/team-orco
+/arangod/Aql/grammar.y @arangodb/team-orco
+/arangod/Aql/tokens.ll @arangodb/team-orco
+/arangod/RocksDBEngine/ @arangodb/team-orco
+/arangod/StorageEngine/ @arangodb/team-orco 
+/arangod/Transaction/ @arangodb/team-orco
+/client-tools/ @arangodb/team-orco
+/lib/Basics/ReadWriteLock.h @arangodb/team-orco @mpoeter 
+/lib/Basics/ReadWriteLock.cpp @arangodb/team-orco @mpoeter 
+/lib/Basics/ReadWriteSpinLock.h @arangodb/team-orco @mpoeter 
+/lib/Basics/ReadWriteSpinLock.cpp @arangodb/team-orco @mpoeter 
