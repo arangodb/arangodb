@@ -63,7 +63,7 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
             "Unexpected response from DBServer during setup"};
   }
   std::string_view remId = key.substr(0, p);
-  remoteId = ExecutionNodeId{basics::StringUtils::uint64(remId.begin(), remId.length())};
+  remoteId = ExecutionNodeId{basics::StringUtils::uint64(remId.data(), remId.length())};
   if (remoteId == ExecutionNodeId{0}) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};

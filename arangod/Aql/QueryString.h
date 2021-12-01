@@ -38,7 +38,7 @@ class QueryString {
   QueryString(QueryString const& other) = default;
   QueryString& operator=(QueryString const& other) = delete;
   QueryString(QueryString&& other) = default;
-  QueryString& operator=(QueryString&& other) = default;
+  QueryString& operator=(QueryString&& other) = delete;
 
   QueryString(char const* data, size_t length)
       : _queryString(data, length), _hash(computeHash()) {}
