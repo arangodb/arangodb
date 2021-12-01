@@ -71,7 +71,6 @@
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
-#include "RocksDBEngine/RocksDBIntermediateCommitsHandler.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
@@ -1066,11 +1065,6 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid, options);
   }
   return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
-}
-
-std::unique_ptr<transaction::IntermediateCommitsHandler> RocksDBEngine::createIntermediateCommitsHandler(
-    transaction::Methods* trx, DataSourceId id) {
-  return std::make_unique<RocksDBIntermediateCommitsHandler>(trx, id);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {

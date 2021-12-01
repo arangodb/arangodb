@@ -72,7 +72,6 @@ class RestHandlerFactory;
 }
 
 namespace transaction {
-class IntermediateCommitsHandler;
 struct Options;
 }  // namespace transaction
 
@@ -153,9 +152,6 @@ class RocksDBEngine final : public StorageEngine {
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) override;
   
-  std::unique_ptr<transaction::IntermediateCommitsHandler> createIntermediateCommitsHandler(transaction::Methods* trx, 
-                                                                                            DataSourceId id) override;
-
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) override;

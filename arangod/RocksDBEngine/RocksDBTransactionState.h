@@ -89,11 +89,11 @@ class RocksDBTransactionState : public TransactionState {
                         TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed
   [[nodiscard]] Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                      TRI_voc_document_operation_e opType,
-                      bool& hasPerformedIntermediateCommit);
+                      TRI_voc_document_operation_e opType);
+  
+  [[nodiscard]] Result performIntermediateCommitIfRequired(DataSourceId collectionId, 
+                                                           bool& hasPerformedIntermediateCommit) override;
 
   /// @brief return wrapper around rocksdb transaction
   [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(DataSourceId collectionId) const = 0;

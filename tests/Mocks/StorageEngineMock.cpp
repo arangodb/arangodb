@@ -1606,11 +1606,6 @@ std::shared_ptr<arangodb::TransactionState> StorageEngineMock::createTransaction
   return std::make_shared<TransactionStateMock>(vocbase, tid, options);
 }
   
-std::unique_ptr<arangodb::transaction::IntermediateCommitsHandler> StorageEngineMock::createIntermediateCommitsHandler(
-      arangodb::transaction::Methods* trx, arangodb::DataSourceId id) {
-  return std::make_unique<IntermediateCommitsHandlerMock>(trx, id);
-}
-
 arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase,
                                                arangodb::DataSourceId id,
                                                arangodb::LogicalView const& view) {
@@ -1922,14 +1917,6 @@ arangodb::Result TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type 
   return {};
 }
 
-IntermediateCommitsHandlerMock::IntermediateCommitsHandlerMock(
-    arangodb::transaction::Methods* trx, arangodb::DataSourceId id) 
-    : arangodb::transaction::IntermediateCommitsHandler(trx, id) {}
-
-arangodb::Result IntermediateCommitsHandlerMock::commit() {
-  return {TRI_ERROR_NO_ERROR};
-}
-
 size_t TransactionStateMock::abortTransactionCount;
 size_t TransactionStateMock::beginTransactionCount;
 size_t TransactionStateMock::commitTransactionCount;
@@ -1972,6 +1959,12 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   resetTransactionId();
   //  releaseUsage();
 
+  return arangodb::Result();
+}
+
+arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(arangodb::DataSourceId cid, 
+                                                                           bool& hasPerformedIntermediateCommit) {
+  hasPerformedIntermediateCommit = false;
   return arangodb::Result();
 }
 

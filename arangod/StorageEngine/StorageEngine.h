@@ -79,7 +79,6 @@ class RestHandlerFactory;
 namespace transaction {
 
 class Context;
-class IntermediateCommitsHandler;
 class Manager;
 class ManagerFeature;
 class Methods;
@@ -99,8 +98,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId, transaction::Options const& options) = 0;
-
-  virtual std::unique_ptr<transaction::IntermediateCommitsHandler> createIntermediateCommitsHandler(transaction::Methods* trx, DataSourceId id) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information

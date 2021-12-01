@@ -56,6 +56,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 
 #include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
@@ -209,6 +210,13 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   /// @brief abort a transaction
   [[nodiscard]] arangodb::Result abortTransaction(arangodb::transaction::Methods*) override {
     updateStatus(arangodb::transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
+    return {};
+  }
+  
+  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(arangodb::DataSourceId collectionId,
+                                                                     bool& hasPerformedIntermediateCommit) override {
+    // Analyzers do not write. so do nothing
+    hasPerformedIntermediateCommit = false;
     return {};
   }
 
