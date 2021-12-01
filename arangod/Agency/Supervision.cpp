@@ -1768,7 +1768,7 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
           // We ignore non-completedness of old crud and only consider
           // new jobs with a rebootId as incomplete:
           auto const& rebootId = pp.second->hasAsUInt("rebootId");
-          if (rebootId.second) {
+          if (status.first.compare("NEW") == 0 || rebootId.second) {
             completed = false;
           }
         }
