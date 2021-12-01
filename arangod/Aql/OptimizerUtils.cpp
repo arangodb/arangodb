@@ -702,7 +702,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       if (costs.supportsCondition) {
         // we need to find 'root' in 'ast' and replace it with specialized version
         // but for now we know that index will not alter the node, so just an assert
-        TRI_ASSERT(root == index.get()->specializeCondition(root, reference));
+        index.get()->specializeCondition(root, reference);
         usedIndexes.emplace_back(index);
         isAllCoveredByIndex = true;
         // FIXME: we should somehow consider other indices and calculate here "overall" score

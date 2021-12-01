@@ -87,6 +87,34 @@ struct CheckFieldsAccess {
                      std::equal_to<std::vector<basics::AttributeName>>> _fields;
 };
 
+
+bool supportsFilterNode(arangodb::IndexId id, 
+                        std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
+                        arangodb::aql::AstNode const* node,
+                        arangodb::aql::Variable const* reference) {
+  // We don`t want byExpression filters
+  // and can`t apply index if we are not sure what attribute is
+  // accessed so we provide QueryContext which is unable to
+  // execute expressions and only allow to pass conditions with constant
+  // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a variable from
+  // the upstream loop we may get here a field we don`t have in the index.
+  QueryContext const queryCtx = {nullptr, nullptr, nullptr,
+                                 nullptr, nullptr, reference};
+
+  if (!visitAllAttributeAccess(node, *reference, queryCtx,
+                               CheckFieldsAccess(queryCtx, *reference, fields))) {
+    LOG_TOPIC("d2beb", TRACE, arangodb::iresearch::TOPIC)
+        << "Found unknown attribute access. Skipping index " << id.id();
+    return false;
+  }
+
+  auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false);
+  LOG_TOPIC_IF("ee0f7", TRACE, arangodb::iresearch::TOPIC, rv.fail())
+      << "Failed to build filter with error'" << rv.errorMessage()
+      << "' Skipping index " << id.id();
+  return rv.ok();
+}
+
 constexpr irs::payload NoPayload;
 
 inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
@@ -727,7 +755,7 @@ namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(proxy_filter);
 
-arangodb::iresearch::IResearchInvertedIndex::IResearchInvertedIndex(
+IResearchInvertedIndex::IResearchInvertedIndex(
     IndexId iid, LogicalCollection& collection, InvertedIndexFieldMeta&& meta)
   : IResearchDataStore(iid, collection), _meta(std::move(meta)) {}
 
@@ -894,7 +922,7 @@ bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
   return matched == count;
 }
 
-std::unique_ptr<IndexIterator> arangodb::iresearch::IResearchInvertedIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     LogicalCollection* collection, transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, int mutableConditionIdx) {
   std::string_view extraFieldName(nullptr, 0);
@@ -984,31 +1012,22 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     return  filterCosts;
   }
 
-  // We don`t want byExpression filters
-  // and can`t apply index if we are not sure what attribute is
-  // accessed so we provide QueryContext which is unable to
-  // execute expressions and only allow to pass conditions with constant
-  // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a variable from
-  // the upstream loop we may get here a field we don`t have in the index.
-  QueryContext const queryCtx = {nullptr, nullptr, nullptr,
-                                 nullptr, nullptr, reference};
-
-
-  // check that only covered attributes are referenced
-  if (!visitAllAttributeAccess(node, *reference, queryCtx, CheckFieldsAccess(queryCtx, *reference, fields))) {
-    LOG_TOPIC("d2beb", TRACE, iresearch::TOPIC)
-             << "Found unknown attribute access. Skipping index " << id.id();
-    return  filterCosts;
-  }
-
-  auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false);
-  LOG_TOPIC_IF("ee0f7", TRACE, iresearch::TOPIC, rv.fail())
-             << "Failed to build filter with error'" << rv.errorMessage() <<"' Skipping index " << id.id();
-
-  if (rv.ok()) {
+  // at first try to cover whole node 
+  if (supportsFilterNode(id, fields, node, reference)) {
     filterCosts.supportsCondition = true;
-    filterCosts.coveredAttributes = 0; // FIXME: this value seems to be unused, check if we could remove it completely!
+    filterCosts.coveredAttributes = node->numMembers();
     filterCosts.estimatedCosts = itemsInIndex;
+  } else if (node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
+    // for AND node we could try to support only part of the condition
+    size_t const n = node->numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto part = node->getMemberUnchecked(i);
+      if (supportsFilterNode(id, fields, part, reference)) {
+        filterCosts.supportsCondition = true;
+        ++filterCosts.coveredAttributes;
+        filterCosts.estimatedCosts = itemsInIndex;
+      }
+    }
   }
   return filterCosts;
 }
@@ -1020,6 +1039,28 @@ void IResearchInvertedIndex::invalidateQueryCache(TRI_vocbase_t* vocbase) {
 
 aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,
                                                           aql::Variable const* reference) const {
+  auto  indexedFields = fields(_meta);
+  if (supportsFilterNode(id(), indexedFields, node, reference)) {
+    TEMPORARILY_UNLOCK_NODE(node);
+    node->clearMembers();
+    return node;
+  } else if (node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
+    std::vector<arangodb::aql::AstNode const*> children;
+    size_t const n = node->numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto part = node->getMemberUnchecked(i);
+      if (supportsFilterNode(id(), indexedFields, part, reference)) {
+        children.push_back(part);
+      }
+    }
+    // must edit in place, no access to AST; TODO change so we can replace with
+    // copy
+    TEMPORARILY_UNLOCK_NODE(node);
+    node->clearMembers();
+    for (auto& it : children) {
+      node->addMember(it);
+    }
+  }
   return node;
 }
 
