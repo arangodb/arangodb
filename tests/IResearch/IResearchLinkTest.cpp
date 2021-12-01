@@ -2116,12 +2116,12 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         "arangosearch-" + std::to_string(_logicalCollection->id().id()) + "_42";
   }
 
-  ~IResearchLinkMetricsTest() override {
-    if (_link) {
-      _logicalCollection->dropIndex(_link->id());
-      _link.reset();
-    }
-    _view.reset();
+  ~IResearchLinkMetricsTest() override { resetLink(); }
+
+  bool checkMetricExist(const std::string& name, const std::string& label) const {
+    arangodb::metrics_key key(name, label);
+    auto* metric = _vocbase.server().getFeature<arangodb::MetricsFeature>().get(key);
+    return metric != nullptr;
   }
 
   void setLink() {
@@ -2156,12 +2156,47 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     _link = _logicalCollection->createIndex(linkJson->slice(), created);
     EXPECT_TRUE(created);
     EXPECT_TRUE(_link != nullptr);
+    auto label = getLinkMetricLabel();
+    EXPECT_TRUE(checkMetricExist("arangosearch_link_stats", label));
+    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_commits", label));
+    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_cleanups", label));
+    EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_consolidations", label));
+    EXPECT_TRUE(checkMetricExist("arangosearch_commit_time", label));
+    EXPECT_TRUE(checkMetricExist("arangosearch_cleanup_time", label));
+    EXPECT_TRUE(checkMetricExist("arangosearch_consolidation_time", label));
+  }
+
+  void resetLink() {
+    if (_link) {
+      _logicalCollection->dropIndex(_link->id());
+      _link.reset();
+    }
+    _view.reset();
   }
 
   arangodb::iresearch::IResearchLink* getLink() {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(_link.get());
     EXPECT_TRUE(l != nullptr);
     return l;
+  }
+
+  std::string getLinkMetricLabel() {
+    auto* l = getLink();
+    std::string label;
+    label += "view=\"" + l->getViewId() + "\",";
+    label += "collection=\"" + l->getCollectionName() + "\",";
+    label += "shard=\"" + l->getShardName() + "\",";
+    label += "db=\"" + l->getDbName() + "\"";
+    return label;
+  }
+
+  void getPrometheusStr(std::string& result) {
+    auto label = getLinkMetricLabel();
+    arangodb::metrics_key key("arangosearch_link_stats", label);
+    auto* metric = _vocbase.server().getFeature<arangodb::MetricsFeature>().get(key);
+    if (metric != nullptr) {
+      metric->toPrometheus(result, "");
+    }
   }
 
   void insert(uint64_t begin, uint64_t end, size_t docId, bool commit = true) {
@@ -2290,6 +2325,24 @@ TEST_F(IResearchLinkMetricsTest, CleanupWhenEmptyCommit) {
   std::this_thread::sleep_for(10ms);
   irs::file_utils::exists(exist, dataPath.c_str());
   EXPECT_FALSE(exist);
+}
+
+TEST_F(IResearchLinkMetricsTest, RemoveMetrics) {
+  setLink();
+  auto label = getLinkMetricLabel();
+  resetLink();
+  EXPECT_FALSE(checkMetricExist("arangosearch_link_stats", label));
+  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_commits", label));
+  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_cleanups", label));
+  EXPECT_FALSE(checkMetricExist("arangosearch_num_failed_consolidations", label));
+  EXPECT_FALSE(checkMetricExist("arangosearch_commit_time", label));
+  EXPECT_FALSE(checkMetricExist("arangosearch_cleanup_time", label));
+  EXPECT_FALSE(checkMetricExist("arangosearch_consolidation_time", label));
+}
+
+TEST_F(IResearchLinkMetricsTest, CreateSameLink) {
+  setLink();
+  EXPECT_THROW(setLink(), std::exception);
 }
 
 TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
@@ -2434,22 +2487,6 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
 }
 
-void getPrometheusStr(std::string& result, const arangodb::iresearch::IResearchLink* l,
-                      const TRI_vocbase_t& vocbase) {
-  std::string label;
-  label += "view=\"" + l->getViewId() + "\",";
-  label += "collection=\"" + l->getCollectionName() + "\",";
-  label += "shard=\"" + l->getShardName() + "\",";
-  label += "db=\"" + l->getDbName() + "\"";
-
-  arangodb::metrics_key key("arangosearch_link_stats", label);
-
-  auto* metric = vocbase.server().getFeature<arangodb::MetricsFeature>().get(key);
-  if (metric != nullptr) {
-    metric->toPrometheus(result, "");
-  }
-}
-
 TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
   setLink();
   auto* l = getLink();
@@ -2491,7 +2528,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     expected += "\n";
 
     std::string actual;
-    getPrometheusStr(actual, l, _vocbase);
+    getPrometheusStr(actual);
 
     EXPECT_EQ(actual, expected);
   }
@@ -2535,7 +2572,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     expected += "\n";
 
     std::string actual;
-    getPrometheusStr(actual, l, _vocbase);
+    getPrometheusStr(actual);
 
     EXPECT_EQ(actual, expected);
   }
