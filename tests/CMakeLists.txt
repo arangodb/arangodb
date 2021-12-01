@@ -343,6 +343,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Serialization/LogStatusTest.cpp
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
+  Replication2/Serialization/LogCommonTest.cpp
+  Aql/VelocyPackHelper.cpp
 )
 
 if (LINUX)
