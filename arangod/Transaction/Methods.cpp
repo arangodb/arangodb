@@ -84,7 +84,7 @@ template <typename T>
 using Future = futures::Future<T>;
 
 namespace {
-   
+
 enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
 Result buildRefusalResult(LogicalCollection const& collection, char const* operation,
@@ -1164,7 +1164,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     }
     return res;
   };
- 
+
   Result res;
   std::unordered_map<ErrorCode, size_t> errorCounter;
   std::unordered_set<size_t> excludePositions;
@@ -1660,7 +1660,6 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
   Result res;
   std::unordered_map<ErrorCode, size_t> errorCounter;
-
   if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     for (VPackSlice s : VPackArrayIterator(value)) {

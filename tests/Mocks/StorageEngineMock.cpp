@@ -1605,7 +1605,7 @@ std::shared_ptr<arangodb::TransactionState> StorageEngineMock::createTransaction
     arangodb::transaction::Options const& options) {
   return std::make_shared<TransactionStateMock>(vocbase, tid, options);
 }
-  
+
 arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase,
                                                arangodb::DataSourceId id,
                                                arangodb::LogicalView const& view) {

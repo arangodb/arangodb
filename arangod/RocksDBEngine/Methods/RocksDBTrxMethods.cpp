@@ -195,7 +195,7 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
 #endif
-      
+
   Result res = doCommit();
   if (res.fail()) {
     // FIXME: do we abort the transaction ?
