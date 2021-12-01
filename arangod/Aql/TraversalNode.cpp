@@ -626,8 +626,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(getStartVertex().empty());
   }
   auto outputRegisters = RegIdSet{};
-  std::unordered_map<TraversalExecutorInfos<traverser::Traverser>::OutputName, RegisterId,
-                     TraversalExecutorInfos<traverser::Traverser>::OutputNameHash>
+  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                     TraversalExecutorInfosHelper::OutputNameHash>
       outputRegisterMapping;
 
   if (isVertexOutVariableUsedLater()) {
@@ -635,7 +635,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
-    outputRegisterMapping.try_emplace(TraversalExecutorInfos<traverser::Traverser>::OutputName::VERTEX,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfosHelper::OutputName::VERTEX,
                                       it->second.registerId);
   }
   if (isEdgeOutVariableUsedLater()) {
@@ -643,7 +643,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
-    outputRegisterMapping.try_emplace(TraversalExecutorInfos<traverser::Traverser>::OutputName::EDGE,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfosHelper::OutputName::EDGE,
                                       it->second.registerId);
   }
   if (isPathOutVariableUsedLater()) {
@@ -651,7 +651,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
-    outputRegisterMapping.try_emplace(TraversalExecutorInfos<traverser::Traverser>::OutputName::PATH,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfosHelper::OutputName::PATH,
                                       it->second.registerId);
   }
   TraverserOptions* opts = this->options();
@@ -776,18 +776,19 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       using SingleServerDFSRefactored =
           DFSEnumerator<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE>;
 
-      auto dfsUnique =
-          SingleServerDFSRefactored({opts->query(), std::move(baseProviderOptions),
-                                     opts->query().resourceMonitor()},
-                                    std::move(options), std::move(validatorOptions),
-                                    opts->query().resourceMonitor());
+      auto dfsUnique = std::make_unique<SingleServerDFSRefactored>(
+          SingleServerProvider<SingleServerProviderStep>{opts->query(), std::move(baseProviderOptions),
+                                                         opts->query().resourceMonitor()},
+          std::move(options), std::move(validatorOptions),
+          opts->query().resourceMonitor());
+
       auto executorInfos =
-          TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
+          TraversalExecutorInfos(std::move(dfsUnique), engine.getQuery(), outputRegisterMapping,
                                  getStartVertex(), inputRegister,
                                  std::move(filterConditionVariables), plan()->getAst());
+
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor<SingleServerDFSRefactored>>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
-
     } else {
       traverser = std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
     }
@@ -795,7 +796,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   TRI_ASSERT(traverser != nullptr);
   auto executorInfos =
-      TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
+      TraversalExecutorInfos(std::move(traverser), engine.getQuery(), outputRegisterMapping,
                              getStartVertex(), inputRegister,
                              std::move(filterConditionVariables), plan()->getAst());
 

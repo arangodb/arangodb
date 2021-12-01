@@ -43,14 +43,20 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
+namespace {
+auto toHashedStringRef(std::string const& id) -> arangodb::velocypack::HashedStringRef {
+  return arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length()));
+}
+}  // namespace
+
 template <class FinderType>
 TraversalExecutorInfos<FinderType>::TraversalExecutorInfos(
-    std::unique_ptr<FinderType>&& finder,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
+    std::unique_ptr<FinderType>&& finder, QueryContext& query,
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> registerMapping,
     std::string fixedSource, RegisterId inputRegister,
-    std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
-    Ast* ast)
-    : _finder(std::move(finder)),
+    std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables, Ast* ast)
+    : _query(query),
+      _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
@@ -72,23 +78,28 @@ FinderType& TraversalExecutorInfos<FinderType>::finder() const {
 }
 
 template <class FinderType>
-bool TraversalExecutorInfos<FinderType>::usesOutputRegister(OutputName type) const {
+QueryContext& TraversalExecutorInfos<FinderType>::query() noexcept {
+  return _query;
+}
+
+template <class FinderType>
+bool TraversalExecutorInfos<FinderType>::usesOutputRegister(TraversalExecutorInfosHelper::OutputName type) const {
   return _registerMapping.find(type) != _registerMapping.end();
 }
 
 template <class FinderType>
 bool TraversalExecutorInfos<FinderType>::useVertexOutput() const {
-  return usesOutputRegister(OutputName::VERTEX);
+  return usesOutputRegister(TraversalExecutorInfosHelper::OutputName::VERTEX);
 }
 
 template <class FinderType>
 bool TraversalExecutorInfos<FinderType>::useEdgeOutput() const {
-  return usesOutputRegister(OutputName::EDGE);
+  return usesOutputRegister(TraversalExecutorInfosHelper::OutputName::EDGE);
 }
 
 template <class FinderType>
 bool TraversalExecutorInfos<FinderType>::usePathOutput() const {
-  return usesOutputRegister(OutputName::PATH);
+  return usesOutputRegister(TraversalExecutorInfosHelper::OutputName::PATH);
 }
 
 template <class FinderType>
@@ -97,13 +108,13 @@ Ast* TraversalExecutorInfos<FinderType>::getAst() const {
 }
 
 template <class FinderType>
-std::string TraversalExecutorInfos<FinderType>::typeToString(OutputName type) const {
+std::string TraversalExecutorInfos<FinderType>::typeToString(TraversalExecutorInfosHelper::OutputName type) const {
   switch (type) {
-    case TraversalExecutorInfos<FinderType>::VERTEX:
+    case TraversalExecutorInfosHelper::VERTEX:
       return std::string{"VERTEX"};
-    case TraversalExecutorInfos<FinderType>::EDGE:
+    case TraversalExecutorInfosHelper::EDGE:
       return std::string{"EDGE"};
-    case TraversalExecutorInfos<FinderType>::PATH:
+    case TraversalExecutorInfosHelper::PATH:
       return std::string{"PATH"};
     default:
       return std::string{"<INVALID("} + std::to_string(type) + ")>";
@@ -111,7 +122,7 @@ std::string TraversalExecutorInfos<FinderType>::typeToString(OutputName type) co
 }
 
 template <class FinderType>
-RegisterId TraversalExecutorInfos<FinderType>::findRegisterChecked(OutputName type) const {
+RegisterId TraversalExecutorInfos<FinderType>::findRegisterChecked(TraversalExecutorInfosHelper::OutputName type) const {
   auto const& it = _registerMapping.find(type);
   if (ADB_UNLIKELY(it == _registerMapping.end())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -122,24 +133,24 @@ RegisterId TraversalExecutorInfos<FinderType>::findRegisterChecked(OutputName ty
 }
 
 template <class FinderType>
-RegisterId TraversalExecutorInfos<FinderType>::getOutputRegister(OutputName type) const {
+RegisterId TraversalExecutorInfos<FinderType>::getOutputRegister(TraversalExecutorInfosHelper::OutputName type) const {
   TRI_ASSERT(usesOutputRegister(type));
   return findRegisterChecked(type);
 }
 
 template <class FinderType>
 RegisterId TraversalExecutorInfos<FinderType>::vertexRegister() const {
-  return getOutputRegister(OutputName::VERTEX);
+  return getOutputRegister(TraversalExecutorInfosHelper::OutputName::VERTEX);
 }
 
 template <class FinderType>
 RegisterId TraversalExecutorInfos<FinderType>::edgeRegister() const {
-  return getOutputRegister(OutputName::EDGE);
+  return getOutputRegister(TraversalExecutorInfosHelper::OutputName::EDGE);
 }
 
 template <class FinderType>
 RegisterId TraversalExecutorInfos<FinderType>::pathRegister() const {
-  return getOutputRegister(OutputName::PATH);
+  return getOutputRegister(TraversalExecutorInfosHelper::OutputName::PATH);
 }
 
 template <class FinderType>
@@ -161,22 +172,26 @@ RegisterId TraversalExecutorInfos<FinderType>::getInputRegister() const {
 }
 
 template <class FinderType>
-std::vector<std::pair<Variable const*, RegisterId>> const& TraversalExecutorInfos<FinderType>::filterConditionVariables() const {
+std::vector<std::pair<Variable const*, RegisterId>> const&
+TraversalExecutorInfos<FinderType>::filterConditionVariables() const {
   return _filterConditionVariables;
 }
 
 template <class FinderType>
 TraversalExecutor<FinderType>::TraversalExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _trx(infos.query().newTrxContext()), _inputRow{CreateInvalidInputRowHint{}}, _finder(infos.finder()) {
+    : _infos(infos),
+      _trx(infos.query().newTrxContext()),
+      _inputRow{CreateInvalidInputRowHint{}},
+      _finder(infos.finder()) {
   // reset the traverser, so that no residual state is left in it. This is
   // important because the TraversalExecutor is sometimes reconstructed (in
-  // place) with the same TraversalExecutorInfos<FinderType> as before. Those infos contain
-  // the traverser which might contain state from a previous run.
+  // place) with the same TraversalExecutorInfos<FinderType> as before. Those
+  // infos contain the traverser which might contain state from a previous run.
   if constexpr (std::is_same_v<FinderType, traverser::Traverser>) {
     _finder.done();
   } else {
     // refactored variant
-    _finder.clear(false); // TODO [GraphRefactor]: check - potentially call reset instead
+    _finder.clear(false);  // TODO [GraphRefactor]: check - potentially call reset instead
   }
 }
 
@@ -246,10 +261,15 @@ auto TraversalExecutor<FinderType>::doOutput(OutputAqlItemRow& output) -> void {
     transaction::BuilderLeaser tmp{&_trx};
     tmp->clear();
 
-    if (_finder.getNextPath(*tmp.builder())) {
-      AqlValue path{tmp->slice()};
-      AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+    if (auto currentPath = _finder.getNextPath()) {
+      // Path variable (p)
+      if (_infos.usePathOutput()) {
+        currentPath->toVelocyPack(*tmp.builder());
+        AqlValue path{tmp->slice()};
+        AqlValueGuard guard{path, true};
+        output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
+      }
+
       output.advanceRow();
     }
   }
@@ -280,7 +300,8 @@ auto TraversalExecutor<FinderType>::doSkip(AqlCall& call) -> size_t {
 }
 
 template <class FinderType>
-auto TraversalExecutor<FinderType>::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto TraversalExecutor<FinderType>::produceRows(AqlItemBlockInputRange& input,
+                                                OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   TraversalStats oldStats;
   ExecutorState state{ExecutorState::HASMORE};
@@ -314,11 +335,13 @@ auto TraversalExecutor<FinderType>::produceRows(AqlItemBlockInputRange& input, O
 
     return {state, oldStats, AqlCall{}};
   } else {
-    //refactored variant
+    // refactored variant
     while (!output.isFull()) {
       if (_finder.isDone()) {
-        TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), stats(), AqlCall{}};
+        if (!initTraverser(input)) {  // will set a new start vertex
+          TRI_ASSERT(!input.hasDataRow());
+          return {input.upstreamState(), stats(), AqlCall{}};
+        }
       } else {
         doOutput(output);
       }
@@ -359,7 +382,7 @@ auto TraversalExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& input,
       }
     }
   } else {
-    //refactored variant
+    // refactored variant
     while (call.shouldSkip()) {
       if (_finder.isDone()) {
         TRI_ASSERT(!input.hasDataRow());
@@ -390,73 +413,118 @@ auto TraversalExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& input,
 // TODO: this is quite a big function, refactor
 template <class FinderType>
 bool TraversalExecutor<FinderType>::initTraverser(AqlItemBlockInputRange& input) {
-  _traverser.clear();
-  auto opts = _traverser.options();
-  opts->clearVariableValues();
+  if constexpr (std::is_same_v<FinderType, traverser::Traverser>) {
+    _finder.clear();
+    auto opts = _finder.options();
+    opts->clearVariableValues();
 
-  // Now reset the traverser
-  // NOTE: It is correct to ask for whether there is a data row here
-  //       even if we're using a constant start vertex, as we expect
-  //       to provide output for every input row
-  while (input.hasDataRow()) {
-    // Try to acquire a starting vertex
-    std::tie(std::ignore, _inputRow) =
-        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    TRI_ASSERT(_inputRow.isInitialized());
-
-    for (auto const& pair : _infos.filterConditionVariables()) {
-      opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
-    }
-
-    if (opts->usesPrune()) {
-      auto* evaluator = opts->getPruneEvaluator();
-      // Replace by inputRow
-      evaluator->prepareContext(_inputRow);
+    // Now reset the traverser
+    // NOTE: It is correct to ask for whether there is a data row here
+    //       even if we're using a constant start vertex, as we expect
+    //       to provide output for every input row
+    while (input.hasDataRow()) {
+      // Try to acquire a starting vertex
+      std::tie(std::ignore, _inputRow) =
+          input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
       TRI_ASSERT(_inputRow.isInitialized());
-    }
 
-    if (opts->usesPostFilter()) {
-      auto* evaluator = opts->getPostFilterEvaluator();
-      // Replace by inputRow
-      evaluator->prepareContext(_inputRow);
+      for (auto const& pair : _infos.filterConditionVariables()) {
+        opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
+      }
+
+      if (opts->usesPrune()) {
+        auto* evaluator = opts->getPruneEvaluator();
+        // Replace by inputRow
+        evaluator->prepareContext(_inputRow);
+        TRI_ASSERT(_inputRow.isInitialized());
+      }
+
+      if (opts->usesPostFilter()) {
+        auto* evaluator = opts->getPostFilterEvaluator();
+        // Replace by inputRow
+        evaluator->prepareContext(_inputRow);
+        TRI_ASSERT(_inputRow.isInitialized());
+      }
+
+      opts->calculateIndexExpressions(_infos.getAst());
+
+      std::string sourceString;
       TRI_ASSERT(_inputRow.isInitialized());
-    }
 
-    opts->calculateIndexExpressions(_infos.getAst());
-
-    std::string sourceString;
-    TRI_ASSERT(_inputRow.isInitialized());
-
-    if (_infos.usesFixedSource()) {
-      sourceString = _infos.getFixedSource();
-    } else {
-      AqlValue const& in = _inputRow.getValue(_infos.getInputRegister());
-      if (in.isObject()) {
-        try {
-          sourceString = _traverser.options()->trx()->extractIdString(in.slice());
-        } catch (...) {
-          // on purpose ignore this error.
+      if (_infos.usesFixedSource()) {
+        sourceString = _infos.getFixedSource();
+      } else {
+        AqlValue const& in = _inputRow.getValue(_infos.getInputRegister());
+        if (in.isObject()) {
+          try {
+            sourceString = _finder.options()->trx()->extractIdString(in.slice());
+          } catch (...) {
+            // on purpose ignore this error.
+          }
+        } else if (in.isString()) {
+          sourceString = in.slice().copyString();
         }
-      } else if (in.isString()) {
-        sourceString = in.slice().copyString();
+      }
+
+      auto pos = sourceString.find('/');
+
+      if (pos == std::string::npos) {
+        _finder.options()->query().warnings().registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for traversal: Only "
+            "id strings or objects with _id are "
+            "allowed");
+      } else {
+        _finder.setStartVertex(sourceString);
+        TRI_ASSERT(_inputRow.isInitialized());
+        return true;
       }
     }
+    return false;
+  } else {
+    // refactored variant
+    TRI_ASSERT(_finder.isDone());
 
-    auto pos = sourceString.find('/');
+    while (input.hasDataRow()) {
+      std::tie(std::ignore, _inputRow) = input.nextDataRow();
 
-    if (pos == std::string::npos) {
-      _traverser.options()->query().warnings().registerWarning(
-          TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for traversal: Only "
-          "id strings or objects with _id are "
-          "allowed");
-    } else {
-      _traverser.setStartVertex(sourceString);
+      std::string sourceString;
       TRI_ASSERT(_inputRow.isInitialized());
-      return true;
+
+      if (_infos.usesFixedSource()) {
+        sourceString = _infos.getFixedSource();
+      } else {
+        AqlValue const& in = _inputRow.getValue(_infos.getInputRegister());
+        if (in.isObject()) {
+          try {
+            sourceString = _trx.extractIdString(in.slice());
+          } catch (...) {
+            // on purpose ignore this error.
+          }
+        } else if (in.isString()) {
+          sourceString = in.slice().copyString();
+        }
+      }
+
+      auto pos = sourceString.find('/');
+
+      if (pos == std::string::npos) {
+        /*_finder.options()->query().warnings().registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for traversal: Only "
+            "id strings or objects with _id are "
+            "allowed");*/
+        LOG_DEVEL << "[GraphRefactor] handle warning.";
+      } else {
+        _finder.reset(toHashedStringRef(sourceString)); // TODO [GraphRefactor]: check sourceString memory
+        TRI_ASSERT(_inputRow.isInitialized());
+        return true;
+      }
     }
+    return false;
   }
-  return false;
+
+  TRI_ASSERT(false);
 }
 
 template <class FinderType>
@@ -474,6 +542,7 @@ template <class FinderType>
 /* SingleServerProvider Section */
 template class ::arangodb::aql::TraversalExecutorInfos<::arangodb::graph::DFSEnumerator<
     arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::NONE>>;
+
 template class ::arangodb::aql::TraversalExecutorInfos<::arangodb::graph::DFSEnumerator<
     arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::PATH>>;
 template class ::arangodb::aql::TraversalExecutorInfos<::arangodb::graph::DFSEnumerator<
@@ -481,6 +550,7 @@ template class ::arangodb::aql::TraversalExecutorInfos<::arangodb::graph::DFSEnu
 
 template class ::arangodb::aql::TraversalExecutor<::arangodb::graph::DFSEnumerator<
     arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::NONE>>;
+
 template class ::arangodb::aql::TraversalExecutor<::arangodb::graph::DFSEnumerator<
     arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::PATH>>;
 template class ::arangodb::aql::TraversalExecutor<::arangodb::graph::DFSEnumerator<

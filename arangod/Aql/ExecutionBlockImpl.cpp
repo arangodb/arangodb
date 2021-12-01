@@ -101,6 +101,13 @@ using KPathRefactored =
 using KPathRefactoredTracer =
     arangodb::graph::TracedKPathEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
+using DFSRefactoredNone =
+    arangodb::graph::DFSEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>, arangodb::graph::VertexUniquenessLevel::NONE>;
+using DFSRefactoredGlobal =
+    arangodb::graph::DFSEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL>;
+using DFSRefactoredPath =
+    arangodb::graph::DFSEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>, arangodb::graph::VertexUniquenessLevel::PATH>;
+
 /* ClusterProvider Section */
 using KPathRefactoredCluster =
     arangodb::graph::KPathEnumerator<arangodb::graph::ClusterProvider>;
@@ -626,7 +633,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor<traverser::Traverser>,
+              TraversalExecutor<DFSRefactoredNone>, TraversalExecutor<DFSRefactoredGlobal>, TraversalExecutor<DFSRefactoredPath>,
               EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, UnsortedGatherExecutor, SortingGatherExecutor, SortExecutor,
               IResearchViewExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize>,
@@ -657,7 +665,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               IResearchViewMergeExecutor<false, true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               IResearchViewMergeExecutor<true, true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
               IResearchViewMergeExecutor<true, true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>,
-              TraversalExecutor, EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
+              EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, NoResultsExecutor, SingleRemoteModificationExecutor<IndexTag>, SingleRemoteModificationExecutor<Insert>,
               SingleRemoteModificationExecutor<Remove>, SingleRemoteModificationExecutor<Update>,
               SingleRemoteModificationExecutor<Replace>, SingleRemoteModificationExecutor<Upsert>,
@@ -2286,7 +2294,13 @@ template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
+
+/* SingleServer */
+template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<traverser::Traverser>>;
+template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<DFSRefactoredNone>>;
+template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<DFSRefactoredPath>>;
+template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<DFSRefactoredGlobal>>;
+
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ParallelUnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;

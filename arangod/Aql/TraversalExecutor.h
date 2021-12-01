@@ -44,19 +44,23 @@ class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-template <class FinderType>
-class TraversalExecutorInfos {
+class TraversalExecutorInfosHelper {
  public:
   enum OutputName { VERTEX, EDGE, PATH };
   struct OutputNameHash {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
+};
 
-  TraversalExecutorInfos(std::unique_ptr<FinderType>&& finder,
-                         std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
-                         std::string fixedSource, RegisterId inputRegister,
-                         std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
-                         Ast* ast);
+template <class FinderType>
+class TraversalExecutorInfos {
+ public:
+  TraversalExecutorInfos(
+      std::unique_ptr<FinderType>&& finder, QueryContext& query,
+      std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> registerMapping,
+      std::string fixedSource, RegisterId inputRegister,
+      std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
+      Ast* ast);
 
   TraversalExecutorInfos() = delete;
 
@@ -66,9 +70,11 @@ class TraversalExecutorInfos {
 
   [[nodiscard]] auto finder() const -> FinderType&;
 
-  bool usesOutputRegister(OutputName type) const;
+  aql::QueryContext& query() noexcept;
 
-  RegisterId getOutputRegister(OutputName type) const;
+  bool usesOutputRegister(TraversalExecutorInfosHelper::OutputName type) const;
+
+  RegisterId getOutputRegister(TraversalExecutorInfosHelper::OutputName type) const;
 
   bool useVertexOutput() const;
 
@@ -93,13 +99,15 @@ class TraversalExecutorInfos {
   Ast* getAst() const;
 
  private:
-  std::string typeToString(OutputName type) const;
-  RegisterId findRegisterChecked(OutputName type) const;
+  std::string typeToString(TraversalExecutorInfosHelper::OutputName type) const;
+  RegisterId findRegisterChecked(TraversalExecutorInfosHelper::OutputName type) const;
 
  private:
+  QueryContext& _query;
+
   /// @brief the shortest path finder.
   std::unique_ptr<FinderType> _finder;
-  std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
+  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> _registerMapping;
   std::string _fixedSource;
   RegisterId _inputRegister;
   std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
