@@ -650,22 +650,19 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
 
     testRegressionBts511() {
-      const print = require('internal').print;
       const _ = require('lodash');
       try {
         const col = db._create(withIndexCollectionName, {numberOfShards: 9});
         col.ensureIndex({type: "persistent", fields: ["value", "x"]});
-        // print(col.getIndexes());
         col.insert(_.range(0, 1000).map(i => ({value: i, x: Math.random()})));
         const query = `
-          for doc in ${withIndexCollectionName}
-            filter doc.value >= 500
-            sort doc.x
-            limit @limit
-            return doc
+          FOR doc IN ${withIndexCollectionName}
+            FILTER doc.value >= 500
+            SORT doc.x
+            LIMIT @limit
+            RETURN doc
         `;
         const options = { fullCount: true };
-        db._explain(query, {limit: 1}, options);
         let result;
 
         result = AQL_EXECUTE(query, {limit: 1000}, options);
