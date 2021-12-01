@@ -1,3 +1,10 @@
+v3.8.5 (XXXX-XX-XX)
+-------------------
+
+* Second step of hotbackup transfer job cleanup. Now locks are also cleaned up
+  as well as old, seemingly unfinished jobs.
+
+
 v3.8.4 (XXXX-XX-XX)
 -------------------
 
