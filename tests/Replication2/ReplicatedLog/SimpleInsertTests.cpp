@@ -168,7 +168,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     }
 
     {
-      // Expect the quorum to consist of the follower only
+      // Expect the quorum to consist of the follower and the leader
       ASSERT_TRUE(f.isReady());
       auto result = f.get();
       EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
@@ -176,7 +176,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       EXPECT_EQ(result.quorum->term, LogTerm{1});
       auto quorum = result.quorum->quorum;
       std::sort(quorum.begin(),  quorum.end());
-      EXPECT_EQ(result.quorum->quorum, (std::vector<ParticipantId>{followerId, leaderId}));
+      EXPECT_EQ(quorum, (std::vector<ParticipantId>{followerId, leaderId}));
     }
 
     // Follower should have pending append entries
