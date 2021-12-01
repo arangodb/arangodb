@@ -176,8 +176,6 @@ ExecutionEngine::ExecutionEngine(EngineId eId,
       _initializeCursorCalled(false) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
-  /// REMOVE ME: Intentional assertion failure to test handler
-  TRI_ASSERT(_root != nullptr);
 }
 
 /// @brief destroy the engine, frees all assigned blocks
