@@ -126,6 +126,7 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 set(HashType "xxhash" CACHE STRING "Hash type (fasthash, xxhash)" FORCE)
 set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
+set(UseIPO ${IPO_ENABLED} CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
 
 add_subdirectory(velocypack EXCLUDE_FROM_ALL)
 

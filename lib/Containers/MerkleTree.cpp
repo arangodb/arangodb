@@ -89,6 +89,7 @@ void MerkleTreeBase::Data::ensureShard(std::uint64_t shard, std::uint64_t shardS
   }
   if (shards[shard] == nullptr) {
     shards[shard] = buildShard(shardSize);
+    memoryUsage += shardSize;
   }
 }
 
@@ -245,7 +246,7 @@ MerkleTree<Hasher, BranchingBits>::fromSnappyLazyCompressed(std::string_view buf
       TRI_ASSERT(shardLength % NodeSize == 0);
       // ShardSize may be more than we actually need (if we only have a single
       // shard), but it doesn't matter for correctness here.
-      data.shards[i] = MerkleTreeBase::Data::buildShard(shardLength);
+      data.ensureShard(i, shardLength);
 
       size_t length;
       bool canUncompress = snappy::GetUncompressedLength(compressedData, compressedLength, &length);
@@ -499,6 +500,12 @@ operator=(std::unique_ptr<MerkleTree<Hasher, BranchingBits>>&& other) {
   _data = std::move(other->_data);
 
   return *this;
+}
+
+template <typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::memoryUsage() const {
+  std::shared_lock<std::shared_mutex> guard(_dataLock);
+  return _data.memoryUsage;
 }
 
 template <typename Hasher, std::uint64_t const BranchingBits>
