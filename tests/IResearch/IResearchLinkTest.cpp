@@ -2136,7 +2136,9 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
       "consolidationIntervalMsec": %llu,
       "type": "arangosearch"
     })",
-            _cleanupIntervalStep, _commitIntervalMs, _consolidationIntervalMs);
+            static_cast<long long unsigned>(_cleanupIntervalStep),
+            static_cast<long long unsigned>(_commitIntervalMs),
+            static_cast<long long unsigned>(_consolidationIntervalMs));
     auto viewJson = arangodb::velocypack::Parser::fromJson(temp);
 
     _view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -2271,7 +2273,6 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
 
     remove(1, 10000);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-    EXPECT_TRUE(0 <= cleanupTime1);
     auto [numFiles1, indexSize1] = numFiles();
     EXPECT_TRUE(0 < numFiles1);
     EXPECT_TRUE(numFiles1 < numFiles0);
@@ -2280,7 +2281,6 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
 
     remove(10000, 10100);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
-    EXPECT_TRUE(0 <= cleanupTime2);
     EXPECT_TRUE(cleanupTime2 <= cleanupTime1);
     auto [numFiles2, indexSize2] = numFiles();
     EXPECT_TRUE(0 < numFiles2);
