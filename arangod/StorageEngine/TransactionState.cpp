@@ -32,7 +32,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -482,5 +482,5 @@ void TransactionState::coordinatorRerollTransactionId() {
 
 /// @brief return a reference to the global transaction statistics
 TransactionStatistics& TransactionState::statistics() noexcept {
-  return _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
+  return _vocbase.server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics;
 }

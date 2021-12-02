@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
@@ -44,6 +44,7 @@
 #include "IResearchTestCompressor.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Metrics/MetricKey.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -2118,9 +2119,10 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   ~IResearchLinkMetricsTest() override { resetLink(); }
 
-  bool checkMetricExist(const std::string& name, const std::string& label) const {
-    arangodb::metrics_key key(name, label);
-    auto* metric = _vocbase.server().getFeature<arangodb::MetricsFeature>().get(key);
+  bool checkMetricExist(std::string_view name, std::string_view label) const {
+    arangodb::metrics::MetricKey key(name, label);
+    auto* metric =
+        _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(key);
     return metric != nullptr;
   }
 
@@ -2192,10 +2194,11 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   void getPrometheusStr(std::string& result) {
     auto label = getLinkMetricLabel();
-    arangodb::metrics_key key("arangosearch_link_stats", label);
-    auto* metric = _vocbase.server().getFeature<arangodb::MetricsFeature>().get(key);
+    arangodb::metrics::MetricKey key("arangosearch_link_stats", label);
+    auto* metric =
+        _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(key);
     if (metric != nullptr) {
-      metric->toPrometheus(result, "");
+      metric->toPrometheus(result, "", "");
     }
   }
 

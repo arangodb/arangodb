@@ -42,7 +42,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -838,7 +838,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double now) 
   RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
 
   ServerStatistics const& serverInfo =
-      _vocbase.server().getFeature<MetricsFeature>().serverStatistics();
+      _vocbase.server().getFeature<metrics::MetricsFeature>().serverStatistics();
 
   builder.openObject();
   if (!_clusterId.empty()) {

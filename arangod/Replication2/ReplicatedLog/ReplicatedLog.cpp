@@ -28,7 +28,7 @@
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Counter.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>

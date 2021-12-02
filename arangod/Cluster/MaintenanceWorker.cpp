@@ -31,6 +31,10 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
+
 namespace arangodb {
 
 namespace maintenance {
