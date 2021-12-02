@@ -649,7 +649,8 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(0, result.length);
     },
 
-    testRegressionBts511() {
+    // fullCount was too low
+    testRegressionBts611() {
       const _ = require('lodash');
       try {
         const col = db._create(withIndexCollectionName, {numberOfShards: 9});
