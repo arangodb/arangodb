@@ -287,9 +287,8 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
   return result;
 }
 
-Result RocksDBTransactionState::performIntermediateCommitIfRequired(DataSourceId cid, 
-                                                                    bool& hasPerformedIntermediateCommit) {
-  return rocksdbMethods(cid)->checkIntermediateCommit(hasPerformedIntermediateCommit);
+Result RocksDBTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
+  return rocksdbMethods(cid)->checkIntermediateCommit();
 }
 
 RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(DataSourceId cid) {

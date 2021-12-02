@@ -2863,8 +2863,7 @@ futures::Future<OperationResult> Methods::countInternal(std::string const& colle
 
 // perform a (deferred) intermediate commit if required
 Result Methods::performIntermediateCommitIfRequired(DataSourceId collectionId) {
-  [[maybe_unused]] bool hasPerformedIntermediateCommit = false;
-  return _state->performIntermediateCommitIfRequired(collectionId, hasPerformedIntermediateCommit);
+  return _state->performIntermediateCommitIfRequired(collectionId);
 }
 
 #ifndef USE_ENTERPRISE

@@ -94,12 +94,12 @@ void RocksDBTrxMethods::rollbackOperation(TRI_voc_document_operation_e operation
   }
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit(bool& hasPerformedIntermediateCommit) {
+Result RocksDBTrxMethods::checkIntermediateCommit() {
   Result res;
   if (hasIntermediateCommitsEnabled()) {
     // perform an intermediate commit if necessary
     size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-    res.reset(checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit));
+    res.reset(checkIntermediateCommit(currentSize));
   }
   return res;
 }
@@ -181,9 +181,7 @@ void RocksDBTrxMethods::createTransaction() {
   ++_numLogdata;
 }
 
-Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermediateCommit) {
-  TRI_ASSERT(!hasPerformedIntermediateCommit);
-
+Result RocksDBTrxMethods::triggerIntermediateCommit() {
   TRI_IF_FAILURE("FailBeforeIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -202,7 +200,6 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
     return res;
   }
 
-  hasPerformedIntermediateCommit = true;
   ++_state->statistics()._intermediateCommits;
 
   // reset counters for DML operations, but intentionally don't reset
@@ -226,10 +223,8 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
   return TRI_ERROR_NO_ERROR;
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit) {
+Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize) {
   TRI_ASSERT(hasIntermediateCommitsEnabled());
-
-  hasPerformedIntermediateCommit = false;
 
   TRI_IF_FAILURE("noIntermediateCommits") {
     return {};
@@ -242,7 +237,7 @@ Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize, bool& hasPer
   // "transaction size" counters have reached their limit
   if (_state->options().intermediateCommitCount <= numOperations ||
       _state->options().intermediateCommitSize <= newSize) {
-    res.reset(triggerIntermediateCommit(hasPerformedIntermediateCommit));
+    res.reset(triggerIntermediateCommit());
   }
 
   return res;

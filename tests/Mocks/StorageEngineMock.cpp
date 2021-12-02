@@ -1962,9 +1962,7 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   return arangodb::Result();
 }
 
-arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(arangodb::DataSourceId cid, 
-                                                                           bool& hasPerformedIntermediateCommit) {
-  hasPerformedIntermediateCommit = false;
+arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(arangodb::DataSourceId cid) {
   return arangodb::Result();
 }
 

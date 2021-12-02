@@ -148,8 +148,7 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   return {};
 }
   
-Result ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid, 
-                                                                    bool& hasPerformedIntermediateCommit) {
+Result ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected intermediate commit");
 }
   

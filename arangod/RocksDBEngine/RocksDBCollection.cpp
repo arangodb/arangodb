@@ -858,8 +858,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
       res = savepoint.finish(newRevisionId());
     
       if (res.ok()) {
-        [[maybe_unused]] bool hasPerformedIntermediateCommits = false;
-        res = state->performIntermediateCommitIfRequired(_logicalCollection.id(), hasPerformedIntermediateCommits);
+        res = state->performIntermediateCommitIfRequired(_logicalCollection.id());
       }
     }
 

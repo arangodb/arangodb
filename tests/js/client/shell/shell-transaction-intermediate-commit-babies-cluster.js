@@ -35,12 +35,12 @@ let { getEndpointById,
       getEndpointsByType,
       debugCanUseFailAt,
       debugSetFailAt,
-      debugResetRaceControl,
-      debugRemoveFailAt,
       debugClearFailAt,
       getChecksum,
       getMetric
     } = require('@arangodb/test-helper');
+  
+const cn = 'UnitTestsTransaction';
 
 function assertInSync(leader, follower, shardId) {
   const leaderChecksum = getChecksum(leader, shardId);
@@ -56,15 +56,24 @@ function assertInSync(leader, follower, shardId) {
   assertEqual(leaderChecksum, followerChecksum);
 }
 
-function transactionIntermediateCommitsBabiesSuite() {
+function transactionIntermediateCommitsBabiesFollowerSuite() {
   'use strict';
-  const cn = 'UnitTestsTransaction';
+
+  let collectionInfo = () => {
+    let shards = db._collection(cn).shards(true);
+    let shardId = Object.keys(shards)[0];
+    let leader = getEndpointById(shards[shardId][0]);
+    let follower = getEndpointById(shards[shardId][1]);
+
+    return [shardId, leader, follower];
+  };
 
   return {
 
     setUp: function () {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
+      db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
     },
 
     tearDown: function () {
@@ -73,11 +82,7 @@ function transactionIntermediateCommitsBabiesSuite() {
     },
     
     testAqlIntermediateCommitsNoErrors: function () {
-      db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-      let shards = db._collection(cn).shards(true);
-      let shardId = Object.keys(shards)[0];
-      let leader = getEndpointById(shards[shardId][0]);
-      let follower = getEndpointById(shards[shardId][1]);
+      let [shardId, leader, follower] = collectionInfo();
       
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
@@ -91,16 +96,11 @@ function transactionIntermediateCommitsBabiesSuite() {
       assertEqual(intermediateCommitsBefore + 1, intermediateCommitsAfter);
 
       assertEqual(1000, db._collection(cn).count());
-      
       assertInSync(leader, follower, shardId);
     },
     
     testAqlIntermediateCommitsWithFailurePoint: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-      let shards = c.shards(true);
-      let shardId = Object.keys(shards)[0];
-      let leader = getEndpointById(shards[shardId][0]);
-      let follower = getEndpointById(shards[shardId][1]);
+      let [shardId, leader, follower] = collectionInfo();
       // trigger a certain failure point on the leader
       debugSetFailAt(leader, "insertLocal::fakeResult1");
       
@@ -122,17 +122,12 @@ function transactionIntermediateCommitsBabiesSuite() {
       let intermediateCommitsAfter = getMetric(leader, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
 
-      assertEqual(0, c.count());
-      
+      assertEqual(0, db._collection(cn).count());
       assertInSync(leader, follower, shardId);
     },
     
     testAqlIntermediateCommitsWithOtherFailurePoint: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-      let shards = c.shards(true);
-      let shardId = Object.keys(shards)[0];
-      let leader = getEndpointById(shards[shardId][0]);
-      let follower = getEndpointById(shards[shardId][1]);
+      let [shardId, leader, follower] = collectionInfo();
       // trigger a certain failure point on the leader
       debugSetFailAt(leader, "insertLocal::fakeResult2");
       
@@ -153,17 +148,12 @@ function transactionIntermediateCommitsBabiesSuite() {
       let intermediateCommitsAfter = getMetric(leader, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
 
-      assertEqual(0, c.count());
-      
+      assertEqual(0, db._collection(cn).count());
       assertInSync(leader, follower, shardId);
     },
     
     testAqlIntermediateCommitsWithRollback: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-      let shards = c.shards(true);
-      let shardId = Object.keys(shards)[0];
-      let leader = getEndpointById(shards[shardId][0]);
-      let follower = getEndpointById(shards[shardId][1]);
+      let [shardId, leader, follower] = collectionInfo();
       
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
@@ -175,6 +165,8 @@ function transactionIntermediateCommitsBabiesSuite() {
       }
       assertFalse(didWork);
       
+      // a follower will be dropped here because we abort the transaction on the leader,
+      // but have had intermediate commits on the follower
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
     
@@ -183,25 +175,48 @@ function transactionIntermediateCommitsBabiesSuite() {
       let intermediateCommitsAfter = getMetric(leader, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore + 9, intermediateCommitsAfter);
       
-      assertEqual(9000, c.count());
-      
+      assertEqual(9000, db._collection(cn).count());
       assertInSync(leader, follower, shardId);
+    },
+  };
+}
+
+function transactionIntermediateCommitsBabiesSuite() {
+  'use strict';
+  let collectionInfo = () => {
+    let shards = db._collection(cn).shards(true);
+    let shardId = Object.keys(shards)[0];
+    let leader = getEndpointById(shards[shardId][0]);
+    return leader;
+  };
+
+  let buildDocuments = () => {
+    let docs = [];
+    for (let i = 1; i <= 1000; ++i) {
+      docs.push({ _key: "test" + i });
+    }
+    return docs;
+  };
+
+  return {
+
+    setUp: function () {
+      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      db._drop(cn);
+      db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+    },
+
+    tearDown: function () {
+      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      db._drop(cn);
     },
     
     testDocumentsSingleArray: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
-      let shards = db._collection(cn).shards(true);
-      let shardId = Object.keys(shards)[0];
-      let leader = getEndpointById(shards[shardId][0]);
-
-      let docs = [];
-      for (let i = 1; i <= 1000; ++i) {
-        docs.push({ _key: "test" + i });
-      }
-
+      let leader = collectionInfo();
+      let docs = buildDocuments();
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
 
-      c.insert(docs);
+      db._collection(cn).insert(docs);
 
       // no intermediate commits
       let intermediateCommitsAfter = getMetric(leader, "arangodb_intermediate_commits_total");
@@ -211,40 +226,24 @@ function transactionIntermediateCommitsBabiesSuite() {
     },
       
     testDocumentsSingleArrayIntermediateCommitsSuppressed: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-      let shards = c.shards(true);
-      let shardId = Object.keys(shards)[0];
-      let leader = getEndpointById(shards[shardId][0]);
+      let leader = collectionInfo();
       // trigger a certain failure point on the leader
       debugSetFailAt(leader, "TransactionState::intermediateCommitCount100");
       
-      let docs = [];
-      for (let i = 1; i <= 1000; ++i) {
-        docs.push({ _key: "test" + i });
-      }
-      
+      let docs = buildDocuments();
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
-
-      c.insert(docs);
+      db._collection(cn).insert(docs);
 
       // no intermediate commit must have happened
       let intermediateCommitsAfter = getMetric(leader, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
 
-      assertEqual(1000, c.count());
+      assertEqual(1000, db._collection(cn).count());
     },
     
     testDocumentsTransaction: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
-      let shards = db._collection(cn).shards(true);
-      let shardId = Object.keys(shards)[0];
-      let leader = getEndpointById(shards[shardId][0]);
-
-      let docs = [];
-      for (let i = 1; i <= 1000; ++i) {
-        docs.push({ _key: "test" + i });
-      }
-        
+      let leader = collectionInfo();
+      let docs = buildDocuments();
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
 
       let opts = { collections: { write: cn } }; 
@@ -252,7 +251,6 @@ function transactionIntermediateCommitsBabiesSuite() {
 
       try {
         trx.collection(cn).insert(docs);
-
         trx.commit();
       } catch (err) {
         trx.abort();
@@ -266,16 +264,8 @@ function transactionIntermediateCommitsBabiesSuite() {
     },
     
     testDocumentsTransactionIntermediateCommitsSuppressed: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
-      let shards = db._collection(cn).shards(true);
-      let shardId = Object.keys(shards)[0];
-      let leader = getEndpointById(shards[shardId][0]);
-
-      let docs = [];
-      for (let i = 1; i <= 1000; ++i) {
-        docs.push({ _key: "test" + i });
-      }
-        
+      let leader = collectionInfo();
+      let docs = buildDocuments();
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
 
       let opts = { collections: { write: cn }, intermediateCommitCount: 100, options: { intermediateCommitCount: 100 } }; 
@@ -283,7 +273,6 @@ function transactionIntermediateCommitsBabiesSuite() {
 
       try {
         trx.collection(cn).insert(docs);
-
         trx.commit();
       } catch (err) {
         trx.abort();
@@ -301,6 +290,7 @@ function transactionIntermediateCommitsBabiesSuite() {
 let ep = getEndpointsByType('dbserver');
 if (ep.length && debugCanUseFailAt(ep[0])) {
   // only execute if failure tests are available
+  jsunity.run(transactionIntermediateCommitsBabiesFollowerSuite);
   jsunity.run(transactionIntermediateCommitsBabiesSuite);
 }
 return jsunity.done();

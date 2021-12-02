@@ -213,10 +213,8 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
   
-  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(arangodb::DataSourceId collectionId,
-                                                                     bool& hasPerformedIntermediateCommit) override {
+  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(arangodb::DataSourceId collectionId) override {
     // Analyzers do not write. so do nothing
-    hasPerformedIntermediateCommit = false;
     return {};
   }
 
