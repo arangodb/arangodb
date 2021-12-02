@@ -226,6 +226,7 @@ TraversalExecutor<FinderType>::~TraversalExecutor() {
 
 template <class FinderType>
 auto TraversalExecutor<FinderType>::doOutput(OutputAqlItemRow& output) -> void {
+
   if constexpr (std::is_same_v<FinderType, traverser::Traverser>) {
     while (!output.isFull() && _finder.hasMore() && _finder.next()) {
       TRI_ASSERT(_inputRow.isInitialized());
@@ -258,16 +259,36 @@ auto TraversalExecutor<FinderType>::doOutput(OutputAqlItemRow& output) -> void {
     }
   } else {
     // Refactored variant
-    transaction::BuilderLeaser tmp{&_trx};
-    tmp->clear();
+    while (auto currentPath = _finder.getNextPath()) {
+      transaction::BuilderLeaser tmp{&_trx};
+      LOG_DEVEL << "[GraphRefactor]: doOutput - path found";
 
-    if (auto currentPath = _finder.getNextPath()) {
+      if (_infos.useVertexOutput()) {
+        LOG_DEVEL << "V TO BE IMPLEMENTED - currently only path building is supported";
+        // NEXT LINES TO BE REMOVED - they are just dummies for a complete run
+        tmp->clear();
+        currentPath->toVelocyPack(*tmp.builder());
+        AqlValue path{tmp->slice()};
+        AqlValueGuard guard{path, true};
+        output.moveValueInto(_infos.vertexRegister(), _inputRow, guard);
+      }
+      if (_infos.useEdgeOutput()) {
+        LOG_DEVEL << "E TO BE IMPLEMENTED - currently only path building is supported";
+      }
+
       // Path variable (p)
       if (_infos.usePathOutput()) {
+        tmp->clear();
         currentPath->toVelocyPack(*tmp.builder());
         AqlValue path{tmp->slice()};
         AqlValueGuard guard{path, true};
         output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
+      }
+
+      // No output is requested from the register plan. We still need
+      // to copy the inputRow for the query to yield correct results.
+      if (!_infos.useVertexOutput() && !_infos.useEdgeOutput() && !_infos.usePathOutput()) {
+        output.copyRow(_inputRow);
       }
 
       output.advanceRow();
@@ -336,14 +357,19 @@ auto TraversalExecutor<FinderType>::produceRows(AqlItemBlockInputRange& input,
     return {state, oldStats, AqlCall{}};
   } else {
     // refactored variant
+    LOG_DEVEL << "[GraphRefactor]: produceRows";
     while (!output.isFull()) {
       if (_finder.isDone()) {
+        LOG_DEVEL << "[GraphRefactor]: finder is done";
         if (!initTraverser(input)) {  // will set a new start vertex
           TRI_ASSERT(!input.hasDataRow());
+          LOG_DEVEL << "[GraphRefactor]: initTraverser returned false";
           return {input.upstreamState(), stats(), AqlCall{}};
         }
       } else {
+        LOG_DEVEL << "[GraphRefactor]: before doOutput";
         doOutput(output);
+        LOG_DEVEL << "[GraphRefactor]: after doOutput";
       }
     }
 
@@ -385,6 +411,10 @@ auto TraversalExecutor<FinderType>::skipRowsRange(AqlItemBlockInputRange& input,
     // refactored variant
     while (call.shouldSkip()) {
       if (_finder.isDone()) {
+        if (!initTraverser(input)) {
+          return {input.upstreamState(), oldStats, skipped, AqlCall{}};
+        }
+
         TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), stats(), skipped, AqlCall{}};
       } else {
@@ -446,6 +476,7 @@ bool TraversalExecutor<FinderType>::initTraverser(AqlItemBlockInputRange& input)
         TRI_ASSERT(_inputRow.isInitialized());
       }
 
+      // TODO [GraphRefactor]: Check how indices are being calculated
       opts->calculateIndexExpressions(_infos.getAst());
 
       std::string sourceString;
@@ -516,6 +547,23 @@ bool TraversalExecutor<FinderType>::initTraverser(AqlItemBlockInputRange& input)
             "allowed");*/
         LOG_DEVEL << "[GraphRefactor] handle warning.";
       } else {
+        /*
+         * auto variableSlice = info.getVariables();
+if (variableSlice.isArray()) {
+  injectVariables(variableSlice);
+  _smartTraverser->prepareIndexExpressions(_query.ast());
+}
+         */
+
+        // inject variables
+        //for (auto const& pair : _infos.filterConditionVariables()) {
+        //opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
+        //}
+
+        // prepare index
+        _finder.prepareIndexExpressions(_infos.getAst());
+
+        // start actual search
         _finder.reset(toHashedStringRef(sourceString)); // TODO [GraphRefactor]: check sourceString memory
         TRI_ASSERT(_inputRow.isInitialized());
         return true;
