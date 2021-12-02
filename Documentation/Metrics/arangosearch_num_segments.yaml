@@ -1,10 +1,10 @@
-name: arangodb_arangosearch_num_segments
+name: arangosearch_num_segments
 introducedIn: "3.10.0"
 help: |
   Number of segments for current snapshot.
 unit: number
 type: gauge
-category: Disk
+category: ArangoSearch
 complexity: advanced
 exposedBy:
   - dbserver
