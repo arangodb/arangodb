@@ -29,6 +29,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <unordered_map>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
