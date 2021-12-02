@@ -80,6 +80,8 @@ class BenchFeature final : public application_features::ApplicationFeature {
   
   std::string const& customQuery() const { return _customQuery; }
   std::string const& customQueryFile() const { return _customQueryFile; }
+  std::shared_ptr<VPackBuilder> customQueryBindVars() const { return _customQueryBindVarsBuilder; }
+
 
  private:
   void status(std::string const& value);
@@ -114,6 +116,8 @@ class BenchFeature final : public application_features::ApplicationFeature {
   
   std::string _customQuery;
   std::string _customQueryFile;
+  std::string _customQueryBindVars;
+  std::shared_ptr<VPackBuilder> _customQueryBindVarsBuilder;
 
   int* _result;
 
