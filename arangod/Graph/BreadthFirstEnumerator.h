@@ -105,6 +105,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   ~BreadthFirstEnumerator();
 
+  void clear() final;
+
   void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
 
   /// @brief Get the next Path element from the traversal.
