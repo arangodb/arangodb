@@ -70,6 +70,7 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
 )
 
 add_subdirectory(IResearch)
@@ -344,7 +345,6 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/Serialization/LogCommonTest.cpp
-  Aql/VelocyPackHelper.cpp
 )
 
 if (LINUX)
