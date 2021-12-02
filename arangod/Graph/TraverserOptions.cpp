@@ -761,6 +761,7 @@ auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
   return from.stringRef();
 }
 
+// TODO [GraphRefactor]: Check initialize index expressions
 void TraverserOptions::initializeIndexConditions(
   aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
   aql::Variable const* indexVariable) {
@@ -772,6 +773,7 @@ void TraverserOptions::initializeIndexConditions(
   }
 }
 
+// TODO [GraphRefactor]: Check calculate index expressions
 void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
   BaseOptions::calculateIndexExpressions(ast);
   for (auto& [unused, infos] : _depthLookupInfo) {
