@@ -1040,11 +1040,8 @@ void IResearchInvertedIndex::invalidateQueryCache(TRI_vocbase_t* vocbase) {
 aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,
                                                           aql::Variable const* reference) const {
   auto  indexedFields = fields(_meta);
-  if (supportsFilterNode(id(), indexedFields, node, reference)) {
-    TEMPORARILY_UNLOCK_NODE(node);
-    node->clearMembers();
-    return node;
-  } else if (node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
+  if (!supportsFilterNode(id(), indexedFields, node, reference)) {
+    TRI_ASSERT(node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
     std::vector<arangodb::aql::AstNode const*> children;
     size_t const n = node->numMembers();
     for (size_t i = 0; i < n; ++i) {
