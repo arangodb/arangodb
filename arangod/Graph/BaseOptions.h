@@ -238,7 +238,7 @@ struct BaseOptions {
   // This entry is required by API, but not actively used here
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
-  /// This context holds vaues for Variables/References in AqlNodes
+  /// This context holds values for Variables/References in AqlNodes
   /// it is read from whenever we need to do a calculation in this class.
   /// e.g. edge.weight > a
   /// Here "a" is read from the expression context.

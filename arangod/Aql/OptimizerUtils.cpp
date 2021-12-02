@@ -630,7 +630,7 @@ void extractNonConstPartsOfAndPart(Ast* ast,
 ///        Returns false if no index could be found.
 
 bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
-                                          arangodb::aql::AstNode*& node,
+                                          arangodb::aql::AstNode* node,
                                           arangodb::aql::Variable const* reference,
                                           size_t itemsInCollection,
                                           aql::IndexHint const& hint,

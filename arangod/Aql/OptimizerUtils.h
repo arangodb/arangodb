@@ -61,7 +61,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
-                                          arangodb::aql::AstNode*& node,
+                                          arangodb::aql::AstNode* node,
                                           arangodb::aql::Variable const* reference,
                                           size_t itemsInCollection,
                                           aql::IndexHint const& hint,

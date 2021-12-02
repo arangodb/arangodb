@@ -567,14 +567,20 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes() co
   size_t numEdgeColls = _edgeColls.size();
   bool onlyEdgeIndexes = true;
 
+  auto ast = _plan->getAst();
+  auto const toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+  toCondition->addMember(_toCondition);
+  auto const fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+  fromCondition->addMember(_fromCondition);
+
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
     switch (dir) {
       case TRI_EDGE_IN: {
         std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
+        aql::AstNode* condition = toCondition->clone(_plan->getAst());
         bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
+            *_edgeColls[i], condition, options()->tmpVar(), 1000,
             aql::IndexHint(), indexToUse, onlyEdgeIndexes);
         if (!res) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -588,9 +594,9 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes() co
       }
       case TRI_EDGE_OUT: {
         std::shared_ptr<Index> indexToUse{nullptr};
-        aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
+        aql::AstNode* condition = fromCondition->clone(_plan->getAst());
         bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
+            *_edgeColls[i], condition, options()->tmpVar(), 1000,
             aql::IndexHint(), indexToUse, onlyEdgeIndexes);
         if (!res) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -759,8 +765,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     /*
      * Default SingleServer Traverser
      */
+
     LOG_DEVEL << "[GraphRefactor] Refactor enabled: " << std::boolalpha
               << opts->refactor();
+
+    // We need to prepare the variable accesses before we ask the index nodes.
+    initializeIndexConditions();
+
     if (opts->refactor()) {
       std::pair<std::vector<IndexAccessor>, std::unordered_map<uint64_t, std::vector<IndexAccessor>>> usedIndexes{};
       usedIndexes.first = buildUsedIndexes();
@@ -799,9 +810,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       TraversalExecutorInfos(std::move(traverser), engine.getQuery(), outputRegisterMapping,
                              getStartVertex(), inputRegister,
                              std::move(filterConditionVariables), plan()->getAst());
-
-  // We need to prepare the variable accesses before we ask the index nodes.
-  initializeIndexConditions();
 
   return std::make_unique<ExecutionBlockImpl<TraversalExecutor<traverser::Traverser>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
