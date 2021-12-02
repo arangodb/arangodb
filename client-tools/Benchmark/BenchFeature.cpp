@@ -263,7 +263,7 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     } catch (...) {
       LOG_TOPIC("a3468", FATAL, arangodb::Logger::BENCH)
           << "For flag '--custom-query-bindvars "
-          << _customQueryBindVars << "': invalid JSON format. ";
+          << _customQueryBindVars << "': invalid JSON format.";
       FATAL_ERROR_EXIT();
     }
   }
