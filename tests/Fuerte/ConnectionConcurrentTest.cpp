@@ -26,9 +26,8 @@
 #include <thread>
 #include <velocypack/velocypack-aliases.h>
 
-
 #include "gtest/gtest.h"
-#include "connection_test.h"
+#include "ConnectionTest.h"
 
 // Tesuite checks the thread-safety properties of the connection
 // implementations. Try to send requests on the same connection object
