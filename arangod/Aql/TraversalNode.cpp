@@ -588,7 +588,7 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes() co
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _toCondition->clone(options()->query().ast()),
+                                    condition->clone(options()->query().ast()),
                                     0, nullptr, std::nullopt, i);
         break;
       }
@@ -604,7 +604,7 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes() co
         }
 
         indexAccessors.emplace_back(indexToUse,
-                                    _fromCondition->clone(options()->query().ast()),
+                                    condition->clone(options()->query().ast()),
                                     0, nullptr, std::nullopt, i);
         break;
       }
