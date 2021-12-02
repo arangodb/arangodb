@@ -172,7 +172,7 @@
             this.appendLicenseInfoToUi(infotext, alertClasses);
             break;
           case 'read-only':
-            infotext = 'Your license expired over 14 days ago. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
+            infotext = 'Your license has expired. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
             alertClasses += ' alert-danger';
             this.appendLicenseInfoToUi(infotext, alertClasses);
             break;
