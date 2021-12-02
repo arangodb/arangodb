@@ -26,7 +26,7 @@
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::futures {
-template<typename T>
+template <typename T>
 class Future;
 }
 namespace arangodb {
@@ -41,30 +41,51 @@ class LogLeader;
 
 namespace arangodb::replication2::replicated_state {
 
+struct ReplicatedLeaderStateBase {
+  virtual ~ReplicatedLeaderStateBase() = default;
+};
+
 template <typename S>
 struct ReplicatedLeaderState;
+
+struct ReplicatedFollowerStateBase {
+  virtual ~ReplicatedFollowerStateBase() = default;
+};
 
 template <typename S>
 struct ReplicatedFollowerState;
 
 struct ReplicatedStateBase {
   virtual ~ReplicatedStateBase() = default;
+
+  virtual void flush() = 0;
+  auto getLeader() -> std::shared_ptr<ReplicatedLeaderStateBase> {
+    return getLeaderBase();
+  }
+  auto getFollower() -> std::shared_ptr<ReplicatedFollowerStateBase> {
+    return getFollowerBase();
+  }
+
+ private:
+  virtual auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> = 0;
+  virtual auto getFollowerBase() -> std::shared_ptr<ReplicatedFollowerStateBase> = 0;
 };
 
-template <typename S, typename Factory = typename ReplicatedStateTraits<S>::FactoryType>
-struct ReplicatedState : ReplicatedStateBase,
-                         std::enable_shared_from_this<ReplicatedState<S, Factory>> {
-  explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
-                           std::shared_ptr<Factory> factory);
-
+template <typename S>
+struct ReplicatedState final : ReplicatedStateBase,
+                               std::enable_shared_from_this<ReplicatedState<S>> {
+  using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
 
+  explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
+                           std::shared_ptr<Factory> factory);
+
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
    */
-  void flush();
+  void flush() override;
 
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
@@ -78,6 +99,13 @@ struct ReplicatedState : ReplicatedStateBase,
   auto getLeader() const -> std::shared_ptr<LeaderType>;
 
  private:
+  auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> final {
+    return getLeader();
+  }
+  auto getFollowerBase() -> std::shared_ptr<ReplicatedFollowerStateBase> final {
+    return getFollower();
+  }
+
   friend struct ReplicatedFollowerState<S>;
   friend struct ReplicatedLeaderState<S>;
 
@@ -97,7 +125,7 @@ struct ReplicatedState : ReplicatedStateBase,
 };
 
 template <typename S>
-struct ReplicatedLeaderState {
+struct ReplicatedLeaderState : ReplicatedLeaderStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Stream = streams::ProducerStream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
@@ -124,7 +152,7 @@ struct ReplicatedLeaderState {
 };
 
 template <typename S>
-struct ReplicatedFollowerState {
+struct ReplicatedFollowerState : ReplicatedFollowerStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Stream = streams::Stream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
