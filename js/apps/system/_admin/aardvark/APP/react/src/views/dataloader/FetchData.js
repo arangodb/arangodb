@@ -1,5 +1,6 @@
 /* global arangoHelper, arangoFetch, frontendConfig, $ */
 import React, { useState, useEffect } from 'react';
+import DataTable from "react-data-table-component";
 import "react-data-table-component-extensions/dist/index.css";
 import axios from 'axios';
 
@@ -8,6 +9,8 @@ function FetchData({ urlValue }) {
   const [query, setQuery] = useState('');
   const [url, setUrl] = useState(`${urlValue}`);
   const [isLoading, setIsLoading] = useState(false);
+  const [tableColumns, setTableColumns] = useState('');
+  const [tableData, setTableData] = useState('');
 
   const columns = [
     {
@@ -171,9 +174,17 @@ function FetchData({ urlValue }) {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      console.log("url");
+      console.log(url);
       const result = await axios(url);
       setData(result.data);
       setIsLoading(false);
+
+      console.log("Object.keys(result.data.hits[0])");
+      console.log(Object.keys(result.data.hits[0]));
+      if(result.data.hits[0] !== undefined) {
+        setTableColumns(Object.keys(result.data.hits[0]));
+      }
     };
 
     fetchData();
@@ -207,9 +218,54 @@ function FetchData({ urlValue }) {
               </li>
             ))}
           </ul>
+          <button
+            type="button"
+            className="button-success query-button"
+            style={{float: "left"}}
+            onClick={() => {
+              console.log('tableColumns', JSON.stringify(Object.assign({}, tableColumns)));
+              setTableColumns(columns)
+              setTableData(data2);
+            }}>
+            Show data table
+          </button>
         </div>
       )}
       <hr style={{clear: "left"}}/>
+      { tableData
+      ? (
+        <div className="main">  
+        <h4>Step 2: Manage your data</h4>  
+        <DataTable
+          columns={tableColumns}
+          data={tableData}
+          noHeader
+          defaultSortField="id"
+          defaultSortAsc={false}
+          pagination
+          highlightOnHover
+        />
+        <button
+          type="button"
+          className="button-success query-button"
+          style={{float: "left"}}
+          onClick={() => alert('add vertex collection (ToDo)')}>
+          Import as Vertex Collection
+        </button>
+        <button
+          type="button"
+          className="button-success query-button"
+          style={{float: "left"}}
+          onClick={() => alert('add edge collection (ToDo)')}>
+          Import as Edge Collection
+        </button>
+      </div>
+      )
+      : (
+        <div className="main" style={{clear: "left"}}>
+          <p>No data for table available yet...</p>
+        </div>
+      )}
     </>
   );
 }
