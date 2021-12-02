@@ -1,7 +1,14 @@
-/* global arangoHelper, frontendConfig, $ */
+/* global arangoHelper, arangoFetch, frontendConfig, $ */
+import React, { useEffect, useState } from 'react';
+import FetchData from "./FetchData.js";
+import "react-data-table-component-extensions/dist/index.css";
 
 const DataloaderReactView = () => {
-  return <h1>Data Loader</h1>;
+  return (
+    <>
+      <FetchData urlValue="http://hn.algolia.com/api/v1/search?query=arango" />
+    </>
+  );
 };
 
 window.DataloaderReactView = DataloaderReactView;
