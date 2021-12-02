@@ -1,6 +1,10 @@
 v3.7.17 (XXXX-XX-XX)
 --------------------
 
+* Fix GitHub issue #15084. Fixed a potential use-after-free on Windows for
+  queries that used the NeighborsEnumerator (though other PathEnumerators
+  might have been affected as well).
+  
 * Make `db.<collection>.figures(true)` operate on the same snapshot when
   counting the number of documents in the documents column family and the
   indexes. This ensures consistency for the results of a single figures result.

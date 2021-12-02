@@ -71,6 +71,7 @@ void SingleServerTraverser::clear() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_vertexGetter->pointsIntoTraverserCache());
 #endif
+  _enumerator->clear();
   traverserCache()->clear();
 }
 
