@@ -11,11 +11,11 @@ add_subdirectory(Greenspun)
 # ----------------------------------------
 
 set(FUERTE_TESTS_SOURCES
-  Fuerte/test_vst.cpp
-  Fuerte/test_connection_basic.cpp
-  Fuerte/test_connection_concurrent.cpp
-  Fuerte/test_connection_failures.cpp
-  Fuerte/test_connection_timeouts.cpp
+  Fuerte/VstTest.cpp
+  Fuerte/ConnectionBasicTest.cpp
+  Fuerte/ConnectionConcurrentTest.cpp
+  Fuerte/ConnectionFailuresTest.cpp
+  Fuerte/ConnectionTimeoutsTest.cpp
 #    test_10000_writes.cpp
 )
 
