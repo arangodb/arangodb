@@ -59,6 +59,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -298,7 +299,7 @@ class Logger {
   static std::string const& translateLogLevel(LogLevel) noexcept;
 
   static void log(char const* logid, char const* function, char const* file, int line,
-                  LogLevel level, size_t topicId, std::string const& message);
+                  LogLevel level, size_t topicId, std::string_view message);
 
   static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
                      bool forceDirect,

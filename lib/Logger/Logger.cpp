@@ -420,7 +420,7 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
 }
 
 void Logger::log(char const* logid, char const* function, char const* file, int line,
-                 LogLevel level, size_t topicId, std::string const& message) try {
+                 LogLevel level, size_t topicId, std::string_view message) try {
   TRI_ASSERT(logid != nullptr);
 
   // we only determine our pid once, as currentProcessId() will
@@ -559,14 +559,14 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       // sure that the dynamic text part is truncated and not the
       // entries JSON thing
       size_t maxMessageLength = defaultLogGroup().maxLogEntryLength();
-      // cut of prologue, the quotes ('"' --- ' '") and the final '}'
+      // cut off prologue, the quotes ('"' --- ' '") and the final '}'
       if (maxMessageLength >= out.size() + 3) {
         maxMessageLength -= out.size() + 3;
       }
       if (maxMessageLength > message.size()) {
         maxMessageLength = message.size();
       }
-      dumper.appendString(message.c_str(), maxMessageLength);
+      dumper.appendString(message.data(), maxMessageLength);
   
       // this tells the logger to not shrink our (potentially already
       // shrunk) message once more - if it would shrink the message again,
