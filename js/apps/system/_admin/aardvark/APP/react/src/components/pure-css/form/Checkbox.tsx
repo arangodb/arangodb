@@ -13,7 +13,7 @@ const StyledCheckbox = styled.input.attrs(() => ({
 type CheckboxProps = {
   id?: string;
   checked?: boolean;
-  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
   label?: ReactNode;
   inline?: boolean;
   disabled?: boolean;

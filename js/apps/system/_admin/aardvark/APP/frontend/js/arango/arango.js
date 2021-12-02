@@ -133,7 +133,7 @@
       // note timestamp of last activity (only seconds part)
       sessionStorage.setItem('lastActivity', Date.now() / 1000);
     },
-  
+
     renewJwt: function (callback) {
       if (!window.atob) {
         return;
@@ -175,7 +175,7 @@
         error: function (data) {
           // this function is triggered by a non-interactive
           // background task. if it fails for whatever reason,
-          // we don't report this error. 
+          // we don't report this error.
           // the worst thing that can happen is that the JWT
           // is not renewed and thus the user eventually gets
           // logged out
@@ -615,6 +615,32 @@
       this.buildSubNavBar(menus);
     },
 
+    // nav for 'View' view
+    buildViewSubNav: function (viewName, activeKey) {
+      const defaultRoute = '#view/' + encodeURIComponent(viewName);
+
+      const menus = {
+        Info: {
+          route: defaultRoute
+        },
+        Links: {
+          route: `${defaultRoute}/links`
+        },
+        'Consolidation Policy': {
+          route: `${defaultRoute}/consolidationPolicy`
+        },
+        Settings: {
+          route: `${defaultRoute}/settings`
+        },
+        Raw: {
+          route: `${defaultRoute}/raw`
+        }
+      };
+
+      menus[activeKey].active = true;
+      this.buildSubNavBar(menus);
+    },
+
     enableKeyboardHotkeys: function (enable) {
       var hotkeys = window.arangoHelper.hotkeysFunctions;
       if (enable === true) {
@@ -767,7 +793,7 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          // deleting a job that is not there anymore is intentionally not considered 
+          // deleting a job that is not there anymore is intentionally not considered
           // an error here. this is because in some other places we collect job data,
           // which automatically leads to server-side deletion of the job. so just
           // swallow 404 errors here, silently...
@@ -1097,16 +1123,16 @@
       }
 
       if (dlType) {
-        var blob = new Blob([obj], {type: dlType});
+        var blob = new Blob([obj], { type: dlType });
         var blobUrl = window.URL.createObjectURL(blob);
         var a = document.createElement('a');
         document.body.appendChild(a);
         a.style = 'display: none';
         a.href = blobUrl;
 
-        a.download = (filename ? filename : 'results') + '-' + 
-                     window.frontendConfig.db.replace(/[^-_a-z0-9]/gi, "_") + 
-                     '.' + type;
+        a.download = (filename ? filename : 'results') + '-' +
+                     window.frontendConfig.db.replace(/[^-_a-z0-9]/gi, "_") +
+          '.' + type;
 
         a.click();
 

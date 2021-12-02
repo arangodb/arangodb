@@ -139,14 +139,15 @@
         success: function (licenseData) {
           if (licenseData.status && licenseData.features && licenseData.features.expires) {
             self.renderLicenseInfo(licenseData.status, licenseData.features.expires);
-          } else {
-            self.showLicenseError();  
+          }
+          else {
+            self.showLicenseError();
           }
         },
         error: function () {
           self.showLicenseError();
         }
-      }); 
+      });
     },
 
     showLicenseError: function () {
@@ -324,7 +325,7 @@
         });
       } else {
         $(self.subEl + ' .bottom').append(
-          '<li class="subMenuEntry</li>'
+          '<li class="subMenuEntry"></li>'
         );
       }
     },

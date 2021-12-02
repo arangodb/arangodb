@@ -1,6 +1,6 @@
 import 'jsoneditor-react/es/editor.min.css';
-import 'react-autocomplete-input/dist/bundle.css';
 import React, { Component } from 'react';
+import 'react-autocomplete-input/dist/bundle.css';
 import ReactDOM from 'react-dom';
 
 const jsoneditor = require('jsoneditor');
@@ -13,7 +13,7 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 // import new react views
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
-require('./views/views/ViewsReactView');
+require('./views/views/ViewDetailReactView');
 
 // old libraries
 const jQuery = require('jquery');

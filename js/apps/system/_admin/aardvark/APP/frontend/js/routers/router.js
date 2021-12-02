@@ -111,7 +111,7 @@
             this.loggerView.logTopicView.remove();
           }
         }
-      
+
         if (this.lastRoute === '#shards') {
           if (this.shardsView) {
             this.shardsView.remove();
@@ -1257,42 +1257,26 @@
     },
 
     view: function (name) {
-      const self = this;
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.viewView) {
-          this.viewView.remove();
-        }
-
-        this.arangoViewsStore.fetch({
-          success: function () {
-            self.viewView = new window.ViewView({
-              model: self.arangoViewsStore.get(name),
-              name: name
-            });
-            self.viewView.render();
-          }
-        });
-      });
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewDetailReactView, { name }),
+          document.getElementById('content')));
     },
 
     views: function () {
       this.checkUser();
 
-      // this.init.then(() => {
-      //   if (this.viewsView) {
-      //     this.viewsView.remove();
-      //   }
-      //
-      //   this.viewsView = new window.ViewsView({
-      //     collection: this.arangoViewsStore
-      //   });
-      //   this.viewsView.render();
-      // });
+      this.init.then(() => {
+        if (this.viewsView) {
+          this.viewsView.remove();
+        }
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.ViewsReactView),
-        document.getElementById('content')));
+        this.viewsView = new window.ViewsView({
+          collection: this.arangoViewsStore
+        });
+        this.viewsView.render();
+      });
     },
 
     fetchDBS: function (callback) {
