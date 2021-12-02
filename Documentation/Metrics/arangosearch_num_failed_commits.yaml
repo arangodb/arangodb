@@ -1,13 +1,13 @@
-name: arangodb_arangosearch_num_failed_cleanups
+name: arangosearch_num_failed_commits
 introducedIn: "3.10.0"
 help: |
-  Number of failed cleanups.
+  Number of failed commits.
 unit: number
 type: gauge
-category: Disk
+category: ArangoSearch
 complexity: advanced
 exposedBy:
   - dbserver
   - single
 description: |
-  Number of failed cleanups.
+  Number of failed commits.
