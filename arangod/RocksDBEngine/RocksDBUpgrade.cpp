@@ -76,7 +76,8 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
     
     if (s.IsNotFound() || oldVersion.size() != 1) {
       LOG_TOPIC("614d7", FATAL, Logger::ENGINES) 
-        << "Error reading stored version from database";
+        << "Error reading stored version from database: " 
+        << rocksutils::convertStatus(s).errorMessage();
       FATAL_ERROR_EXIT();
     } else if (oldVersion.data()[0] < version) {
       // Performing 'upgrade' routine
