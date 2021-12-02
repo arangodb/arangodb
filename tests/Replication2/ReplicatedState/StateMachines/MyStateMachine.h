@@ -53,8 +53,11 @@ struct MyStateBase {
 
 struct MyLeaderState : MyStateBase, replicated_state::ReplicatedLeaderState<MyState> {
   void set(std::string key, std::string value);
+  auto wasRecoveryRun() -> bool { return recoveryRan; }
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override;
+
+  bool recoveryRan = false;
 };
 
 struct MyFollowerState : MyStateBase, replicated_state::ReplicatedFollowerState<MyState> {

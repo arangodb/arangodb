@@ -39,8 +39,7 @@ using namespace arangodb::replication2::test;
 
 
 struct ReplicatedStateTest
-    : test::ReplicatedLogTest,
-      tests::LogSuppressor<Logger::REPLICATED_STATE, LogLevel::TRACE> {
+    : test::ReplicatedLogTest{
   ReplicatedStateTest() {
     feature->registerStateType<MyState>("my-state");
   }
@@ -124,14 +123,28 @@ TEST_F(ReplicatedStateTest, simple_become_leader_test) {
   auto state = std::dynamic_pointer_cast<ReplicatedState<MyState>>(
       feature->createReplicatedState("my-state", log));
   ASSERT_NE(state, nullptr);
-
   state->flush();
+  {
+    auto status = state->getStatus();
+    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    auto s = std::get<replicated_state::LeaderStatus>(status.variant);
+    EXPECT_EQ(s.state.state, LeaderInternalState::kWaitingForLeadershipEstablished);
+  }
+
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
   }
 
   auto leaderState = state->getLeader();
   ASSERT_NE(leaderState, nullptr);
+  EXPECT_TRUE(leaderState->wasRecoveryRun());
+
+  {
+    auto status = state->getStatus();
+    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    auto s = std::get<replicated_state::LeaderStatus>(status.variant);
+    EXPECT_EQ(s.state.state, LeaderInternalState::kServiceAvailable);
+  }
 }
 
 TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
@@ -146,6 +159,12 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
     ASSERT_NE(state, nullptr);
 
     state->flush();
+    {
+      auto status = state->getStatus();
+      ASSERT_TRUE(std::holds_alternative<replicated_state::FollowerStatus>(status.variant));
+      auto s = std::get<replicated_state::FollowerStatus>(status.variant);
+      EXPECT_EQ(s.state.state, FollowerInternalState::kWaitForLeaderConfirmation);
+    }
 
     auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
                                           LogTerm{1}, {follower});
@@ -155,6 +174,13 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
     inputStream->insert({.key = "hello", .value = "world"});
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
+    }
+
+    {
+      auto status = state->getStatus();
+      ASSERT_TRUE(std::holds_alternative<replicated_state::FollowerStatus>(status.variant));
+      auto s = std::get<replicated_state::FollowerStatus>(status.variant);
+      EXPECT_EQ(s.state.state, FollowerInternalState::kNothingToApply);
     }
   }
 
@@ -176,9 +202,19 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
 
     auto leaderState = state->getLeader();
     ASSERT_NE(leaderState, nullptr);
-    auto& store = leaderState->store;
-    EXPECT_EQ(store.size(), 1);
-    EXPECT_EQ(store["hello"], "world");
+    ASSERT_TRUE(leaderState->wasRecoveryRun());
+    {
+      auto status = state->getStatus();
+      ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+      auto s = std::get<replicated_state::LeaderStatus>(status.variant);
+      EXPECT_EQ(s.state.state, LeaderInternalState::kServiceAvailable);
+    }
+
+    {
+      auto& store = leaderState->store;
+      EXPECT_EQ(store.size(), 1);
+      EXPECT_EQ(store["hello"], "world");
+    }
   }
 }
 

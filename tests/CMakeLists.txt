@@ -343,7 +343,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Serialization/LogStatusTest.cpp
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
-  Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp)
+  Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp Replication2/ReplicatedState/LeaderRecoveryTest.cpp)
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags

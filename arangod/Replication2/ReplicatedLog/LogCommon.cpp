@@ -310,6 +310,10 @@ auto replication2::intersect(LogRange a, LogRange b) noexcept -> LogRange {
   }
 }
 
+auto replication2::to_string(LogRange const& r) -> std::string {
+  return basics::StringUtils::concatT('[', r.from, ", ", r.to, ')');
+}
+
 auto LogRange::end() const noexcept -> LogRange::Iterator {
   return Iterator{to};
 }

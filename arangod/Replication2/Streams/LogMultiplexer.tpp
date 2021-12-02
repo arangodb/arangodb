@@ -380,7 +380,7 @@ struct LogMultiplexerImplementation
 
  private:
   void triggerWaitForIndex(LogIndex waitForIndex) {
-    LOG_TOPIC("2b7b1", INFO, Logger::REPLICATION2) << "multiplexer trigger wait for index " << waitForIndex;
+    LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2) << "multiplexer trigger wait for index " << waitForIndex;
     auto f = this->_interface->waitFor(waitForIndex);
     std::move(f).thenFinal([weak = this->weak_from_this()](
                                futures::Try<replicated_log::WaitForResult>&& tryResult) noexcept {
@@ -407,7 +407,7 @@ struct LogMultiplexerImplementation
           }
         } catch (basics::Exception const& e) {
           if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
-            LOG_TOPIC("c5c05", INFO, Logger::REPLICATION2)
+            LOG_TOPIC("c5c05", DEBUG, Logger::REPLICATION2)
                 << "multiplexer received leader-resigned exception";
             that->resolveLeaderChange(std::current_exception());
           } else {

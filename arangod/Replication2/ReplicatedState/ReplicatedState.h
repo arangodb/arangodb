@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::futures {
@@ -66,6 +67,8 @@ struct ReplicatedStateBase {
     return getFollowerBase();
   }
 
+  virtual auto getStatus() -> StateStatus = 0;
+
  private:
   virtual auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> = 0;
   virtual auto getFollowerBase() -> std::shared_ptr<ReplicatedFollowerStateBase> = 0;
@@ -98,6 +101,8 @@ struct ReplicatedState final : ReplicatedStateBase,
    */
   auto getLeader() const -> std::shared_ptr<LeaderType>;
 
+  auto getStatus() -> StateStatus final;
+
  private:
   auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> final {
     return getLeader();
@@ -111,6 +116,7 @@ struct ReplicatedState final : ReplicatedStateBase,
 
   struct StateBase {
     virtual ~StateBase() = default;
+    virtual auto getStatus() -> StateStatus = 0;
   };
 
   struct LeaderState;

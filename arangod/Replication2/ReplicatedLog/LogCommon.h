@@ -165,6 +165,7 @@ struct LogRange {
 
 auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
 auto intersect(LogRange a, LogRange b) noexcept -> LogRange;
+auto to_string(LogRange const&) -> std::string;
 
 struct LogPayload {
   explicit LogPayload(velocypack::UInt8Buffer dummy);

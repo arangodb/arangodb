@@ -48,14 +48,28 @@ struct ReplicatedState<S>::LeaderState : StateBase,
   using Stream = streams::ProducerStream<EntryType>;
   using Iterator = typename Stream::Iterator;
 
+  auto getStatus() -> StateStatus final;
+
   void run();
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
-
-  std::shared_ptr<ReplicatedLeaderState<S>> _machine;
+  std::shared_ptr<ReplicatedLeaderState<S>> state;
   std::shared_ptr<Stream> stream;
-  std::weak_ptr<ReplicatedState> _parent;
-  std::shared_ptr<replicated_log::LogLeader> _leader;
+  std::weak_ptr<ReplicatedState> parent;
+  std::shared_ptr<replicated_log::LogLeader> logLeader;
+
+  LeaderInternalState internalState;
+  std::chrono::system_clock::time_point lastInternalStateChange;
+  std::optional<LogRange> recoveryRange;
+
+  void updateInternalState(LeaderInternalState newState,
+                           std::optional<LogRange> range = std::nullopt) {
+    internalState = newState;
+    lastInternalStateChange = std::chrono::system_clock::now();
+    recoveryRange = range;
+  }
+
+  // TODO locking
 };
 
 template <typename S>
@@ -64,27 +78,37 @@ struct ReplicatedState<S>::FollowerState : StateBase,
   using Stream = streams::Stream<EntryType>;
   using Iterator = typename Stream::Iterator;
 
-  using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
-
   FollowerState(std::shared_ptr<ReplicatedState> const& parent,
                 std::shared_ptr<replicated_log::LogFollower> logFollower) noexcept;
 
+  void run();
+  auto getStatus() -> StateStatus final;
+
+  void awaitLeaderShip();
+  void ingestLogData();
+  void pollNewEntries();
+  void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
+
+  using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
   LogIndex nextEntry{0};
+
+  // TODO locking
 
   std::shared_ptr<Stream> stream;
   std::shared_ptr<ReplicatedFollowerState<S>> state;
   std::weak_ptr<ReplicatedState> parent;
   std::shared_ptr<replicated_log::LogFollower> logFollower;
 
-  void run();
+  FollowerInternalState internalState;
+  std::chrono::system_clock::time_point lastInternalStateChange;
+  std::optional<LogRange> ingestionRange;
 
-  void awaitLeaderShip();
-
-  void ingestLogData();
-
-  void pollNewEntries();
-
-  void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
+  void updateInternalState(FollowerInternalState newState,
+                           std::optional<LogRange> range = std::nullopt) {
+    internalState = newState;
+    lastInternalStateChange = std::chrono::system_clock::now();
+    ingestionRange = range;
+  }
 };
 
 template <typename S>
@@ -97,11 +121,13 @@ void ReplicatedState<S>::LeaderState::run() {
 
   LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
       << "LeaderState waiting for leadership to be established";
-  _leader->waitForLeadership()
+  updateInternalState(LeaderInternalState::kWaitingForLeadershipEstablished);
+  logLeader->waitForLeadership()
       .thenValue([self = this->shared_from_this()](auto&& result) {
         LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
             << "LeaderState established";
-        auto mux = Multiplexer::construct(self->_leader);
+        self->updateInternalState(LeaderInternalState::kIngestingExistingLog);
+        auto mux = Multiplexer::construct(self->logLeader);
         mux->digestAvailableEntries();
         self->stream = mux->template getStreamById<1>();  // TODO fix stream id
 
@@ -111,9 +137,11 @@ void ReplicatedState<S>::LeaderState::run() {
         //    new entries are not yet written, because the stream is
         //    not published.
         return self->stream->waitForIterator(LogIndex{0}).thenValue([self](std::unique_ptr<Iterator>&& result) {
-          if (auto parent = self->_parent.lock(); parent) {
+          if (auto parent = self->parent.lock(); parent) {
             LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
                 << "creating leader instance and starting recovery";
+            self->updateInternalState(LeaderInternalState::kRecoveryInProgress,
+                                      result->range());
             std::shared_ptr<ReplicatedLeaderState<S>> machine =
                 parent->factory->constructLeader();
             return machine->recoverEntries(std::move(result))
@@ -122,8 +150,9 @@ void ReplicatedState<S>::LeaderState::run() {
                     if (auto result = tryResult.get(); result.ok()) {
                       LOG_TOPIC("1a375", DEBUG, Logger::REPLICATED_STATE)
                           << "recovery on leader completed";
-                      self->_machine = machine;
-                      self->_machine->_stream = self->stream;
+                      self->state = machine;
+                      self->updateInternalState(LeaderInternalState::kServiceAvailable);
+                      self->state->_stream = self->stream;
                       return result;
                     } else {
                       LOG_TOPIC("3fd49", FATAL, Logger::REPLICATED_STATE)
@@ -163,13 +192,31 @@ void ReplicatedState<S>::LeaderState::run() {
 template <typename S>
 ReplicatedState<S>::LeaderState::LeaderState(std::shared_ptr<ReplicatedState> const& parent,
                                              std::shared_ptr<replicated_log::LogLeader> leader) noexcept
-    : _parent(parent), _leader(std::move(leader)) {}
+    : parent(parent),
+      logLeader(std::move(leader)),
+      internalState(LeaderInternalState::kWaitingForLeadershipEstablished) {}
+
+template <typename S>
+auto ReplicatedState<S>::LeaderState::getStatus() -> StateStatus {
+  LeaderStatus status;
+  status.log =
+      std::get<replicated_log::LeaderStatus>(logLeader->getStatus().getVariant());
+  status.state.state = internalState;
+  status.state.lastChange = lastInternalStateChange;
+  if (internalState == LeaderInternalState::kRecoveryInProgress && recoveryRange) {
+    status.state.detail = "recovery range is " + to_string(*recoveryRange);
+  } else {
+    status.state.detail = std::nullopt;
+  }
+  return StateStatus{.variant = std::move(status)};
+}
 
 template <typename S>
 void ReplicatedState<S>::FollowerState::applyEntries(std::unique_ptr<Iterator> iter) noexcept {
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(iter != nullptr);
   auto range = iter->range();
+  updateInternalState(FollowerInternalState::kApplyRecentEntries, range);
   state->applyEntries(std::move(iter))
       .thenFinal([self = this->shared_from_this(), range](futures::Try<Result> tryResult) {
         try {
@@ -203,6 +250,7 @@ void ReplicatedState<S>::FollowerState::applyEntries(std::unique_ptr<Iterator> i
 template <typename S>
 void ReplicatedState<S>::FollowerState::pollNewEntries() {
   TRI_ASSERT(stream != nullptr);
+  updateInternalState(FollowerInternalState::kNothingToApply);
   stream->waitForIterator(nextEntry).thenFinal(
       [self = this->shared_from_this()](futures::Try<std::unique_ptr<Iterator>> result) {
         try {
@@ -228,6 +276,7 @@ void ReplicatedState<S>::FollowerState::pollNewEntries() {
 template <typename S>
 void ReplicatedState<S>::FollowerState::ingestLogData() {
   if (auto locked = parent.lock(); locked) {
+    updateInternalState(FollowerInternalState::kTransferSnapshot);
     auto demux = Demultiplexer::construct(logFollower);
     demux->listen();
     stream = demux->template getStreamById<1>();
@@ -252,6 +301,7 @@ void ReplicatedState<S>::FollowerState::ingestLogData() {
 
 template <typename S>
 void ReplicatedState<S>::FollowerState::awaitLeaderShip() {
+  updateInternalState(FollowerInternalState::kWaitForLeaderConfirmation);
   logFollower->waitForLeaderAcked().thenFinal(
       [self = this->shared_from_this()](futures::Try<replicated_log::WaitForResult>&& result) noexcept {
         try {
@@ -302,6 +352,17 @@ ReplicatedState<S>::FollowerState::FollowerState(
     std::shared_ptr<ReplicatedState> const& parent,
     std::shared_ptr<replicated_log::LogFollower> logFollower) noexcept
     : parent(parent), logFollower(std::move(logFollower)) {}
+
+template <typename S>
+auto ReplicatedState<S>::FollowerState::getStatus() -> StateStatus {
+  FollowerStatus status;
+  status.log =
+      std::get<replicated_log::FollowerStatus>(logFollower->getStatus().getVariant());
+  status.state.state = internalState;
+  status.state.lastChange = lastInternalStateChange;
+  status.state.detail = std::nullopt;
+  return StateStatus{.variant = std::move(status)};
+}
 
 template <typename S>
 void ReplicatedState<S>::runFollower(std::shared_ptr<replicated_log::LogFollower> logFollower) {
@@ -367,10 +428,17 @@ auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
 
 template <typename S>
 auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
-  if (auto machine = std::dynamic_pointer_cast<LeaderState>(currentState); machine) {
-    return std::static_pointer_cast<LeaderType>(machine->_machine);
+  if (auto internalState = std::dynamic_pointer_cast<LeaderState>(currentState); internalState) {
+    if (internalState->state != nullptr) {
+      return std::static_pointer_cast<LeaderType>(internalState->state);
+    }
   }
   return nullptr;
+}
+
+template <typename S>
+auto ReplicatedState<S>::getStatus() -> StateStatus {
+  return currentState->getStatus();
 }
 
 }  // namespace arangodb::replication2::replicated_state

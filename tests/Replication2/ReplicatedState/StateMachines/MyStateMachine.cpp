@@ -62,6 +62,7 @@ auto MyLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
   LOG_DEVEL << "leader recover from log";
   applyIterator(*ptr);
+  recoveryRan = true;
   return futures::Future<Result>{TRI_ERROR_NO_ERROR};
 }
 
