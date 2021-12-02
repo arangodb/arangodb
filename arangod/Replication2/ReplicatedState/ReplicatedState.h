@@ -105,17 +105,6 @@ struct ReplicatedLeaderState {
 
  protected:
   /**
-   * Called whenever a snapshot transfer shall be initiated. Once the snapshot
-   * transfer has ended (either failed or succeeded) the future shall be resolved.
-   * If the operation failed, it will eventually be retried.
-   *
-   * @param destination id of the participant the snapshot should be sent to
-   * @return Future to be fulfilled when snapshot transfer is done.
-   */
-  virtual auto installSnapshot(ParticipantId const& destination)
-      -> futures::Future<Result> = 0;
-
-  /**
    * This function is called once on a leader instance. The iterator contains
    * all log entries currently present in the replicated log. The state machine
    * manager awaits the return value. If the result is ok, the leader instance
@@ -154,7 +143,17 @@ struct ReplicatedFollowerState {
    * @return Future with Result value. If the result contains an error, the
    *    operation is retried.
    */
-  virtual auto applyEntries(std::unique_ptr<EntryIterator>)
+  virtual auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
+      -> futures::Future<Result> = 0;
+
+  /**
+   * Called by the state machine manager if a follower is requested to pull
+   * data from the leader in order to transfer the snapshot.
+   * @param leader
+   * @return Future with Result value. If the result contains an error,
+   *    the operation is eventually retried.
+   */
+  virtual auto acquireSnapshot(ParticipantId const& leader) noexcept
       -> futures::Future<Result> = 0;
 
   [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;

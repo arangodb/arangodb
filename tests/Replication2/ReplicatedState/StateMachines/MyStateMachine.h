@@ -53,16 +53,14 @@ struct MyStateBase {
 
 struct MyLeaderState : MyStateBase, replicated_state::ReplicatedLeaderState<MyState> {
   void set(std::string key, std::string value);
-
  protected:
-  auto installSnapshot(ParticipantId const& destination) -> futures::Future<Result> override;
-
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override;
 };
 
 struct MyFollowerState : MyStateBase, replicated_state::ReplicatedFollowerState<MyState> {
  protected:
-  auto applyEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override;
+  auto acquireSnapshot(ParticipantId const& destination) noexcept -> futures::Future<Result> override;
+  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> override;
 };
 
 struct MyFactory {

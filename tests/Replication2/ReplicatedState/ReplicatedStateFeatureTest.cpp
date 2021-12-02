@@ -67,7 +67,7 @@ TEST_F(ReplicatedStateFeatureTest, create_non_existing_state_machine) {
                basics::Exception);
 }
 
-TEST_F(ReplicatedStateFeatureTest, register_duplicated_state_machine) {
+TEST_F(ReplicatedStateFeatureTest, register_duplicated_state_machine_DeathTest) {
   auto feature = std::make_shared<ReplicatedStateFeature>();
   feature->registerStateType<MyState>("my-state");
   ASSERT_DEATH_IF_SUPPORTED({feature->registerStateType<MyState>("my-state");}, ".*");

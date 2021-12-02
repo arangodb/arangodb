@@ -53,7 +53,7 @@ void MyLeaderState::set(std::string key, std::string value) {
   });
 }
 
-auto MyLeaderState::installSnapshot(ParticipantId const& destination)
+auto MyFollowerState::acquireSnapshot(ParticipantId const& destination) noexcept
     -> futures::Future<Result> {
   return futures::Future<Result>{TRI_ERROR_NO_ERROR};
 }
@@ -73,7 +73,7 @@ auto MyFactory::constructFollower() -> std::shared_ptr<MyFollowerState> {
   return std::make_shared<MyFollowerState>();
 }
 
-auto MyFollowerState::applyEntries(std::unique_ptr<EntryIterator> ptr)
+auto MyFollowerState::applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
     -> futures::Future<Result> {
   LOG_DEVEL << "follower apply entries";
   applyIterator(*ptr);

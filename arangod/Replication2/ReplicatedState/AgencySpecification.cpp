@@ -74,9 +74,9 @@ auto agency::to_string(Status status) -> std::string_view {
       return String_Completed;
     case Status::kFailed:
       return String_Failed;
-    default:
-      TRI_ASSERT(false) << "status value was " << static_cast<int>(status);
   }
+  TRI_ASSERT(false) << "status value was " << static_cast<int>(status);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
 }
 
 auto agency::from_string(std::string_view string) -> Status {
