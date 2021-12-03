@@ -1235,11 +1235,9 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
 
   auto it = _documents.find(arangodb::velocypack::StringRef{key});
   if (it != _documents.end()) {
-    if (_documents.find(arangodb::velocypack::StringRef{key}) != _documents.end()) {
-      result.first = it->second.docId();
-      result.second = arangodb::RevisionId::fromSlice(it->second.data());
-      return arangodb::Result();
-    }
+    result.first = it->second.docId();
+    result.second = arangodb::RevisionId::fromSlice(it->second.data());
+    return arangodb::Result();
   }
 
   result.first = arangodb::LocalDocumentId::none();
