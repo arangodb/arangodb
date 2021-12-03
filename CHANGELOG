@@ -1,6 +1,9 @@
 devel
 -----
 
+* Second step of hotbackup transfer job cleanup. Now locks are also cleaned up
+  as well as old, seemingly unfinished jobs.
+
 * Cleanup and properly fail hotbackup upload and download jobs if a dbserver
   fails or is restarted during the transfer. This gets rid of upload and
   download blockages in these circumstances.
