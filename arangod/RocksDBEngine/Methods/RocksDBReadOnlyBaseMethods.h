@@ -33,8 +33,14 @@ namespace arangodb {
 
 class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state);
+  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
 
+  ~RocksDBReadOnlyBaseMethods();
+
+  bool ensureSnapshot() override;
+
+  rocksdb::SequenceNumber GetSequenceNumber() const noexcept override;
+  
   TRI_voc_tick_t lastOperationTick() const noexcept override { return 0; }
   
   uint64_t numCommits() const noexcept override { return 0; }
@@ -75,6 +81,13 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
     // we never have to check the bounds for read-only iterators
     return false;
   }
+
+ protected:
+  void releaseSnapshot();
+  
+  rocksdb::TransactionDB* _db;
+
+  ReadOptions _readOptions;
 };
 
 }  // namespace arangodb
