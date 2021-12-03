@@ -89,13 +89,13 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 
 template <typename M>
 void InCache<M>::storeMessageNoLock(PregelShard shard,
-                                    std::string_view const& vertexId, M const& data) {
+                                    std::string_view vertexId, M const& data) {
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
 }
 
 template <typename M>
-void InCache<M>::storeMessage(PregelShard shard, std::string_view const& vertexId, M const& data) {
+void InCache<M>::storeMessage(PregelShard shard, std::string_view vertexId, M const& data) {
   std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;

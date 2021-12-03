@@ -172,7 +172,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     if (shardKeysSlice.isArray()) {
       for (VPackSlice sk : VPackArrayIterator(shardKeysSlice)) {
         if (sk.isString()) {
-          std::string_view key = sk.stringRef();
+          std::string_view key = sk.stringView();
           // remove : char at the beginning or end (for enterprise)
           std::string_view stripped;
           if (!key.empty()) {
@@ -494,7 +494,7 @@ void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
 ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
                                             bool docComplete, ShardID& shardID,
                                             bool& usesDefaultShardKeys,
-                                            std::string_view const& key) {
+                                            std::string_view key) {
   return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
                                                 usesDefaultShardKeys, key);
 }

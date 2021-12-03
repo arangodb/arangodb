@@ -67,7 +67,7 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(std::string_view const& = std::string_view()) const override;
+  double selectivityEstimate(std::string_view = std::string_view()) const override;
 
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;

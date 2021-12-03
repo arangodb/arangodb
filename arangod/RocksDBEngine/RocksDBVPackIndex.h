@@ -71,7 +71,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(std::string_view const& = std::string_view()) const override;
+  double selectivityEstimate(std::string_view = std::string_view()) const override;
 
   RocksDBCuckooIndexEstimatorType* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;

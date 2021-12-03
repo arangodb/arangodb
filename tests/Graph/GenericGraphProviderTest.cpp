@@ -151,8 +151,7 @@ class GraphProviderTest : public ::testing::Test {
         opts.setVariable(tmpVar);
 
         auto const* access =
-            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::FromString.c_str(),
-                                           StaticStrings::FromString.length());
+            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::FromString);
         auto const* cond =
             ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
         auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -160,8 +159,7 @@ class GraphProviderTest : public ::testing::Test {
         opts.addLookupInfo(fakeQuery->plan(), "s9880", StaticStrings::FromString, fromCondition);
 
         auto const* revAccess =
-            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString.c_str(),
-                                           StaticStrings::ToString.length());
+            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString);
         auto const* revCond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                                             revAccess, tmpIdNode);
         auto toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);

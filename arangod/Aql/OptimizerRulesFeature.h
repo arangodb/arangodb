@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -67,7 +68,7 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   static int ruleIndex(int level);
   
   /// @brief register a rule, don't call this after prepare()
-  void registerRule(char const* name, RuleFunction func,
+  void registerRule(std::string_view name, RuleFunction func,
                     OptimizerRule::RuleLevel level,
                     std::underlying_type<OptimizerRule::Flags>::type flags);
 

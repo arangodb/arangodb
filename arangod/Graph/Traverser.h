@@ -129,7 +129,7 @@ class Traverser {
 
     virtual bool getVertex(std::string_view vertex, size_t depth);
 
-    virtual void reset(std::string_view const&);
+    virtual void reset(std::string_view);
 
     virtual void clear();
 
@@ -160,7 +160,7 @@ class Traverser {
 
     bool getVertex(std::string_view vertex, size_t depth) override;
 
-    void reset(std::string_view const&) override;
+    void reset(std::string_view) override;
 
     void clear() override;
 

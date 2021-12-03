@@ -155,7 +155,7 @@ RestStatus RestMetricsHandler::execute() {
   metrics.toPrometheus(result, v2);
   _response->setResponseCode(rest::ResponseCode::OK);
   _response->setContentType(rest::ContentType::TEXT);
-  _response->addRawPayload(std::string_view(result));
+  _response->addRawPayload(result);
   
   return RestStatus::DONE;
 }

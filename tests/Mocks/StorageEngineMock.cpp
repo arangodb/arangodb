@@ -1157,10 +1157,8 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
 
   TRI_ASSERT(newSlice.isObject());
   VPackSlice newKey = newSlice.get(arangodb::StaticStrings::KeyString);
-  if (newKey.isString()) {
-    if (_documents.find(newKey.stringView()) != _documents.end()) {
-      return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-    }
+  if (newKey.isString() && _documents.contains(newKey.stringView())) {
+    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   arangodb::velocypack::Builder builder;
@@ -1330,7 +1328,7 @@ arangodb::IndexEstMap PhysicalCollectionMock::clusterIndexEstimates(bool allowUp
 }
 
 arangodb::Result PhysicalCollectionMock::read(
-    arangodb::transaction::Methods*, std::string_view const& key,
+    arangodb::transaction::Methods*, std::string_view key,
     arangodb::IndexIterator::DocumentCallback const& cb,
                                               arangodb::ReadOwnWrites) const {
   before();

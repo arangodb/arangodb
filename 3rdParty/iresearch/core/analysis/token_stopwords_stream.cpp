@@ -57,12 +57,12 @@ bool hex_decode(std::string& buf, std::string_view value) {
   if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      value.data());
+      std::string(value).c_str());
 
     return false;
   }
 
-  buf.reserve(buf.size() + value.length()/2);
+  buf.reserve(buf.size() + value.length() / 2);
 
   for (size_t i = 0, count = value.length(); i < count; i += 2) {
     auto hi = HEX_DECODE_MAP[size_t(value[i])];

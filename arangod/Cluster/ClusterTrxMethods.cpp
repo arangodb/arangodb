@@ -183,9 +183,9 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
       return r.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
     }
 
-    std::string_view idRef = idSlice.stringRef();
+    std::string_view idRef = idSlice.stringView();
     TransactionId tid{StringUtils::uint64(idRef.data(), idRef.size())};
-    std::string_view statusRef = statusSlice.stringRef();
+    std::string_view statusRef = statusSlice.stringView();
     if (tid == desiredTid && transaction::statusFromString(statusRef.data(), statusRef.size()) == desStatus) {
       // all good
       return r.reset();

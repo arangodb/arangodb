@@ -70,10 +70,10 @@ using namespace arangodb::rest;
 
 namespace {
 
-static std::string_view const cnameRef("cname");
-static std::string_view const dataRef("data");
-static std::string_view const tickRef("tick");
-static std::string_view const dbRef("db");
+constexpr std::string_view cnameRef("cname");
+constexpr std::string_view dataRef("data");
+constexpr std::string_view tickRef("tick");
+constexpr std::string_view dbRef("db");
 
 bool hasHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response,
                std::string const& name) {

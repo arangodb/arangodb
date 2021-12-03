@@ -30,6 +30,7 @@
 #include "IResearch/Misc.h"
 
 #include <velocypack/velocypack-common.h>
+#include <string_view>
 #include <vector>
 
 namespace v8 {

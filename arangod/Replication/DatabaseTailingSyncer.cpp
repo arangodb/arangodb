@@ -55,7 +55,7 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 namespace {
-std::string_view const cuidRef("cuid");
+constexpr std::string_view cuidRef("cuid");
 }
 
 DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,

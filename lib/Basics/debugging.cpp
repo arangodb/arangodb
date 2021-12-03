@@ -82,20 +82,19 @@ std::set<std::string, ::Comparator> failurePoints(comparator);
 
 /// @brief intentionally cause a segmentation violation or other failures
 /// this is used for crash and recovery tests
-void TRI_TerminateDebugging(char const* message) {
+void TRI_TerminateDebugging(std::string_view message) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   CrashHandler::setHardKill();
 
   // there are some reserved crash messages we use in testing the
   // crash handler
-  std::string_view const s(message);
-  if (s == "CRASH-HANDLER-TEST-ABORT") {
+  if (message == "CRASH-HANDLER-TEST-ABORT") {
     // intentionally crashes the program!
     std::abort();
-  } else if (s == "CRASH-HANDLER-TEST-TERMINATE") {
+  } else if (message == "CRASH-HANDLER-TEST-TERMINATE") {
     // intentionally crashes the program!
     std::terminate();
-  } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+  } else if (message == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
     // intentionally crashes the program!
     // note: when using ASan/UBSan, this actually does not crash
     // the program but continues.
@@ -107,7 +106,7 @@ void TRI_TerminateDebugging(char const* message) {
     f();
     // we will get here at least with ASan/UBSan.
     std::terminate();
-  } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
+  } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
     std::unique_ptr<int> x;
     // intentionally crashes the program!
     // cppcheck-suppress *
@@ -115,7 +114,7 @@ void TRI_TerminateDebugging(char const* message) {
     // cppcheck-suppress *
     *x = 2;
     TRI_ASSERT(a == 1);
-  } else if (s == "CRASH-HANDLER-TEST-ASSERT") {
+  } else if (message == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
     // intentionally crashes the program!
     TRI_ASSERT(a == 2);
@@ -129,13 +128,13 @@ void TRI_TerminateDebugging(char const* message) {
 }
 
 /// @brief check whether we should fail at a specific failure point
-bool TRI_ShouldFailDebugging(char const* value) {
+bool TRI_ShouldFailDebugging(std::string_view value) noexcept {
   READ_LOCKER(readLocker, ::failurePointsLock);
-  return ::failurePoints.find(std::string_view(value)) != ::failurePoints.end();
+  return ::failurePoints.contains(value);
 }
 
 /// @brief add a failure point
-void TRI_AddFailurePointDebugging(char const* value) {
+void TRI_AddFailurePointDebugging(std::string_view value) {
   bool added = false;
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
@@ -150,7 +149,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 }
 
 /// @brief remove a failure point
-void TRI_RemoveFailurePointDebugging(char const* value) {
+void TRI_RemoveFailurePointDebugging(std::string_view value) {
   size_t numRemoved = 0;
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);

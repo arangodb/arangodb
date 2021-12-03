@@ -103,7 +103,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
-  Result read(transaction::Methods*, std::string_view const& key,
+  Result read(transaction::Methods*, std::string_view key,
               IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const override;
   
   /// @brief lookup with callback, not thread-safe on same transaction::Context

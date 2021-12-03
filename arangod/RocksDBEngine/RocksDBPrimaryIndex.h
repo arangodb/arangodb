@@ -69,7 +69,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(std::string_view const& = std::string_view()) const override {
+  double selectivityEstimate(std::string_view = std::string_view()) const override {
     return 1.0;
   }
 

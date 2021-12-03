@@ -404,7 +404,7 @@ auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(velocypac
     -> NothingToCommit {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(std::string_view(NothingToCommitEnum)))
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(NothingToCommitEnum))
       << "Expected string `" << NothingToCommitEnum << "`, found: " << s.stringView();
   return {};
 }
@@ -418,7 +418,7 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(velo
     -> QuorumSizeNotReached {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(std::string_view(QuorumSizeNotReachedEnum)))
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(QuorumSizeNotReachedEnum))
       << "Expected string `" << QuorumSizeNotReachedEnum
       << "`, found: " << s.stringView();
   TRI_ASSERT(s.get(WhoFieldName).isString())
@@ -436,7 +436,7 @@ auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::fromVelocyP
   -> ForcedParticipantNotInQuorum {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(std::string_view(ForcedParticipantNotInQuorumEnum)))
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(ForcedParticipantNotInQuorumEnum))
       << "Expected string `" << ForcedParticipantNotInQuorumEnum
       << "`, found: " << s.stringView();
   TRI_ASSERT(s.get(WhoFieldName).isString())
@@ -457,7 +457,7 @@ auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> Co
   } else if (reason == QuorumSizeNotReachedEnum) {
     return CommitFailReason{std::in_place, QuorumSizeNotReached::fromVelocyPack(s)};
   } else if (reason == ForcedParticipantNotInQuorumEnum) {
-      return CommitFailReason{std::in_place, ForcedParticipantNotInQuorum::fromVelocyPack(s)};
+    return CommitFailReason{std::in_place, ForcedParticipantNotInQuorum::fromVelocyPack(s)};
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,

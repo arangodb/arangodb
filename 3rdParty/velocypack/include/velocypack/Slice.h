@@ -582,19 +582,6 @@ class Slice {
 
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
-  /*
-  template<typename T>
-  typename std::enable_if<
-      std::is_base_of<std::forward_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category>::value,
-      Slice>::type get(T const& attributes,
-                       bool resolveExternals = false) const {
-    // forward to the iterator-based lookup
-    return this->get(attributes.begin(), attributes.end(), resolveExternals);
-  }
-  */
-  
-  // look for the specified attribute path inside an Object
-  // returns a Slice(ValueType::None) if not found
   template<typename T>
   Slice get(std::vector<T> const& attributes,
             bool resolveExternals = false) const {
@@ -615,7 +602,7 @@ class Slice {
   // returns a Slice(ValueType::None) if not found
   Slice get(std::string_view attribute) const;
 
-  Slice get(HashedStringRef const& attribute) const {
+  [[deprecated]] Slice get(HashedStringRef attribute) const {
     return get(std::string_view(attribute.data(), attribute.size()));
   }
 
@@ -627,15 +614,6 @@ class Slice {
     return get(attribute);
   }
 
-  // whether or not an Object has a specific sub-key
-  /*
-  template<typename T>
-  typename std::enable_if<
-      std::is_base_of<std::forward_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category>::value,
-      bool>::type hasKey(T const& attributes) const {
-    return !this->get(attributes.begin(), attributes.end()).isNone();
-  }
-  */
   // whether or not an Object has a specific key
   template<typename T>
   bool hasKey(std::vector<T> const& attributes) const {
@@ -654,7 +632,7 @@ class Slice {
   }
   
   // whether or not an Object has a specific key
-  bool hasKey(HashedStringRef const& attribute) const {
+  bool hasKey(HashedStringRef attribute) const {
     return hasKey(std::string_view(attribute.data(), attribute.size()));
   }
 

@@ -55,18 +55,18 @@ class RocksDBValue {
   // parameter in an appropriate format into the underlying string buffer.
   //----------------------------------------------------------------------------
 
-  static RocksDBValue Database(VPackSlice const& data);
-  static RocksDBValue Collection(VPackSlice const& data);
-  static RocksDBValue ReplicatedLog(VPackSlice const& data);
+  static RocksDBValue Database(VPackSlice data);
+  static RocksDBValue Collection(VPackSlice data);
+  static RocksDBValue ReplicatedLog(VPackSlice data);
   static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, RevisionId revision);
-  static RocksDBValue EdgeIndexValue(std::string_view const& vertexId);
+  static RocksDBValue EdgeIndexValue(std::string_view vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue ZkdIndexValue();
   static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
-  static RocksDBValue View(VPackSlice const& data);
-  static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
-  static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
+  static RocksDBValue View(VPackSlice data);
+  static RocksDBValue ReplicationApplierConfig(VPackSlice data);
+  static RocksDBValue KeyGeneratorValue(VPackSlice data);
   static RocksDBValue S2Value(S2Point const& c);
   static RocksDBValue LogEntry(replication2::PersistingLogEntry const& entry);
 
@@ -84,7 +84,7 @@ class RocksDBValue {
 
   static LocalDocumentId documentId(RocksDBValue const&);
   static LocalDocumentId documentId(rocksdb::Slice const&);
-  static LocalDocumentId documentId(std::string const&);
+  static LocalDocumentId documentId(std::string_view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the revisionId from a value
@@ -110,7 +110,7 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   static VPackSlice data(RocksDBValue const&);
   static VPackSlice data(rocksdb::Slice const&);
-  static VPackSlice data(std::string const&);
+  static VPackSlice data(std::string_view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
@@ -159,18 +159,16 @@ class RocksDBValue {
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision);
-  RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
-  RocksDBValue(RocksDBEntryType type, std::string_view const& data);
+  RocksDBValue(RocksDBEntryType type, VPackSlice data);
+  RocksDBValue(RocksDBEntryType type, std::string_view data);
   RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
   explicit RocksDBValue(S2Point const&);
 
- private:
   static RocksDBEntryType type(char const* data, size_t size);
   static LocalDocumentId documentId(char const* data, uint64_t size);
   static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
 
- private:
   RocksDBEntryType _type;
   std::string _buffer;
 };

@@ -54,7 +54,7 @@ class EnumeratedPath {
   explicit EnumeratedPath(arangodb::ResourceMonitor& resourceMonitor);
   ~EnumeratedPath();
 
-  void pushVertex(std::string_view const& v);
+  void pushVertex(std::string_view v);
   void pushEdge(graph::EdgeDocumentToken const& e);
   void popVertex() noexcept;
   void popEdge() noexcept;
@@ -63,7 +63,7 @@ class EnumeratedPath {
   size_t numEdges() const noexcept;
   std::vector<std::string_view> const& vertices() const noexcept;
   std::vector<graph::EdgeDocumentToken> const& edges() const noexcept;
-  std::string_view const& lastVertex() const noexcept;
+  std::string_view lastVertex() const noexcept;
   graph::EdgeDocumentToken const& lastEdge() const noexcept;
 
  private:

@@ -5642,7 +5642,7 @@ static void JS_IsAllowedDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& 
 
   auto databaseName = TRI_ObjectToString(isolate, args[0]);
   bool isExtendedName = TRI_ObjectToBoolean(isolate, args[1]);
-  bool result = arangodb::DatabaseNameValidator::isAllowedName(true, isExtendedName, std::string_view(databaseName));
+  bool result = arangodb::DatabaseNameValidator::isAllowedName(true, isExtendedName, databaseName);
 
   TRI_V8_RETURN_BOOL(result);
   TRI_V8_TRY_CATCH_END

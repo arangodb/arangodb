@@ -133,8 +133,7 @@ void RocksDBKey::constructDocument(uint64_t objectId, LocalDocumentId documentId
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructPrimaryIndexValue(uint64_t indexId,
-                                            std::string_view const& primaryKey) {
+void RocksDBKey::constructPrimaryIndexValue(uint64_t indexId, std::string_view primaryKey) {
   TRI_ASSERT(indexId != 0 && !primaryKey.empty());
   _type = RocksDBEntryType::PrimaryIndexValue;
   size_t keyLength = sizeof(uint64_t) + primaryKey.size();
@@ -145,13 +144,7 @@ void RocksDBKey::constructPrimaryIndexValue(uint64_t indexId,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructPrimaryIndexValue(uint64_t indexId, char const* primaryKey) {
-  TRI_ASSERT(indexId != 0);
-  std::string_view const keyRef(primaryKey);
-  constructPrimaryIndexValue(indexId, keyRef);
-}
-
-void RocksDBKey::constructEdgeIndexValue(uint64_t indexId, std::string_view const& vertexId,
+void RocksDBKey::constructEdgeIndexValue(uint64_t indexId, std::string_view vertexId,
                                          LocalDocumentId documentId) {
   TRI_ASSERT(indexId != 0 && !vertexId.empty());
   _type = RocksDBEntryType::EdgeIndexValue;
@@ -166,7 +159,7 @@ void RocksDBKey::constructEdgeIndexValue(uint64_t indexId, std::string_view cons
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructVPackIndexValue(uint64_t indexId, VPackSlice const& indexValues,
+void RocksDBKey::constructVPackIndexValue(uint64_t indexId, VPackSlice indexValues,
                                           LocalDocumentId documentId) {
   TRI_ASSERT(indexId != 0 && !indexValues.isNone());
   _type = RocksDBEntryType::VPackIndexValue;

@@ -65,7 +65,7 @@ void ConstantWeightShortestPathFinder::clear() {
 }
 
 bool ConstantWeightShortestPathFinder::shortestPath(
-    arangodb::velocypack::Slice const& s, arangodb::velocypack::Slice const& e,
+    arangodb::velocypack::Slice s, arangodb::velocypack::Slice e,
     arangodb::graph::ShortestPathResult& result) {
   result.clear();
   TRI_ASSERT(s.isString());

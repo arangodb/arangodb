@@ -44,12 +44,12 @@ RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_tick_t dbid, DataSourc
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_tick_t dbid, DataSourceId cid,
-                                                std::string_view const& uuid) {
+                                                std::string_view uuid) {
   return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid.id(), uuid);
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_tick_t dbid, DataSourceId cid,
-                                                  std::string_view const& oldName) {
+                                                  std::string_view oldName) {
   return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid.id(), oldName);
 }
 
@@ -63,7 +63,7 @@ RocksDBLogValue RocksDBLogValue::CollectionTruncate(TRI_voc_tick_t dbid, DataSou
 }
 
 RocksDBLogValue RocksDBLogValue::IndexCreate(TRI_voc_tick_t dbid, DataSourceId cid,
-                                             VPackSlice const& indexInfo) {
+                                             VPackSlice indexInfo) {
   return RocksDBLogValue(RocksDBLogType::IndexCreate, dbid, cid.id(), indexInfo);
 }
 
@@ -76,7 +76,7 @@ RocksDBLogValue RocksDBLogValue::ViewCreate(TRI_voc_tick_t dbid, DataSourceId vi
 }
 
 RocksDBLogValue RocksDBLogValue::ViewDrop(TRI_voc_tick_t dbid, DataSourceId vid,
-                                          std::string_view const& uuid) {
+                                          std::string_view uuid) {
   return RocksDBLogValue(RocksDBLogType::ViewDrop, dbid, vid.id(), uuid);
 }
 
@@ -106,7 +106,7 @@ RocksDBLogValue RocksDBLogValue::SingleRemoveV2(TRI_voc_tick_t vocbaseId,
 }
 
 RocksDBLogValue RocksDBLogValue::TrackedDocumentInsert(LocalDocumentId docId,
-                                                       VPackSlice const& slice) {
+                                                       VPackSlice slice) {
   RocksDBLogValue val{};
   val._buffer.reserve(sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType) + slice.byteSize());
   val._buffer.push_back(static_cast<char>(RocksDBLogType::TrackedDocumentInsert));
@@ -116,7 +116,7 @@ RocksDBLogValue RocksDBLogValue::TrackedDocumentInsert(LocalDocumentId docId,
 }
 
 RocksDBLogValue RocksDBLogValue::TrackedDocumentRemove(LocalDocumentId docId,
-                                                       VPackSlice const& slice) {
+                                                       VPackSlice slice) {
   RocksDBLogValue val{};
   val._buffer.reserve(sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType) + slice.byteSize());
   val._buffer.push_back(static_cast<char>(RocksDBLogType::TrackedDocumentRemove));
@@ -192,7 +192,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId, uint64_t ci
 }
 
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
-                                 uint64_t cid, VPackSlice const& info)
+                                 uint64_t cid, VPackSlice info)
     : _buffer() {
   switch (type) {
     case RocksDBLogType::IndexCreate: {
@@ -210,7 +210,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
 }
 
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
-                                 uint64_t cid, std::string_view const& data)
+                                 uint64_t cid, std::string_view data)
     : _buffer() {
   switch (type) {
     case RocksDBLogType::CollectionDrop:

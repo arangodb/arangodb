@@ -112,7 +112,7 @@ class HashedCollectExecutorTest
   auto buildExecutorInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
                           RegisterId collectRegister = RegisterPlan::MaxRegisterId,
-                          std::vector<std::string> aggregateTypes = {},
+                          std::vector<std::string_view> aggregateTypes = {},
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> HashedCollectExecutorInfos {
     return HashedCollectExecutorInfos{std::move(groupRegisters), RegisterPlan::MaxRegisterId,
@@ -578,7 +578,7 @@ class HashedCollectExecutorTestAggregate
     RegisterId collectRegister = RegisterPlan::MaxRegisterId;
 
     auto agg = getAggregator();
-    std::vector<std::string> aggregateTypes{agg.name};
+    std::vector<std::string_view> aggregateTypes{agg.name};
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{3, agg.inReg}};
 
     auto infos = HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,

@@ -929,7 +929,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
         if (name == "method") {
           auto value = member->getMember(0);
           if (value->isStringValue()) {
-            options.method = CollectOptions::methodFromString(value->getString());
+            options.method = CollectOptions::methodFromString(value->getStringView());
             if (options.method != CollectOptions::CollectMethod::UNDEFINED) {
               handled = true;
             }
@@ -2534,7 +2534,7 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode*
     // the number of arguments should also be one (note: this has been
     // validated before)
     TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
-    auto const& functionName = Aggregator::translateAlias(func->name);
+    std::string_view functionName = Aggregator::translateAlias(func->name);
     if (args->numMembers() == 1) {
       auto arg = args->getMember(0);
       if (arg->type == NODE_TYPE_REFERENCE) {

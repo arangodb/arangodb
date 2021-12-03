@@ -196,7 +196,7 @@ class LogicalCollection : public LogicalDataSource {
 
   ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
                                 std::string& shardID, bool& usesDefaultShardKeys,
-                                std::string_view const& key = std::string_view());
+                                std::string_view key = std::string_view());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes

@@ -499,7 +499,7 @@ struct CreateOperationCtx {
 ////////////////////////////////////////////////////////////////////////////////
 
 ::ErrorCode distributeBabyOnShards(CreateOperationCtx& opCtx, LogicalCollection& collinfo,
-                                   VPackSlice const value, bool isRestore) {
+                                   VPackSlice value, bool isRestore) {
   ShardID shardID;
   std::string _key;
 
@@ -1867,7 +1867,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           if (slice.isObject()) {
             keySlice = slice.get(StaticStrings::KeyString);
           }
-          std::string_view ref = keySlice.stringRef();
+          std::string_view ref = keySlice.stringView();
           // We send to single endpoint
           url.append("/_api/document/").append(StringUtils::urlEncode(it.first)).push_back('/');
           url.append(StringUtils::urlEncode(ref.data(), ref.length()));

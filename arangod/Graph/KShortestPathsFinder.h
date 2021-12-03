@@ -241,8 +241,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
   // TODO: Remove
-  bool shortestPath(arangodb::velocypack::Slice const& start,
-                    arangodb::velocypack::Slice const& target,
+  bool shortestPath(arangodb::velocypack::Slice start,
+                    arangodb::velocypack::Slice target,
                     arangodb::graph::ShortestPathResult& result) override {
     TRI_ASSERT(false);
     return false;

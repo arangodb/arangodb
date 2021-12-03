@@ -103,7 +103,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                               arangodb::TransactionId tid) override;
 
   virtual arangodb::Result read(arangodb::transaction::Methods*,
-                                std::string_view const& key,
+                                std::string_view key,
                                 arangodb::IndexIterator::DocumentCallback const& cb,
                                 arangodb::ReadOwnWrites) const override;
   virtual arangodb::Result read(arangodb::transaction::Methods* trx,

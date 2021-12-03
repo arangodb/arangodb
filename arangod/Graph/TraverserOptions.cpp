@@ -131,7 +131,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
 
   VPackSlice read = obj.get("vertexCollections");
   if (read.isString()) {
-    auto c = read.stringRef();
+    auto c = read.stringView();
     vertexCollections.emplace_back(c.data(), c.size());
   } else if (read.isArray()) {
     for (auto slice : VPackArrayIterator(read)) {
@@ -141,7 +141,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
             "The options require vertexCollections to "
             "be a string or array of strings");
       }
-      auto c = slice.stringRef();
+      auto c = slice.stringView();
       vertexCollections.emplace_back(c.data(), c.size());
     }
   } else if (!read.isNone()) {
@@ -152,7 +152,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
 
   read = obj.get("edgeCollections");
   if (read.isString()) {
-    auto c = read.stringRef();
+    auto c = read.stringView();
     edgeCollections.emplace_back(c.data(), c.size());
   } else if (read.isArray()) {
     for (auto slice : VPackArrayIterator(read)) {
@@ -161,7 +161,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
                                        "The options require edgeCollections to "
                                        "be a string or array of strings");
       }
-      auto c = slice.stringRef();
+      auto c = slice.stringView();
       edgeCollections.emplace_back(c.data(), c.size());
     }
   } else if (!read.isNone()) {
@@ -291,7 +291,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 
   read = info.get("vertexCollections");
   if (read.isString()) {
-    auto c = read.stringRef();
+    auto c = read.stringView();
     vertexCollections.emplace_back(c.data(), c.size());
   } else if (read.isArray()) {
     for (auto slice : VPackArrayIterator(read)) {
@@ -301,7 +301,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
             "The options require vertexCollections to "
             "be a string or array of strings");
       }
-      auto c = slice.stringRef();
+      auto c = slice.stringView();
       vertexCollections.emplace_back(c.data(), c.size());
     }
   } else if (!read.isNone()) {
@@ -312,7 +312,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 
   read = info.get("edgeCollections");
   if (read.isString()) {
-    auto c = read.stringRef();
+    auto c = read.stringView();
     edgeCollections.emplace_back(c.data(), c.size());
   } else if (read.isArray()) {
     for (auto slice : VPackArrayIterator(read)) {
@@ -321,7 +321,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                        "The options require edgeCollections to "
                                        "be a string or array of strings");
       }
-      auto c = slice.stringRef();
+      auto c = slice.stringView();
       edgeCollections.emplace_back(c.data(), c.size());
     }
   } else if (!read.isNone()) {
@@ -746,18 +746,18 @@ auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
                                           std::string_view origin) const
     -> std::string_view {
   if (edge.isString()) {
-    return edge.stringRef();
+    return edge.stringView();
   }
 
   TRI_ASSERT(edge.isObject());
   auto from = edge.get(arangodb::StaticStrings::FromString);
   TRI_ASSERT(from.isString());
-  if (from.stringRef() == origin) {
+  if (from.stringView() == origin) {
     auto to = edge.get(arangodb::StaticStrings::ToString);
     TRI_ASSERT(to.isString());
-    return to.stringRef();
+    return to.stringView();
   }
-  return from.stringRef();
+  return from.stringView();
 }
 
 void TraverserOptions::initializeIndexConditions(

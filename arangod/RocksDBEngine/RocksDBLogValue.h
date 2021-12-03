@@ -53,20 +53,20 @@ class RocksDBLogValue {
 
   static RocksDBLogValue CollectionCreate(TRI_voc_tick_t dbid, DataSourceId cid);
   static RocksDBLogValue CollectionDrop(TRI_voc_tick_t dbid, DataSourceId cid,
-                                        std::string_view const& uuid);
+                                        std::string_view uuid);
   static RocksDBLogValue CollectionRename(TRI_voc_tick_t dbid, DataSourceId cid,
-                                          std::string_view const& oldName);
+                                          std::string_view oldName);
   static RocksDBLogValue CollectionChange(TRI_voc_tick_t dbid, DataSourceId cid);
   static RocksDBLogValue CollectionTruncate(TRI_voc_tick_t dbid,
                                             DataSourceId cid, uint64_t objectId);
 
   static RocksDBLogValue IndexCreate(TRI_voc_tick_t dbid, DataSourceId cid,
-                                     VPackSlice const& indexInfo);
+                                     VPackSlice indexInfo);
   static RocksDBLogValue IndexDrop(TRI_voc_tick_t dbid, DataSourceId cid, IndexId indexId);
 
   static RocksDBLogValue ViewCreate(TRI_voc_tick_t, DataSourceId);
   static RocksDBLogValue ViewDrop(TRI_voc_tick_t, DataSourceId,
-                                  std::string_view const& uuid);
+                                  std::string_view uuid);
   static RocksDBLogValue ViewChange(TRI_voc_tick_t, DataSourceId);
 
   static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId, TransactionId tid);
@@ -77,8 +77,8 @@ class RocksDBLogValue {
   static RocksDBLogValue SingleRemoveV2(TRI_voc_tick_t vocbaseId,
                                         DataSourceId cid, RevisionId rid);
 
-  static RocksDBLogValue TrackedDocumentInsert(LocalDocumentId, velocypack::Slice const&);
-  static RocksDBLogValue TrackedDocumentRemove(LocalDocumentId, velocypack::Slice const&);
+  static RocksDBLogValue TrackedDocumentInsert(LocalDocumentId, velocypack::Slice);
+  static RocksDBLogValue TrackedDocumentRemove(LocalDocumentId, velocypack::Slice);
 
   // empty log value
   static RocksDBLogValue Empty();
@@ -129,8 +129,8 @@ class RocksDBLogValue {
   RocksDBLogValue(RocksDBLogType, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);
-  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, VPackSlice const&);
-  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, std::string_view const& data);
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, VPackSlice);
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, std::string_view data);
 
  private:
   std::string _buffer;

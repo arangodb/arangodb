@@ -224,7 +224,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, std::string const& doc
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                                    std::string_view const& _key) {
+                                    std::string_view key) {
   // Apparently this code has not been implemented yet; find out whether it's
   // needed at all or remove
   TRI_ASSERT(false);

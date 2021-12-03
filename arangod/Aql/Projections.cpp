@@ -36,7 +36,7 @@
 namespace {
 
 /// @brief velocypack attribute name for serializing/unserializing projections
-std::string_view const projectionsKey("projections");
+constexpr std::string_view projectionsKey("projections");
 
 /// @brief extract the (single) index to be used for an index scan. this will
 /// return the index if only a single index is used, or if the same index is

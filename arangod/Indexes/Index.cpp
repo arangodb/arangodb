@@ -57,8 +57,11 @@ namespace {
 
 /// @brief the _key attribute, which, when used in an index, will implictly make it unique
 /// (note that we must not refer to StaticStrings::KeyString here to avoid an init-order-fiasco
+/// TODO FIXME
+constexpr std::string_view keyAttribute("_key");
+
 std::vector<arangodb::basics::AttributeName> const KeyAttribute{
-    arangodb::basics::AttributeName(std::string_view("_key"), false)};
+    arangodb::basics::AttributeName(keyAttribute, false)};
 
 bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
   for (auto const& it : fields) {
@@ -594,7 +597,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double Index::selectivityEstimate(std::string_view const&) const {
+double Index::selectivityEstimate(std::string_view) const {
   if (_unique) {
     return 1.0;
   }

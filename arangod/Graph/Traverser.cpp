@@ -72,7 +72,7 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
   return true;
 }
 
-void Traverser::VertexGetter::reset(std::string_view const&) {}
+void Traverser::VertexGetter::reset(std::string_view) {}
 
 // nothing to do
 void Traverser::VertexGetter::clear() {}
@@ -158,7 +158,7 @@ bool Traverser::UniqueVertexGetter::pointsIntoTraverserCache() const noexcept {
 }
 #endif
 
-void Traverser::UniqueVertexGetter::reset(std::string_view const& startVertex) {
+void Traverser::UniqueVertexGetter::reset(std::string_view startVertex) {
   _returnedVertices.clear();
   // The startVertex always counts as visited!
   _returnedVertices.emplace(startVertex);

@@ -133,7 +133,7 @@ void addToShardStatistics(arangodb::ShardStatistics& stats,
     for (auto pair : VPackObjectIterator(shards)) {
       int i = 0;
       for (auto const& serv : VPackArrayIterator(pair.value)) {
-        if (!restrictServer.empty() && serv.stringRef() != restrictServer) {
+        if (!restrictServer.empty() && serv.stringView() != restrictServer) {
           // different server
           i++;
           continue;
@@ -185,10 +185,10 @@ void addToShardStatistics(std::unordered_map<arangodb::ServerID, arangodb::Shard
       for (auto const& serv : VPackArrayIterator(pair.value)) {
         auto& stat = stats[serv.copyString()];
 
-        if (serversSeenForCollection.emplace(serv.stringRef()).second) {
+        if (serversSeenForCollection.emplace(serv.stringView()).second) {
           ++stat.collections;
 
-          if (serversSeenForDatabase.emplace(serv.stringRef()).second) {
+          if (serversSeenForDatabase.emplace(serv.stringView()).second) {
             ++stat.databases;
           }
         }
@@ -2516,7 +2516,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
       VPackSlice agencyId = databaseSlice.get("id");
       VPackSlice preconditionId = builder.slice().get("id");
       if (agencyId.isString() && preconditionId.isString() &&
-          !agencyId.isEqualString(preconditionId.stringRef())) {
+          !agencyId.isEqualString(preconditionId.stringView())) {
         // database key is there, but has a different id, this can happen if the
         // database has already been dropped in the meantime and recreated, in
         // any case, let's get us out of here...

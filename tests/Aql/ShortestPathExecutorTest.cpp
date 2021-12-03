@@ -145,7 +145,7 @@ class FakePathFinder : public ShortestPathFinder {
     _paths.emplace_back(std::move(path));
   }
 
-  bool shortestPath(VPackSlice const& source, VPackSlice const& target,
+  bool shortestPath(VPackSlice source, VPackSlice target,
                     arangodb::graph::ShortestPathResult& result) override {
     TRI_ASSERT(source.isString());
     TRI_ASSERT(target.isString());
@@ -474,9 +474,9 @@ class ShortestPathExecutorTest : public ::testing::Test {
               EXPECT_TRUE(value.isObject());
               VPackSlice edge = value.slice();
               // FROM and TO checks are enough here.
-              EXPECT_TRUE(std::string_view(edge.get(StaticStrings::FromString).stringView())
+              EXPECT_TRUE(edge.get(StaticStrings::FromString).stringView()
                               .compare(expectedRowsFound[expectedRowsIndex - 1]) == 0);
-              EXPECT_TRUE(std::string_view(edge.get(StaticStrings::ToString).stringView())
+              EXPECT_TRUE(edge.get(StaticStrings::ToString).stringView()
                               .compare(expectedRowsFound[expectedRowsIndex]) == 0);
             }
           }

@@ -61,7 +61,7 @@ static bool isValidId(VPackSlice id) {
     return false;
   }
   TRI_ASSERT(id.isString());
-  return id.stringView().find('/') != std::string::npos;
+  return id.stringView().find('/') != std::string_view::npos;
 }
 }  // namespace
 

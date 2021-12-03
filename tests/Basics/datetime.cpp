@@ -62,12 +62,12 @@ TEST(DateTimeTest, testing) {
                                        "2017-01-01:12:34Z-10:20"};
 
   for (auto const& dateTime : datesToTest) {
-    bool ret = parseDateTime(std::string_view(dateTime), tp);
+    bool ret = parseDateTime(dateTime, tp);
     ASSERT_TRUE(ret);
   }
 
   for (auto const& dateTime : datesToFail) {
-    bool ret = parseDateTime(std::string_view(dateTime), tp);
+    bool ret = parseDateTime(dateTime, tp);
     ASSERT_FALSE(ret);
   }
 }

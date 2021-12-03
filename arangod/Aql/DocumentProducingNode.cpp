@@ -84,7 +84,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   _projections.toVelocyPack(builder);
   
   if (_filter != nullptr) {
-    builder.add(VPackValuePair(::filterKey.data(), ::filterKey.size(), VPackValueType::String));
+    builder.add(VPackValue(filterKey));
     _filter->toVelocyPack(builder, flags);
   }
 

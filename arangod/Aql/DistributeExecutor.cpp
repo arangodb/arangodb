@@ -94,7 +94,7 @@ auto DistributeExecutorInfos::shouldDistributeToAll(arangodb::velocypack::Slice 
   // NOTE: Copy Paste code, shall be unified
   std::string_view vid = id.stringView();
   size_t pos = vid.find('/');
-  if (pos == std::string::npos) {
+  if (pos == vid.npos) {
     // Invalid input. Let the sharding take care of it, one server shall complain
     return false;
   }

@@ -350,13 +350,13 @@ double WeightedEnumerator::weightEdge(VPackSlice edge) const {
 }
 
 std::string_view WeightedEnumerator::getToVertex(velocypack::Slice edge,
-                                                      std::string_view from) {
+                                                 std::string_view from) {
   TRI_ASSERT(edge.isObject());
   VPackSlice resSlice = transaction::helpers::extractToFromDocument(edge);
   if (resSlice.isEqualString(from)) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
   }
-  return resSlice.stringRef();
+  return resSlice.stringView();
 }
 
 #ifndef USE_ENTERPRISE

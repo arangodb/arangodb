@@ -66,9 +66,9 @@ class InCache {
 
   /// @brief Store a single message.
   /// Only ever call when you are sure this is a thread local store
-  void storeMessageNoLock(PregelShard shard, std::string_view const& vertexId, M const& data);
+  void storeMessageNoLock(PregelShard shard, std::string_view vertexId, M const& data);
   /// @brief  Store a single message
-  void storeMessage(PregelShard shard, std::string_view const& vertexId, M const& data);
+  void storeMessage(PregelShard shard, std::string_view vertexId, M const& data);
 
   virtual void mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) = 0;
   /// @brief get messages for vertex id. (Don't use keys from _from or _to

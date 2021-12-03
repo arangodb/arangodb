@@ -168,7 +168,7 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::calculateIndexCosts(
       // use index selectivity estimate
       std::string_view att;
       if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-        att = std::string_view(attribute->getStringValue(), attribute->getStringLength());
+        att = attribute->getStringView();
       }
       double estimate = idx->selectivityEstimate(att);
       if (estimate > 0.0) {

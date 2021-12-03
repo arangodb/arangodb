@@ -393,7 +393,7 @@ ErrorCode LogicalCollection::getResponsibleShard(std::string_view key, std::stri
 ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                                  bool docComplete, std::string& shardID,
                                                  bool& usesDefaultShardKeys,
-                                                 std::string_view const& key) {
+                                                 std::string_view key) {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->getResponsibleShard(slice, docComplete, shardID,
                                         usesDefaultShardKeys, key);

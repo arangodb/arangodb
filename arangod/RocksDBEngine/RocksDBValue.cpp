@@ -35,15 +35,15 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
-RocksDBValue RocksDBValue::Database(VPackSlice const& data) {
+RocksDBValue RocksDBValue::Database(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::Database, data);
 }
 
-RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
+RocksDBValue RocksDBValue::Collection(VPackSlice data) {
     return RocksDBValue(RocksDBEntryType::Collection, data);
 }
 
-RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice const& data) {
+RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice data) {
     return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
 }
 
@@ -51,7 +51,7 @@ RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId, Revis
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, docId, rev);
 }
 
-RocksDBValue RocksDBValue::EdgeIndexValue(std::string_view const& vertexId) {
+RocksDBValue RocksDBValue::EdgeIndexValue(std::string_view vertexId) {
   return RocksDBValue(RocksDBEntryType::EdgeIndexValue, vertexId);
 }
 
@@ -72,15 +72,15 @@ RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, RevisionId::none());
 }
 
-RocksDBValue RocksDBValue::View(VPackSlice const& data) {
+RocksDBValue RocksDBValue::View(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::View, data);
 }
 
-RocksDBValue RocksDBValue::ReplicationApplierConfig(VPackSlice const& data) {
+RocksDBValue RocksDBValue::ReplicationApplierConfig(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::ReplicationApplierConfig, data);
 }
 
-RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
+RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
 }
 
@@ -103,7 +103,7 @@ LocalDocumentId RocksDBValue::documentId(rocksdb::Slice const& slice) {
   return documentId(slice.data(), slice.size());
 }
 
-LocalDocumentId RocksDBValue::documentId(std::string const& s) {
+LocalDocumentId RocksDBValue::documentId(std::string_view s) {
   return documentId(s.data(), s.size());
 }
 
@@ -145,7 +145,7 @@ VPackSlice RocksDBValue::data(rocksdb::Slice const& slice) {
   return data(slice.data(), slice.size());
 }
 
-VPackSlice RocksDBValue::data(std::string const& s) {
+VPackSlice RocksDBValue::data(std::string_view s) {
   return data(s.data(), s.size());
 }
 
@@ -156,12 +156,12 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
                  intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
 }
 
-replication2::LogTerm RocksDBValue::logTerm(const rocksdb::Slice& slice) {
+replication2::LogTerm RocksDBValue::logTerm(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(uint64_t));
   return replication2::LogTerm(uint64FromPersistent(slice.data()));
 }
 
-replication2::LogPayload RocksDBValue::logPayload(const rocksdb::Slice& slice) {
+replication2::LogPayload RocksDBValue::logPayload(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(uint64_t));
   auto data = slice.ToStringView();
   data.remove_prefix(sizeof(uint64_t));
@@ -193,7 +193,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, 
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::Database:
@@ -217,7 +217,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, std::string_view const& data)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, std::string_view data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::EdgeIndexValue: {

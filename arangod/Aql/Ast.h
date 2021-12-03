@@ -27,6 +27,7 @@
 #include <iterator>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -235,38 +236,35 @@ class Ast {
   AstNode* createNodeAssign(char const*, size_t, AstNode const*);
 
   /// @brief create an AST variable node
-  AstNode* createNodeVariable(char const* name, size_t nameLength, bool isUserDefined);
+  AstNode* createNodeVariable(std::string_view name, bool isUserDefined);
 
   /// @brief create an AST datasource
   /// this function will return either an AST collection or an AST view node
   /// if failIfDoesNotExist is true, the function will throw if the specified
   /// data source does not exist
   AstNode* createNodeDataSource(arangodb::CollectionNameResolver const& resolver,
-                                char const* name, size_t nameLength, AccessMode::Type accessType,
+                                std::string_view name, AccessMode::Type accessType,
                                 bool validateName, bool failIfDoesNotExist);
 
   /// @brief create an AST collection node
   AstNode* createNodeCollection(arangodb::CollectionNameResolver const& resolver,
-                                char const* name, size_t nameLength,
+                                std::string_view name,
                                 AccessMode::Type accessType);
 
   /// @brief create an AST reference node
-  AstNode* createNodeReference(char const* name, size_t nameLength);
-
-  /// @brief create an AST reference node
-  AstNode* createNodeReference(std::string const& variableName);
+  AstNode* createNodeReference(std::string_view variableName);
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(Variable const* variable);
 
   /// @brief create an AST subquery reference node
-  AstNode* createNodeSubqueryReference(std::string const& variableName);
+  AstNode* createNodeSubqueryReference(std::string_view variableName);
 
   /// @brief create an AST parameter node for a value literal
-  AstNode* createNodeParameter(char const* name, size_t length);
+  AstNode* createNodeParameter(std::string_view name);
 
   /// @brief create an AST parameter node for a datasource
-  AstNode* createNodeParameterDatasource(char const* name, size_t length);
+  AstNode* createNodeParameterDatasource(std::string_view name);
 
   /// @brief create an AST quantifier node
   AstNode* createNodeQuantifier(int64_t);
@@ -290,10 +288,11 @@ class Ast {
 
   /// @brief create an AST attribute access node
   /// note that the caller must make sure that char* data remains valid!
-  AstNode* createNodeAttributeAccess(AstNode const*, char const*, size_t);
+  AstNode* createNodeAttributeAccess(AstNode const*, std::string_view name);
 
   /// @brief create an AST attribute access node for multiple accesses
-  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string> const&);
+  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string_view> const& parts);
+  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string> const& parts);
   AstNode* createNodeAttributeAccess(AstNode const* node,
                                      std::vector<basics::AttributeName> const& attrs);
 
@@ -346,7 +345,7 @@ class Ast {
   AstNode* createNodeObject();
 
   /// @brief create an AST object element node
-  AstNode* createNodeObjectElement(char const*, size_t, AstNode const*);
+  AstNode* createNodeObjectElement(std::string_view name, AstNode const*);
 
   /// @brief create an AST calculated object element node
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
@@ -383,14 +382,11 @@ class Ast {
   AstNode* createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type, AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
-  AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments,
+  AstNode* createNodeFunctionCall(std::string_view functionName, AstNode const* arguments,
                                   bool allowInternalFunctions);
 
-  AstNode* createNodeFunctionCall(char const* functionName, size_t length,
-                                  AstNode const* arguments, bool allowInternalFunctions);
-
   /// @brief create an AST function call node for aggregate functions
-  AstNode* createNodeAggregateFunctionCall(char const* functionName, AstNode const* arguments);
+  AstNode* createNodeAggregateFunctionCall(std::string_view functionName, AstNode const* arguments);
 
   /// @brief create an AST range node
   AstNode* createNodeRange(AstNode const*, AstNode const*);
@@ -480,7 +476,7 @@ class Ast {
   static bool IsOrOperatorType(AstNodeType);
 
   /// @brief create an AST node from vpack
-  AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool copyStringValues);
+  AstNode* nodeFromVPack(arangodb::velocypack::Slice, bool copyStringValues);
 
   /// @brief resolve an attribute access
   AstNode const* resolveConstAttributeAccess(AstNode const*);
@@ -575,7 +571,7 @@ class Ast {
 
  private:
   /// @brief normalize a function name
-  std::pair<std::string, bool> normalizeFunctionName(char const* functionName, size_t length);
+  std::pair<std::string, bool> normalizeFunctionName(std::string_view name);
 
   /// @brief create a node of the specified type
   AstNode* createNode(AstNodeType);
@@ -598,7 +594,6 @@ class Ast {
   bool hasFlag(AstPropertyFlag flag) const noexcept {
     return ((_astFlags & static_cast<decltype(_astFlags)>(flag)) != 0);
   }
-
 
  public:
   /// @brief negated comparison operators

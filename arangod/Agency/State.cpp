@@ -736,7 +736,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
               oper.value.get("op").isEqualString("set") && oper.value.hasKey("ttl")) {
             VPackObjectBuilder oo(&slices);
             for (auto const& i : VPackObjectIterator(oper.value)) {
-              slices.add(i.key.stringRef(), i.value);
+              slices.add(i.key.stringView(), i.value);
             }
             slices.add("epoch_millis", VPackValue(_log.at(i).timestamp.count()));
           } else {

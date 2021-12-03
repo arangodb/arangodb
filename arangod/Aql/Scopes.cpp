@@ -60,18 +60,14 @@ void Scope::addVariable(Variable* variable) {
 }
 
 /// @brief checks if a variable exists in the scope
-bool Scope::existsVariable(char const* name, size_t nameLength) const {
-  return (getVariable(name, nameLength) != nullptr);
-}
-
-/// @brief checks if a variable exists in the scope
-bool Scope::existsVariable(std::string const& name) const {
-  return (getVariable(name) != nullptr);
+bool Scope::existsVariable(std::string_view name) const {
+  return getVariable(name) != nullptr;
 }
 
 /// @brief returns a variable
-Variable const* Scope::getVariable(char const* name, size_t nameLength) const {
-  std::string const varname(name, nameLength);
+Variable const* Scope::getVariable(std::string_view name) const {
+  // TODO: use heterogenous lookups!
+  std::string const varname(name);
 
   auto it = _variables.find(varname);
 
@@ -82,29 +78,18 @@ Variable const* Scope::getVariable(char const* name, size_t nameLength) const {
   return (*it).second;
 }
 
-/// @brief returns a variable
-Variable const* Scope::getVariable(std::string const& name) const {
-  auto it = _variables.find(name);
-
-  if (it == _variables.end()) {
-    return nullptr;
-  }
-
-  return (*it).second;
-}
-
 /// @brief return a variable, allowing usage of special pseudo vars such
 /// as OLD and NEW
-Variable const* Scope::getVariable(char const* name, size_t nameLength, bool allowSpecial) const {
-  auto variable = getVariable(name, nameLength);
+Variable const* Scope::getVariable(std::string_view name, bool allowSpecial) const {
+  auto variable = getVariable(name);
 
   if (variable == nullptr && allowSpecial) {
     // variable does not exist
     // now try variable aliases OLD (= $OLD) and NEW (= $NEW)
-    if (strcmp(name, "OLD") == 0) {
-      variable = getVariable(Variable::NAME_OLD, std::strlen(Variable::NAME_OLD));
-    } else if (strcmp(name, "NEW") == 0) {
-      variable = getVariable(Variable::NAME_NEW, std::strlen(Variable::NAME_NEW));
+    if (name == "OLD") {
+      variable = getVariable(Variable::NAME_OLD);
+    } else if (name == "NEW") {
+      variable = getVariable(Variable::NAME_NEW);
     }
   }
 
@@ -178,27 +163,12 @@ void Scopes::replaceVariable(Variable* variable) {
 }
 
 /// @brief checks whether a variable exists in any scope
-bool Scopes::existsVariable(char const* name, size_t nameLength) const {
-  return (getVariable(name, nameLength) != nullptr);
+bool Scopes::existsVariable(std::string_view name) const {
+  return getVariable(name) != nullptr;
 }
 
 /// @brief return a variable by name - this respects the current scopes
-Variable const* Scopes::getVariable(char const* name, size_t nameLength) const {
-  TRI_ASSERT(!_activeScopes.empty());
-
-  for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
-    auto variable = (*it)->getVariable(name, nameLength);
-
-    if (variable != nullptr) {
-      return variable;
-    }
-  }
-
-  return nullptr;
-}
-
-/// @brief return a variable by name - this respects the current scopes
-Variable const* Scopes::getVariable(std::string const& name) const {
+Variable const* Scopes::getVariable(std::string_view name) const {
   TRI_ASSERT(!_activeScopes.empty());
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
@@ -213,12 +183,11 @@ Variable const* Scopes::getVariable(std::string const& name) const {
 }
 
 /// @brief return a variable by name - this respects the current scopes
-Variable const* Scopes::getVariable(char const* name, size_t nameLength,
-                                    bool allowSpecial) const {
+Variable const* Scopes::getVariable(std::string_view name, bool allowSpecial) const {
   TRI_ASSERT(!_activeScopes.empty());
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
-    auto variable = (*it)->getVariable(name, nameLength, allowSpecial);
+    auto variable = (*it)->getVariable(name, allowSpecial);
 
     if (variable != nullptr) {
       return variable;
@@ -231,7 +200,11 @@ Variable const* Scopes::getVariable(char const* name, size_t nameLength,
 /// @brief get the $CURRENT variable
 Variable const* Scopes::getCurrentVariable() const {
   if (_currentVariables.empty()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, Variable::NAME_CURRENT);
+    // std::string_view NAME_CURRENT is not guaranteed to be null-terminated...
+    // in order to pass it into a function that requires a null-terminated C
+    // string, we need to create a temporary string
+    std::string temp(Variable::NAME_CURRENT);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, temp.c_str());
   }
   auto result = _currentVariables.back();
   TRI_ASSERT(result != nullptr);

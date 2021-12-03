@@ -454,12 +454,12 @@ std::vector<std::vector<arangodb::basics::AttributeName>> const& RocksDBEdgeInde
 }
 
 /// @brief return a selectivity estimate for the index
-double RocksDBEdgeIndex::selectivityEstimate(std::string_view const& attribute) const {
+double RocksDBEdgeIndex::selectivityEstimate(std::string_view attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
   }
-  if (!attribute.empty() && attribute.compare(_directionAttr)) {
+  if (!attribute.empty() && attribute != _directionAttr) {
     return 0.0;
   }
   if (_estimator == nullptr) {

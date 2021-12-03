@@ -66,8 +66,8 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
-static std::string_view const idRef("id");
-static std::string_view const cidRef("cid");
+constexpr std::string_view idRef("id");
+constexpr std::string_view cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;

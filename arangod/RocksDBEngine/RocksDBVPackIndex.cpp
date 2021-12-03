@@ -430,7 +430,7 @@ bool RocksDBVPackIndex::hasSelectivityEstimate() const {
   return _unique || _estimates;
 }
 
-double RocksDBVPackIndex::selectivityEstimate(std::string_view const&) const {
+double RocksDBVPackIndex::selectivityEstimate(std::string_view) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;

@@ -42,12 +42,15 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 /// @brief hard-coded vector of the index attributes
 /// note that the attribute names must be hard-coded here to avoid an init-order
-/// fiasco with StaticStrings::FromString etc.
+/// fiasco with StaticStrings::IdString etc.
+/// TODO FIXME
+constexpr std::string_view idAttribute("_id");
+constexpr std::string_view keyAttribute("_key");
 
 // The primary indexes do not have `_id` in the _fields instance variable
 std::vector<std::vector<arangodb::basics::AttributeName>> const primaryIndexAttributes{
-    {arangodb::basics::AttributeName(std::string_view("_id"), false)},
-    {arangodb::basics::AttributeName(std::string_view("_key"), false)}};
+    {arangodb::basics::AttributeName(idAttribute, false)},
+    {arangodb::basics::AttributeName(keyAttribute, false)}};
 
 };  // namespace
 
@@ -153,7 +156,7 @@ bool ClusterIndex::hasSelectivityEstimate() const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double ClusterIndex::selectivityEstimate(std::string_view const&) const {
+double ClusterIndex::selectivityEstimate(std::string_view) const {
   TRI_ASSERT(hasSelectivityEstimate());
   if (_unique) {
     return 1.0;

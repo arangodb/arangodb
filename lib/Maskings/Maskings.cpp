@@ -331,7 +331,7 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
         if (key == dataStr) {
           addMasked(collection, builder, entry.value);
         } else {
-          builder.add(key.data(), key.size(), entry.value);
+          builder.add(key, entry.value);
         }
       }
     }

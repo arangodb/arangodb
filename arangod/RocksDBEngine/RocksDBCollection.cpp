@@ -211,7 +211,7 @@ struct TruncateTimeTracker : public TimeTracker {
 
 void reportPrimaryIndexInconsistency(
     arangodb::Result const& res,
-    std::string_view const& key,
+    std::string_view key,
     arangodb::LocalDocumentId const& rev) {
 
   if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -923,7 +923,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx,
-                               std::string_view const& key,
+                               std::string_view key,
                                IndexIterator::DocumentCallback const& cb,
                                ReadOwnWrites readOwnWrites) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }

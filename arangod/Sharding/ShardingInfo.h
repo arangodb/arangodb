@@ -103,7 +103,7 @@ class ShardingInfo {
 
   ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
                                 ShardID& shardID, bool& usesDefaultShardKeys,
-                                std::string_view const& key);
+                                std::string_view key);
 
   static void sortShardNamesNumerically(std::vector<ShardID>& list);
 

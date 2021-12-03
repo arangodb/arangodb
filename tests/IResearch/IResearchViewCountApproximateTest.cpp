@@ -255,7 +255,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     bool viewFound{false};
     arangodb::iresearch::CountApproximate actualApproximate{arangodb::iresearch::CountApproximate::Exact};
     for (auto const& node : nodes) {
-      if (node.get("type").stringRef() == "EnumerateViewNode") {
+      if (node.get("type").stringView() == "EnumerateViewNode") {
         viewFound = true;
         auto optionsSlice = node.get("options");
         ASSERT_TRUE(optionsSlice.isObject());

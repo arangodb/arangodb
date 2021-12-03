@@ -514,7 +514,7 @@ static bool ExtractIndexHandle(VPackSlice const& arg, bool extendedNames,
     return false;
   }
 
-  std::string_view handle = arg.stringRef();
+  std::string_view handle = arg.stringView();
   if (arangodb::Index::validateHandle(extendedNames, handle)) {
     std::size_t split = handle.find('/');
     TRI_ASSERT(split != std::string::npos);
@@ -544,7 +544,7 @@ static bool ExtractIndexName(VPackSlice const& arg, bool extendedNames,
     return false;
   }
   
-  std::string_view handle = arg.stringRef();
+  std::string_view handle = arg.stringView();
   if (arangodb::Index::validateHandleName(extendedNames, handle)) {
     std::size_t split = handle.find('/');
     TRI_ASSERT(split != std::string::npos);

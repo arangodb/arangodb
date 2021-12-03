@@ -314,7 +314,7 @@ Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, std::string_v
 }
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               std::string_view const& /*key*/,
+                               std::string_view /*key*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
                                ReadOwnWrites) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);

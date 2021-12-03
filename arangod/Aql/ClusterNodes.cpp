@@ -65,9 +65,9 @@ using namespace arangodb::aql;
 
 namespace {
 
-std::string_view const SortModeUnset("unset");
-std::string_view const SortModeMinElement("minelement");
-std::string_view const SortModeHeap("heap");
+constexpr std::string_view kSortModeUnset("unset");
+constexpr std::string_view kSortModeMinElement("minelement");
+constexpr std::string_view kSortModeHeap("heap");
 
 char const* toString(GatherNode::Parallelism value) {
   switch (value) {
@@ -91,9 +91,9 @@ GatherNode::Parallelism parallelismFromString(std::string const& value) {
 }
 
 std::map<std::string_view, GatherNode::SortMode> const NameToValue{
-    {SortModeMinElement, GatherNode::SortMode::MinElement},
-    {SortModeHeap, GatherNode::SortMode::Heap},
-    {SortModeUnset, GatherNode::SortMode::Default}};
+    {kSortModeMinElement, GatherNode::SortMode::MinElement},
+    {kSortModeHeap, GatherNode::SortMode::Heap},
+    {kSortModeUnset, GatherNode::SortMode::Default}};
 
 bool toSortMode(std::string_view str, GatherNode::SortMode& mode) noexcept {
   // std::map ~25-30% faster than std::unordered_map for small number of elements
@@ -111,11 +111,11 @@ bool toSortMode(std::string_view str, GatherNode::SortMode& mode) noexcept {
 std::string_view toString(GatherNode::SortMode mode) noexcept {
   switch (mode) {
     case GatherNode::SortMode::MinElement:
-      return SortModeMinElement;
+      return kSortModeMinElement;
     case GatherNode::SortMode::Heap:
-      return SortModeHeap;
+      return kSortModeHeap;
     case GatherNode::SortMode::Default:
-      return SortModeUnset;
+      return kSortModeUnset;
     default:
       TRI_ASSERT(false);
       return {};
@@ -457,9 +457,9 @@ void GatherNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("parallelism", VPackValue(toString(_parallelism)));
 
   if (_elements.empty()) {
-    nodes.add("sortmode", VPackValue(SortModeUnset.data()));
+    nodes.add("sortmode", VPackValue(kSortModeUnset));
   } else {
-    nodes.add("sortmode", VPackValue(toString(_sortmode).data()));
+    nodes.add("sortmode", VPackValue(toString(_sortmode)));
     nodes.add("limit", VPackValue(_limit));
   }
 

@@ -42,7 +42,7 @@ using namespace arangodb::aql;
 namespace {
 // hack for MSVC
 auto getStringView(velocypack::Slice slice) -> std::string_view {
-  std::string_view ref = slice.stringRef();
+  std::string_view ref = slice.stringView();
   return std::string_view(ref.data(), ref.size());
 }
 }  // namespace

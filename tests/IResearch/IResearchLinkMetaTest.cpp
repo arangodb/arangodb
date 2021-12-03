@@ -1034,11 +1034,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     EXPECT_TRUE(sort.fromVelocyPack(tmpSlice, errorField));
     EXPECT_EQ(2, sort.size());
     EXPECT_TRUE(sort.direction(0));
-    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{{std::string_view("_key"), false}} ==
-                 sort.field(0)));
+    EXPECT_EQ((std::vector<arangodb::basics::AttributeName>{{std::string_view("_key"), false}}), sort.field(0));
     EXPECT_FALSE(sort.direction(1));
-    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{{std::string_view("_id"), false}} ==
-                 sort.field(1)));
+    EXPECT_EQ((std::vector<arangodb::basics::AttributeName>{{std::string_view("_id"), false}}), sort.field(1));
   }
 
   // with active vocbase (not fullAnalyzerDefinition)

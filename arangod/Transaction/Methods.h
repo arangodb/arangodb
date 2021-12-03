@@ -260,7 +260,7 @@ class Methods {
   ///        not care for revision handling! Must only be called on a local
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
-                                               std::string_view const& key,
+                                               std::string_view key,
                                                IndexIterator::DocumentCallback const& cb);
 
   /// @brief return one or multiple documents from a collection
@@ -381,12 +381,12 @@ class Methods {
 
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              velocypack::Builder& builder, DataSourceId cid,
-                             std::string_view const& key, RevisionId rid,
+                             std::string_view key, RevisionId rid,
                              RevisionId oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 
   futures::Future<OperationResult> documentCoordinator(std::string const& collectionName,
-                                                       VPackSlice const value,
+                                                       VPackSlice value,
                                                        OperationOptions const& options,
                                                        MethodsApi api);
 

@@ -243,7 +243,7 @@ class Buffer {
     _size += len;
   }
 
-  void append(std::string_view const& value) {
+  void append(std::string_view value) {
     return append(value.data(), value.size());
   }
   

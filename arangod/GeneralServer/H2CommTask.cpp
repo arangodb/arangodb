@@ -110,8 +110,7 @@ template <SocketType T>
   } else if (std::string_view(":authority") == field) {
     // simon: ignore, could treat like "Host" header
   } else {  // fall through
-    strm->request->setHeaderV2(std::string(field),
-                               std::string(reinterpret_cast<const char*>(value), valuelen));
+    strm->request->setHeaderV2(std::string(field), std::string(val));
   }
 
   return 0;

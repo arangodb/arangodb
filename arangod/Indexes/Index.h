@@ -319,8 +319,7 @@ class Index {
   ///
   /// The extra std::string_view is only used in the edge index
   /// as direction attribute attribute, a Slice would be more flexible.
-  virtual double selectivityEstimate(std::string_view const& extra =
-                                         std::string_view()) const;
+  virtual double selectivityEstimate(std::string_view extra = std::string_view()) const;
 
   /// @brief update the cluster selectivity estimate
   virtual void updateClusterSelectivityEstimate(double /*estimate*/) {

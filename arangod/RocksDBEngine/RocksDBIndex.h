@@ -162,7 +162,7 @@ class RocksDBIndex : public Index {
   
   void invalidateCacheEntry(char const* data, std::size_t len);
   
-  void invalidateCacheEntry(std::string_view& ref) {
+  void invalidateCacheEntry(std::string_view ref) {
     invalidateCacheEntry(ref.data(), ref.size());
   }
 

@@ -53,15 +53,14 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     arangodb::graph::EdgeDocumentToken _edge;
     bool _done;
 
-    Step(std::string_view const& vert,
-         std::string_view const& pred, double weig,
-         EdgeDocumentToken&& edge);
+    Step(std::string_view vert, std::string_view pred, 
+         double weig, EdgeDocumentToken&& edge);
 
     double weight() const { return _weight; }
 
     void setWeight(double w) { _weight = w; }
 
-    std::string_view const& getKey() const { return _vertex; }
+    std::string_view getKey() const { return _vertex; }
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -91,7 +90,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   class Searcher {
    public:
     Searcher(AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-             ThreadInfo& peerInfo, std::string_view const& start,
+             ThreadInfo& peerInfo, std::string_view start,
              bool backward);
 
    public:
@@ -112,7 +111,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     /// @brief Lookup our current vertex in the data of our peer.
     ////////////////////////////////////////////////////////////////////////////////
 
-    void lookupPeer(std::string_view& vertex, double weight);
+    void lookupPeer(std::string_view vertex, double weight);
 
    private:
     AttributeWeightShortestPathFinder* _pathFinder;
@@ -150,18 +149,18 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   // Caller has to free the result
   // If this returns true there is a path, if this returns false there is no
   // path
-  bool shortestPath(arangodb::velocypack::Slice const& start,
-                    arangodb::velocypack::Slice const& target,
+  bool shortestPath(arangodb::velocypack::Slice start,
+                    arangodb::velocypack::Slice target,
                     arangodb::graph::ShortestPathResult& result) override;
   
  private:
 
   void inserter(std::vector<std::unique_ptr<Step>>& result,
-                std::string_view const& s,
-                std::string_view const& t, double currentWeight,
+                std::string_view s, std::string_view t, 
+                double currentWeight,
                 graph::EdgeDocumentToken&& edge);
 
-  void expandVertex(bool backward, std::string_view const& source,
+  void expandVertex(bool backward, std::string_view source,
                     std::vector<std::unique_ptr<Step>>& result);
 
   void clearCandidates() noexcept;

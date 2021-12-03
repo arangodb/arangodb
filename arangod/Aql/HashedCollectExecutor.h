@@ -38,6 +38,7 @@
 #include "Containers/FlatHashMap.h"
 
 #include <memory>
+#include <string_view>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -68,7 +69,7 @@ class HashedCollectExecutorInfos {
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
    */
   HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-                             RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
+                             RegisterId collectRegister, std::vector<std::string_view> aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                              velocypack::Options const* vpackOptions, 
                              arangodb::ResourceMonitor& resourceMonitor);
@@ -81,14 +82,14 @@ class HashedCollectExecutorInfos {
  public:
   std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const;
   std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const;
-  std::vector<std::string> const& getAggregateTypes() const;
+  std::vector<std::string_view> const& getAggregateTypes() const;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
   arangodb::ResourceMonitor& getResourceMonitor() const;
 
  private:
   /// @brief aggregate types
-  std::vector<std::string> _aggregateTypes;
+  std::vector<std::string_view> _aggregateTypes;
 
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;

@@ -523,7 +523,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       std::pair<LocalDocumentId, RevisionId> lookupResult;
       // We must see our own writes, because we may have to remove conflicting documents
       // (that we just inserted) as documents may be replicated in unexpected order.
-      bool mustInsert = physical->lookupKey(trx, keySlice.stringRef(), lookupResult, ReadOwnWrites::yes).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      bool mustInsert = physical->lookupKey(trx, keySlice.stringView(), lookupResult, ReadOwnWrites::yes).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
         
       TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
      

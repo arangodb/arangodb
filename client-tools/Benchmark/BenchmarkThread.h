@@ -262,7 +262,7 @@ class BenchmarkThread : public arangodb::Thread {
       _payloadBuffer.append(boundary, blen);
       _payloadBuffer.append("\r\n", 2);
       // append content-type, this will also begin the body
-      _payloadBuffer.append("Content-Type: ", 14);
+      _payloadBuffer.append(std::string_view("Content-Type: "));
       _payloadBuffer.append(StaticStrings::BatchContentType);
       _payloadBuffer.append("\r\n\r\n", 4);
 
@@ -278,7 +278,7 @@ class BenchmarkThread : public arangodb::Thread {
       _payloadBuffer.append(HttpRequest::translateMethod(_requestData.type));
       _payloadBuffer.push_back(' ');
       _payloadBuffer.append(_requestData.url);
-      _payloadBuffer.append(" HTTP/1.1\r\n\r\n", 13);
+      _payloadBuffer.append(std::string_view(" HTTP/1.1\r\n\r\n"));
       velocypack::Slice payloadSlice = _requestData.payload.slice();
       if (!payloadSlice.isNone()) {
         velocypack::StringSink sink(&_payloadBuffer);

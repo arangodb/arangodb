@@ -58,7 +58,7 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
   TRI_ASSERT(keySlice.isString());  // used as a key in Json
   std::string_view key = keySlice.stringView();
   size_t p = key.find(':');
-  if (p == std::string::npos) {
+  if (p == key.npos) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};
   }

@@ -82,7 +82,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
-  double selectivityEstimate(std::string_view const& = std::string_view()) const override;
+  double selectivityEstimate(std::string_view = std::string_view()) const override;
 
   RocksDBCuckooIndexEstimatorType* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;

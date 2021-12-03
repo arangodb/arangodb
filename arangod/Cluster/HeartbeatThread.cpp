@@ -1389,7 +1389,7 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
     try {
       std::vector<std::string> values;
       // we have to make sure that the leader is on the front
-      auto leaderId = agentPool.get("id").stringRef();
+      auto leaderId = agentPool.get("id").stringView();
       auto pool = agentPool.get("pool");
       values.reserve(pool.length());
       values.emplace_back(pool.get(leaderId).copyString());

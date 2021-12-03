@@ -426,7 +426,7 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
 /// added to the builder in the argument as a single object.
 void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, DataSourceId cid,
-    std::string_view const& key, RevisionId rid, RevisionId oldRid,
+    std::string_view key, RevisionId rid, RevisionId oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
   StringLeaser leased(_transactionContext.get());
   std::string& temp(*leased.get());
@@ -737,7 +737,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(std::string const& collectionName,
-                                                   std::string_view const& key,
+                                                   std::string_view key,
                                                    IndexIterator::DocumentCallback const& cb) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
@@ -1051,7 +1051,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       if (key.isString()) {
         std::pair<LocalDocumentId, RevisionId> lookupResult;
         // modifications always need to observe all changes in order to validate uniqueness constraints
-        res = collection->getPhysical()->lookupKey(this, key.stringRef(),
+        res = collection->getPhysical()->lookupKey(this, key.stringView(),
                                                    lookupResult, ReadOwnWrites::yes);
         if (res.ok()) {
           TRI_ASSERT(lookupResult.first.isSet());
@@ -1101,7 +1101,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no write!)
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(),
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringView(),
                               oldRevisionId, RevisionId::none(), nullptr, nullptr);
         // we have not written anything, so exclude this document from replication!
         excludeFromReplication = true;
@@ -1132,7 +1132,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         TRI_ASSERT(didReplace);
 
         buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              value.get(StaticStrings::KeyString).stringRef(),
+                              value.get(StaticStrings::KeyString).stringView(),
                               prevDocResult.revisionId(), RevisionId::none(),
                               nullptr, nullptr);
       }

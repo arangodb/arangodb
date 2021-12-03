@@ -65,8 +65,8 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   ~ConstantWeightShortestPathFinder();
 
-  bool shortestPath(arangodb::velocypack::Slice const& start,
-                    arangodb::velocypack::Slice const& end,
+  bool shortestPath(arangodb::velocypack::Slice start,
+                    arangodb::velocypack::Slice end,
                     arangodb::graph::ShortestPathResult& result) override;
 
   void clear() override;

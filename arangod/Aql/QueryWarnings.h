@@ -26,6 +26,7 @@
 #include <Basics/ErrorCode.h>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace arangodb {
@@ -60,7 +61,8 @@ public:
   
   std::vector<std::pair<ErrorCode, std::string>> all() const;
 
-  static std::string buildFormattedString(ErrorCode code, char const* details);
+  static std::string buildFormattedString(ErrorCode code, std::string_view details);
+  [[deprecated]] static std::string buildFormattedString(ErrorCode code, char const* details);
 
  private:
   

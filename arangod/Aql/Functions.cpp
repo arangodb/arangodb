@@ -215,7 +215,7 @@ bool isValidDocument(VPackSlice slice) {
     auto it = VPackObjectIterator(slice, true);
 
     while (it.valid()) {
-      if (!keys.emplace(it.key().stringRef()).second) {
+      if (!keys.emplace(it.key().stringView()).second) {
         // duplicate key
         return false;
       }
@@ -4291,7 +4291,7 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  std::string_view s = durationType.slice().stringRef();
+  std::string_view s = durationType.slice().stringView();
 
   int64_t factor = 1;
   if (s == "milliseconds" || s == "millisecond" || s == "f") {
@@ -6734,7 +6734,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, AstNode const&
     TRI_ASSERT(example.isObject());
     TRI_ASSERT(docSlice.isObject());
     for (auto it : VPackObjectIterator(example, true)) {
-      VPackSlice keySlice = docSlice.get(it.key.stringRef());
+      VPackSlice keySlice = docSlice.get(it.key.stringView());
 
       if (it.value.isNull() && keySlice.isNone()) {
         continue;
@@ -7281,7 +7281,7 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode 
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (value.isString()) {
-    std::string_view v = value.slice().stringRef();
+    std::string_view v = value.slice().stringView();
     char const* p = v.data();
     char const* e = p + v.size();
 
@@ -8702,7 +8702,7 @@ static AqlValue ConvertToObject(transaction::Methods& trx, VPackSlice input,
   // convert string key into object with { _key: "string" }
   TRI_ASSERT(allowKeyConversionToObject);
   transaction::BuilderLeaser builder(&trx);
-  buildKeyObject(*builder.get(), input.stringRef());
+  buildKeyObject(*builder.get(), input.stringView());
   return AqlValue{builder->slice()};
 }
 
@@ -8806,7 +8806,7 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
     buildKeyObject(*builder.get(),
                    std::string_view(logicalCollection->createKey(input)), false);
     for (auto cur : VPackObjectIterator(input)) {
-      builder->add(cur.key.stringRef(), cur.value);
+      builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
     return AqlValue{builder->slice()};
@@ -8866,7 +8866,7 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
     transaction::BuilderLeaser builder(&trx);
     buildKeyObject(*builder.get(), std::string_view(keyPart), false);
     for (auto cur : VPackObjectIterator(input)) {
-      builder->add(cur.key.stringRef(), cur.value);
+      builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
     return AqlValue{builder->slice()};

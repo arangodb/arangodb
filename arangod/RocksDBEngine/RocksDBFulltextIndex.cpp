@@ -283,7 +283,7 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
   if (value.isString()) {
     // extract the string value for the indexed attribute
     // parse the document text
-    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, value.stringRef(),
+    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, value.stringView(),
                                                              (size_t)minWordLength, FulltextIndexLimits::maxWordLength,
                                                              true);
     // We don't care for the result. If the result is false, words stays

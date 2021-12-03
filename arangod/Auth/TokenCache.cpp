@@ -49,8 +49,8 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
   
 namespace {
-std::string_view const hs256String("HS256");
-std::string_view const jwtString("JWT");
+constexpr std::string_view hs256String("HS256");
+constexpr std::string_view jwtString("JWT");
 }
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)

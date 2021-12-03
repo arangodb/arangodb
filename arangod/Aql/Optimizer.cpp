@@ -235,9 +235,9 @@ void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOp
       continue;
     }
     if (name[0] == '-') {
-      disableRule(plan, std::string_view(name));
+      disableRule(plan, name);
     } else {
-      enableRule(plan, std::string_view(name));
+      enableRule(plan, name);
     }
   }
 }
@@ -423,7 +423,7 @@ void Optimizer::disableRule(ExecutionPlan* plan, int level) {
 }
 
 void Optimizer::disableRule(ExecutionPlan* plan, std::string_view name) {
-  if (!name.empty() && name[0] == '-') {
+  if (!name.empty() && name.front() == '-') {
     name = name.substr(1);
   }
 
@@ -447,7 +447,7 @@ void Optimizer::enableRule(ExecutionPlan* plan, int level) {
 }
 
 void Optimizer::enableRule(ExecutionPlan* plan, std::string_view name) {
-  if (!name.empty() && name[0] == '+') {
+  if (!name.empty() && name.front() == '+') {
     name = name.substr(1);
   }
 

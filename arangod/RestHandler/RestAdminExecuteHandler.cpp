@@ -141,7 +141,7 @@ RestStatus RestAdminExecuteHandler::execute() {
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
             _response->setContentType(rest::ContentType::TEXT);
-            _response->addRawPayload(std::string_view(errorMessage));
+            _response->addRawPayload(errorMessage);
             break;
           }
           case Endpoint::TransportType::VST: {

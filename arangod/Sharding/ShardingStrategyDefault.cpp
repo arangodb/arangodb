@@ -54,7 +54,7 @@ void preventUseOnSmartEdgeCollection(LogicalCollection const* collection,
   }
 }
 
-inline void parseAttributeAndPart(std::string const& attr, std::string_view& realAttr, Part& part) {
+inline void parseAttributeAndPart(std::string_view attr, std::string_view& realAttr, Part& part) {
   if (!attr.empty() && attr.back() == ':') {
     realAttr = std::string_view(attr.data(), attr.size() - 1);
     part = Part::FRONT;
@@ -127,7 +127,7 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
 template <bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& attributes,
                               bool docComplete, ErrorCode& error,
-                              std::string_view const& key) {
+                              std::string_view key) {
   uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();

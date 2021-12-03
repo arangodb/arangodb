@@ -78,7 +78,7 @@ class GraphStore final {
   void loadShards(WorkerConfig* state, std::function<void()> const&);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
   void loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                    std::string_view const& _key);
+                    std::string_view key);
   // ======================================================================
 
   // only thread safe if your threads coordinate access to memory locations

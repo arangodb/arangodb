@@ -86,9 +86,9 @@ class TestGraph {
     edge.add(StaticStrings::ToString, VPackValue(toVal));
     edge.close();
     auto eslice = edge.slice();
-    _outEdges[std::string_view(eslice.get(StaticStrings::FromString).stringView())]
+    _outEdges[eslice.get(StaticStrings::FromString).stringView()]
         .emplace_back(eslice);
-    _inEdges[std::string_view(eslice.get(StaticStrings::ToString).stringView())]
+    _inEdges[eslice.get(StaticStrings::ToString).stringView()]
         .emplace_back(eslice);
     _dataLake.emplace_back(edge.steal());
   }

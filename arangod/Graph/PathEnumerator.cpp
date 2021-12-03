@@ -67,7 +67,7 @@ void EnumeratedPath::growStorage(std::vector<T>& data) {
   }
 }
 
-void EnumeratedPath::pushVertex(std::string_view const& v) {
+void EnumeratedPath::pushVertex(std::string_view v) {
   growStorage(_vertices);
   _vertices.emplace_back(v);
 }
@@ -104,7 +104,7 @@ std::vector<graph::EdgeDocumentToken> const& EnumeratedPath::edges() const noexc
   return _edges;
 }
 
-std::string_view const& EnumeratedPath::lastVertex() const noexcept {
+std::string_view EnumeratedPath::lastVertex() const noexcept {
   TRI_ASSERT(!_vertices.empty());
   return _vertices.back();
 }
@@ -222,8 +222,7 @@ bool DepthFirstEnumerator::next() {
       // We are not done with this path, so
       // we reserve the cursor for next depth
       graph::EdgeCursor* cursor =
-          getCursor(std::string_view(_enumeratedPath.lastVertex()),
-                    _enumeratedPath.numEdges());
+          getCursor(_enumeratedPath.lastVertex(), _enumeratedPath.numEdges());
       incHttpRequests(cursor->httpRequests());
       ++_activeCursors;
     } else {
@@ -238,7 +237,7 @@ bool DepthFirstEnumerator::next() {
     bool foundPath = false;
 
     auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge, size_t cursorId) {
-      if (!keepEdge(eid, edge, std::string_view(_enumeratedPath.lastVertex()),
+      if (!keepEdge(eid, edge, _enumeratedPath.lastVertex(),
                     _enumeratedPath.numEdges(), cursorId)) {
         return;
       }
@@ -264,7 +263,7 @@ bool DepthFirstEnumerator::next() {
       if (_traverser->getVertex(edge, _enumeratedPath)) {
         // case both are valid.
         if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
-          auto& e = _enumeratedPath.lastVertex();
+          std::string_view const e = _enumeratedPath.lastVertex();
           bool foundOnce = false;
           for (auto const& it : _enumeratedPath.vertices()) {
             if (foundOnce) {
@@ -339,8 +338,7 @@ bool DepthFirstEnumerator::next() {
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastVertexToAqlValue() {
-  return _traverser->fetchVertexData(
-      std::string_view(_enumeratedPath.lastVertex()));
+  return _traverser->fetchVertexData(_enumeratedPath.lastVertex());
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
