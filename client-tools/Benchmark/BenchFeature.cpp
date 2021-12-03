@@ -23,6 +23,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -226,6 +227,12 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           new StringParameter(&_customQueryFile))
       .setIntroducedIn(30800);
 
+  options
+      ->addOption("--custom-query-bindvars",
+                  "bind parameters to be used in the 'custom-query' testcase.",
+                  new StringParameter(&_customQueryBindVars))
+      .setIntroducedIn(31000);
+
   options->addOption("--quiet", "suppress status messages", new BooleanParameter(&_quiet));
 
   options->addObsoleteOption(
@@ -248,6 +255,16 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       LOG_TOPIC("ad47b", WARN, arangodb::Logger::BENCH)
           << "For flag '--histogram.percentiles "
           << _percentiles << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+    }
+  }
+  if (!_customQueryBindVars.empty()) {
+    try {
+      _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
+    } catch (...) {
+      LOG_TOPIC("a3468", FATAL, arangodb::Logger::BENCH)
+          << "For flag '--custom-query-bindvars "
+          << _customQueryBindVars << "': invalid JSON format.";
+      FATAL_ERROR_EXIT();
     }
   }
 }
