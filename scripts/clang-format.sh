@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-[[ -z "$1" ]] && adb_path="${PWD}" || adb_path=$(echo "$1" | sed 's:/*$::') # Default path to arangodb as pwd
+[[ -z "$1" ]] && adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/../" &> /dev/null && pwd )" || adb_path=$(echo "$1" | sed 's:/*$::') # Default arangodb path to arangodb as pwd
 [[ -z "$2" ]] && ent_dir="enterprise" || ent_dir=$(echo "$2" | sed 's:/*$::') # Default enterprise dir to enterprise
 
 echo "ArangoDB directory: $adb_path"
