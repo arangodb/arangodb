@@ -1,7 +1,0 @@
-repos:
-  - repo: local
-    hooks:
-      - id: clang-format
-        name: clang-format
-        entry: ./scripts/clang-format.sh
-        language: script
