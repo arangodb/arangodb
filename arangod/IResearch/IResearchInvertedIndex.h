@@ -38,9 +38,9 @@
 #include "search/conjunction.hpp"
 #include "search/cost.hpp"
 
-namespace arangodb {
-namespace iresearch {
 
+// FIXME: this part should be moved to the upstream library
+namespace iresearch {
 class lazy_bitset : private irs::util::noncopyable {
  public:
   using word_t = size_t;
@@ -166,6 +166,10 @@ class proxy_filter final : public irs::filter {
    mutable proxy_query::proxy_cache* cache_{nullptr};
 };
 
+} // namespace iresearch
+
+namespace arangodb {
+namespace iresearch {
 class IResearchInvertedIndex  : public IResearchDataStore {
  public:
   explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection, InvertedIndexFieldMeta&& meta);
