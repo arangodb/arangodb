@@ -1,6 +1,12 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
+* Fix potential read inconsistency for single document operations.
+  Wen reading a single document that is concurrently being updated or replaced,
+  the read operation could erroneously return a "document not found" error
+  although the document actually existed. This only happened for single
+  document operations, i.e., no transactions or AQL queries.
+
 * Added the following metrics for revision trees:
   - `arangodb_revision_tree_hibernations_total`: number of times a revision tree
     was compressed in RAM and set to hibernation
