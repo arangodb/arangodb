@@ -100,6 +100,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     serverOptions = {};
   }
 
+  let memProfCounter = 0;
   let env = {};
   let customInstanceInfos = {};
   let healthCheck = function () {return true;};
@@ -235,7 +236,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         if (startStopHandlers && startStopHandlers.hasOwnProperty('preRun')) {
           startStopHandlers.preRun(te);
         }
-
+        pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
+        
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
 
@@ -443,6 +445,9 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     sleep(options.sleepBeforeShutdown);
   }
 
+  if (continueTesting) {
+    pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
+  }
 
   let shutDownStart = time();
   results['testDuration'] = shutDownStart - testrunStart;
