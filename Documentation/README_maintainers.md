@@ -85,7 +85,7 @@ Attributes:
   - required/optional - whether the user can omit this parameter
   - subtype / format (can be empty)
     - subtype: if type is object or array, this references the enclosed variables.
-               can be either a swaggertype, or a *RESTRUCT*
+               can be either a swaggertype, or a *RESTSTRUCT*
     - format: if type is a native swagger type, some support a format to specify them
 
 ## RESTSTRUCT
