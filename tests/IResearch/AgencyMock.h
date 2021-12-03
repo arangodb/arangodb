@@ -29,7 +29,7 @@
 #include "Basics/debugging.h"
 #include "Cluster/AgencyCache.h"
 #include "Network/ConnectionPool.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 
 namespace arangodb::fuerte {
 inline namespace v1 {
@@ -61,7 +61,7 @@ struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool
     : ConnectionPool(config), _server(server), _index(0) {}
 
   explicit AsyncAgencyStorePoolMock(arangodb::application_features::ApplicationServer& server)
-    : ConnectionPool(server.getFeature<arangodb::MetricsFeature>()), _server(server), _index(0) {}
+    : ConnectionPool(server.getFeature<arangodb::metrics::MetricsFeature>()), _server(server), _index(0) {}
 
   std::shared_ptr<arangodb::fuerte::Connection> createConnection(
     arangodb::fuerte::ConnectionBuilder&) override;

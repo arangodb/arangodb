@@ -40,7 +40,11 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -120,10 +124,10 @@ namespace arangodb {
 std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
 struct QueryTimeScale {
-  static log_scale_t<double> scale() { return {2., 0.0, 50.0, 20}; }
+  static metrics::LogScale<double> scale() { return {2., 0.0, 50.0, 20}; }
 };
 struct SlowQueryTimeScale {
-  static log_scale_t<double> scale() { return {2., 1.0, 2000.0, 10}; }
+  static metrics::LogScale<double> scale() { return {2., 1.0, 2000.0, 10}; }
 };
 
 DECLARE_COUNTER(arangodb_aql_all_query_total,
@@ -179,25 +183,25 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
       _queryTimes(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_query_time{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_query_time{})),
       _slowQueryTimes(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_time{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_slow_query_time{})),
       _totalQueryExecutionTime(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_total_query_time_msec_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_total_query_time_msec_total{})),
       _queriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_all_query_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_all_query_total{})),
       _slowQueriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_slow_query_total{})),
       _runningQueries(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_current_query{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_current_query{})),
       _globalQueryMemoryUsage(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_usage{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_global_memory_usage{})),
       _globalQueryMemoryLimit(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_limit{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_global_memory_limit{})),
       _globalQueryMemoryLimitReached(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_query_memory_limit_reached_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_global_query_memory_limit_reached_total{})),
       _localQueryMemoryLimitReached(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_local_query_memory_limit_reached_total{})) {
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_aql_local_query_memory_limit_reached_total{})) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
