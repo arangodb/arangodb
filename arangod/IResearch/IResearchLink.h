@@ -472,6 +472,7 @@ class IResearchLink {
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                  // the index identifier
   TRI_voc_tick_t _lastCommittedTick;  // protected by _commitMutex
+  size_t _cleanupIntervalCount;
   IResearchLinkMeta const _meta;  // how this collection should be indexed (read-only, set via init())
   std::mutex _commitMutex;  // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback;  // for insert(...)/remove(...)
