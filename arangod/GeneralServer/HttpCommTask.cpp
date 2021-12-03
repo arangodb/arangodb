@@ -32,6 +32,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/H2CommTask.h"
 #include "GeneralServer/VstCommTask.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -322,7 +323,7 @@ void HttpCommTask<T>::setIOTimeout() {
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis);
   this->_protocol->timer.async_wait(
-      [=, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+      withLogContext([=, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
         std::shared_ptr<CommTask> s;
         if (ec || !(s = self.lock())) {  // was canceled / deallocated
           return;
@@ -334,7 +335,7 @@ void HttpCommTask<T>::setIOTimeout() {
               << "keep alive timeout, closing stream!";
           static_cast<GeneralCommTask<T>&>(*s).close(ec);
         }
-      });
+      }));
 }
 
 namespace {
@@ -388,7 +389,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
   };
   auto buffs = this->_protocol->buffer.prepare(GeneralCommTask<T>::ReadBlockSize);
   asio_ns::async_read(this->_protocol->socket, buffs,
-                      asio_ns::transfer_at_least(minHttpRequestLen), std::move(cb));
+                      asio_ns::transfer_at_least(minHttpRequestLen), withLogContext(std::move(cb)));
 }
 
 #ifdef USE_DTRACE
@@ -687,7 +688,7 @@ void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
   this->_writing = true;
   // FIXME measure performance w/o sync write
   asio_ns::async_write(this->_protocol->socket, buffers,
-                       [self = this->shared_from_this(),
+                       withLogContext([self = this->shared_from_this(),
                         stat = std::move(stat)](asio_ns::error_code ec, size_t nwrite) {
                          DTraceHttpCommTaskResponseWritten((size_t)self.get());
 
@@ -706,7 +707,7 @@ void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
                            llhttp_resume(&me._parser);
                            me.asyncReadSome();
                          }
-                       });
+                       }));
 }
 
 template <SocketType T>

@@ -48,6 +48,8 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 
   ~NeighborsEnumerator() = default;
 
+  void clear() final;
+
   void setStartVertex(std::string_view startVertex) override;
 
   /// @brief Get the next Path element from the traversal.

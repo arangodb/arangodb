@@ -119,6 +119,8 @@ class PathEnumerator {
 
   virtual ~PathEnumerator();
 
+  virtual void clear() = 0;
+
   /// @brief set start vertex and reset
   /// note that the caller *must* guarantee that the string data pointed to by
   /// startVertex remains valid even after the call to reset()!!
@@ -172,6 +174,8 @@ class DepthFirstEnumerator final : public PathEnumerator {
   DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts);
 
   ~DepthFirstEnumerator();
+
+  void clear() override {}
 
   /// @brief set start vertex and reset
   void setStartVertex(std::string_view startVertex) override;

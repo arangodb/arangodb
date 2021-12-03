@@ -43,15 +43,19 @@ NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions*
   TRI_ASSERT(!opts->hasDepthLookupInfo());
 }
 
-void NeighborsEnumerator::setStartVertex(std::string_view startVertex) {
-  PathEnumerator::setStartVertex(startVertex);
-
+void NeighborsEnumerator::clear() {
   _allFound.clear();
   _currentDepth.clear();
   _lastDepth.clear();
   _iterator = _currentDepth.end();
   _toPrune.clear();
   _searchDepth = 0;
+}
+
+void NeighborsEnumerator::setStartVertex(std::string_view startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+
+  clear();
 
   _allFound.emplace(startVertex);
   _currentDepth.insert(startVertex);
