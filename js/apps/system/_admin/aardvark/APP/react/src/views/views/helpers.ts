@@ -1,10 +1,13 @@
-import Ajv2019 from "ajv/dist/2019";
+import Ajv2019 from 'ajv/dist/2019';
 import ajvErrors from 'ajv-errors';
-import { formSchema, FormState, linksSchema } from "./constants";
-import { useEffect, useMemo, useState } from "react";
-import { DispatchArgs, State } from "../../utils/constants";
-import { getPath } from "../../utils/helpers";
-import { cloneDeep, merge, set } from "lodash";
+import { formSchema, FormState, linksSchema } from './constants';
+import { useEffect, useMemo, useState } from 'react';
+import { DispatchArgs, State } from '../../utils/constants';
+import { getPath } from '../../utils/helpers';
+import { cloneDeep, escape, merge, set, truncate } from 'lodash';
+
+declare var arangoHelper: { [key: string]: any };
+declare var window: any;
 
 const ajv = new Ajv2019({
   allErrors: true,
@@ -44,4 +47,37 @@ export const postProcessor = (state: State<FormState>, action: DispatchArgs<Form
       set(state.formState, path, action.field.value);
     }
   }
+};
+
+export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: string) => {
+  let breadCrumb = 'View: ' + escape(truncate(name, { length: 64 }));
+  if (!isAdminUser) {
+    breadCrumb += ' (read-only)';
+  }
+
+  const defaultRoute = '#view/' + encodeURIComponent(name);
+  const menus: { [key: string]: any } = {
+    Info: {
+      route: defaultRoute
+    },
+    Links: {
+      route: `${defaultRoute}/links`
+    },
+    'Consolidation Policy': {
+      route: `${defaultRoute}/consolidationPolicy`
+    },
+    Settings: {
+      route: `${defaultRoute}/settings`
+    },
+    Raw: {
+      route: `${defaultRoute}/raw`
+    }
+  };
+
+  menus[activeKey].active = true;
+
+  window.setImmediate(() => {
+    window.$('#subNavigationBar .breadcrumb').html(breadCrumb);
+    arangoHelper.buildSubNavBar(menus);
+  });
 };

@@ -5,6 +5,7 @@ import { mutate } from "swr";
 import { noop, pick } from 'lodash';
 import { FormState } from "./constants";
 import { State } from '../../utils/constants';
+import {isAdminUser as userIsAdmin} from "../../utils/helpers";
 import { Cell, Grid } from "../../components/pure-css/grid";
 import BaseForm from "./forms/BaseForm";
 import FeatureForm from "./forms/FeatureForm";
@@ -164,7 +165,7 @@ const Actions = ({ analyzer, permission, modalCidSuffix }: ActionProps) => {
   const isSameDB = isUserDefined
     ? analyzer.name.split('::')[0] === frontendConfig.db
     : frontendConfig.db === '_system';
-  const isAdminUser = permission === 'rw' || !frontendConfig.authenticationEnabled;
+  const isAdminUser = userIsAdmin(permission);
   const canDelete = isUserDefined && isSameDB && isAdminUser;
 
   return <>

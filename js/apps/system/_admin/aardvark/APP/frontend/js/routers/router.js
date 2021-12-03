@@ -60,7 +60,8 @@
       'logs': 'logger',
       'helpus': 'helpUs',
       'views': 'views',
-      'view/:name': 'view',
+      'view/:name': 'viewInfo',
+      'view/:name/settings': 'viewSettings',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -1256,11 +1257,19 @@
       });
     },
 
-    view: function (name) {
+    viewInfo: function (name) {
       this.checkUser();
 
       this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewDetailReactView, { name }),
+        () => ReactDOM.render(React.createElement(window.ViewInfoReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewSettings: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
           document.getElementById('content')));
     },
 

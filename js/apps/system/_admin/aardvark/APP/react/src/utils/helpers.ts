@@ -31,6 +31,18 @@ export const usePermissions = () => useSWR(
   (path) => getApiRouteForCurrentDB().get(path)
 );
 
+export const isAdminUser = (permData: { body: { result: string } } | string) => {
+  let permission: string;
+
+  if (typeof permData === 'string') {
+    permission = permData;
+  } else {
+    permission = permData.body.result;
+  }
+
+  return permission === 'rw' || !frontendConfig.authenticationEnabled;
+};
+
 export const facetedFilter = (filterExpr: string, list: { [key: string]: any }[], facets: string[]) => {
   let filteredList = list;
 

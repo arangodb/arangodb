@@ -13,7 +13,8 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 // import new react views
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
-require('./views/views/ViewDetailReactView');
+require('./views/views/ViewInfoReactView');
+require('./views/views/ViewSettingsReactView');
 
 // old libraries
 const jQuery = require('jquery');

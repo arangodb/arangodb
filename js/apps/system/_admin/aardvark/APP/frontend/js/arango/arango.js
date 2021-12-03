@@ -615,32 +615,6 @@
       this.buildSubNavBar(menus);
     },
 
-    // nav for 'View' view
-    buildViewSubNav: function (viewName, activeKey) {
-      const defaultRoute = '#view/' + encodeURIComponent(viewName);
-
-      const menus = {
-        Info: {
-          route: defaultRoute
-        },
-        Links: {
-          route: `${defaultRoute}/links`
-        },
-        'Consolidation Policy': {
-          route: `${defaultRoute}/consolidationPolicy`
-        },
-        Settings: {
-          route: `${defaultRoute}/settings`
-        },
-        Raw: {
-          route: `${defaultRoute}/raw`
-        }
-      };
-
-      menus[activeKey].active = true;
-      this.buildSubNavBar(menus);
-    },
-
     enableKeyboardHotkeys: function (enable) {
       var hotkeys = window.arangoHelper.hotkeysFunctions;
       if (enable === true) {
