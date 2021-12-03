@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fix potential read inconsistency for single document operations.
+  Wen reading a single document that is concurrently being updated or replaced,
+  the read operation could erroneously return a "document not found" error
+  although the document actually existed. This only happened for single
+  document operations, i.e., no transactions or AQL queries.
+
 * Cleanup and properly fail hotbackup upload and download jobs if a dbserver
   fails or is restarted during the transfer. This gets rid of upload and
   download blockages in these circumstances.
