@@ -616,17 +616,15 @@ void IResearchLink::updateStats(IResearchDataStore::Stats const& stats) {
 
 void IResearchLink::insertStats() {
   auto& metric = _collection.vocbase().server().getFeature<arangodb::MetricsFeature>();
-  _linkStats = &metric.add(getMetric<arangodb_arangosearch_link_stats>(*this));
-  _numFailedCommits =
-      &metric.add(getMetric<arangodb_arangosearch_num_failed_commits>(*this));
-  _numFailedCleanups =
-      &metric.add(getMetric<arangodb_arangosearch_num_failed_cleanups>(*this));
+  _linkStats = &metric.add(getMetric<arangosearch_link_stats>(*this));
+  _numFailedCommits = &metric.add(getMetric<arangosearch_num_failed_commits>(*this));
+  _numFailedCleanups = &metric.add(getMetric<arangosearch_num_failed_cleanups>(*this));
   _numFailedConsolidations =
-      &metric.add(getMetric<arangodb_arangosearch_num_failed_consolidations>(*this));
-  _avgCommitTimeMs = &metric.add(getMetric<arangodb_arangosearch_commit_time>(*this));
-  _avgCleanupTimeMs = &metric.add(getMetric<arangodb_arangosearch_cleanup_time>(*this));
+    &metric.add(getMetric<arangosearch_num_failed_consolidations>(*this));
+  _avgCommitTimeMs = &metric.add(getMetric<arangosearch_commit_time>(*this));
+  _avgCleanupTimeMs = &metric.add(getMetric<arangosearch_cleanup_time>(*this));
   _avgConsolidationTimeMs =
-      &metric.add(getMetric<arangodb_arangosearch_consolidation_time>(*this));
+    &metric.add(getMetric<arangosearch_consolidation_time>(*this));
 }
 
 void IResearchLink::removeStats() {

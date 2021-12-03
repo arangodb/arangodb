@@ -530,6 +530,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid, LogicalCollection& collectio
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid),
       _lastCommittedTick(0),
+      _cleanupIntervalCount{0},
       _numFailedCommits{nullptr},
       _numFailedCleanups{nullptr},
       _numFailedConsolidations{nullptr},
@@ -668,7 +669,15 @@ Result IResearchDataStore::commit(bool wait /*= true*/) {
   }
 
   CommitResult code{CommitResult::UNDEFINED};
-  return commitUnsafe(wait, &code).result;
+  auto result = commitUnsafe(wait, &code).result;
+  if (auto& meta = _dataStore._meta; meta._commitIntervalMsec == 0) {
+    // If auto commit is disabled, we want to manually trigger the cleanup for the consistent API
+    if (meta._cleanupIntervalStep != 0 && ++_cleanupIntervalCount >= meta._cleanupIntervalStep) {
+      _cleanupIntervalCount = 0;
+      (void)cleanupUnsafe();
+    }
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -682,9 +691,9 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(bool wait, C
                         .count();
 
   if (bool ok = result.ok(); !ok && _numFailedCommits != nullptr) {
-    _numFailedCleanups->fetch_add(1, std::memory_order_relaxed);
+    _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
   } else if (ok && *code == CommitResult::DONE && _avgCommitTimeMs != nullptr) {
-    _avgCommitTimeMs->store(computeAvg(_cleanupTimeNum, timeMs), std::memory_order_relaxed);
+    _avgCommitTimeMs->store(computeAvg(_commitTimeNum, timeMs), std::memory_order_relaxed);
   }
   return {result, timeMs};
 }
@@ -1414,6 +1423,14 @@ Result IResearchDataStore::insert(
 void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) {
   auto lock = _asyncSelf->lock();  // '_dataStore' can be asynchronously modified
 
+  bool ok{false};
+  auto computeMetrics = irs::make_finally([&]() noexcept {
+    // We don't measure time because we believe that it should tend to zero
+    if (!ok && _numFailedCommits != nullptr) {
+      _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
+    }
+  });
+
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -1474,6 +1491,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick, transaction::Methods
     // update reader
     _dataStore._reader = reader;
 
+    updateStats(statsUnsafe());
+
     auto subscription = std::atomic_load(&_flushSubscription);
 
     if (subscription) {
@@ -1482,7 +1501,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick, transaction::Methods
       impl.tick(_lastCommittedTick);
     }
     invalidateQueryCache(&_collection.vocbase());
-
+    ok = true;
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
