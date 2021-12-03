@@ -18,3 +18,5 @@ diff="$community_diff $enterprise_diff"
 if ! [[ -z "${diff// }" ]]; then
   docker run --rm -v "$adb_path":/usr/src/arangodb clang-format:latest "$diff"
 fi
+
+echo "(done)"
