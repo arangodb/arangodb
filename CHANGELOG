@@ -8,6 +8,17 @@ v3.8.5 (XXXX-XX-XX)
   execution of a query with this option (after version 3.8, this option cannot
   be switched off). 
 
+* Added the following metrics for revision trees:
+  - `arangodb_revision_tree_hibernations_total`: number of times a revision tree
+    was compressed in RAM and set to hibernation
+  - `arangodb_revision_tree_resurrections_total`: number of times a revision
+    tree was resurrected from hibernation and uncompressed in RAM
+  - `arangodb_revision_tree_memory_usage`: total memory usage (in bytes) by all
+    active revision trees
+
+* Added metric `rocksdb_wal_sequence` to track the current tip of the WAL's
+  sequence number.
+
 
 v3.8.4 (2021-11-30)
 -------------------
