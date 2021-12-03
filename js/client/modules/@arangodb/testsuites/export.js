@@ -389,7 +389,129 @@ function exportTest (options) {
   results.exportQueryMaxRuntimeOk = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
   results.exportQueryMaxRuntimeOk.failed = results.exportQueryMaxRuntimeOk.status ? 0 : 1;
   delete args['query-max-runtime'];
+    
+  print(CYAN + Date() + ': Export data (csv)' + RESET);
+  args['type'] = 'csv';
+  args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
+  args['fields'] = '_key,value1,value2,value3,value4';
+  
+  let testName = "exportCsv";
+  results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results[testName].failed = results[testName].status ? 0 : 1;
+  
+  testName = "parseCsv";
+  try {
+    let content = fs.read(fs.join(tmpPath, 'query.csv'));
 
+    results[testName] = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    results.failed += 1;
+    results[testName] = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  delete args['fields'];
+    
+  print(CYAN + Date() + ': Export data (csv, escaping)' + RESET);
+  args['type'] = 'csv';
+  args['query'] = 'FOR doc IN 1..2 RETURN { value1: 1, value2: [1, 2, 3], value3: true, value4: "foobar" }';
+  args['fields'] = 'value1,value2,value3,value4';
+  
+  testName = "exportCsvEscaped";
+  results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results[testName].failed = results[testName].status ? 0 : 1;
+  
+  testName = "parseCsvEscaped";
+  try {
+    let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
+    const expected = `"value1","value2","value3","value4"\n1,"[1,2,3]",true,"foobar"\n1,"[1,2,3]",true,"foobar"\n`;
+    if (content !== expected) {
+      throw "contents differ!";
+    }
+
+    results[testName] = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    results.failed += 1;
+    results[testName] = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  delete args['fields'];
+    
+  print(CYAN + Date() + ': Export data (csv, escaping formulae)' + RESET);
+  args['escape-csv-formulae'] = 'true';
+  args['type'] = 'csv';
+  args['query'] = 'FOR doc IN 1..2 RETURN { value1: "@foobar", value2: "=HYPERLINK(\\\"evil\\\")", value3: "\\\"some string\\\"", value4: "+line\nbreak" }';
+  args['fields'] = 'value1,value2,value3,value4';
+  
+  testName = "exportCsvEscapedFormulae";
+  results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results[testName].failed = results[testName].status ? 0 : 1;
+  
+  testName = "parseCsvEscapedFormulae";
+  try {
+    let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
+    const expected = `"value1","value2","value3","value4"\n"'@foobar","'=HYPERLINK(""evil"")","""some string""","'+line\nbreak"\n"'@foobar","'=HYPERLINK(""evil"")","""some string""","'+line\nbreak"\n`;
+    if (content !== expected) {
+      throw "contents differ!";
+    }
+
+    results[testName] = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    results.failed += 1;
+    results[testName] = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  delete args['fields'];
+    
+  print(CYAN + Date() + ': Export data (csv, not escaping formulae)' + RESET);
+  args['escape-csv-formulae'] = 'false';
+  args['type'] = 'csv';
+  args['query'] = 'FOR doc IN 1..2 RETURN { value1: "@foobar", value2: "=HYPERLINK(\\\"evil\\\")", value3: "\\\"some string\\\"", value4: "+line\nbreak" }';
+  args['fields'] = 'value1,value2,value3,value4';
+  
+  testName = "exportCsvUnescapedFormulae";
+  results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results[testName].failed = results[testName].status ? 0 : 1;
+  
+  testName = "parseCsvUnescapedFormulae";
+  try {
+    let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
+    const expected = `"value1","value2","value3","value4"\n"@foobar","=HYPERLINK(""evil"")","""some string""","+line\nbreak"\n"@foobar","=HYPERLINK(""evil"")","""some string""","+line\nbreak"\n`;
+    if (content !== expected) {
+      throw "contents differ!";
+    }
+
+    results[testName] = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    results.failed += 1;
+    results[testName] = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  delete args['fields'];
+    
   return shutdown();
 }
 
