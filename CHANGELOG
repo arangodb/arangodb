@@ -1,6 +1,10 @@
 devel
 -----
 
+* Cleanup and properly fail hotbackup upload and download jobs if a dbserver
+  fails or is restarted during the transfer. This gets rid of upload and
+  download blockages in these circumstances.
+
 * Added new option `--custom-query-bindvars` to arangobench, so queries given via 
   option `--custom-query` can have bind variables in them.
 
