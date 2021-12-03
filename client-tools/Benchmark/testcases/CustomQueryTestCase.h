@@ -58,6 +58,8 @@ namespace arangodb::arangobench {
           "be specified";
         return false;
       }
+      _queryBindVars = _arangobench.customQueryBindVars();
+
       return true;
     }
 
@@ -70,9 +72,11 @@ namespace arangodb::arangobench {
       using namespace arangodb::velocypack;
       requestData.payload.openObject();
       requestData.payload.add("query", Value(_query));
+      if (_queryBindVars != nullptr) {
+        requestData.payload.add("bindVars", _queryBindVars->slice());
+      }
       requestData.payload.close();
     }
-
     char const* getDescription() const noexcept override {
       return "executes a custom AQL query, that can be specified either via the --custom-query option or be read from a file specified via the --custom-query-file option. The query will be executed as many times as the value of --requests. The --complexity parameter is not used.";
     }
@@ -83,6 +87,7 @@ namespace arangodb::arangobench {
 
    private:
     std::string _query;
+    std::shared_ptr<VPackBuilder> _queryBindVars;
   };
 
 }  // namespace arangodb::arangobench
