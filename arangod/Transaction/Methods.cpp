@@ -26,6 +26,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/ScopeGuard.h"
+#include "Logger/LogContextKeys.h"
 #include "Methods.h"
 
 #include "Aql/Ast.h"
@@ -2707,7 +2709,7 @@ Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackS
                                                 OperationOptions const& options,
                                                 MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
+  
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
     events::CreateDocument(vocbase().name(), cname, value, options,
