@@ -2204,7 +2204,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     }
   }
 
-  void insert(uint64_t begin, uint64_t end, size_t docId, bool commit = true) {
+  double insert(uint64_t begin, uint64_t end, size_t docId, bool commit = true) {
     auto* l = getLink();
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(_vocbase),
                                        kEmpty, kEmpty, kEmpty,
@@ -2216,8 +2216,12 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     }
     EXPECT_TRUE(trx.commit().ok());
     if (commit) {
+      auto start = std::chrono::steady_clock::now();
       EXPECT_TRUE(l->commit().ok());
+      return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start)
+          .count();
     }
+    return NAN;
   }
 
   void remove(uint64_t begin, uint64_t end) {
@@ -2258,13 +2262,14 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
   setLink();
   auto* l = getLink();
   {
-    insert(1, 10000, 0);
+    auto timeMs = insert(1, 10000, 0);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
     EXPECT_TRUE(0 < commitTime1);
-    insert(10000, 10100, 1);
+    EXPECT_TRUE(commitTime1 <= timeMs);
+    timeMs += insert(10000, 10100, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_TRUE(0 < commitTime2);
-    EXPECT_TRUE(commitTime2 < commitTime1);
+    EXPECT_TRUE(commitTime2 <= timeMs / 2.0);
   }
   {
     auto [numFiles0, indexSize0] = numFiles();
@@ -2302,7 +2307,6 @@ TEST_F(IResearchLinkMetricsTest, TimeConsolidate) {
     insert(10000, 10100, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_TRUE(0 < commitTime2);
-    EXPECT_TRUE(commitTime2 < commitTime1);
   }
   {
     std::this_thread::sleep_for(600ms);
