@@ -689,6 +689,118 @@ R"=(
   }
 }
 
+TEST_F(SupervisionTestClass, cleanup_hotback_transfer_locks) {
+  // Add 5 old completed transfer jobs:
+  for (size_t i = 0; i < 5; ++i) {
+    makeHotbackupTransferJob(_snapshot, 1900 + i, 1000000 + i,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "Status": "COMPLETED"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "Status": "COMPLETED"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+  };
+  // Add 200 old transfer locks:
+  for (size_t i = 0; i < 200; ++i) {
+    _snapshot("/Target/Hotbackup/Transfers/Upload/xyz" + std::to_string(i) + "abc")
+        = createNode(R"=(
+{
+  "some": 1,
+  "arbitrary": 2,
+  "data": 3
+}
+          )=");
+  }
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
+  VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 2);
+  VPackSlice action = content[0];
+  EXPECT_TRUE(action.isObject());
+  EXPECT_EQ(action.length(), 1);
+  // We expect all transfer locks to be deleted:
+  VPackSlice guck = action.get("/Target/Hotbackup/Transfers/");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_TRUE(guck.hasKey("op"));
+  EXPECT_EQ(guck.get("op").copyString(), "set");
+  EXPECT_TRUE(guck.hasKey("new"));
+  VPackSlice guck2 = guck.get("new");
+  EXPECT_TRUE(guck2.isObject());
+  EXPECT_EQ(guck2.length(), 0);
+  // The second item is an enormous precondition:
+  VPackSlice precond = content[1];
+  EXPECT_TRUE(precond.isObject());
+  EXPECT_EQ(precond.length(), 1);
+  guck = precond.get("/Target/HotBackup/TransferJobs/");
+  EXPECT_TRUE(guck.isObject());
+}
+
+TEST_F(SupervisionTestClass, cleanup_hotback_transfer_locks_dont) {
+  // Add 5 new running transfer jobs:
+  for (size_t i = 0; i < 5; ++i) {
+    makeHotbackupTransferJob(_snapshot, 1900 + i, 1000000 + i,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 4
+      },
+      "rebootId": 1,
+      "Status": "RUNNING"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "rebootId": 1,
+      "Status": "COMPLETED"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+  };
+  // Add 200 old transfer locks:
+  for (size_t i = 0; i < 200; ++i) {
+    _snapshot("/Target/Hotbackup/Transfers/Upload/xyz" + std::to_string(i) + "abc")
+        = createNode(R"=(
+{
+  "some": 1,
+  "arbitrary": 2,
+  "data": 3
+}
+          )=");
+  }
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
+  EXPECT_TRUE(envelope->isEmpty());
+}
+
 TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   // We put in three transfer jobs. One of the DBServers is healthy
   // and its rebootId has not changed ==> nothing ought to be done.
