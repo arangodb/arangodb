@@ -731,6 +731,7 @@ void InvertedIndexFieldIterator::next() {
       if (_arrayStack.back().valid()) {
         _valueSlice = *_arrayStack.back();
         ++_arrayStack.back();
+        _nameBuffer.resize(_prefixLength);
         break;
       } else {
         _arrayStack.pop_back();
@@ -746,7 +747,7 @@ void InvertedIndexFieldIterator::next() {
       }
       _nameBuffer.clear();
     }
-    if (!_valueSlice.isNone() && (!_begin->first.back().shouldExpand || _valueSlice.isArray())) {
+    if (!_valueSlice.isNone()) {
       if (_nameBuffer.empty()) {
         bool isFirst = true;
         for (auto& a : _begin->first) {
@@ -779,14 +780,15 @@ void InvertedIndexFieldIterator::next() {
               _nameBuffer.c_str());
           break;
         case VPackValueType::Array: {
-          if (_begin->first.back().shouldExpand) {
+          if (_begin->first.back().shouldExpand && _arrayStack.empty()) {
             _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+            _prefixLength = _nameBuffer.size();
           } else if (setValue(_valueSlice, _begin->second)) {
             return;
           } else {
             THROW_ARANGO_EXCEPTION_FORMAT(
                 TRI_ERROR_NOT_IMPLEMENTED,
-                "Configured analyzer does not accept arrays and field has no "
+                "Configured analyzer does not accepts arrays and field has no "
                 "expansion set. "
                 "Please use another analyzer to process an array or exclude "
                 "field '%s' "
@@ -915,7 +917,7 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
           return false;
         }
         _currentTypedAnalyzer = std::move(analyzer);
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setBoolValue(_currentTypedAnalyzerValue->value);
         _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
@@ -936,7 +938,7 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
           return false;
         }
         _currentTypedAnalyzer = std::move(analyzer);
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*analyzer);
+        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
         TRI_ASSERT(_currentTypedAnalyzerValue);
         setNumericValue(_currentTypedAnalyzerValue->value);
         _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
