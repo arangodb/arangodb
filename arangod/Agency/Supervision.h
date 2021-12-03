@@ -46,7 +46,7 @@ struct check_t {
 // This is the functional version which actually does the work, it is
 // called by the private method Supervision::enforceReplication and the
 // unit tests:
-void enforceReplicationFunctional(Node const& snapshot, 
+void enforceReplicationFunctional(Node const& snapshot,
                                   uint64_t& jobId,
                                   std::shared_ptr<VPackBuilder> envelope);
 
@@ -54,7 +54,14 @@ void enforceReplicationFunctional(Node const& snapshot,
 // called by the private method Supervision::cleanupHotbackupTransferJobs
 // and the unit tests:
 void cleanupHotbackupTransferJobsFunctional(
-    Node const& snapshot, 
+    Node const& snapshot,
+    std::shared_ptr<VPackBuilder> envelope);
+
+// This is the second functional version which actually does the work, it is
+// called by the private method Supervision::cleanupHotbackupTransferJobs
+// and the unit tests:
+void failBrokenHotbackupTransferJobsFunctional(
+    Node const& snapshot,
     std::shared_ptr<VPackBuilder> envelope);
 
 class Supervision : public arangodb::Thread {
@@ -142,6 +149,13 @@ class Supervision : public arangodb::Thread {
     _agencyPrefix = prefix;
   }
 
+  static std::string serverHealthFunctional(Node const& snapshot,
+                                            std::string const&);
+
+  static bool verifyServerRebootID(Node const& snapshot,
+                                   std::string const& serverID,
+                                   uint64_t wantedRebootID, bool& serverFound);
+
  private:
 
   /// @brief get reference to the spearhead snapshot
@@ -214,6 +228,9 @@ class Supervision : public arangodb::Thread {
   /// @brief Cleanup old hotbackup transfer jobs
   void cleanupHotbackupTransferJobs();
 
+  /// @brief Fail hotbackup transfer jobs when dbservers have failed
+  void failBrokenHotbackupTransferJobs();
+
   // @brief these servers have gone for too long without any responsibility
   //        and this are safely removable and so they are
   void cleanupExpiredServers(Node const&, Node const&);
@@ -258,8 +275,6 @@ class Supervision : public arangodb::Thread {
 
   bool handleJobs();
   void handleShutdown();
-  bool verifyServerRebootID(std::string const& serverID,
-                                 uint64_t wantedRebootID, bool& serverFound);
   void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
                             uint64_t rebootID, bool coordinatorFound);
   void deleteBrokenCollection(std::string const& database, std::string const& collection,
