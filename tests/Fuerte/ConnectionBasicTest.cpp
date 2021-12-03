@@ -27,7 +27,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "connection_test.h"
+#include "ConnectionTest.h"
 
 namespace fu = ::arangodb::fuerte;
 
