@@ -18,7 +18,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 BinPackArguments: true
 BinPackParameters: true
-BraceWrapping:
+BraceWrapping:   
   AfterClass:      false
   AfterControlStatement: false
   AfterEnum:       false
@@ -53,12 +53,12 @@ DerivePointerAlignment: false
 DisableFormat:   false
 ExperimentalAutoDetectBinPacking: false
 FixNamespaceComments: true
-ForEachMacros:
+ForEachMacros:   
   - foreach
   - Q_FOREACH
   - BOOST_FOREACH
 IncludeBlocks:   Preserve
-IncludeCategories:
+IncludeCategories: 
   - Regex:           '^<ext/.*\.h>'
     Priority:        2
   - Regex:           '^<.*\.h>'
@@ -106,3 +106,4 @@ Standard:        Cpp11
 TabWidth:        8
 UseTab:          Never
 ...
+
