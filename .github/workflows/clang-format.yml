@@ -14,6 +14,6 @@ jobs:
             **/*.cc
             **/*.c
             **/*.h
-      - uses: aMahanna/clang-format-checker@v1.2.0
+      - uses: aMahanna/clang-format-checker@v1.2.1
         with:
           sources: "${{ steps.gcf.outputs.added_modified }}"
