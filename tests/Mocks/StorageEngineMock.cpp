@@ -1233,11 +1233,9 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
 
   auto it = _documents.find(std::string_view{key});
   if (it != _documents.end()) {
-    if (_documents.find(std::string_view{key}) != _documents.end()) {
-      result.first = it->second.docId();
-      result.second = arangodb::RevisionId::fromSlice(it->second.data());
-      return arangodb::Result();
-    }
+    result.first = it->second.docId();
+    result.second = arangodb::RevisionId::fromSlice(it->second.data());
+    return arangodb::Result();
   }
 
   result.first = arangodb::LocalDocumentId::none();
@@ -1957,6 +1955,10 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   resetTransactionId();
   //  releaseUsage();
 
+  return arangodb::Result();
+}
+
+arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(arangodb::DataSourceId cid) {
   return arangodb::Result();
 }
 
