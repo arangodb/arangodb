@@ -2109,7 +2109,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         arangodb::velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
     _logicalCollection = _vocbase.createCollection(collectionJson->slice());
 
-    EXPECT_TRUE(_logicalCollection != nullptr);
+    EXPECT_NE(_logicalCollection, nullptr);
 
     _dirPath /= "databases";
     _dirPath /= "database-" + std::to_string(_vocbase.id());
@@ -2144,7 +2144,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     _view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
         _vocbase.createView(viewJson->slice()));
 
-    EXPECT_TRUE(_view != nullptr);
+    EXPECT_NE(_view, nullptr);
     _view->open();
 
     EXPECT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -2159,7 +2159,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     })");
     _link = _logicalCollection->createIndex(linkJson->slice(), created);
     EXPECT_TRUE(created);
-    EXPECT_TRUE(_link != nullptr);
+    EXPECT_NE(_link, nullptr);
     auto label = getLinkMetricLabel();
     EXPECT_TRUE(checkMetricExist("arangosearch_link_stats", label));
     EXPECT_TRUE(checkMetricExist("arangosearch_num_failed_commits", label));
@@ -2180,7 +2180,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   arangodb::iresearch::IResearchLink* getLink() {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(_link.get());
-    EXPECT_TRUE(l != nullptr);
+    EXPECT_NE(l, nullptr);
     return l;
   }
 
@@ -2267,39 +2267,39 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
   {
     auto timeMs = insert(1, 10000, 0);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-    EXPECT_TRUE(0 < commitTime1);
-    EXPECT_TRUE(commitTime1 <= timeMs);
+    EXPECT_LT(0, commitTime1);
+    EXPECT_LE(commitTime1, timeMs);
     timeMs += insert(10000, 10100, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
-    EXPECT_TRUE(0 < commitTime2);
-    EXPECT_TRUE(commitTime2 <= timeMs / 2.0);
+    EXPECT_LT(0, commitTime2);
+    EXPECT_LE(commitTime2, timeMs / 2.0);
   }
   {
     auto [numFiles0, indexSize0] = numFiles();
-    EXPECT_TRUE(0 < numFiles0);
-    EXPECT_TRUE(0 < indexSize0);
+    EXPECT_LT(0, numFiles0);
+    EXPECT_LT(0, indexSize0);
 
     auto timeMs = remove(1, 10000);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-    EXPECT_TRUE(commitTime1 <= timeMs);
-    EXPECT_TRUE(cleanupTime1 <= timeMs);
-    EXPECT_TRUE(commitTime1 + cleanupTime1 <= timeMs);
+    EXPECT_LE(commitTime1, timeMs);
+    EXPECT_LE(cleanupTime1, timeMs);
+    EXPECT_LE(commitTime1 + cleanupTime1, timeMs);
     auto [numFiles1, indexSize1] = numFiles();
-    EXPECT_TRUE(0 < numFiles1);
-    EXPECT_TRUE(numFiles1 < numFiles0);
-    EXPECT_TRUE(0 < indexSize1);
-    EXPECT_TRUE(indexSize1 < indexSize0);
+    EXPECT_LT(0, numFiles1);
+    EXPECT_LT(numFiles1, numFiles0);
+    EXPECT_LT(0, indexSize1);
+    EXPECT_LT(indexSize1, indexSize0);
 
     timeMs += remove(10000, 10100);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
-    EXPECT_TRUE(commitTime2 <= timeMs / 2.0);
-    EXPECT_TRUE(cleanupTime2 <= timeMs / 2.0);
-    EXPECT_TRUE(commitTime2 + cleanupTime2 <= timeMs / 2.0);
+    EXPECT_LE(commitTime2, timeMs / 2.0);
+    EXPECT_LE(cleanupTime2, timeMs / 2.0);
+    EXPECT_LE(commitTime2 + cleanupTime2, timeMs / 2.0);
     auto [numFiles2, indexSize2] = numFiles();
-    EXPECT_TRUE(0 < numFiles2);
-    EXPECT_TRUE(numFiles2 < numFiles1);
-    EXPECT_TRUE(0 < indexSize2);
-    EXPECT_TRUE(indexSize2 < indexSize1);
+    EXPECT_LT(0, numFiles2);
+    EXPECT_LT(numFiles2, numFiles1);
+    EXPECT_LT(0, indexSize2);
+    EXPECT_LT(indexSize2, indexSize1);
   }
 }
 
@@ -2311,15 +2311,15 @@ TEST_F(IResearchLinkMetricsTest, TimeConsolidate) {
   {
     insert(1, 10000, 0);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-    EXPECT_TRUE(0 < commitTime1);
+    EXPECT_LT(0, commitTime1);
     insert(10000, 10100, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
-    EXPECT_TRUE(0 < commitTime2);
+    EXPECT_LT(0, commitTime2);
   }
   {
     std::this_thread::sleep_for(600ms);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-    EXPECT_TRUE(0 < consolidationTime1);
+    EXPECT_LT(0, consolidationTime1);
   }
 }
 
