@@ -195,7 +195,10 @@ void replicated_log::AppendEntriesErrorReason::toVelocyPack(velocypack::Builder&
 
 auto replicated_log::AppendEntriesErrorReason::fromVelocyPack(velocypack::Slice slice)
     -> AppendEntriesErrorReason {
-  auto error = errorTypeFromString(slice.get(StaticStrings::Error).copyString());
+  auto errorSlice = slice.get(StaticStrings::Error);
+  TRI_ASSERT(errorSlice.isString()) << "Expected string, found: " << errorSlice.toJson();
+  auto error = errorTypeFromString(errorSlice.copyString());
+
   std::optional<std::string> details;
   if (auto detailsSlice = slice.get(StaticStrings::Details); !detailsSlice.isNone()) {
     details = detailsSlice.copyString();
