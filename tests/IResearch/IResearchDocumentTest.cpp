@@ -2969,10 +2969,10 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_object_prim
         assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("array.id"));
       },
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("array.id"));
+        assertField<IdentityAnalyzer, true>(server, *it, mangleInvertedIndexStringIdentity("array.id"));
       },
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("array.id"));
+        assertField<IdentityAnalyzer, true>(server, *it, mangleInvertedIndexStringIdentity("array.id"));
       },
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(server, *it,

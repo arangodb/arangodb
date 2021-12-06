@@ -873,7 +873,15 @@ void IResearchInvertedIndex::toVelocyPack(
 std::vector<std::vector<arangodb::basics::AttributeName>> IResearchInvertedIndex::fields(InvertedIndexFieldMeta const& meta) {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
   for (auto const& f : meta._fields) {
-    res.push_back(f.first);
+    std::vector<arangodb::basics::AttributeName> combined;
+    combined.reserve(f.attribute.size() + f.expansion.size());
+    for (auto const& a : f.attribute) {
+      combined.push_back(a);
+    }
+    for (auto const& a : f.expansion) {
+      combined.push_back(a);
+    }
+    res.push_back(std::move(combined));
   }
   return res;
 }
@@ -998,11 +1006,9 @@ bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
     irs::string_ref analyzerName = analyzer.stringView();
     TRI_ParseAttributeString(in, translate, true);
     for (auto const& f : _meta._fields) {
-      if (f.second._shortName == analyzerName) { // FIXME check case custom1 <> _system::custom1
-        if (arangodb::basics::AttributeName::isIdentical(f.first, translate, false)) {
-          matched++;
-          break;
-        }
+      if (f.isIdentical(translate, analyzerName)) {  // FIXME check case custom1 <> _system::custom1
+        matched++;
+        break;
       }
     }
     translate.clear();

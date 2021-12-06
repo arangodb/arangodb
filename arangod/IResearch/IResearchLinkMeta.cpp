@@ -1248,10 +1248,8 @@ bool  InvertedIndexFieldMeta::json(arangodb::application_features::ApplicationSe
     TRI_ASSERT(!_fields.empty());
     for (auto& entry : _fields) {
       VPackObjectBuilder fieldObject(&fieldsBuilder);
-      std::string name;
-      TRI_AttributeNamesToString(entry.first, name, false);
-      fieldsBuilder.add("name", VPackValue(name));
-      fieldsBuilder.add("analyzer", VPackValue(entry.second._pool->name()));
+      fieldsBuilder.add("name", VPackValue(entry.toString()));
+      fieldsBuilder.add("analyzer", VPackValue(entry.analyzer._pool->name()));
     }
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
@@ -1279,6 +1277,63 @@ size_t InvertedIndexFieldMeta::extraFieldsIdx() const noexcept {
     }
   }
   return std::numeric_limits<size_t>::max();
+}
+
+InvertedIndexFieldMeta::FieldRecord::FieldRecord(std::vector<basics::AttributeName> const& path,
+                                                 FieldMeta::Analyzer&& a)
+    : analyzer(std::move(a)) {
+  auto it = path.begin();
+  while (it != path.end()) {
+    attribute.push_back(*it);
+    if (it->shouldExpand) {
+      ++it;
+      break;
+    }
+    ++it;
+  }
+  while (it != path.end()) {
+    TRI_ASSERT(!it->shouldExpand); // only one expansion per attribute is supported!
+    expansion.push_back(*it);
+    ++it;
+  }
+}
+
+std::string InvertedIndexFieldMeta::FieldRecord::toString() const {
+  std::string attr;
+  TRI_AttributeNamesToString(attribute, attr, false);
+  if (!expansion.empty()) {
+    attr += ".";
+    std::string exp;
+    TRI_AttributeNamesToString(expansion, exp, true);
+    attr += exp;
+  }
+  return attr;
+}
+
+bool InvertedIndexFieldMeta::FieldRecord::isIdentical(std::vector<basics::AttributeName> const& path,
+                                                      irs::string_ref analyzerName) const noexcept {
+  if (analyzer._shortName == analyzerName &&
+      path.size() == (attribute.size() + expansion.size())) {
+    auto it  = path.begin();
+    auto atr = attribute.begin();
+    while (it != path.end() && atr != attribute.end()) {
+      if (it->name != atr->name ||
+        it->shouldExpand != atr->shouldExpand) {
+        return false;
+      }
+      ++atr;
+      ++it;
+    }
+    auto exp = expansion.begin();
+    while (it != path.end() && exp != expansion.end()) {
+      if (it->name != exp->name || it->shouldExpand != exp->shouldExpand) {
+        return false;
+      }
+      ++exp;
+      ++it;
+    }
+  }
+  return false;
 }
 
 }  // namespace iresearch

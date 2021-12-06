@@ -729,9 +729,14 @@ void InvertedIndexFieldIterator::next() {
     _valueSlice = VPackSlice::noneSlice();
     while (!_arrayStack.empty()) {
       if (_arrayStack.back().valid()) {
-        _valueSlice = *_arrayStack.back();
+        if (_begin->expansion.empty()) {
+          _valueSlice = *_arrayStack.back();
+        } else {
+          _valueSlice = get(*_arrayStack.back(), _begin->expansion,
+                            arangodb::velocypack::Slice::noneSlice());
+        }
         ++_arrayStack.back();
-        _nameBuffer.resize(_prefixLength);
+        _nameBuffer.resize(_prefixLength); // FIXME: just clear should work!
         break;
       } else {
         _arrayStack.pop_back();
@@ -743,22 +748,27 @@ void InvertedIndexFieldIterator::next() {
           TRI_ASSERT(!valid());
           return; // exhausted
         }
-        _valueSlice = get(_slice, _begin->first, arangodb::velocypack::Slice::noneSlice());
+        _valueSlice =
+            get(_slice, _begin->attribute, arangodb::velocypack::Slice::noneSlice());
       }
       _nameBuffer.clear();
     }
     if (!_valueSlice.isNone()) {
       if (_nameBuffer.empty()) {
         bool isFirst = true;
-        for (auto& a : _begin->first) {
+        for (auto& a : _begin->attribute) {
           if (!isFirst) {
             _nameBuffer += NESTING_LEVEL_DELIMITER;
           }
           _nameBuffer.append(a.name);
           isFirst = false;
         }
+        for (auto& a : _begin->expansion) {
+          _nameBuffer += NESTING_LEVEL_DELIMITER;
+          _nameBuffer.append(a.name);
+        }
       }
-      TRI_ASSERT(_begin->second._pool);
+      TRI_ASSERT(_begin->analyzer._pool);
       switch (_valueSlice.type()) {
         case VPackValueType::Null:
           setNullValue();
@@ -767,7 +777,7 @@ void InvertedIndexFieldIterator::next() {
           setBoolValue(_valueSlice);
           return;
         case VPackValueType::Object:
-          if (setValue(_valueSlice, _begin->second)) {
+          if (setValue(_valueSlice, _begin->analyzer)) {
             return;
           }
           THROW_ARANGO_EXCEPTION_FORMAT(
@@ -780,10 +790,10 @@ void InvertedIndexFieldIterator::next() {
               _nameBuffer.c_str());
           break;
         case VPackValueType::Array: {
-          if (_begin->first.back().shouldExpand && _arrayStack.empty()) {
+          if (_begin->attribute.back().shouldExpand && _arrayStack.empty()) {
             _arrayStack.push_back(VPackArrayIterator(_valueSlice));
             _prefixLength = _nameBuffer.size();
-          } else if (setValue(_valueSlice, _begin->second)) {
+          } else if (setValue(_valueSlice, _begin->analyzer)) {
             return;
           } else {
             THROW_ARANGO_EXCEPTION_FORMAT(
@@ -803,7 +813,7 @@ void InvertedIndexFieldIterator::next() {
           setNumericValue(_valueSlice);
           return;
         case VPackValueType::String: {
-          setValue(_valueSlice, _begin->second);
+          setValue(_valueSlice, _begin->analyzer);
           return;
         }
       }

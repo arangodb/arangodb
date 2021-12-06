@@ -72,6 +72,7 @@ struct FieldMeta {
       : _pool(pool),
         _shortName(std::move(shortName)) {
     }
+
     operator bool() const noexcept { return false == !_pool; }
 
     AnalyzerPool::ptr _pool;
@@ -327,7 +328,22 @@ struct InvertedIndexFieldMeta {
 
   size_t extraFieldsIdx() const noexcept;
 
-  using FieldRecord = std::pair<std::vector<basics::AttributeName>, FieldMeta::Analyzer>;
+  struct FieldRecord {
+    FieldRecord(std::vector<basics::AttributeName> const& path, FieldMeta::Analyzer&& a);
+
+    std::string toString() const;
+
+    bool isIdentical(std::vector<basics::AttributeName> const& path,
+                     irs::string_ref analyzerName) const noexcept;
+
+    /// @brief attribute path
+    std::vector<basics::AttributeName> attribute;
+    /// @brief array sub-path in case of expansion (maybe empty)
+    std::vector<basics::AttributeName> expansion;
+    /// @brief analyzer to apply
+    FieldMeta::Analyzer analyzer;
+  };
+
   using Fields = std::vector<FieldRecord>;
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
