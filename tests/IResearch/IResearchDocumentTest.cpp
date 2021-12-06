@@ -2925,7 +2925,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_object_prim
     "keys2": ["1", "2"],
     "boost": 10,
     "depth": [20, 30, 40],
-    "fields": {"fieldA" : {"name" : 1}, "fieldB" : {"name" : "b"}},
+    "fields": {"fieldA" : {"name" : "1"}, "fieldB" : {"name" : "b"}},
     "listValuation": "ignored",
     "array": [
       {"id": 1, "subobj": {"id": "10" }},
