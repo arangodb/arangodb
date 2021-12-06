@@ -109,7 +109,7 @@ void TRI_TerminateDebugging(std::string_view message) {
 /// @brief check whether we should fail at a specific failure point
 bool TRI_ShouldFailDebugging(std::string_view value) noexcept {
   READ_LOCKER(readLocker, ::failurePointsLock);
-  return ::failurePoints.contains(value);
+  return ::failurePoints.find(value) != ::failurePoints.end();
 }
 
 /// @brief add a failure point
