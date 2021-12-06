@@ -29,18 +29,6 @@
 
 using namespace arangodb;
 
-RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state,
-                                               rocksdb::TransactionDB* db)
-    : RocksDBReadOnlyBaseMethods(state), _db(db) {
-  TRI_ASSERT(_db != nullptr);
-  _readOptions.prefix_same_as_start = true;  // should always be true
-  _readOptions.fill_cache = _state->options().fillBlockCache;
-}
-
-RocksDBReadOnlyMethods::~RocksDBReadOnlyMethods() {
-  releaseSnapshot();
-}
-
 Result RocksDBReadOnlyMethods::beginTransaction() {
   TRI_ASSERT(_readOptions.snapshot == nullptr);
   _readOptions.snapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
@@ -61,31 +49,13 @@ rocksdb::ReadOptions RocksDBReadOnlyMethods::iteratorReadOptions() const {
   return _readOptions;
 }
 
-/// @brief acquire a database snapshot if we do not yet have one.
-/// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
-bool RocksDBReadOnlyMethods::ensureSnapshot() {
-  if (_readOptions.snapshot == nullptr) {
-    _readOptions.snapshot = _db->GetSnapshot();
-    return true;
-  }
-  return false;
-}
-
-rocksdb::SequenceNumber RocksDBReadOnlyMethods::GetSequenceNumber() const noexcept {
-  if (_readOptions.snapshot) {
-    return _readOptions.snapshot->GetSequenceNumber();
-  }
-  return _db->GetLatestSequenceNumber();
-}
-
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
                                             rocksdb::PinnableSlice* val,
                                             ReadOwnWrites) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
-  return _db->Get(ro, cf, key, val);
+  TRI_ASSERT(_readOptions.snapshot != nullptr);
+  return _db->Get(_readOptions, cf, key, val);
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
@@ -103,11 +73,4 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
         TRI_ERROR_INTERNAL, "invalid iterator in RocksDBReadOnlyMethods");
   }
   return iterator;
-}
-                                                                 
-void RocksDBReadOnlyMethods::releaseSnapshot() {
-  if (_readOptions.snapshot != nullptr) {
-    _db->ReleaseSnapshot(_readOptions.snapshot); 
-    _readOptions.snapshot = nullptr;
-  }
 }

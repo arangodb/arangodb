@@ -26,6 +26,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/ScopeGuard.h"
+#include "Logger/LogContextKeys.h"
 #include "Methods.h"
 
 #include "Aql/Ast.h"
@@ -52,6 +54,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
+#include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -1941,7 +1944,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // error (note that we use the follower version, since we have
       // lost leadership):
       if (findRefusal(responses)) {
-        vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+        ++vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter();
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
@@ -2476,7 +2479,7 @@ Future<Result> Methods::replicateOperations(
               "got error from follower: " + std::string(r.errorMessage());
 
           if (followerRefused) {
-            vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+            ++vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter();
 
             LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
                 << "synchronous replication of " << opName << " operation: "
@@ -2673,7 +2676,7 @@ Future<OperationResult> Methods::insertInternal(std::string const& cname, VPackS
                                                 OperationOptions const& options,
                                                 MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
+  
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
     events::CreateDocument(vocbase().name(), cname, value, options,

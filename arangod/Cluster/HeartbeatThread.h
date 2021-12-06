@@ -31,7 +31,7 @@
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 
 #include <velocypack/Slice.h>
 #include <chrono>
@@ -324,8 +324,8 @@ class HeartbeatThread : public Thread,
   /// @brief Sync job
   DBServerAgencySync _agencySync;
 
-  Histogram<log_scale_t<uint64_t>>& _heartbeat_send_time_ms;
-  Counter& _heartbeat_failure_counter;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _heartbeat_send_time_ms;
+  metrics::Counter& _heartbeat_failure_counter;
 };
 }  // namespace arangodb
 

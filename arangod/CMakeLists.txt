@@ -569,8 +569,11 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   RestHandler/RestLogInternalHandler.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
-  RestServer/Metrics.cpp
-  RestServer/MetricsFeature.cpp
+  Metrics/Builder.cpp
+  Metrics/Counter.cpp
+  Metrics/Metric.cpp
+  Metrics/MetricKey.cpp
+  Metrics/MetricsFeature.cpp
   RestHandler/RestMetricsHandler.cpp
   )
 

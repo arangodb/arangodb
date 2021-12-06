@@ -47,10 +47,12 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Metrics/BatchBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -66,7 +68,6 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-DECLARE_GUARD_METRIC(arangosearch_link_stats, IResearchLink::LinkStats);
 DECLARE_GAUGE(arangosearch_num_buffered_docs, uint64_t,
               "Number of buffered documents");
 DECLARE_GAUGE(arangosearch_num_docs, uint64_t, "Number of documents");
@@ -615,8 +616,10 @@ void IResearchLink::updateStats(IResearchDataStore::Stats const& stats) {
 }
 
 void IResearchLink::insertStats() {
-  auto& metric = _collection.vocbase().server().getFeature<arangodb::MetricsFeature>();
-  _linkStats = &metric.add(getMetric<arangosearch_link_stats>(*this));
+  auto& metric = _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+  auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
+  builder.setName("arangosearch_link_stats");
+  _linkStats = &metric.add(std::move(builder));
   _numFailedCommits = &metric.add(getMetric<arangosearch_num_failed_commits>(*this));
   _numFailedCleanups = &metric.add(getMetric<arangosearch_num_failed_cleanups>(*this));
   _numFailedConsolidations =
@@ -629,10 +632,12 @@ void IResearchLink::insertStats() {
 
 void IResearchLink::removeStats() {
   auto& metricFeature =
-      _collection.vocbase().server().getFeature<arangodb::MetricsFeature>();
+      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
   if (_linkStats) {
     _linkStats = nullptr;
-    metricFeature.remove(getMetric<arangosearch_link_stats>(*this));
+    auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
+    builder.setName("arangosearch_link_stats");
+    metricFeature.remove(std::move(builder));
   }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;

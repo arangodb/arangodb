@@ -34,6 +34,7 @@
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Indexes/Index.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
 #include "Utils/OperationOptions.h"
