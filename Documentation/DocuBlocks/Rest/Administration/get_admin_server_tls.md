@@ -28,7 +28,7 @@ has a subset of the following attributes (whatever is appropriate):
     but not `clientCA`), this field is present and contains a
     JSON string with the SHA256 of the private key.
 
-This is a public API so it does not require authentication.
+This is a public API so it does *not* require authentication.
 
 @RESTRETURNCODES
 
