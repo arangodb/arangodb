@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Graphin, { Utils, GraphinContext } from '@antv/graphin';
 import { message, Card, Select } from 'antd';
-import { ContextMenu, FishEye } from '@antv/graphin-components';
+import { ContextMenu, MiniMap, FishEye } from '@antv/graphin-components';
 import { useFetch } from './useFetch';
 import AqlEditor from './AqlEditor';
 import {
@@ -299,6 +299,7 @@ const MenuGraph = () => {
             <ContextMenu style={{ width: '80px' }}>
               <Menu options={options} onChange={HandleChange} bindType="node" />
             </ContextMenu>
+            <MiniMap />
           </Graphin>
         </Card>
       </div>
