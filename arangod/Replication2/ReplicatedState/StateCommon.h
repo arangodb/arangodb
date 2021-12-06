@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <iostream>
 #include <velocypack/Slice.h>
+#include <compare>
 
 namespace arangodb::velocypack {
 class Value;

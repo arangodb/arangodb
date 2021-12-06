@@ -29,6 +29,7 @@
 #include <chrono>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 namespace arangodb::velocypack {
 class Builder;
