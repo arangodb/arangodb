@@ -55,7 +55,7 @@ class WindowExecutorInfos {
    * @param options The AQL transaction, as it might be needed for aggregates
    */
   WindowExecutorInfos(WindowBounds const& b, RegisterId rangeRegister,
-                      std::vector<std::string_view> aggregateTypes,
+                      std::vector<std::string> aggregateTypes,
                       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                       QueryWarnings& warnings, velocypack::Options const* options);
 
@@ -68,7 +68,7 @@ class WindowExecutorInfos {
   WindowBounds const& bounds() const;
   RegisterId rangeRegister() const;
   std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
-  std::vector<std::string_view> const& getAggregateTypes() const;
+  std::vector<std::string> const& getAggregateTypes() const;
   QueryWarnings& warnings() const;
   velocypack::Options const* getVPackOptions() const;
 
@@ -78,7 +78,7 @@ class WindowExecutorInfos {
   RegisterId _rangeRegister;
 
   /// @brief aggregate types
-  std::vector<std::string_view> _aggregateTypes;
+  std::vector<std::string> _aggregateTypes;
 
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;

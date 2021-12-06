@@ -414,10 +414,10 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writeableOutputRegisters));
 
-  std::vector<std::string_view> aggregateTypes;
+  std::vector<std::string> aggregateTypes;
   std::transform(_aggregateVariables.begin(), _aggregateVariables.end(),
                  std::back_inserter(aggregateTypes),
-                 [](auto& it) { return it.type; });
+                 [](auto const& it) { return it.type; });
   TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
   auto executorInfos =
