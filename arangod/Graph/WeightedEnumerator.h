@@ -128,6 +128,8 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
 
   ~WeightedEnumerator() = default;
 
+  void clear() final;
+
   void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
 
   /// @brief Get the next Path element from the traversal.

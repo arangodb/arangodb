@@ -56,9 +56,7 @@ BreadthFirstEnumerator::~BreadthFirstEnumerator() {
   _opts->resourceMonitor().decreaseMemoryUsage(_schreier.capacity() * pathStepSize());
 }
 
-void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
-  PathEnumerator::setStartVertex(startVertex);
-
+void BreadthFirstEnumerator::clear() {
   _schreier.clear();
   _schreierIndex = 0;
   _lastReturned = 0;
@@ -66,7 +64,13 @@ void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef star
   _toSearch.clear();
   _currentDepth = 0;
   _toSearchPos = 0;
+}
 
+void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+  
+  clear();
+  
   growStorage();
   _schreier.emplace_back(startVertex);
   _toSearch.emplace_back(NextStep(0));

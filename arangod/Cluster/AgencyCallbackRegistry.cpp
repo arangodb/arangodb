@@ -40,7 +40,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -53,9 +55,9 @@ AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::Application
   : _agency(server), 
     _callbackBasePath(callbackBasePath),
     _totalCallbacksRegistered(
-      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_callback_registered_total{})),
+      server.getFeature<metrics::MetricsFeature>().add(arangodb_agency_callback_registered_total{})),
     _callbacksCount(
-      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_callback_number{})) {}
+      server.getFeature<metrics::MetricsFeature>().add(arangodb_agency_callback_number{})) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 

@@ -37,7 +37,7 @@
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -68,7 +68,7 @@ class PhysicalCollectionTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
+    features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>());
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
 
 #if USE_ENTERPRISE

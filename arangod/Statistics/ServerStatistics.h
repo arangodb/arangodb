@@ -25,13 +25,17 @@
 
 #include <cstdint>
 #include <optional>
-#include "RestServer/Metrics.h"
+#include <functional>
+
+#include "Metrics/Fwd.h"
+#include "Metrics/Counter.h"    // TODO(MBkkt) remove
+#include "Metrics/Histogram.h"  // TODO(MBkkt) remove
+#include "Metrics/LogScale.h"   // TODO(MBkkt) remove
 
 namespace arangodb {
-class MetricsFeature;
 
 struct TransactionStatistics {
-  explicit TransactionStatistics(arangodb::MetricsFeature&);
+  explicit TransactionStatistics(metrics::MetricsFeature&);
   TransactionStatistics(TransactionStatistics const&) = delete;
   TransactionStatistics(TransactionStatistics &&) = delete;
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
@@ -39,42 +43,42 @@ struct TransactionStatistics {
 
   void setupDocumentMetrics();
 
-  arangodb::MetricsFeature& _metrics;
+  metrics::MetricsFeature& _metrics;
 
-  Counter& _transactionsStarted;
-  Counter& _transactionsAborted;
-  Counter& _transactionsCommitted;
-  Counter& _intermediateCommits;
-  Counter& _readTransactions;
+  metrics::Counter& _transactionsStarted;
+  metrics::Counter& _transactionsAborted;
+  metrics::Counter& _transactionsCommitted;
+  metrics::Counter& _intermediateCommits;
+  metrics::Counter& _readTransactions;
 
   // total number of lock timeouts for exclusive locks
-  Counter& _exclusiveLockTimeouts;
+  metrics::Counter& _exclusiveLockTimeouts;
   // total number of lock timeouts for write locks
-  Counter& _writeLockTimeouts;
+  metrics::Counter& _writeLockTimeouts;
   // total duration of lock acquisition (in microseconds)
-  Counter& _lockTimeMicros;
+  metrics::Counter& _lockTimeMicros;
   // histogram for lock acquisition (in seconds)
-  Histogram<log_scale_t<double>>& _lockTimes;
+  metrics::Histogram<metrics::LogScale<double>>& _lockTimes;
   // Total number of times we used a fallback to sequential locking
-  Counter& _sequentialLocks;
+  metrics::Counter& _sequentialLocks;
 
   // Total number of write operations in storage engine (excl. sync replication)
-  std::optional<std::reference_wrapper<Counter>> _numWrites;
+  std::optional<std::reference_wrapper<metrics::Counter>> _numWrites;
   // Total number of write operations in storage engine by sync replication
-  std::optional<std::reference_wrapper<Counter>> _numWritesReplication;
+  std::optional<std::reference_wrapper<metrics::Counter>> _numWritesReplication;
   // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
-  std::optional<std::reference_wrapper<Counter>> _numTruncates;
+  std::optional<std::reference_wrapper<metrics::Counter>> _numTruncates;
   // Total number of truncate operations (not number of documents truncated!) by sync replication
-  std::optional<std::reference_wrapper<Counter>> _numTruncatesReplication;
+  std::optional<std::reference_wrapper<metrics::Counter>> _numTruncatesReplication;
 
   /// @brief the following metrics are conditional and only initialized if
   /// startup option `--server.export-read-write-metrics` is set
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_read_sec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_insert_sec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_replace_sec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_remove_sec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_update_sec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>> _rocksdb_truncate_sec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_read_sec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_insert_sec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_replace_sec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_remove_sec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_update_sec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_truncate_sec;
 
   bool _exportReadWriteMetrics;
 
@@ -95,7 +99,7 @@ struct ServerStatistics {
 
   double uptime() const noexcept;
 
-  explicit ServerStatistics(arangodb::MetricsFeature& metrics, double start)
+  explicit ServerStatistics(metrics::MetricsFeature& metrics, double start)
       : _transactionsStatistics(metrics), _startTime(start) {}
 };
 

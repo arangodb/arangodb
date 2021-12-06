@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
@@ -44,6 +44,7 @@
 #include "IResearchTestCompressor.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Metrics/MetricKey.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -2118,9 +2119,10 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   ~IResearchLinkMetricsTest() override { resetLink(); }
 
-  bool checkMetricExist(const std::string& name, const std::string& label) const {
-    arangodb::metrics_key key(name, label);
-    auto* metric = _vocbase.server().getFeature<arangodb::MetricsFeature>().get(key);
+  bool checkMetricExist(std::string_view name, std::string_view label) const {
+    arangodb::metrics::MetricKey key(name, label);
+    auto* metric =
+        _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(key);
     return metric != nullptr;
   }
 
@@ -2134,7 +2136,9 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
       "consolidationIntervalMsec": %llu,
       "type": "arangosearch"
     })",
-            _cleanupIntervalStep, _commitIntervalMs, _consolidationIntervalMs);
+            static_cast<long long unsigned>(_cleanupIntervalStep),
+            static_cast<long long unsigned>(_commitIntervalMs),
+            static_cast<long long unsigned>(_consolidationIntervalMs));
     auto viewJson = arangodb::velocypack::Parser::fromJson(temp);
 
     _view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -2192,14 +2196,15 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
 
   void getPrometheusStr(std::string& result) {
     auto label = getLinkMetricLabel();
-    arangodb::metrics_key key("arangosearch_link_stats", label);
-    auto* metric = _vocbase.server().getFeature<arangodb::MetricsFeature>().get(key);
+    arangodb::metrics::MetricKey key("arangosearch_link_stats", label);
+    auto* metric =
+        _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>().get(key);
     if (metric != nullptr) {
-      metric->toPrometheus(result, "");
+      metric->toPrometheus(result, "", "");
     }
   }
 
-  void insert(uint64_t begin, uint64_t end, size_t docId, bool commit = true) {
+  double insert(uint64_t begin, uint64_t end, size_t docId, bool commit = true) {
     auto* l = getLink();
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(_vocbase),
                                        kEmpty, kEmpty, kEmpty,
@@ -2211,8 +2216,12 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     }
     EXPECT_TRUE(trx.commit().ok());
     if (commit) {
+      auto start = std::chrono::steady_clock::now();
       EXPECT_TRUE(l->commit().ok());
+      return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start)
+          .count();
     }
+    return NAN;
   }
 
   void remove(uint64_t begin, uint64_t end) {
@@ -2253,13 +2262,14 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
   setLink();
   auto* l = getLink();
   {
-    insert(1, 10000, 0);
+    auto timeMs = insert(1, 10000, 0);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
     EXPECT_TRUE(0 < commitTime1);
-    insert(10000, 10100, 1);
+    EXPECT_TRUE(commitTime1 <= timeMs);
+    timeMs += insert(10000, 10100, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_TRUE(0 < commitTime2);
-    EXPECT_TRUE(commitTime2 < commitTime1);
+    EXPECT_TRUE(commitTime2 <= timeMs / 2.0);
   }
   {
     auto [numFiles0, indexSize0] = numFiles();
@@ -2267,8 +2277,6 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
     EXPECT_TRUE(0 < indexSize0);
 
     remove(1, 10000);
-    auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-    EXPECT_TRUE(0 <= cleanupTime1);
     auto [numFiles1, indexSize1] = numFiles();
     EXPECT_TRUE(0 < numFiles1);
     EXPECT_TRUE(numFiles1 < numFiles0);
@@ -2276,9 +2284,6 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
     EXPECT_TRUE(indexSize1 < indexSize0);
 
     remove(10000, 10100);
-    auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
-    EXPECT_TRUE(0 <= cleanupTime2);
-    EXPECT_TRUE(cleanupTime2 <= cleanupTime1);
     auto [numFiles2, indexSize2] = numFiles();
     EXPECT_TRUE(0 < numFiles2);
     EXPECT_TRUE(numFiles2 < numFiles1);
@@ -2299,7 +2304,6 @@ TEST_F(IResearchLinkMetricsTest, TimeConsolidate) {
     insert(10000, 10100, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_TRUE(0 < commitTime2);
-    EXPECT_TRUE(commitTime2 < commitTime1);
   }
   {
     std::this_thread::sleep_for(600ms);
