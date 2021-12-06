@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-535: TakeoverShardLeadership waits properly for Current data in
+  ClusterInfo. This avoids a fake warning and fake test failure.
+
 * Fix GitHub issue #15084. Fixed a potential use-after-free on Windows for
   queries that used the NeighborsEnumerator (though other PathEnumerators
   might have been affected as well).
