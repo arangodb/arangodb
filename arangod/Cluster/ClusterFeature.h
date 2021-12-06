@@ -183,10 +183,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
-  std::optional<std::reference_wrapper<metrics::Counter>> _followersDroppedCounter;
-  std::optional<std::reference_wrapper<metrics::Counter>> _followersRefusedCounter;
-  std::optional<std::reference_wrapper<metrics::Counter>> _followersWrongChecksumCounter;
-  std::optional<std::reference_wrapper<metrics::Counter>> _followersTotalRebuildCounter;
+  metrics::Counter* _followersDroppedCounter = nullptr;
+  metrics::Counter* _followersRefusedCounter = nullptr;
+  metrics::Counter* _followersWrongChecksumCounter = nullptr;
+  metrics::Counter* _followersTotalRebuildCounter = nullptr;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 
   /// @brief lock for dirty database list

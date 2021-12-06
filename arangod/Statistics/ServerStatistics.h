@@ -28,9 +28,6 @@
 #include <functional>
 
 #include "Metrics/Fwd.h"
-#include "Metrics/Counter.h"    // TODO(MBkkt) remove
-#include "Metrics/Histogram.h"  // TODO(MBkkt) remove
-#include "Metrics/LogScale.h"   // TODO(MBkkt) remove
 
 namespace arangodb {
 
@@ -63,22 +60,22 @@ struct TransactionStatistics {
   metrics::Counter& _sequentialLocks;
 
   // Total number of write operations in storage engine (excl. sync replication)
-  std::optional<std::reference_wrapper<metrics::Counter>> _numWrites;
+  metrics::Counter* _numWrites = nullptr;
   // Total number of write operations in storage engine by sync replication
-  std::optional<std::reference_wrapper<metrics::Counter>> _numWritesReplication;
+  metrics::Counter* _numWritesReplication = nullptr;
   // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
-  std::optional<std::reference_wrapper<metrics::Counter>> _numTruncates;
+  metrics::Counter* _numTruncates = nullptr;
   // Total number of truncate operations (not number of documents truncated!) by sync replication
-  std::optional<std::reference_wrapper<metrics::Counter>> _numTruncatesReplication;
+  metrics::Counter* _numTruncatesReplication = nullptr;
 
   /// @brief the following metrics are conditional and only initialized if
   /// startup option `--server.export-read-write-metrics` is set
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_read_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_insert_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_replace_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_remove_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_update_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_truncate_sec;
+  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_read_sec = nullptr;
+  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_insert_sec = nullptr;
+  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_replace_sec = nullptr;
+  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_remove_sec = nullptr;
+  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_update_sec = nullptr;
+  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_truncate_sec = nullptr;
 
   bool _exportReadWriteMetrics;
 
@@ -91,8 +88,6 @@ struct ServerStatistics {
   ServerStatistics& operator=(ServerStatistics &&) = delete;
 
   void setupDocumentMetrics();
-
-  ServerStatistics& statistics();
 
   TransactionStatistics _transactionsStatistics;
   double const _startTime;

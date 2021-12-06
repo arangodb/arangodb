@@ -144,7 +144,7 @@ struct TimeTracker {
   TimeTracker& operator=(TimeTracker const&) = delete;
 
   explicit TimeTracker(arangodb::TransactionStatistics const& statistics, 
-                       std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram) noexcept
+                       arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>* histogram) noexcept
       : statistics(statistics),
         histogram(histogram) {
     if (statistics._exportReadWriteMetrics) {
@@ -168,20 +168,20 @@ struct TimeTracker {
   }
   
   arangodb::TransactionStatistics const& statistics;
-  std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram;
+  arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>* histogram;
   std::chrono::time_point<std::chrono::steady_clock> start;
 };
 
 /// @brief helper RAII class to count and time-track a CRUD read operation
 struct ReadTimeTracker : public TimeTracker {
-  ReadTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
+  ReadTimeTracker(arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>* histogram,
                   arangodb::TransactionStatistics& statistics) noexcept
       : TimeTracker(statistics, histogram) {}
 };
 
 /// @brief helper RAII class to count and time-track CRUD write operations
 struct WriteTimeTracker : public TimeTracker {
-  WriteTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
+  WriteTimeTracker(arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>* histogram,
                    arangodb::TransactionStatistics& statistics,
                    arangodb::OperationOptions const& options) noexcept
       : TimeTracker(statistics, histogram) {
@@ -198,7 +198,7 @@ struct WriteTimeTracker : public TimeTracker {
 
 /// @brief helper RAII class to count and time-track truncate operations
 struct TruncateTimeTracker : public TimeTracker {
-  TruncateTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
+  TruncateTimeTracker(arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>* histogram,
                       arangodb::TransactionStatistics& statistics,
                       arangodb::OperationOptions const& options) noexcept
       : TimeTracker(statistics, histogram) {
