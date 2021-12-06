@@ -53,7 +53,19 @@ class SingleProviderPathResult : public PathResultInterface {
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
 
+  // Used to populate _vertices and _edges (by traversing the Schreier vector)
+  auto populatePath() -> void;
+  auto verticesToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto edgesToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+
+  // Writing the full path to VelocyPack
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
+
+  // Writing last vertex of the path to VelocyPack
+  auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
+
+  // Writing last edge of the path to VelocyPack
+  auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
 
   auto isEmpty() const -> bool;
   ProviderType* getProvider() { return &_provider; }

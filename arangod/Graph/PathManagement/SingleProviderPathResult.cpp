@@ -82,18 +82,20 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependEdge(ty
 }
 
 template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::populatePath() -> void {
+  _store.visitReversePath(_step, [&](Step const& s) -> bool {
+    prependVertex(s.getVertex());
+    if (s.getEdge().isValid()) {
+      prependEdge(s.getEdge());
+    }
+    return true;
+  });
+}
+
+template <class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::verticesToVelocyPack(
     arangodb::velocypack::Builder& builder) -> void {
-  if (_vertices.empty()) {
-    _store.visitReversePath(_step, [&](Step const& s) -> bool {
-      prependVertex(s.getVertex());
-      if (s.getEdge().isValid()) {
-        prependEdge(s.getEdge());
-      }
-      return true;
-    });
-  }
-  VPackObjectBuilder path{&builder};
+  TRI_ASSERT(builder.isOpenObject());
   {
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
@@ -102,7 +104,12 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
       _provider.addVertexToBuilder(_vertices[i], builder);
     }
   }
+}
 
+template <class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::edgesToVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  TRI_ASSERT(builder.isOpenObject());
   {
     builder.add(VPackValue(StaticStrings::GraphQueryEdges));
     VPackArrayBuilder edges(&builder);
@@ -111,6 +118,35 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
       _provider.addEdgeToBuilder(_edges[i], builder);
     }
   }
+}
+
+template <class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  if (_vertices.empty()) {
+    populatePath();
+  }
+  VPackObjectBuilder path{&builder};
+  verticesToVelocyPack(builder);
+  edgesToVelocyPack(builder);
+}
+
+template <class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::lastVertexToVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  if (_vertices.empty()) {
+    populatePath();
+  }
+  _provider.addVertexToBuilder(_vertices[_vertices.size() - 1], builder);
+}
+
+template <class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::lastEdgeToVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  if (_edges.empty()) {
+    populatePath();
+  }
+  _provider.addEdgeToBuilder(_edges[_edges.size() - 1], builder);
 }
 
 template <class ProviderType, class PathStoreType, class Step>

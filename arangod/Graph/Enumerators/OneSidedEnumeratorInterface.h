@@ -49,6 +49,8 @@ class PathResultInterface {
   virtual ~PathResultInterface() {}
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
+  virtual auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
+  virtual auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
 };
 
 class TraversalEnumerator {

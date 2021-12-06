@@ -115,6 +115,18 @@ auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder&
 }
 
 template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::lastVertexToVelocyPack(arangodb::velocypack::Builder& builder)
+    -> void {
+  _sourceProvider.addVertexToBuilder(_vertices.back(), builder);
+}
+
+template <class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder)
+    -> void {
+  _sourceProvider.addEdgeToBuilder(_edges.back(), builder);
+}
+
+template <class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }
