@@ -260,20 +260,28 @@ auto TraversalExecutor<FinderType>::doOutput(OutputAqlItemRow& output) -> void {
   } else {
     // Refactored variant
     while (auto currentPath = _finder.getNextPath()) {
+      TRI_ASSERT(_inputRow.isInitialized());
+
+      // traverser now has next v, e, p values
       transaction::BuilderLeaser tmp{&_trx};
       LOG_DEVEL << "[GraphRefactor]: doOutput - path found";
 
+      // Vertex variable (v)
       if (_infos.useVertexOutput()) {
-        LOG_DEVEL << "V TO BE IMPLEMENTED - currently only path building is supported";
-        // NEXT LINES TO BE REMOVED - they are just dummies for a complete run
         tmp->clear();
-        currentPath->toVelocyPack(*tmp.builder());
+        currentPath->lastVertexToVelocyPack(*tmp.builder());
         AqlValue path{tmp->slice()};
         AqlValueGuard guard{path, true};
         output.moveValueInto(_infos.vertexRegister(), _inputRow, guard);
       }
+
+      // Edge variable (e)
       if (_infos.useEdgeOutput()) {
-        LOG_DEVEL << "E TO BE IMPLEMENTED - currently only path building is supported";
+        tmp->clear();
+        currentPath->lastEdgeToVelocyPack(*tmp.builder());
+        AqlValue path{tmp->slice()};
+        AqlValueGuard guard{path, true};
+        output.moveValueInto(_infos.edgeRegister(), _inputRow, guard);
       }
 
       // Path variable (p)
