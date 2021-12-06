@@ -56,7 +56,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
@@ -132,7 +134,7 @@ DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total, "Number of succes
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_failure_total, "Number of failed revision tree rebuilds");
 DECLARE_COUNTER(arangodb_revision_tree_hibernations_total, "Number of revision tree hibernations");
 DECLARE_COUNTER(arangodb_revision_tree_resurrections_total, "Number of revision tree resurrections");
-          
+
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
@@ -216,23 +218,23 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
-      _metricsWalSequenceLowerBound(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsWalSequenceLowerBound(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_wal_sequence_lower_bound{})),
-      _metricsArchivedWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
-      _metricsPrunableWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_prunable_wal_files{})),
-      _metricsWalPruningActive(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsWalPruningActive(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_wal_pruning_active{})),
-      _metricsTreeMemoryUsage(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsTreeMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_revision_tree_memory_usage{})),
-      _metricsTreeRebuildsSuccess(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsTreeRebuildsSuccess(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_revision_tree_rebuilds_success_total{})),
-      _metricsTreeRebuildsFailure(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsTreeRebuildsFailure(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_revision_tree_rebuilds_failure_total{})),
-      _metricsTreeHibernations(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsTreeHibernations(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_revision_tree_hibernations_total{})),
-      _metricsTreeResurrections(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsTreeResurrections(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_revision_tree_resurrections_total{})) {
 
   server.addFeature<RocksDBOptionFeature>();
@@ -246,7 +248,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
-  
+
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
 void RocksDBEngine::shutdownRocksDBInstance() noexcept {
@@ -1032,7 +1034,7 @@ void RocksDBEngine::trackRevisionTreeHibernation() noexcept {
 void RocksDBEngine::trackRevisionTreeResurrection() noexcept {
   ++_metricsTreeResurrections;
 }
-  
+
 void RocksDBEngine::trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept {
   if (value != 0) {
     _metricsTreeMemoryUsage += value;
@@ -1045,7 +1047,7 @@ void RocksDBEngine::trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcep
     TRI_ASSERT(old >= value);
   }
 }
-  
+
 bool RocksDBEngine::hasBackgroundError() const {
   return _errorListener != nullptr && _errorListener->called();
 }

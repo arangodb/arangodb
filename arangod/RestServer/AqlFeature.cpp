@@ -32,7 +32,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb::application_features;
