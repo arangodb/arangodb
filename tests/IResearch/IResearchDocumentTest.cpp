@@ -2930,7 +2930,8 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_object_prim
     "array": [
       {"id": 1, "subobj": {"id": "10" }},
       {"subobj": {"name": "foo" }, "id": "2"},
-      {"id": "3", "subobj": {"id": "22" }}],
+      {"id": "3", "subobj": {"id": "22" }},
+      {"No_id": "3", "subobj": {"id": 22 }}],
     "last_not_present": "ignored"})");
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
@@ -2981,6 +2982,10 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_object_prim
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(server, *it,
                                             mangleInvertedIndexStringIdentity("array.subobj.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                            mangleNumeric("array.subobj.id"));
       },
   };
 
