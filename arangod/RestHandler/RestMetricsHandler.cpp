@@ -36,6 +36,7 @@
 #include "Network/Utils.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
+#include "Metrics/MetricsFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -137,7 +138,7 @@ RestStatus RestMetricsHandler::execute() {
     }
   }
 
-  MetricsFeature& metrics = server().getFeature<MetricsFeature>();
+  auto& metrics = server().getFeature<metrics::MetricsFeature>();
   if (!metrics.exportAPI()) {
     // dont export metrics, if so desired
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);

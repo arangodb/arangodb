@@ -54,6 +54,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FrontendFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -135,17 +137,17 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _gcFinished(false),
       _dynamicContextCreationBlockers(0),
       _contextsCreationTime(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_creation_time_msec_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_v8_context_creation_time_msec_total{})),
       _contextsCreated(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_created_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_v8_context_created_total{})),
       _contextsDestroyed(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_destroyed_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_v8_context_destroyed_total{})),
       _contextsEntered(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_entered_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_v8_context_entered_total{})),
       _contextsExited(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_exited_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_v8_context_exited_total{})),
       _contextsEnterFailures(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_enter_failures_total{})) {
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_v8_context_enter_failures_total{})) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 

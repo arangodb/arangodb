@@ -50,6 +50,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
@@ -73,9 +76,9 @@ State::State(application_features::ApplicationServer& server)
     _lastCompactionAt(0),
     _cur(0),
     _log_size(
-      _server.getFeature<MetricsFeature>().add(arangodb_agency_log_size_bytes{})),
+      _server.getFeature<metrics::MetricsFeature>().add(arangodb_agency_log_size_bytes{})),
     _clientIdLookupCount(
-      _server.getFeature<MetricsFeature>().add(arangodb_agency_client_lookup_table_size{})) {}
+      _server.getFeature<metrics::MetricsFeature>().add(arangodb_agency_client_lookup_table_size{})) {}
 
 /// Default dtor
 State::~State() = default;

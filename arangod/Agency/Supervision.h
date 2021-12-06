@@ -30,7 +30,9 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "RestServer/MetricsFeature.h"
+#include "Cluster/ClusterTypes.h"
+
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 namespace consensus {
@@ -327,11 +329,11 @@ class Supervision : public arangodb::Thread {
   static std::string _agencyPrefix;  // initialized in AgencyFeature
 
  public:
-  Histogram<log_scale_t<uint64_t>>& _supervision_runtime_msec;
-  Histogram<log_scale_t<uint64_t>>& _supervision_runtime_wait_for_sync_msec;
-  Counter& _supervision_accum_runtime_msec;
-  Counter& _supervision_accum_runtime_wait_for_sync_msec;
-  Counter& _supervision_failed_server_counter;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _supervision_runtime_msec;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _supervision_runtime_wait_for_sync_msec;
+  metrics::Counter& _supervision_accum_runtime_msec;
+  metrics::Counter& _supervision_accum_runtime_wait_for_sync_msec;
+  metrics::Counter& _supervision_failed_server_counter;
 };
 
 /**

@@ -33,6 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 #include "Basics/hashes.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
@@ -43,7 +44,10 @@
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -140,7 +144,7 @@ struct TimeTracker {
   TimeTracker& operator=(TimeTracker const&) = delete;
 
   explicit TimeTracker(arangodb::TransactionStatistics const& statistics, 
-                       std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram) noexcept
+                       std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram) noexcept
       : statistics(statistics),
         histogram(histogram) {
     if (statistics._exportReadWriteMetrics) {
@@ -164,20 +168,20 @@ struct TimeTracker {
   }
   
   arangodb::TransactionStatistics const& statistics;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram;
+  std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram;
   std::chrono::time_point<std::chrono::steady_clock> start;
 };
 
 /// @brief helper RAII class to count and time-track a CRUD read operation
 struct ReadTimeTracker : public TimeTracker {
-  ReadTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+  ReadTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
                   arangodb::TransactionStatistics& statistics) noexcept
       : TimeTracker(statistics, histogram) {}
 };
 
 /// @brief helper RAII class to count and time-track CRUD write operations
 struct WriteTimeTracker : public TimeTracker {
-  WriteTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+  WriteTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
                    arangodb::TransactionStatistics& statistics,
                    arangodb::OperationOptions const& options) noexcept
       : TimeTracker(statistics, histogram) {
@@ -194,7 +198,7 @@ struct WriteTimeTracker : public TimeTracker {
 
 /// @brief helper RAII class to count and time-track truncate operations
 struct TruncateTimeTracker : public TimeTracker {
-  TruncateTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+  TruncateTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
                       arangodb::TransactionStatistics& statistics,
                       arangodb::OperationOptions const& options) noexcept
       : TimeTracker(statistics, histogram) {
@@ -238,7 +242,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
           collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _numIndexCreations(0),
       _statistics(
-        collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
+        collection.vocbase().server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled) {
     createCache();
@@ -254,7 +258,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
           collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _numIndexCreations(0),
       _statistics(
-        collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
+        collection.vocbase().server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   if (_cacheEnabled) {
     createCache();
@@ -939,6 +943,10 @@ Result RocksDBCollection::read(transaction::Methods* trx,
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       return res;
     }  // else found
+
+    TRI_IF_FAILURE("RocksDBCollection::read-delay") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
 
     res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
     if (res.ok()) {
