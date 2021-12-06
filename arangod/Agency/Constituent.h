@@ -30,7 +30,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 
 #include <list>
 
@@ -147,7 +147,7 @@ class Constituent : public Thread {
   TRI_vocbase_t* _vocbase;
 
   term_t _term;  // term number
-  Gauge<term_t>& _gterm;  // term number
+  metrics::Gauge<term_t>& _gterm;  // term number
 
   std::string _leaderID;  // Current leader
   std::string _id;        // My own id

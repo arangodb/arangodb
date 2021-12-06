@@ -29,7 +29,9 @@
 #include "ProgramOptions/Parameters.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
+#include "Logger/LogMacros.h"
+#include "Cluster/ServerState.h"
 
 #include <memory>
 
@@ -42,7 +44,7 @@ using namespace arangodb::replication2::replicated_log;
 ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
     : ApplicationFeature(server, "ReplicatedLog"),
       _replicatedLogMetrics(std::make_shared<ReplicatedLogMetrics>(
-          server.getFeature<MetricsFeature>())),
+          server.getFeature<metrics::MetricsFeature>())),
       _options(std::make_shared<ReplicatedLogGlobalSettings>()) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();

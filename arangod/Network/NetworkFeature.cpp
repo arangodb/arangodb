@@ -35,7 +35,11 @@
 #include "Network/Methods.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/FixScale.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -59,12 +63,12 @@ using namespace arangodb::options;
 namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
-    : NetworkFeature(server, network::ConnectionPool::Config{server.getFeature<MetricsFeature>()}) {
+    : NetworkFeature(server, network::ConnectionPool::Config{server.getFeature<metrics::MetricsFeature>()}) {
   this->_numIOThreads = 2; // override default
 }
 
 struct NetworkFeatureScale {
-  static fixed_scale_t<double> scale() { return { 0.0, 100.0, {1.0, 5.0, 15.0, 50.0} }; }
+  static metrics::FixScale<double> scale() { return { 0.0, 100.0, {1.0, 5.0, 15.0, 50.0} }; }
 };
 
 DECLARE_COUNTER(arangodb_network_forwarded_requests_total, "Number of requests forwarded to another coordinator");
@@ -82,14 +86,14 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _verifyHosts(config.verifyHosts),
       _prepared(false),
       _forwardedRequests(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_forwarded_requests_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_network_forwarded_requests_total{})),
       _maxInFlight(::MaxAllowedInFlight),
       _requestsInFlight(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_requests_in_flight{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_network_requests_in_flight{})),
       _requestTimeouts(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_timeouts_total{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_network_request_timeouts_total{})),
       _requestDurations(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_duration_as_percentage_of_timeout{})) {
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_network_request_duration_as_percentage_of_timeout{})) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -162,7 +166,7 @@ void NetworkFeature::prepare() {
      ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
 
-  network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
+  network::ConnectionPool::Config config(server().getFeature<metrics::MetricsFeature>());
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
   config.idleConnectionMilli = _idleTtlMilli;
@@ -172,8 +176,8 @@ void NetworkFeature::prepare() {
 
   // using an internal network protocol other than HTTP/1 is
   // not supported since 3.9. the protocol is always hard-coded
-  // to HTTP/1 from now on. 
-  // note: we plan to upgrade the internal protocol to HTTP/2 at 
+  // to HTTP/1 from now on.
+  // note: we plan to upgrade the internal protocol to HTTP/2 at
   // some point in the future
   config.protocol = fuerte::ProtocolType::Http;
   if (_protocol == "http" || _protocol == "h1") {
@@ -331,7 +335,7 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::
     std::chrono::milliseconds timeout = req->timeout();
     TRI_ASSERT(timeout.count() > 0);
     if (timeout.count() > 0) {
-      // only go in here if we are sure to not divide by zero 
+      // only go in here if we are sure to not divide by zero
       double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
                                          static_cast<double>(timeout.count()),
                                      0.0, 100.0);
@@ -342,8 +346,8 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::
       // so instead log a warning and interpret this as a request that took
       // 100% of the timeout duration.
       _requestDurations.count(100.0);
-      LOG_TOPIC("1688c", WARN, Logger::FIXME) 
-          << "encountered invalid 0s timeout for internal request to path " 
+      LOG_TOPIC("1688c", WARN, Logger::FIXME)
+          << "encountered invalid 0s timeout for internal request to path "
           << req->header.path;
     }
   }

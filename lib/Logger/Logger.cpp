@@ -25,6 +25,8 @@
 #include <chrono>
 #include <cstring>
 #include <iosfwd>
+#include <string>
+#include <string_view>
 #include <thread>
 #include <type_traits>
 
@@ -41,6 +43,7 @@
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogGroup.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
@@ -422,6 +425,7 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
 void Logger::log(char const* logid, char const* function, char const* file, int line,
                  LogLevel level, size_t topicId, std::string const& message) try {
   TRI_ASSERT(logid != nullptr);
+  LogContext& logContext = LogContext::current();
 
   // we only determine our pid once, as currentProcessId() will
   // likely do a syscall.
@@ -547,7 +551,20 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append(",\"hostname\":");
       dumper.appendString(_hostname.data(), _hostname.size());
     }
-
+  
+    // meta data from log context
+    LogContext::OverloadVisitor visitor([&out, &dumper](std::string_view const& key, auto&& value) {
+      out.push_back(',');
+      dumper.appendString(key.data(), key.size());
+      out.push_back(':');
+      if constexpr (std::is_same_v<std::string_view, std::remove_cv_t<std::remove_reference_t<decltype(value)>>>) {
+        dumper.appendString(value.data(), key.size());
+      } else {
+        out.append(std::to_string(value));
+      }
+    });
+    logContext.visit(visitor);
+    
     // the message itself
     {
       out.append(",\"message\":");
@@ -673,6 +690,19 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append("} ", 2);
     }
 
+    // meta data from log 
+    LogContext::OverloadVisitor visitor([&out](std::string_view const& key, auto&& value) {
+      out.push_back('[');
+      out.append(key).append(": ", 2);
+      if constexpr (std::is_same_v<std::string_view, std::remove_cv_t<std::remove_reference_t<decltype(value)>>>) {
+        out.append(value);
+      } else {
+        out.append(std::to_string(value));
+      }
+      out.append("] ", 2);
+    });
+    logContext.visit(visitor);
+    
     // generate the complete message
     out.append(message);
   }
