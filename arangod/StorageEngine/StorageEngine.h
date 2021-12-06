@@ -81,6 +81,7 @@ namespace transaction {
 class Context;
 class Manager;
 class ManagerFeature;
+class Methods;
 struct Options;
 
 }  // namespace transaction
