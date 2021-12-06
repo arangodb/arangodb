@@ -2224,7 +2224,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     return NAN;
   }
 
-  void remove(uint64_t begin, uint64_t end) {
+  double remove(uint64_t begin, uint64_t end) {
     auto* l = getLink();
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(_vocbase),
                                        kEmpty, kEmpty, kEmpty,
@@ -2236,7 +2236,10 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     }
 
     EXPECT_TRUE(trx.commit().ok());
+    auto start = std::chrono::steady_clock::now();
     EXPECT_TRUE(l->commit().ok());
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start)
+        .count();
   }
 
   std::tuple<uint64_t, uint64_t> numFiles() {
@@ -2276,14 +2279,22 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
     EXPECT_TRUE(0 < numFiles0);
     EXPECT_TRUE(0 < indexSize0);
 
-    remove(1, 10000);
+    auto timeMs = remove(1, 10000);
+    auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
+    EXPECT_TRUE(commitTime1 <= timeMs);
+    EXPECT_TRUE(cleanupTime1 <= timeMs);
+    EXPECT_TRUE(commitTime1 + cleanupTime1 <= timeMs);
     auto [numFiles1, indexSize1] = numFiles();
     EXPECT_TRUE(0 < numFiles1);
     EXPECT_TRUE(numFiles1 < numFiles0);
     EXPECT_TRUE(0 < indexSize1);
     EXPECT_TRUE(indexSize1 < indexSize0);
 
-    remove(10000, 10100);
+    timeMs += remove(10000, 10100);
+    auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
+    EXPECT_TRUE(commitTime2 <= timeMs / 2.0);
+    EXPECT_TRUE(cleanupTime2 <= timeMs / 2.0);
+    EXPECT_TRUE(commitTime2 + cleanupTime2 <= timeMs / 2.0);
     auto [numFiles2, indexSize2] = numFiles();
     EXPECT_TRUE(0 < numFiles2);
     EXPECT_TRUE(numFiles2 < numFiles1);
