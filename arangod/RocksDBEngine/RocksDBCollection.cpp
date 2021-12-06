@@ -157,8 +157,8 @@ struct TimeTracker {
     if (statistics._exportReadWriteMetrics) {
       // metrics collection is not free. only do it if metrics are enabled
       // unit is seconds here
-      TRI_ASSERT(histogram.has_value());
-      histogram->get().count(std::chrono::duration<float>(getTime() - start).count());
+      TRI_ASSERT(histogram != nullptr);
+      histogram->count(std::chrono::duration<float>(getTime() - start).count());
     }
   }
 
@@ -166,7 +166,7 @@ struct TimeTracker {
     TRI_ASSERT(statistics._exportReadWriteMetrics);
     return std::chrono::steady_clock::now();
   }
-  
+
   arangodb::TransactionStatistics const& statistics;
   arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>* histogram;
   std::chrono::time_point<std::chrono::steady_clock> start;
@@ -188,9 +188,11 @@ struct WriteTimeTracker : public TimeTracker {
     if (statistics._exportReadWriteMetrics) {
       // metrics collection is not free. only track writes if metrics are enabled
       if (options.isSynchronousReplicationFrom.empty()) {
-        ++(statistics._numWrites->get());
+        TRI_ASSERT(statistics._numWrites != nullptr);
+        statistics._numWrites->count();
       } else {
-        ++(statistics._numWritesReplication->get());
+        TRI_ASSERT(statistics._numWritesReplication != nullptr);
+        statistics._numWritesReplication->count();
       }
     }
   }
@@ -205,9 +207,11 @@ struct TruncateTimeTracker : public TimeTracker {
     if (statistics._exportReadWriteMetrics) {
       // metrics collection is not free. only track truncates if metrics are enabled
       if (options.isSynchronousReplicationFrom.empty()) {
-        ++(statistics._numTruncates->get());
+        TRI_ASSERT(statistics._numTruncates != nullptr);
+        statistics._numTruncates->count();
       } else {
-        ++(statistics._numTruncatesReplication->get());
+        TRI_ASSERT(statistics._numTruncatesReplication != nullptr);
+        statistics._numTruncatesReplication->count();
       }
     }
   }

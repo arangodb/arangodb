@@ -99,10 +99,22 @@ class ClusterFeature : public application_features::ApplicationFeature {
   /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
   std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
 
-  metrics::Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
-  metrics::Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
-  metrics::Counter& followersWrongChecksumCounter() { return _followersWrongChecksumCounter->get(); }
-  metrics::Counter& followersTotalRebuildCounter() { return _followersTotalRebuildCounter->get(); }
+  metrics::Counter& followersDroppedCounter() {
+    TRI_ASSERT(_followersDroppedCounter != nullptr);
+    return *_followersDroppedCounter;
+  }
+  metrics::Counter& followersRefusedCounter() {
+    TRI_ASSERT(_followersRefusedCounter != nullptr);
+    return *_followersRefusedCounter;
+  }
+  metrics::Counter& followersWrongChecksumCounter() {
+    TRI_ASSERT(_followersWrongChecksumCounter != nullptr);
+    return *_followersWrongChecksumCounter;
+  }
+  metrics::Counter& followersTotalRebuildCounter() {
+    TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
+    return *_followersTotalRebuildCounter;
+  }
 
   /**
    * @brief Add databases to dirty list

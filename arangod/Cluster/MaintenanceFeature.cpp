@@ -275,7 +275,7 @@ void MaintenanceFeature::prepare() {
 void MaintenanceFeature::initializeMetrics() {
   TRI_ASSERT(ServerState::instance()->isDBServer() || _forceActivation);
 
-  if (_phase1_runtime_msec.has_value()) {
+  if (_phase1_runtime_msec != nullptr) {
     // Already initialized.
     // This actually is only necessary because of tests
     return;
@@ -283,27 +283,27 @@ void MaintenanceFeature::initializeMetrics() {
   auto& metricsFeature = server().getFeature<metrics::MetricsFeature>();
 
   _phase1_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_phase1_runtime_msec{});
+    &metricsFeature.add(arangodb_maintenance_phase1_runtime_msec{});
   _phase2_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_phase2_runtime_msec{});
+    &metricsFeature.add(arangodb_maintenance_phase2_runtime_msec{});
   _agency_sync_total_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_agency_sync_runtime_msec{});
+    &metricsFeature.add(arangodb_maintenance_agency_sync_runtime_msec{});
 
   _phase1_accum_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_phase1_accum_runtime_msec_total{});
+    &metricsFeature.add(arangodb_maintenance_phase1_accum_runtime_msec_total{});
   _phase2_accum_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_phase2_accum_runtime_msec_total{});
+    &metricsFeature.add(arangodb_maintenance_phase2_accum_runtime_msec_total{});
   _agency_sync_total_accum_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_agency_sync_accum_runtime_msec_total{});
+    &metricsFeature.add(arangodb_maintenance_agency_sync_accum_runtime_msec_total{});
 
-  _shards_out_of_sync = metricsFeature.add(arangodb_shards_out_of_sync{});
-  _shards_total_count = metricsFeature.add(arangodb_shards_number{});
-  _shards_leader_count = metricsFeature.add(arangodb_shards_leader_number{});
-  _shards_not_replicated_count = metricsFeature.add(arangodb_shards_not_replicated{});
+  _shards_out_of_sync = &metricsFeature.add(arangodb_shards_out_of_sync{});
+  _shards_total_count = &metricsFeature.add(arangodb_shards_number{});
+  _shards_leader_count = &metricsFeature.add(arangodb_shards_leader_number{});
+  _shards_not_replicated_count = &metricsFeature.add(arangodb_shards_not_replicated{});
 
-  _action_duplicated_counter = metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
-  _action_registered_counter = metricsFeature.add(arangodb_maintenance_action_registered_total{});
-  _action_done_counter = metricsFeature.add(arangodb_maintenance_action_done_total{});
+  _action_duplicated_counter = &metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
+  _action_registered_counter = &metricsFeature.add(arangodb_maintenance_action_registered_total{});
+  _action_done_counter = &metricsFeature.add(arangodb_maintenance_action_done_total{});
 
   const char* instrumentedActions[] =
     {CREATE_COLLECTION, CREATE_DATABASE, UPDATE_COLLECTION, SYNCHRONIZE_SHARD, DROP_COLLECTION, DROP_DATABASE, DROP_INDEX};
@@ -528,7 +528,8 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER,
                    "addAction called while similar action already processing.");
-      _action_duplicated_counter->get().operator++();
+      TRI_ASSERT(_action_duplicated_counter != nullptr);
+      _action_duplicated_counter->count();
     }  // else
 
     // executeNow process on this thread, right now!
@@ -585,7 +586,8 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER,
                    "addAction called while similar action already processing.");
-      _action_duplicated_counter->get().operator++();
+      TRI_ASSERT(_action_duplicated_counter != nullptr);
+      _action_duplicated_counter->count();
     }  // else
 
     // executeNow process on this thread, right now!
@@ -633,7 +635,8 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action, bool exe
   //   lock condition variable
   {
     _actionRegistry.push_back(action);
-    _action_registered_counter->get().operator++();
+    TRI_ASSERT(_action_registered_counter != nullptr);
+    _action_registered_counter->count();
 
     if (!executeNow) {
       CONDITION_LOCKER(cLock, _actionRegistryCond);
@@ -762,7 +765,8 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(int minimalPriorityA
           }  // else
         }    // for
         if (actions_removed > 0) {
-          _action_done_counter->get().count(actions_removed);
+          TRI_ASSERT(_action_done_counter != nullptr);
+          _action_done_counter->count(actions_removed);
         }
       }
     }  // WRITE

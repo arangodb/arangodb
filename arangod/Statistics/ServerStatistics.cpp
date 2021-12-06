@@ -26,6 +26,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
@@ -75,16 +76,16 @@ void TransactionStatistics::setupDocumentMetrics() {
   // the following metrics are conditional, so we don't initialize them in the constructor
   _exportReadWriteMetrics = true;
   
-  _numWrites = _metrics.add(arangodb_document_writes_total{});
-  _numWritesReplication = _metrics.add(arangodb_document_writes_replication_total{});
-  _numTruncates = _metrics.add(arangodb_collection_truncates_total{});
-  _numTruncatesReplication = _metrics.add(arangodb_collection_truncates_replication_total{});
-  _rocksdb_read_sec = _metrics.add(arangodb_document_read_time{});
-  _rocksdb_insert_sec = _metrics.add(arangodb_document_insert_time{});
-  _rocksdb_replace_sec = _metrics.add(arangodb_document_replace_time{});
-  _rocksdb_remove_sec = _metrics.add(arangodb_document_remove_time{});
-  _rocksdb_update_sec = _metrics.add(arangodb_document_update_time{});
-  _rocksdb_truncate_sec = _metrics.add(arangodb_collection_truncate_time{});
+  _numWrites = &_metrics.add(arangodb_document_writes_total{});
+  _numWritesReplication = &_metrics.add(arangodb_document_writes_replication_total{});
+  _numTruncates = &_metrics.add(arangodb_collection_truncates_total{});
+  _numTruncatesReplication = &_metrics.add(arangodb_collection_truncates_replication_total{});
+  _rocksdb_read_sec = &_metrics.add(arangodb_document_read_time{});
+  _rocksdb_insert_sec = &_metrics.add(arangodb_document_insert_time{});
+  _rocksdb_replace_sec = &_metrics.add(arangodb_document_replace_time{});
+  _rocksdb_remove_sec = &_metrics.add(arangodb_document_remove_time{});
+  _rocksdb_update_sec = &_metrics.add(arangodb_document_update_time{});
+  _rocksdb_truncate_sec = &_metrics.add(arangodb_collection_truncate_time{});
 }
 
 void ServerStatistics::setupDocumentMetrics() {
