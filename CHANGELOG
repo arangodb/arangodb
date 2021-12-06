@@ -5,6 +5,18 @@ devel
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
 
+* APM-256: make arangoexport escape potential formulae in CSV exports.
+  This addresses a potential security issue when exporting specially
+  crafted documents to CSV, opening the CSV file in MS Excel or OpenOffice
+  and then clicking links in any of the tainted cells.
+  
+  This change also adds a new option `--escape-csv-formulae` to
+  toggle the escaping behavior for potential formulae values. The
+  option is turned on by default.
+
+* Second step of hotbackup transfer job cleanup. Now locks are also cleaned up
+  as well as old, seemingly unfinished jobs.
+
 * Defer intermediate commits in the middle of a multi-document (array)
   operation. This is to ensure that the RocksDB key locks for all participating
   document keys are still held while the operations are replicating via the
