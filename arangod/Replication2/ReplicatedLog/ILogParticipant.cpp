@@ -26,11 +26,12 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Gauge.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
 #include <Basics/application-exit.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;

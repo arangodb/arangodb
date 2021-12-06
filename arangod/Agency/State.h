@@ -25,7 +25,7 @@
 
 #include "Agency/Store.h"
 #include "AgencyCommon.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 #include "Utils/OperationOptions.h"
 
 #include <cstdint>
@@ -292,10 +292,10 @@ class State {
   arangodb::Mutex _configurationWriteLock;
 
   /// @brief Current state deque size in bytes
-  Gauge<uint64_t>& _log_size;
+  metrics::Gauge<uint64_t>& _log_size;
 
   /// @brief current number of entries in _clientIdLookupTable
-  Gauge<uint64_t>& _clientIdLookupCount;
+  metrics::Gauge<uint64_t>& _clientIdLookupCount;
 
 };
 

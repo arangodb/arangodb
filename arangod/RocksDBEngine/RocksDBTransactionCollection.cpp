@@ -29,6 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "Metrics/Counter.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"

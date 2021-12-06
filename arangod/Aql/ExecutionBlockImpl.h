@@ -34,6 +34,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/Stats.h"
 #include "Aql/RegisterInfos.h"
+#include "Logger/LogContext.h"
 
 #include <condition_variable>
 #include <memory>
@@ -393,6 +394,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       std::variant<UpstreamResult, std::exception_ptr, std::nullopt_t>& result;
       ExecutionContext& ctx;
       AqlCallType const& aqlCall;
+      LogContext logContext;
     };
 
     void run(ExecContext const& execContext);
