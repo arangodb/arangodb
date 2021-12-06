@@ -82,6 +82,12 @@ function startParameterTest(options, testpath, suiteName) {
       if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
         clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
       }
+      if (paramsSecondRun.hasOwnProperty('database.password')) {
+        clonedOpts['server.password'] = paramsSecondRun['database.password'];
+        clonedOpts['password'] = paramsSecondRun['database.password'];
+        options['password'] = paramsSecondRun['database.password'];
+        paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
+      }
       if (runSetup) {
         delete paramsSecondRun.runSetup;
         if (options.extremeVerbosity) {
