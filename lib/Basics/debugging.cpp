@@ -52,32 +52,11 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
-/// @brief custom comparator for failure points. this allows an implicit
-/// conversion from char const* to std::string_view in order to avoid memory
-/// allocations for temporary string values
-struct Comparator {
-  using is_transparent = std::true_type;
-  // implement comparison functions for various types
-  inline bool operator()(std::string_view const& lhs, std::string const& rhs) const noexcept {
-    return lhs < std::string_view(rhs);
-  }
-  inline bool operator()(std::string const& lhs, std::string_view const& rhs) const noexcept {
-    return std::string_view(lhs) < rhs;
-  }
-  inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
-    return lhs < rhs;
-  }
-};
-
-/// @brief custom comparator for failure points. allows avoiding memory allocations
-/// for temporary string objects
-Comparator const comparator;
-
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
 /// @brief a global set containing the currently registered failure points
-std::set<std::string, ::Comparator> failurePoints(comparator);
+std::set<std::string, std::less<>> failurePoints;
 }  // namespace
 
 /// @brief intentionally cause a segmentation violation or other failures

@@ -1254,14 +1254,13 @@ void ClusterInfo::loadPlan() {
       }
       continue;
     }
-    collectionsSlice = collectionsSlice.get(collectionsPath);
-
-    auto databaseCollections = std::make_shared<DatabaseCollections>();
 
     // Skip databases that are still building.
     if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
       continue;
     }
+
+    collectionsSlice = collectionsSlice.get(collectionsPath);
 
     auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
@@ -1277,6 +1276,8 @@ void ClusterInfo::loadPlan() {
 
       continue;
     }
+    
+    auto databaseCollections = std::make_shared<DatabaseCollections>();
 
     // an iterator to all collections in the current database (from the previous round)
     // we can safely keep this iterator around because we hold the read-lock on _planProt here.
