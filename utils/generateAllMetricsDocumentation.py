@@ -106,7 +106,7 @@ for f in files:
                 if m:
                     METRICSLIST.append(m.group(1))
 if len(METRICSLIST) == 0:
-    print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
+    print("Did not find any metrics in arangod/Metrics/MetricsFeature.h!")
     sys.exit(2)
 
 METRICSLIST.sort()

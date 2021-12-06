@@ -28,6 +28,7 @@
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
