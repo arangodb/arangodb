@@ -40,7 +40,8 @@
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
@@ -96,7 +97,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
       _inventoryRequests(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_replication_cluster_inventory_requests_total{})) {
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_replication_cluster_inventory_requests_total{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

@@ -47,7 +47,7 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -228,7 +228,7 @@ class IResearchOrderTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     selector.setEngineTesting(&engine);
     features.emplace_back(selector, false);
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for IResearchFeature

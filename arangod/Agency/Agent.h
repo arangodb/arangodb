@@ -36,7 +36,7 @@
 #include "Futures/Promise.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 
 struct TRI_vocbase_t;
 
@@ -356,7 +356,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// the agency leader.
   void updateSomeConfigValues(VPackSlice data);
 
-  Histogram<log_scale_t<float>>& commitHist() const;
+  metrics::Histogram<metrics::LogScale<float>>& commitHist() const;
 
  private:
 
@@ -537,15 +537,15 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   index_t _lowestPromise;
   std::multimap<SteadyTimePoint, futures::Promise<query_t>> _promises;
 
-  Counter& _write_ok;
-  Counter& _write_no_leader;
-  Counter& _read_ok;
-  Counter& _read_no_leader;
-  Histogram<log_scale_t<float>>& _write_hist_msec;
-  Histogram<log_scale_t<float>>& _commit_hist_msec;
-  Histogram<log_scale_t<float>>& _append_hist_msec;
-  Histogram<log_scale_t<float>>& _compaction_hist_msec;
-  Gauge<uint64_t>& _local_index;
+  metrics::Counter& _write_ok;
+  metrics::Counter& _write_no_leader;
+  metrics::Counter& _read_ok;
+  metrics::Counter& _read_no_leader;
+  metrics::Histogram<metrics::LogScale<float>>& _write_hist_msec;
+  metrics::Histogram<metrics::LogScale<float>>& _commit_hist_msec;
+  metrics::Histogram<metrics::LogScale<float>>& _append_hist_msec;
+  metrics::Histogram<metrics::LogScale<float>>& _compaction_hist_msec;
+  metrics::Gauge<uint64_t>& _local_index;
 
 };
 }  // namespace consensus

@@ -24,7 +24,6 @@
 #include "ReplicationTimeoutFeature.h"
 
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -116,7 +117,7 @@ void GeneralCommTask<T>::asyncReadSome() try {
   _reading = true;
   setIOTimeout();
   _protocol->socket.async_read_some(
-      mutableBuff, [self = shared_from_this()](asio_ns::error_code const& ec, size_t nread) {
+      mutableBuff, withLogContext([self = shared_from_this()](asio_ns::error_code const& ec, size_t nread) {
         auto& me = static_cast<GeneralCommTask<T>&>(*self);
         me._reading = false;
         me._protocol->buffer.commit(nread);
@@ -130,7 +131,7 @@ void GeneralCommTask<T>::asyncReadSome() try {
               << "unhandled protocol exception, closing connection";
           me.close(ec);
         }
-      });
+      }));
 } catch (...) {
   LOG_TOPIC("2c6b5", ERR, arangodb::Logger::REQUESTS)
       << "unhandled protocol exception, closing connection";

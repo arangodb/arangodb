@@ -30,6 +30,12 @@
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
+
 #include <fuerte/connection.h>
 
 DECLARE_GAUGE(arangodb_connection_pool_connections_current,
@@ -42,7 +48,7 @@ DECLARE_COUNTER(arangodb_connection_pool_connections_created_total,
                 "Total number of connections created");
 
 struct LeaseTimeScale {
-  static log_scale_t<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
+  static arangodb::metrics::LogScale<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
 };
 DECLARE_HISTOGRAM(
   arangodb_connection_pool_lease_time_hist, LeaseTimeScale,

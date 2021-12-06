@@ -47,6 +47,10 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "StorageEngine/HealthData.h"
 
 using namespace arangodb;
@@ -56,10 +60,10 @@ using namespace arangodb::cluster::paths;
 using namespace arangodb::cluster::paths::aliases;
 
 struct RuntimeScale {
-  static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 50, 8000, 10}; }
 };
 struct WaitForReplicationScale {
-  static log_scale_t<uint64_t> scale() { return {2, 10, 2000, 10}; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 10, 2000, 10}; }
 };
   
 DECLARE_LEGACY_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
@@ -205,19 +209,19 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_runtime_msec{})),
       _supervision_runtime_wait_for_sync_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_accum_runtime_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_accum_runtime_msec_total{})),
       _supervision_accum_runtime_wait_for_sync_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total{})),
       _supervision_failed_server_counter(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() {
