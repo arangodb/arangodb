@@ -1,6 +1,17 @@
 devel
 -----
 
+* Defer intermediate commits in the middle of a multi-document (array)
+  operation. This is to ensure that the RocksDB key locks for all participating
+  document keys are still held while the operations are replicating via the
+  synchronous replication.
+
+* Fix potential read inconsistency for single document operations.
+  Wen reading a single document that is concurrently being updated or replaced,
+  the read operation could erroneously return a "document not found" error
+  although the document actually existed. This only happened for single
+  document operations, i.e., no transactions or AQL queries.
+
 * Fix GitHub issue #15084. Fixed a potential use-after-free on Windows for
   queries that used the NeighborsEnumerator (though other PathEnumerators
   might have been affected as well).
