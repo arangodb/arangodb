@@ -855,13 +855,17 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     RocksDBSavePoint savepoint(_logicalCollection.id(), *state, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
-    LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
+    LocalDocumentId docId = RocksDBKey::documentId(iter->key());
     auto res = removeDocument(&trx, savepoint, docId, docBuffer.slice(), options, rid);
 
     if (res.ok()) {
       res = savepoint.finish(newRevisionId());
-    }
     
+      if (res.ok()) {
+        res = state->performIntermediateCommitIfRequired(_logicalCollection.id());
+      }
+    }
+
     if (res.fail()) {  // Failed to remove document in truncate.
       return res;
     }

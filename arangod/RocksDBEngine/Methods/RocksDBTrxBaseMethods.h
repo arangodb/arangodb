@@ -63,11 +63,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
     return _numInserts + _numUpdates + _numRemoves;
   }
 
-  /// @brief add an operation for a transaction collection
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed
-  Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                      TRI_voc_document_operation_e opType) override;
+  /// @brief add an operation for a transaction
+  Result addOperation(TRI_voc_document_operation_e opType) override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
                       rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
