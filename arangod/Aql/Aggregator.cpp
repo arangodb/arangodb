@@ -1066,6 +1066,7 @@ std::string_view Aggregator::pushToDBServerAs(std::string_view type) {
   if (it != ::aggregators.end()) {
     return (*it).second.pushToDBServerAs;
   }
+  LOG_DEVEL << "TYPE: " << type << ", ALIAS: " << translateAlias(type);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
@@ -1075,6 +1076,7 @@ std::string_view Aggregator::runOnCoordinatorAs(std::string_view type) {
   if (it != ::aggregators.end()) {
     return (*it).second.runOnCoordinatorAs;
   }
+  LOG_DEVEL << "TYPE: " << type << ", ALIAS: " << translateAlias(type);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
@@ -1094,5 +1096,6 @@ bool Aggregator::requiresInput(std::string_view type) {
   if (it != ::aggregators.end()) {
     return (*it).second.requiresInput;
   }
+  LOG_DEVEL << "TYPE: " << type << ", ALIAS: " << translateAlias(type);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }

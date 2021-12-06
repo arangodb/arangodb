@@ -4394,7 +4394,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
               }
               // eligible!
               auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
-              dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, func});
+              dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, std::string(func)});
             }
 
             if (!eligible) {

@@ -2535,24 +2535,22 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode*
     // validated before)
     TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
     std::string_view functionName = Aggregator::translateAlias(func->name);
+    Variable const* variable = nullptr;
     if (args->numMembers() == 1) {
       auto arg = args->getMember(0);
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable
-        auto e = static_cast<Variable*>(arg->getData());
-        aggregateVariables.emplace_back(
-            AggregateVarInfo{outVar, e, functionName});
+        variable = static_cast<Variable*>(arg->getData());
       } else {
         auto calc = createTemporaryCalculation(arg, *previous);
         *previous = calc;
-        aggregateVariables.emplace_back(
-            AggregateVarInfo{outVar, getOutVariable(calc), functionName});
+        variable = getOutVariable(calc);
       }
     } else {
       TRI_ASSERT(!Aggregator::requiresInput(func->name));
-      aggregateVariables.emplace_back(
-          AggregateVarInfo{outVar, nullptr, functionName});
     }
+    aggregateVariables.emplace_back(
+        AggregateVarInfo{outVar, variable, std::string(functionName)});
   }
   
   return aggregateVariables;

@@ -75,7 +75,7 @@ struct GroupVarInfo final {
 struct AggregateVarInfo final {
   Variable const* outVar;
   Variable const* inVar;
-  std::string_view type;
+  std::string type;
 };
 
 }  // namespace aql

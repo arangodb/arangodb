@@ -274,7 +274,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
-                     [](auto const& it) { return std::string(it.type); });
+                     [](auto const& it) { return it.type; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       auto executorInfos =
@@ -324,7 +324,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
-                     [](auto const& it) { return std::string(it.type); });
+                     [](auto const& it) { return it.type; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       auto executorInfos =
@@ -804,8 +804,7 @@ void CollectNode::groupVariables(std::vector<GroupVarInfo> const& vars) {
   _groupVariables = vars;
 }
 
-std::vector<AggregateVarInfo> const&
-CollectNode::aggregateVariables() const {
+std::vector<AggregateVarInfo> const& CollectNode::aggregateVariables() const {
   return _aggregateVariables;
 }
 
