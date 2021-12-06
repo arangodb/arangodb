@@ -1,6 +1,9 @@
 devel
 -----
 
+* Second step of hotbackup transfer job cleanup. Now locks are also cleaned up
+  as well as old, seemingly unfinished jobs.
+
 * Defer intermediate commits in the middle of a multi-document (array)
   operation. This is to ensure that the RocksDB key locks for all participating
   document keys are still held while the operations are replicating via the
