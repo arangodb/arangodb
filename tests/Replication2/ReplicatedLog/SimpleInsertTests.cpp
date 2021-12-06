@@ -27,7 +27,8 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -54,7 +55,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
         makeIndexIterPair([&](std::size_t i) { return histogram->load(i); }, 0,
                           histogram->size());
 
-    return std::accumulate(begin, end, typename std::decay_t<decltype(*histogram)>::value_type(0));
+    return std::accumulate(begin, end, typename std::decay_t<decltype(*histogram)>::ValueType(0));
   };
 
   {

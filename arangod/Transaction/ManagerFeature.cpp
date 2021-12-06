@@ -31,7 +31,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -53,11 +54,11 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       _streamingLockTimeout(8.0),
       _streamingIdleTimeout(defaultStreamingIdleTimeout),
       _numExpiredTransactions(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_transactions_expired_total{})) {
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_transactions_expired_total{})) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();
-  startsAfter<MetricsFeature>();
+  startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
   startsBefore<DatabaseFeature>();
 

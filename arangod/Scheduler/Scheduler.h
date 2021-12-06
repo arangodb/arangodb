@@ -39,6 +39,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
+#include "Logger/LogContext.h"
 
 namespace arangodb {
 namespace application_features {
@@ -147,8 +148,13 @@ class Scheduler {
 
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
-    explicit WorkItem(F f) : F(std::move(f)) {}
-    void invoke() override { this->operator()(); }
+    explicit WorkItem(F f) : F(std::move(f)), logContext(LogContext::current()) {}
+    void invoke() override {
+      LogContext::ScopedContext ctxGuard(logContext);
+      this->operator()();
+    }
+   private:
+    LogContext logContext;
   };
 
   // Enqueues a task - this is implemented on the specific scheduler

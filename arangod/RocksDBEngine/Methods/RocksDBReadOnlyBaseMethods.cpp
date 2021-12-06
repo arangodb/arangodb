@@ -29,7 +29,43 @@
 #include <rocksdb/status.h>
 
 using namespace arangodb;
-  
+
+RocksDBReadOnlyBaseMethods::RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state,
+                                                       rocksdb::TransactionDB* db)
+    : RocksDBTransactionMethods(state), _db(db) {
+  TRI_ASSERT(_db != nullptr);
+  _readOptions.prefix_same_as_start = true;  // should always be true
+  _readOptions.fill_cache = _state->options().fillBlockCache;
+}
+
+RocksDBReadOnlyBaseMethods::~RocksDBReadOnlyBaseMethods() {
+  releaseSnapshot();
+}
+
+/// @brief acquire a database snapshot if we do not yet have one.
+/// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
+bool RocksDBReadOnlyBaseMethods::ensureSnapshot() {
+  if (_readOptions.snapshot == nullptr) {
+    _readOptions.snapshot = _db->GetSnapshot();
+    return true;
+  }
+  return false;
+}
+
+rocksdb::SequenceNumber RocksDBReadOnlyBaseMethods::GetSequenceNumber() const noexcept {
+  if (_readOptions.snapshot) {
+    return _readOptions.snapshot->GetSequenceNumber();
+  }
+  return _db->GetLatestSequenceNumber();
+}
+
+void RocksDBReadOnlyBaseMethods::releaseSnapshot() {
+  if (_readOptions.snapshot != nullptr) {
+    _db->ReleaseSnapshot(_readOptions.snapshot); 
+    _readOptions.snapshot = nullptr;
+  }
+}
+
 void RocksDBReadOnlyBaseMethods::prepareOperation(DataSourceId cid, RevisionId rid,
                                               TRI_voc_document_operation_e operationType) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);                                          

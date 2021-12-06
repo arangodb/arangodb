@@ -29,6 +29,7 @@ target_link_libraries(fuertetest
     arango
     arango_v8server
     arango_v8
+    arangoserver
     ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
@@ -251,6 +252,7 @@ set(ARANGODB_TESTS_SOURCES
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
+  Logger/LogContextTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp

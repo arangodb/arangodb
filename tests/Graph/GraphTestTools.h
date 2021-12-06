@@ -48,7 +48,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -81,7 +81,7 @@ struct GraphTestSetup
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 
     // setup required application features
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::transaction::ManagerFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);

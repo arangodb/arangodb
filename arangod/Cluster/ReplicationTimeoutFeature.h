@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "RestServer/Metrics.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"

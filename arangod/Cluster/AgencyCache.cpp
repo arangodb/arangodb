@@ -28,7 +28,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "GeneralServer/RestHandler.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -47,7 +48,7 @@ AgencyCache::AgencyCache(application_features::ApplicationServer& server,
     _callbackRegistry(callbackRegistry), 
     _lastSnapshot(0),
     _callbacksCount(
-      _server.getFeature<MetricsFeature>().add(arangodb_agency_cache_callback_number{})) {
+      _server.getFeature<metrics::MetricsFeature>().add(arangodb_agency_cache_callback_number{})) {
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR || _shutdownCode == TRI_ERROR_SHUTTING_DOWN);

@@ -22,14 +22,14 @@
 
 #include "LogFollower.h"
 
+#include "Logger/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
-#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Gauge.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
