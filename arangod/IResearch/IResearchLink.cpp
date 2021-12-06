@@ -108,7 +108,8 @@ namespace arangodb::iresearch {
 // -----------------------------------------------------------------------------
 
 IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
-  : IResearchDataStore(iid, collection) { }
+  : IResearchDataStore(iid, collection),
+    _linkStats{nullptr} {}
 
 
 IResearchLink::~IResearchLink() {

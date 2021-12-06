@@ -206,7 +206,7 @@ class IResearchLink : public IResearchDataStore {
  private:
 
   
-  GuardMetric<LinkStats>* _linkStats;
+  metrics::Batch<LinkStats>* _linkStats;
   IResearchLinkMeta const _meta;
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
 };

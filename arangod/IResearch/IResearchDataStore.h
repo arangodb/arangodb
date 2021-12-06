@@ -28,6 +28,7 @@
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchVPackComparer.h"
 #include "Indexes/Index.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
 

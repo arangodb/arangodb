@@ -27,6 +27,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 
+#include "Metrics/Gauge.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
