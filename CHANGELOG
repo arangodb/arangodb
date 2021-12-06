@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added startup security option `--foxx.allow-install-from-remote` to allow 
+  installing Foxx apps from remote URLs other than Github. The option is turned 
+  off by default.
+
 * Fix potential read inconsistency for single document operations.
   Wen reading a single document that is concurrently being updated or replaced,
   the read operation could erroneously return a "document not found" error

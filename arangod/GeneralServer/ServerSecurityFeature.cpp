@@ -65,7 +65,7 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                      arangodb::options::Flags::OnSingle))
                      .setIntroducedIn(30500);
   
-  options->addOption("--foxx.allow-install-from-remote", "allow installing Foxx apps from remote URLs",
+  options->addOption("--foxx.allow-install-from-remote", "allow installing Foxx apps from remote URLs other than Github",
                      new BooleanParameter(&_foxxAllowInstallFromRemote),
                      arangodb::options::makeFlags(
                      arangodb::options::Flags::DefaultNoComponents,

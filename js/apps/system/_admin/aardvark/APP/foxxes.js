@@ -154,6 +154,9 @@ installer.put('/git', function (req) {
 
 installer.put('/url', function (req) {
   req.body = `${req.body.url}`;
+  if (!internal.foxxAllowInstallFromRemote()) {
+    res.throw('unauthorized');
+  }
 })
 .body(joi.object({
   url: joi.string().required(),
