@@ -33,6 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 #include "Basics/hashes.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
@@ -854,13 +855,17 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     RocksDBSavePoint savepoint(_logicalCollection.id(), *state, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
-    LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
+    LocalDocumentId docId = RocksDBKey::documentId(iter->key());
     auto res = removeDocument(&trx, savepoint, docId, docBuffer.slice(), options, rid);
 
     if (res.ok()) {
       res = savepoint.finish(newRevisionId());
-    }
     
+      if (res.ok()) {
+        res = state->performIntermediateCommitIfRequired(_logicalCollection.id());
+      }
+    }
+
     if (res.fail()) {  // Failed to remove document in truncate.
       return res;
     }
@@ -942,6 +947,10 @@ Result RocksDBCollection::read(transaction::Methods* trx,
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       return res;
     }  // else found
+
+    TRI_IF_FAILURE("RocksDBCollection::read-delay") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
 
     res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
     if (res.ok()) {
