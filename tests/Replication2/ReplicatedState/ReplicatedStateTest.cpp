@@ -47,7 +47,6 @@ struct ReplicatedStateTest
       std::make_shared<ReplicatedStateFeature>();
 };
 
-
 TEST_F(ReplicatedStateTest, simple_become_follower_test) {
   auto log = makeReplicatedLog(LogId{1});
   auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");

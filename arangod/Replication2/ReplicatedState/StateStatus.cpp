@@ -53,6 +53,7 @@ inline constexpr auto String_Role = velocypack::StringRef{"role"};
 inline constexpr auto String_Detail = velocypack::StringRef{"detail"};
 inline constexpr auto String_State = velocypack::StringRef{"state"};
 inline constexpr auto String_Log = velocypack::StringRef{"log"};
+inline constexpr auto String_Generation = velocypack::StringRef{"generation"};
 
 auto followerStateFromString(std::string_view str) -> FollowerInternalState {
   if (str == String_WaitForLeaderConfirmation) {
@@ -136,6 +137,7 @@ auto StateStatus::fromVelocyPack(velocypack::Slice slice) -> StateStatus {
 void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add(String_Role, velocypack::Value(StaticStrings::Follower));
+  builder.add(String_Generation, velocypack::Value(generation));
   builder.add(velocypack::Value(String_State));
   state.toVelocyPack(builder);
   builder.add(velocypack::Value(String_Log));
@@ -145,6 +147,7 @@ void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
 void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add(String_Role, velocypack::Value(StaticStrings::Leader));
+  builder.add(String_Generation, velocypack::Value(generation));
   builder.add(velocypack::Value(String_State));
   state.toVelocyPack(builder);
   builder.add(velocypack::Value(String_Log));
@@ -155,14 +158,20 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice s) -> FollowerStatus {
   TRI_ASSERT(s.get(String_Role).stringView() == StaticStrings::Follower);
   auto state = State::fromVelocyPack(s.get(String_State));
   auto log = replicated_log::FollowerStatus::fromVelocyPack(s.get(String_Log));
-  return FollowerStatus{.state = std::move(state), .log = std::move(log)};
+  auto generation = s.get(String_Generation).extract<StateGeneration>();
+  return FollowerStatus{.generation = generation,
+                        .state = std::move(state),
+                        .log = std::move(log)};
 }
 
 auto LeaderStatus::fromVelocyPack(velocypack::Slice s) -> LeaderStatus {
   TRI_ASSERT(s.get(String_Role).stringView() == StaticStrings::Leader);
   auto state = State::fromVelocyPack(s.get(String_State));
   auto log = replicated_log::LeaderStatus::fromVelocyPack(s.get(String_Log));
-  return LeaderStatus{.state = std::move(state), .log = std::move(log)};
+  auto generation = s.get(String_Generation).extract<StateGeneration>();
+  return LeaderStatus{.generation = generation,
+                      .state = std::move(state),
+                      .log = std::move(log)};
 }
 
 void FollowerStatus::State::toVelocyPack(velocypack::Builder& builder) const {

@@ -26,6 +26,7 @@
 #include <string>
 
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::velocypack {
 class Builder;
@@ -55,6 +56,7 @@ struct LeaderStatus {
     static auto fromVelocyPack(velocypack::Slice) -> State;
   };
 
+  StateGeneration generation;
   State state;
   replicated_log::LeaderStatus log;
 
@@ -83,6 +85,7 @@ struct FollowerStatus {
     static auto fromVelocyPack(velocypack::Slice) -> State;
   };
 
+  StateGeneration generation;
   State state;
   replicated_log::FollowerStatus log;
 

@@ -62,6 +62,7 @@ struct ReplicatedState<S>::LeaderState : StateBase,
   std::chrono::system_clock::time_point lastInternalStateChange;
   std::optional<LogRange> recoveryRange;
 
+ private:
   void updateInternalState(LeaderInternalState newState,
                            std::optional<LogRange> range = std::nullopt) {
     internalState = newState;
@@ -103,6 +104,7 @@ struct ReplicatedState<S>::FollowerState : StateBase,
   std::chrono::system_clock::time_point lastInternalStateChange;
   std::optional<LogRange> ingestionRange;
 
+ private:
   void updateInternalState(FollowerInternalState newState,
                            std::optional<LogRange> range = std::nullopt) {
     internalState = newState;
@@ -287,7 +289,7 @@ void ReplicatedState<S>::FollowerState::ingestLogData() {
 
     LOG_TOPIC("ea777", TRACE, Logger::REPLICATED_STATE)
         << "check if new snapshot is required";
-    // TODO implement check for snapshot transfer
+
 
     LOG_TOPIC("26c55", DEBUG, Logger::REPLICATED_STATE)
         << "starting service as follower";
@@ -343,6 +345,7 @@ template <typename S>
 void ReplicatedState<S>::FollowerState::run() {
   // 1. wait for log follower to have committed at least one entry
   // 2. receive a new snapshot (if required)
+  //    if (old_generation != new_generation || snapshot_status != Completed)
   // 3. start polling for new entries
   awaitLeaderShip();
 }
@@ -440,5 +443,25 @@ template <typename S>
 auto ReplicatedState<S>::getStatus() -> StateStatus {
   return currentState->getStatus();
 }
+
+/*
+template <typename S>
+auto ReplicatedState<S>::getCurrentGeneration() const noexcept -> StateGeneration {
+  return generation;
+}
+
+template <typename S>
+void ReplicatedState<S>::updateGeneration(StateGeneration newGeneration) {
+  if (newGeneration > generation) {
+    LOG_TOPIC("f7b28", DEBUG, Logger::REPLICATED_STATE)
+        << "updating generation from " << generation << " to " << newGeneration;
+    generation = newGeneration;
+    flush();
+  } else {
+    LOG_TOPIC("834f2", TRACE, Logger::REPLICATED_STATE)
+        << "did not update generation, because old generation is " << generation
+        << ", but new generation " << newGeneration << " is smaller";
+  }
+}*/
 
 }  // namespace arangodb::replication2::replicated_state

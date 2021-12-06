@@ -85,6 +85,7 @@ auto MyFollowerState::applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
 template struct replicated_state::ReplicatedState<MyState>;
+template struct streams::LogMultiplexer<replicated_state::ReplicatedStateStreamSpec<MyState>>;
 
 auto replicated_state::EntryDeserializer<MyEntryType>::operator()(
     streams::serializer_tag_t<MyEntryType>, velocypack::Slice s) const -> MyEntryType {

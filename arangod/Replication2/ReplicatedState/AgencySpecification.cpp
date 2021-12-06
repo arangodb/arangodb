@@ -118,7 +118,7 @@ void Current::ParticipantStatus::toVelocyPack(velocypack::Builder& builder) cons
 }
 
 auto Current::ParticipantStatus::fromVelocyPack(velocypack::Slice slice) -> ParticipantStatus {
-  auto generation = slice.get(String_Generation).extract<std::size_t>();
+  auto generation = slice.get(String_Generation).extract<StateGeneration>();
   auto snapshot = Snapshot::fromVelocyPack(slice.get(String_Snapshot));
   return ParticipantStatus{.generation = generation, .snapshot = std::move(snapshot)};
 }
@@ -147,7 +147,7 @@ auto Current::fromVelocyPack(velocypack::Slice slice) -> Current {
 }
 
 auto Plan::Participant::fromVelocyPack(velocypack::Slice slice) -> Participant {
-  return Participant{.generation = slice.get(String_Generation).extract<std::size_t>()};
+  return Participant{.generation = slice.get(String_Generation).extract<StateGeneration>()};
 }
 
 void Plan::Participant::toVelocyPack(velocypack::Builder& builder) const {
@@ -170,7 +170,7 @@ void Plan::toVelocyPack(velocypack::Builder& builder) const {
 
 auto Plan::fromVelocyPack(velocypack::Slice slice) -> Plan {
   auto id = slice.get(StaticStrings::Id).extract<LogId>();
-  auto generation = slice.get(String_Generation).extract<std::size_t>();
+  auto generation = slice.get(String_Generation).extract<StateGeneration>();
   auto participants = std::unordered_map<ParticipantId, Participant>{};
   for (auto [key, value] :
        velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {

@@ -24,6 +24,7 @@
 
 #include "Basics/ErrorCode.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/StateCommon.h"
 
 #include <chrono>
 #include <optional>
@@ -38,10 +39,10 @@ namespace arangodb::replication2::replicated_state::agency {
 
 struct Plan {
   LogId id;
-  std::size_t generation;
+  StateGeneration generation;
 
   struct Participant {
-    std::size_t generation;
+    StateGeneration generation;
 
     void toVelocyPack(velocypack::Builder& builder) const;
     [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
@@ -59,7 +60,7 @@ struct Current {
   LogId id;
 
   struct ParticipantStatus {
-    std::size_t generation;
+    StateGeneration generation;
 
     struct Snapshot {
       enum class Status {

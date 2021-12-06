@@ -126,6 +126,7 @@ struct ReplicatedState final : ReplicatedStateBase,
   void runFollower(std::shared_ptr<replicated_log::LogFollower> logFollower);
 
   std::shared_ptr<StateBase> currentState;
+  StateGeneration generation{0};
   std::shared_ptr<replicated_log::ReplicatedLog> log{};
   std::shared_ptr<Factory> factory;
 };

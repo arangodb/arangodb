@@ -30,12 +30,11 @@
 
 #include "Basics/debugging.h"
 
-
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
 class LogFollower;
 class LogLeader;
-}
+}  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_state {
 
@@ -48,13 +47,13 @@ struct ReplicatedStateFeature {
    */
   template <typename S, typename... Args>
   void registerStateType(std::string name, Args&&... args) {
-    using Factory =
-        typename ReplicatedStateTraits<S>::FactoryType;
+    using Factory = typename ReplicatedStateTraits<S>::FactoryType;
     static_assert(std::is_constructible_v<Factory, Args...>);
     auto factory =
         std::make_shared<InternalFactory<S, Factory>>(std::in_place,
                                                       std::forward<Args>(args)...);
-    auto [iter, was_inserted] = factories.try_emplace(std::move(name), std::move(factory));
+    auto [iter, was_inserted] =
+        factories.try_emplace(std::move(name), std::move(factory));
     TRI_ASSERT(was_inserted) << "duplicated state implementation name?";
   }
 
