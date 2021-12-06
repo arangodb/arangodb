@@ -29,7 +29,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Promise.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 #include <map>
 #include <shared_mutex>
@@ -195,7 +195,7 @@ class AgencyCache final : public arangodb::Thread {
   consensus::index_t _lastSnapshot;
   
   /// @brief current number of entries in _callbacks
-  Gauge<uint64_t>& _callbacksCount;
+  metrics::Gauge<uint64_t>& _callbacksCount;
 };
 
 } // namespace

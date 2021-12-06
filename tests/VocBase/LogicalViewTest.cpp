@@ -34,7 +34,7 @@
 #include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -116,7 +116,7 @@ class LogicalViewTest
     selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ExecContext
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);  
+    features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::create(...)
 

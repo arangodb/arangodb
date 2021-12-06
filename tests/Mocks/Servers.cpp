@@ -66,7 +66,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -109,7 +109,7 @@ using namespace arangodb::tests::mocks;
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
-  server.addFeature<arangodb::MetricsFeature>(false);
+  server.addFeature<arangodb::metrics::MetricsFeature>(false);
   server.addFeature<arangodb::SharedPRNGFeature>(false);
   server.addFeature<arangodb::SoftShutdownFeature>(false);
   // We do not need any further features from this phase
@@ -474,7 +474,7 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
   addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
 
-  arangodb::network::ConnectionPool::Config config(_server.getFeature<MetricsFeature>());
+  arangodb::network::ConnectionPool::Config config(_server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
@@ -491,7 +491,7 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  arangodb::network::ConnectionPool::Config poolConfig(_server.getFeature<MetricsFeature>());
+  arangodb::network::ConnectionPool::Config poolConfig(_server.getFeature<metrics::MetricsFeature>());
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;

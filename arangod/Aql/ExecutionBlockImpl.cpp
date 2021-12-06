@@ -2149,7 +2149,7 @@ auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(ExecutionContext& ctx
                                                            AqlCallType const& aqlCall)
     -> UpstreamResult {
   std::variant<UpstreamResult, std::exception_ptr, std::nullopt_t> result{std::nullopt};
-  Params params{result, ctx, aqlCall};
+  Params params{result, ctx, aqlCall, LogContext::current()};
 
   {
     std::unique_lock guard(_lock);
@@ -2186,6 +2186,7 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(ExecContext const& execCo
     TRI_ASSERT(_params != nullptr);
     _state = State::Executing;
 
+    LogContext::setCurrent(_params->logContext);
     try {
       _params->result = _block.executeFetcher(_params->ctx, _params->aqlCall);
     } catch (...) {

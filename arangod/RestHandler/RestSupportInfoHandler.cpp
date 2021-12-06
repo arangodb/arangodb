@@ -43,7 +43,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/EnvironmentFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -276,7 +276,7 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
         
   result.add("processStats", VPackValue(VPackValueType::Object));
   ServerStatistics const& serverInfo =
-    server().getFeature<MetricsFeature>().serverStatistics();
+    server().getFeature<metrics::MetricsFeature>().serverStatistics();
   result.add("processUptime", VPackValue(serverInfo.uptime()));
 
   ProcessInfo info = TRI_ProcessInfoSelf();

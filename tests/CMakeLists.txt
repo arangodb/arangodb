@@ -11,11 +11,11 @@ add_subdirectory(Greenspun)
 # ----------------------------------------
 
 set(FUERTE_TESTS_SOURCES
-  Fuerte/test_vst.cpp
-  Fuerte/test_connection_basic.cpp
-  Fuerte/test_connection_concurrent.cpp
-  Fuerte/test_connection_failures.cpp
-  Fuerte/test_connection_timeouts.cpp
+  Fuerte/VstTest.cpp
+  Fuerte/ConnectionBasicTest.cpp
+  Fuerte/ConnectionConcurrentTest.cpp
+  Fuerte/ConnectionFailuresTest.cpp
+  Fuerte/ConnectionTimeoutsTest.cpp
 #    test_10000_writes.cpp
 )
 
@@ -31,6 +31,7 @@ target_link_libraries(fuertetest
     arango
     arango_v8server
     arango_v8
+    arangoserver
     ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
@@ -254,6 +255,7 @@ set(ARANGODB_TESTS_SOURCES
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
+  Logger/LogContextTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp

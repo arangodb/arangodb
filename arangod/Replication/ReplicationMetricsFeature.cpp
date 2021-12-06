@@ -24,7 +24,8 @@
 #include "ReplicationMetricsFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -88,61 +89,61 @@ namespace arangodb {
 
 ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ReplicationMetrics"),
-      _numDumpRequests(server.getFeature<arangodb::MetricsFeature>().add(
+      _numDumpRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_dump_requests_total{})),
-      _numDumpBytesReceived(server.getFeature<arangodb::MetricsFeature>().add(
+      _numDumpBytesReceived(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_dump_bytes_received_total{})),
-      _numDumpDocuments(server.getFeature<arangodb::MetricsFeature>().add(
+      _numDumpDocuments(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_dump_documents_total{})),
-      _waitedForDump(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForDump(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_dump_request_time_total{})),
-      _waitedForDumpApply(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForDumpApply(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_dump_apply_time_total{})),
-      _numSyncKeysRequests(server.getFeature<arangodb::MetricsFeature>().add(
+      _numSyncKeysRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_sync_keys_requests_total{})),
-      _numSyncDocsRequests(server.getFeature<arangodb::MetricsFeature>().add(
+      _numSyncDocsRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_sync_docs_requests_total{})),
-      _numSyncDocsRequested(server.getFeature<arangodb::MetricsFeature>().add(
+      _numSyncDocsRequested(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_sync_docs_requested_total{})),
-      _numSyncDocsInserted(server.getFeature<arangodb::MetricsFeature>().add(
+      _numSyncDocsInserted(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_sync_docs_inserted_total{})),
-      _numSyncDocsRemoved(server.getFeature<arangodb::MetricsFeature>().add(
+      _numSyncDocsRemoved(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_sync_docs_removed_total{})),
-      _numSyncBytesReceived(server.getFeature<arangodb::MetricsFeature>().add(
+      _numSyncBytesReceived(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_sync_bytes_received_total{})),
-      _waitedForSyncInitial(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForSyncInitial(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_chunks_requests_time_total{})),
-      _waitedForSyncKeys(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForSyncKeys(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_keys_requests_time_total{})),
-      _waitedForSyncDocs(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForSyncDocs(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_docs_requests_time_total{})),
-      _waitedForSyncInsertions(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForSyncInsertions(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_insert_apply_time_total{})),
-      _waitedForSyncRemovals(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForSyncRemovals(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_initial_remove_apply_time_total{})),
-      _numTailingRequests(server.getFeature<arangodb::MetricsFeature>().add(
+      _numTailingRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_tailing_requests_total{})),
       _numTailingFollowTickNotPresent(
-          server.getFeature<arangodb::MetricsFeature>().add(
+          server.getFeature<metrics::MetricsFeature>().add(
               arangodb_replication_tailing_follow_tick_failures_total{})),
-      _numTailingProcessedMarkers(server.getFeature<arangodb::MetricsFeature>().add(
+      _numTailingProcessedMarkers(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_tailing_markers_total{})),
       _numTailingProcessedDocuments(
-          server.getFeature<arangodb::MetricsFeature>().add(
+          server.getFeature<metrics::MetricsFeature>().add(
               arangodb_replication_tailing_documents_total{})),
-      _numTailingProcessedRemovals(server.getFeature<arangodb::MetricsFeature>().add(
+      _numTailingProcessedRemovals(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_tailing_removals_total{})),
-      _numTailingBytesReceived(server.getFeature<arangodb::MetricsFeature>().add(
+      _numTailingBytesReceived(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_tailing_bytes_received_total{})),
-      _numFailedConnects(server.getFeature<arangodb::MetricsFeature>().add(
+      _numFailedConnects(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_failed_connects_total{})),
-      _waitedForTailing(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForTailing(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_tailing_request_time_total{})),
-      _waitedForTailingApply(server.getFeature<arangodb::MetricsFeature>().add(
+      _waitedForTailingApply(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_tailing_apply_time_total{})),
-      _syncTimeTotal(server.getFeature<arangodb::MetricsFeature>().add(
+      _syncTimeTotal(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_synchronous_requests_total_time_total{})),
-      _syncOpsTotal(server.getFeature<arangodb::MetricsFeature>().add(
+      _syncOpsTotal(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_synchronous_requests_total_number_total{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
@@ -269,11 +270,11 @@ ReplicationMetricsFeature::TailingSyncStats& ReplicationMetricsFeature::TailingS
   return *this;
 }
 
-Counter& ReplicationMetricsFeature::synchronousTimeTotal() {
+metrics::Counter& ReplicationMetricsFeature::synchronousTimeTotal() {
   return _syncTimeTotal;
 }
 
-Counter& ReplicationMetricsFeature::synchronousOpsTotal() {
+metrics::Counter& ReplicationMetricsFeature::synchronousOpsTotal() {
   return _syncOpsTotal;
 }
 

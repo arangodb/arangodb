@@ -42,6 +42,10 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -49,7 +53,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 struct ClusterFeatureScale {
-  static log_scale_t<uint64_t> scale() { return {2, 58, 120000, 10}; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 58, 120000, 10}; }
 };
 
 DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "Request time for Agency requests [ms]");
@@ -58,7 +62,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Cluster"),
     _apiJwtPolicy("jwt-compat"),
     _agency_comm_request_time_ms(
-      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agencycomm_request_time_msec{})) {
+      server.getFeature<metrics::MetricsFeature>().add(arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -474,7 +478,7 @@ void ClusterFeature::prepare() {
     
   reportRole(_requestedRole);
 
-  network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
+  network::ConnectionPool::Config config(server().getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;
@@ -616,13 +620,13 @@ void ClusterFeature::start() {
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
     _followersDroppedCounter =
-      server().getFeature<arangodb::MetricsFeature>().add(arangodb_dropped_followers_total{});
+      server().getFeature<metrics::MetricsFeature>().add(arangodb_dropped_followers_total{});
     _followersRefusedCounter =
-      server().getFeature<arangodb::MetricsFeature>().add(arangodb_refused_followers_total{});
+      server().getFeature<metrics::MetricsFeature>().add(arangodb_refused_followers_total{});
     _followersWrongChecksumCounter =
-      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
+      server().getFeature<metrics::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
-      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_rebuilds_total{});
+      server().getFeature<metrics::MetricsFeature>().add(arangodb_sync_rebuilds_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)

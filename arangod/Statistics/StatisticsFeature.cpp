@@ -42,7 +42,12 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Builder.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/FixScale.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
@@ -95,19 +100,19 @@ std::initializer_list<double> const RequestTimeDistributionCuts{
     0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
 
 struct BytesReceivedScale {
-  static fixed_scale_t<double> scale() { return { 250, 10000, BytesReceivedDistributionCuts }; }
+  static metrics::FixScale<double> scale() { return { 250, 10000, BytesReceivedDistributionCuts }; }
 };
 
 struct BytesSentScale {
-  static fixed_scale_t<double> scale() { return { 250, 10000, BytesSentDistributionCuts }; }
+  static metrics::FixScale<double> scale() { return { 250, 10000, BytesSentDistributionCuts }; }
 };
 
 struct ConnectionTimeScale {
-  static fixed_scale_t<double> scale() { return { 0.1, 60.0, ConnectionTimeDistributionCuts }; }
+  static metrics::FixScale<double> scale() { return { 0.1, 60.0, ConnectionTimeDistributionCuts }; }
 };
 
 struct RequestTimeScale {
-  static fixed_scale_t<double> scale() { return { 0.01, 30.0, RequestTimeDistributionCuts }; }
+  static metrics::FixScale<double> scale() { return { 0.01, 30.0, RequestTimeDistributionCuts }; }
 };
 
 
@@ -744,7 +749,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
   }
 
   ServerStatistics const& serverInfo =
-      server().getFeature<MetricsFeature>().serverStatistics();
+      server().getFeature<metrics::MetricsFeature>().serverStatistics();
 
   // processStatistics()
   appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults", v2);
