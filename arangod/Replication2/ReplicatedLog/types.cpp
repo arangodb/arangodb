@@ -25,10 +25,7 @@
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
 #include <Basics/application-exit.h>
-#include <Basics/debugging.h>
-#include <Basics/overload.h>
 #include <Basics/voc-errors.h>
-#include <Containers/ImmerMemoryPolicy.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -37,8 +34,6 @@
 #include <cstddef>
 #include <functional>
 #include <utility>
-
-#include "Replication2/ReplicatedLog/NetworkMessages.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -99,30 +94,113 @@ auto replicated_log::operator!=(LogStatistics const &left,
   return !(left == right);
 }
 
-auto arangodb::replication2::replicated_log::to_string(AppendEntriesErrorReason reason) noexcept
+auto replicated_log::AppendEntriesErrorReason::getDetails() const noexcept -> std::string_view {
+  if (details) {
+    return std::string_view(details.value());
+  }
+  return {};
+}
+
+auto replicated_log::AppendEntriesErrorReason::getErrorMessage()
+    const noexcept -> std::string_view {
+  switch (error) {
+    case ErrorType::kNone:
+      return "None";
+    case ErrorType::kInvalidLeaderId:
+      return "Leader id was invalid";
+    case ErrorType::kLostLogCore:
+      return "Term has changed and the internal state was lost";
+    case ErrorType::kMessageOutdated:
+      return "Message is outdated";
+    case ErrorType::kWrongTerm:
+      return "Term has changed and the internal state was lost";
+    case ErrorType::kNoPrevLogMatch:
+      return "Previous log index did not match";
+    case ErrorType::kPersistenceFailure:
+      return "Persisting the log entries failed";
+    case ErrorType::kCommunicationError:
+      return "Communicating with participant failed - network error";
+  }
+  LOG_TOPIC("ff21c", FATAL, Logger::REPLICATION2)
+      << "Invalid AppendEntriesErrorReason "
+      << static_cast<std::underlying_type_t<decltype(error)>>(error);
+  FATAL_ERROR_ABORT();
+}
+
+constexpr static std::string_view kNoneString = "None";
+constexpr static std::string_view kInvalidLeaderIdString = "InvalidLeaderId";
+constexpr static std::string_view kLostLogCoreString = "LostLogCore";
+constexpr static std::string_view kMessageOutdatedString = "MessageOutdated";
+constexpr static std::string_view kWrongTermString = "WrongTerm";
+constexpr static std::string_view kNoPrevLogMatchString = "NoPrevLogMatch";
+constexpr static std::string_view kPersistenceFailureString = "PersistenceFailure";
+constexpr static std::string_view kCommunicationErrorString = "CommunicationError";
+
+auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(std::string_view str) -> ErrorType {
+  if (str == kNoneString) {
+    return ErrorType::kNone;
+  } else if (str == kInvalidLeaderIdString) {
+    return ErrorType::kInvalidLeaderId;
+  } else if (str == kLostLogCoreString) {
+    return ErrorType::kLostLogCore;
+  } else if (str == kMessageOutdatedString) {
+    return ErrorType::kMessageOutdated;
+  } else if (str == kWrongTermString) {
+    return ErrorType::kWrongTerm;
+  } else if (str == kNoPrevLogMatchString) {
+    return ErrorType::kNoPrevLogMatch;
+  } else if (str == kPersistenceFailureString) {
+    return ErrorType::kPersistenceFailure;
+  } else if (str == kCommunicationErrorString) {
+    return ErrorType::kCommunicationError;
+  }
+  THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,"unknown error type %*s",
+                                str.size(), str.data());
+}
+
+auto replicated_log::to_string(AppendEntriesErrorReason const& reason) noexcept
     -> std::string_view {
-  switch (reason) {
-    case AppendEntriesErrorReason::NONE:
-      return {};
-    case AppendEntriesErrorReason::INVALID_LEADER_ID:
-      return "leader id was invalid";
-    case AppendEntriesErrorReason::LOST_LOG_CORE:
-      return "term has changed and an internal state was lost";
-    case AppendEntriesErrorReason::WRONG_TERM:
-      return "current term is different from leader term";
-    case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
-      return "previous log index did not match";
-    case AppendEntriesErrorReason::MESSAGE_OUTDATED:
-      return "message was outdated";
-    case AppendEntriesErrorReason::PERSISTENCE_FAILURE:
-      return "persisting the log entries failed";
-    case AppendEntriesErrorReason::COMMUNICATION_ERROR:
-      return "communicating with participant failed - network error";
+  switch (reason.error) {
+    case AppendEntriesErrorReason::ErrorType::kNone:
+      return kNoneString;
+    case AppendEntriesErrorReason::ErrorType::kInvalidLeaderId:
+      return kInvalidLeaderIdString;
+    case AppendEntriesErrorReason::ErrorType::kLostLogCore:
+      return kLostLogCoreString;
+    case AppendEntriesErrorReason::ErrorType::kMessageOutdated:
+      return kMessageOutdatedString;
+    case AppendEntriesErrorReason::ErrorType::kWrongTerm:
+      return kWrongTermString;
+    case AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch:
+      return kNoPrevLogMatchString;
+    case AppendEntriesErrorReason::ErrorType::kPersistenceFailure:
+      return kPersistenceFailureString;
+    case AppendEntriesErrorReason::ErrorType::kCommunicationError:
+      return kCommunicationErrorString;
   }
   LOG_TOPIC("c2058", FATAL, Logger::REPLICATION2)
       << "Invalid AppendEntriesErrorReason "
-      << static_cast<std::underlying_type_t<decltype(reason)>>(reason);
+      << static_cast<std::underlying_type_t<decltype(reason.error)>>(reason.error);
   FATAL_ERROR_ABORT();
+}
+
+void replicated_log::AppendEntriesErrorReason::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Error, VPackValue(to_string(*this)));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(getErrorMessage()));
+  if (details) {
+    builder.add(StaticStrings::Details, VPackValue(details.value()));
+  }
+}
+
+auto replicated_log::AppendEntriesErrorReason::fromVelocyPack(velocypack::Slice slice)
+    -> AppendEntriesErrorReason {
+  auto error = errorTypeFromString(slice.get(StaticStrings::Error).copyString());
+  std::optional<std::string> details;
+  if (auto detailsSlice = slice.get(StaticStrings::Details); !detailsSlice.isNone()) {
+    details = detailsSlice.copyString();
+  }
+  return {error, std::move(details)};
 }
 
 auto FollowerState::withUpToDate() noexcept -> FollowerState {

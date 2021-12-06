@@ -61,8 +61,7 @@ struct FakeFollower : AbstractFollower {
   void handleAllRequestsWithOk() {
     while (hasPendingRequests()) {
       resolveRequest(AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
-                                         AppendEntriesErrorReason::NONE,
-                                         currentRequest().messageId});
+                                         {}, currentRequest().messageId});
     }
   }
 

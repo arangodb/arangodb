@@ -669,9 +669,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         follower.lastAckedLCI = currentLCI;
         toBeResolved = checkCommitIndex();
       } else {
-        TRI_ASSERT(response.reason != AppendEntriesErrorReason::NONE);
-        switch (response.reason) {
-          case AppendEntriesErrorReason::NO_PREV_LOG_MATCH:
+        TRI_ASSERT(response.reason.error != AppendEntriesErrorReason::ErrorType::kNone);
+        switch (response.reason.error) {
+          case AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch:
             follower.numErrorsSinceLastAnswer = 0;
             TRI_ASSERT(response.conflict.has_value());
             follower.lastAckedEntry.index =
@@ -694,10 +694,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     }
   } else if (res.hasException()) {
     ++follower.numErrorsSinceLastAnswer;
-    follower.lastErrorReason = AppendEntriesErrorReason::COMMUNICATION_ERROR;
+    follower.lastErrorReason = {AppendEntriesErrorReason::ErrorType::kCommunicationError};
     try {
       res.throwIfFailed();
     } catch (std::exception const& e) {
+      follower.lastErrorReason.details = e.what();
       LOG_CTX("e094b", INFO, follower.logContext)
           << "exception in appendEntries to follower "
           << follower._impl->getParticipantId() << ": " << e.what();
@@ -1006,7 +1007,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(AppendEntriesReques
           << "local follower received append entries although the log core is "
              "moved away.";
       return AppendEntriesResult::withRejection(request.leaderTerm, request.messageId,
-                                                AppendEntriesErrorReason::LOST_LOG_CORE);
+                                                {AppendEntriesErrorReason::ErrorType::kLostLogCore});
     }
 
     // Note that the beginning of iter here is always (and must be) exactly the
