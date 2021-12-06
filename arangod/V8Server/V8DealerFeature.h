@@ -28,7 +28,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/ConditionVariable.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 #include "V8/JSLoader.h"
 
 #include <velocypack/Builder.h>
@@ -170,12 +170,12 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::map<std::string, double> _definedDoubles;
   std::map<std::string, std::string> _definedStrings;
 
-  Counter& _contextsCreationTime;
-  Counter& _contextsCreated;
-  Counter& _contextsDestroyed;
-  Counter& _contextsEntered;
-  Counter& _contextsExited;
-  Counter& _contextsEnterFailures;
+  metrics::Counter& _contextsCreationTime;
+  metrics::Counter& _contextsCreated;
+  metrics::Counter& _contextsDestroyed;
+  metrics::Counter& _contextsEntered;
+  metrics::Counter& _contextsExited;
+  metrics::Counter& _contextsEnterFailures;
 };
 
 /// @brief enters and exits a context and provides an isolate

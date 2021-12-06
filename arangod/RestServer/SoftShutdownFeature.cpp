@@ -29,7 +29,6 @@
 #include "Pregel/PregelFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/SchedulerFeature.h"
