@@ -103,6 +103,12 @@ std::atomic<bool> killHard(false);
     // TerminateProcess is async, alright wait here for selfdestruct (we will never exit wait)
     WaitForSingleObject(hSelf, INFINITE);
   } else {
+    // exit will not trigger dump creation. So do this manually.
+    if (SIGABRT == signal) {
+      SetUnhandledExceptionFilter(NULL);
+      // produce intentional segfault to trigger WER (and attached debugger if any)
+      *static_cast<volatile int*>(nullptr) = 1;
+    }
     exit(255 + signal);
   }
 #else
