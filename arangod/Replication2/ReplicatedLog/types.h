@@ -90,8 +90,8 @@ struct AppendEntriesErrorReason {
   ErrorType error = ErrorType::kNone;
   std::optional<std::string> details = std::nullopt;
 
-  auto getDetails() const noexcept -> std::string_view;
-  auto getErrorMessage() const noexcept -> std::string_view;
+  [[nodiscard]] auto getDetails() const noexcept -> std::string_view;
+  [[nodiscard]] auto getErrorMessage() const noexcept -> std::string_view;
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesErrorReason;
   static auto errorTypeFromString(std::string_view str) -> ErrorType;
