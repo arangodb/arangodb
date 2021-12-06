@@ -29,7 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -79,7 +79,7 @@ class LogicalDataSourceTest : public ::testing::Test {
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);  
+    features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
 

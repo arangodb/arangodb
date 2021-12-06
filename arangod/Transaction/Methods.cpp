@@ -54,6 +54,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
+#include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -1975,7 +1976,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // error (note that we use the follower version, since we have
       // lost leadership):
       if (findRefusal(responses)) {
-        vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+        ++vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter();
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
@@ -2508,7 +2509,7 @@ Future<Result> Methods::replicateOperations(
               "got error from follower: " + std::string(r.errorMessage());
 
           if (followerRefused) {
-            vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+            ++vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter();
 
             LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
                 << "synchronous replication of " << opName << " operation: "

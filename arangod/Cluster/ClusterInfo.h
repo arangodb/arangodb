@@ -47,6 +47,7 @@
 #include "Cluster/RebootTracker.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
+#include "Metrics/Fwd.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -1213,16 +1214,16 @@ class ClusterInfo final {
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrentVersion;
 
   /// @brief histogram for loadPlan runtime
-  Histogram<log_scale_t<float>>& _lpTimer;
+  metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
 
   /// @brief total time for loadPlan runtime
-  Counter& _lpTotal;
+  metrics::Counter& _lpTotal;
 
   /// @brief histogram for loadCurrent runtime
-  Histogram<log_scale_t<float>>& _lcTimer;
+  metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
 
   /// @brief total time for loadCurrent runtime
-  Counter& _lcTotal;
+  metrics::Counter& _lcTotal;
 
 };
 
