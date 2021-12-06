@@ -56,7 +56,7 @@ class SortedCollectExecutorInfos {
   SortedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, RegisterId expressionRegister,
                              Variable const* expressionVariable,
-                             std::vector<std::string_view> aggregateTypes,
+                             std::vector<std::string> aggregateTypes,
                              std::vector<std::pair<std::string, RegisterId>>&& variables,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                              velocypack::Options const*);
@@ -73,7 +73,7 @@ class SortedCollectExecutorInfos {
   std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const {
     return _aggregateRegisters;
   }
-  std::vector<std::string_view> const& getAggregateTypes() const {
+  std::vector<std::string> const& getAggregateTypes() const {
     return _aggregateTypes;
   }
   velocypack::Options const* getVPackOptions() const { return _vpackOptions; }
@@ -89,7 +89,7 @@ class SortedCollectExecutorInfos {
 
  private:
   /// @brief aggregate types
-  std::vector<std::string_view> _aggregateTypes;
+  std::vector<std::string> _aggregateTypes;
 
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;

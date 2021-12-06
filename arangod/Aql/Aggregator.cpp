@@ -1044,6 +1044,8 @@ Aggregator::Factory const& Aggregator::factoryFromTypeString(std::string_view ty
   if (it != ::aggregators.end()) {
     return *(it->second.factory);
   }
+
+  LOG_DEVEL << "TYPE: " << type << ", ALIAS: " << translateAlias(type);
   // aggregator function name should have been validated before
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }

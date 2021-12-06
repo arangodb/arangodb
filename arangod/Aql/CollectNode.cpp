@@ -271,10 +271,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                                std::move(writeableOutputRegisters));
 
-      std::vector<std::string_view> aggregateTypes;
+      std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
-                     [](auto& it) { return it.type; });
+                     [](auto const& it) { return std::string(it.type); });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       auto executorInfos =
@@ -321,10 +321,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 
-      std::vector<std::string_view> aggregateTypes;
+      std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
-                     [](auto& it) { return it.type; });
+                     [](auto const& it) { return std::string(it.type); });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       auto executorInfos =

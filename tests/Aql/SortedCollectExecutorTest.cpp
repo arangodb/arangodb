@@ -67,7 +67,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   RegIdSetStack const regToKeep = {{}};
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::vector<std::string_view> aggregateTypes;
+  std::vector<std::string> aggregateTypes;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
 
@@ -153,7 +153,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-  std::vector<std::string_view> aggregateTypes;
+  std::vector<std::string> aggregateTypes;
 
   // if count = true, then we need to set a valid countRegister
   RegisterId expressionRegister;
@@ -402,7 +402,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
 
-  std::vector<std::string_view> aggregateTypes = {"SUM"};
+  std::vector<std::string> aggregateTypes = {"SUM"};
 
   RegisterId collectRegister = RegisterPlan::MaxRegisterId;
   RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
@@ -495,7 +495,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
 
-  std::vector<std::string_view> aggregateTypes;
+  std::vector<std::string> aggregateTypes;
   aggregateTypes.emplace_back("LENGTH");
 
   RegisterId collectRegister = RegisterPlan::MaxRegisterId;
@@ -599,7 +599,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-  std::vector<std::string_view> aggregateTypes;
+  std::vector<std::string> aggregateTypes;
 
   // if count = true, then we need to set a valid countRegister
   RegisterId expressionRegister;
@@ -931,7 +931,7 @@ class SortedCollectExecutorTestSplit
   RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
-  std::vector<std::string_view> aggregateTypes;
+  std::vector<std::string> aggregateTypes;
 
   // if count = true, then we need to set a valid countRegister
   RegisterId expressionRegister;
