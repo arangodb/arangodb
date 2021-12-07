@@ -551,10 +551,12 @@ inline void LogContext::popTail(EntryCache& cache) noexcept {
 /// want to retain the current LogContext (e.g., when using futures).
 template <typename Func>
 auto withLogContext(Func&& func) {
-  return [func = std::forward<Func>(func), ctx = LogContext::current()](auto&&... args) mutable {
-    LogContext::ScopedContext ctxGuard(ctx);
-    return std::forward<Func>(func)(std::forward<decltype(args)>(args)...);
-  };
+  return [func = std::forward<Func>(func), ctx = LogContext::current()]
+      <typename... Args, typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>
+      (Args && ... args) mutable {
+        LogContext::ScopedContext ctxGuard(ctx);
+        return std::forward<Func>(func)(std::forward<Args>(args)...);
+      };
 }
 
 }  // namespace arangodb
