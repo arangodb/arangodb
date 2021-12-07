@@ -126,10 +126,13 @@ constexpr static std::string_view kLostLogCoreString = "LostLogCore";
 constexpr static std::string_view kMessageOutdatedString = "MessageOutdated";
 constexpr static std::string_view kWrongTermString = "WrongTerm";
 constexpr static std::string_view kNoPrevLogMatchString = "NoPrevLogMatch";
-constexpr static std::string_view kPersistenceFailureString = "PersistenceFailure";
-constexpr static std::string_view kCommunicationErrorString = "CommunicationError";
+constexpr static std::string_view kPersistenceFailureString =
+    "PersistenceFailure";
+constexpr static std::string_view kCommunicationErrorString =
+    "CommunicationError";
 
-auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(std::string_view str) -> ErrorType {
+auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(std::string_view str)
+    -> ErrorType {
   if (str == kNoneString) {
     return ErrorType::kNone;
   } else if (str == kInvalidLeaderIdString) {
@@ -147,8 +150,8 @@ auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(std::string_v
   } else if (str == kCommunicationErrorString) {
     return ErrorType::kCommunicationError;
   }
-  THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,"unknown error type %*s",
-                                str.size(), str.data());
+  THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
+                                "unknown error type %*s", str.size(), str.data());
 }
 
 auto replicated_log::to_string(AppendEntriesErrorReason::ErrorType error) noexcept

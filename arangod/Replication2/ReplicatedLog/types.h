@@ -95,10 +95,12 @@ struct AppendEntriesErrorReason {
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesErrorReason;
   static auto errorTypeFromString(std::string_view str) -> ErrorType;
 
-  friend auto operator==(AppendEntriesErrorReason const& left, AppendEntriesErrorReason const& right) noexcept -> bool = default;
+  friend auto operator==(AppendEntriesErrorReason const& left,
+                         AppendEntriesErrorReason const& right) noexcept -> bool = default;
 };
 
-[[nodiscard]] auto to_string(AppendEntriesErrorReason::ErrorType error) noexcept -> std::string_view;
+[[nodiscard]] auto to_string(AppendEntriesErrorReason::ErrorType error) noexcept
+    -> std::string_view;
 
 struct LogStatistics {
   TermIndexPair spearHead{};
