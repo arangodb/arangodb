@@ -6,7 +6,7 @@ cd "$adb_path"
 
 community_diff=$(git diff HEAD --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
 if ! [[ -z "${community_diff// }" ]]; then
-  docker run --rm -v "$adb_path":/usr/src/arangodb clang-format:latest "$community_diff"
+  docker run --rm -v "$adb_path":/usr/src/arangodb arangodb/clang-format:latest "$community_diff"
 fi
 
 echo "(done)"
