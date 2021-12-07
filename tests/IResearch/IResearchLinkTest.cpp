@@ -2277,7 +2277,6 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
     EXPECT_TRUE(0 < indexSize0);
 
     remove(1, 10000);
-    auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
     auto [numFiles1, indexSize1] = numFiles();
     EXPECT_TRUE(0 < numFiles1);
     EXPECT_TRUE(numFiles1 < numFiles0);
@@ -2285,8 +2284,6 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
     EXPECT_TRUE(indexSize1 < indexSize0);
 
     remove(10000, 10100);
-    auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
-    EXPECT_TRUE(cleanupTime2 <= cleanupTime1);
     auto [numFiles2, indexSize2] = numFiles();
     EXPECT_TRUE(0 < numFiles2);
     EXPECT_TRUE(numFiles2 < numFiles1);
