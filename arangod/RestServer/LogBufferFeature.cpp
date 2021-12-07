@@ -35,8 +35,8 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/Metrics.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -216,8 +216,8 @@ class LogAppenderMetricsCounter final : public LogAppender {
  public:
   LogAppenderMetricsCounter(application_features::ApplicationServer& server)
       : LogAppender(),
-        _warningsCounter(server.getFeature<arangodb::MetricsFeature>().add(arangodb_logger_warnings_total{})),
-        _errorsCounter(server.getFeature<arangodb::MetricsFeature>().add(arangodb_logger_errors_total{})) {}
+        _warningsCounter(server.getFeature<metrics::MetricsFeature>().add(arangodb_logger_warnings_total{})),
+        _errorsCounter(server.getFeature<metrics::MetricsFeature>().add(arangodb_logger_errors_total{})) {}
 
   void logMessage(LogMessage const& message) override {
     // only handle WARN and ERR log messages
@@ -233,8 +233,8 @@ class LogAppenderMetricsCounter final : public LogAppender {
   }
 
  private:
-  Counter& _warningsCounter;
-  Counter& _errorsCounter;
+  metrics::Counter& _warningsCounter;
+  metrics::Counter& _errorsCounter;
 };
 
 LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& server)

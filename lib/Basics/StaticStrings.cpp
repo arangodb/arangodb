@@ -206,6 +206,7 @@ std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
+std::string const StaticStrings::LockLocation("lockLocation");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::PotentialDirtyRead(

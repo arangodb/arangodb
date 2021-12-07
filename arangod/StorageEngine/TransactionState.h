@@ -199,6 +199,8 @@ class TransactionState {
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
+  virtual arangodb::Result performIntermediateCommitIfRequired(DataSourceId cid) = 0;
+
   /// @brief return number of commits.
   /// for cluster transactions on coordinator, this either returns 0 or 1.
   /// for leader, follower or single-server transactions, this can include any

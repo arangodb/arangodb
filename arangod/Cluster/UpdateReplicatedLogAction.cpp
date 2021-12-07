@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"

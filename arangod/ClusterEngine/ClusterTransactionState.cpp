@@ -33,7 +33,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Counter.h"
+#include "Metrics/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
@@ -67,7 +68,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // set hints
   _hints = hints;
-  auto& stats = _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
+  auto& stats = _vocbase.server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics;
 
   auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
@@ -132,7 +133,7 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
   }
 
   updateStatus(transaction::Status::COMMITTED);
-  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted;
+  ++_vocbase.server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted;
 
   return {};
 }
@@ -143,9 +144,13 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   updateStatus(transaction::Status::ABORTED);
-  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
+  ++_vocbase.server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
   
   return {};
+}
+  
+Result ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected intermediate commit");
 }
   
 /// @brief return number of commits

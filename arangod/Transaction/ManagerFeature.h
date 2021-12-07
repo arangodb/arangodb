@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
 
 #include <mutex>
@@ -81,7 +81,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   
   /// @brief number of expired transactions that were aborted by 
   /// transaction garbage collection
-  Counter& _numExpiredTransactions;
+  metrics::Counter& _numExpiredTransactions;
 };
 
 }  // namespace transaction

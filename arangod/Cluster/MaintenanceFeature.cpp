@@ -28,6 +28,12 @@
 #include "Cluster/Maintenance.h"
 #include "MaintenanceFeature.h"
 
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
+
 #include "Agency/AgencyComm.h"
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -81,13 +87,13 @@ DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total,
     "Accumulated action queue time");
 
 struct MaintenanceScale {
-  static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 50, 8000, 10}; }
 };
 struct MaintenanceActionRuntimeScale {
-  static log_scale_t<uint64_t> scale() { return {4, 82, 86400000, 10}; }
+  static metrics::LogScale<uint64_t> scale() { return {4, 82, 86400000, 10}; }
 };
 struct MaintenanceActionQueueTimeScale {
-  static log_scale_t<uint64_t> scale() { return {2, 82, 3600000, 12}; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 82, 3600000, 12}; }
 };
 
 DECLARE_HISTOGRAM(arangodb_maintenance_phase1_runtime_msec, MaintenanceScale, "Maintenance Phase 1 runtime histogram [ms]");
@@ -163,7 +169,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   // line of code is not required. For philosophical reasons we added it to the
   // ClusterPhase and let it start after `Cluster`.
   startsAfter<ClusterFeature>();
-  startsAfter<MetricsFeature>();
+  startsAfter<metrics::MetricsFeature>();
 
   setOptional(true);
   requiresElevatedPrivileges(false);
@@ -274,7 +280,7 @@ void MaintenanceFeature::initializeMetrics() {
     // This actually is only necessary because of tests
     return;
   }
-  auto& metricsFeature = server().getFeature<arangodb::MetricsFeature>();
+  auto& metricsFeature = server().getFeature<metrics::MetricsFeature>();
 
   _phase1_runtime_msec =
     metricsFeature.add(arangodb_maintenance_phase1_runtime_msec{});
