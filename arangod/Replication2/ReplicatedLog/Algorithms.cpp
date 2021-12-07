@@ -335,49 +335,25 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
   });
 }
 
-auto algorithms::operator<<(std::ostream& os, ParticipantFlag const& p) noexcept
-    -> std::ostream& {
-  switch(p) {
-    case ParticipantFlag::Excluded: {
-      return os << "excluded";
-    } break;
-    case ParticipantFlag::Failed: {
-      return os << "failed";
-    } break;
-    case ParticipantFlag::Forced: {
-      return os << "forced";
-    } break;
-  }
-  return os;
-}
-
-// TODO: Make prettier
 auto algorithms::operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
     -> std::ostream& {
-  os << '{' << p.id << ':' << p.index <<
-    ", ";
-
-  auto of = std::ostream_iterator<ParticipantFlag>{os, ", "};
-  std::copy(std::begin(p.flags), std::end(p.flags), of);
-
-  os<< '}';
+  os << '{' << p.id << ':' << p.index << ", ";
+  os << "failed = " << std::boolalpha << p.failed;
+  os << ", flags = " << p.flags;
+  os << '}';
   return os;
 }
 
-ParticipantStateTuple::ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags)
-  : index(index), id(std::move(id)), flags(std::move(flags))
-{}
-
 auto ParticipantStateTuple::isExcluded() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Excluded) != std::end(flags);
+  return flags.excluded;
 };
 
 auto ParticipantStateTuple::isForced() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Forced) != std::end(flags);
+  return flags.forced;
 };
 
 auto ParticipantStateTuple::isFailed() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Failed) != std::end(flags);
+  return failed;
 };
 
 auto operator<=(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept -> bool {

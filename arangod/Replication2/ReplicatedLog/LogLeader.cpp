@@ -406,7 +406,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.largestCommonIndex = leaderData._largestCommonIndex;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
-    status.acceptedParticipantConfig = *leaderData.activeParticipantConfig;
+    status.activeParticipantConfig = *leaderData.activeParticipantConfig;
     status.committedParticipantConfig = *leaderData.committedParticipantConfig;
     for (auto const& [pid, f] : leaderData._follower) {
       auto lastRequestLatencyMS =
@@ -785,19 +785,15 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexe
       auto flags = std::invoke([&, &pid = pid] {
         if (auto f = activeParticipantConfig->participants.find(pid);
             f != std::end(activeParticipantConfig->participants)) {
-          auto set = algorithms::ParticipantFlags{};
-          if (f->second.excluded) {
-            set.insert(algorithms::ParticipantFlag::Excluded);
-          }
-          if (f->second.forced) {
-            set.insert(algorithms::ParticipantFlag::Forced);
-          }
-          return set;
+          return f->second;
         }
-        return algorithms::ParticipantFlags{};
+        return ParticipantFlags{};
       });
-      indexes.emplace_back(lastAckedEntry.index,
-                           follower->_impl->getParticipantId(), std::move(flags));
+      indexes.emplace_back(
+          algorithms::ParticipantStateTuple{.index = lastAckedEntry.index,
+                                            .id = follower->_impl->getParticipantId(),
+                                            .failed = false,
+                                            .flags = std::move(flags)});
     } else {
       LOG_CTX("54869", TRACE, _self._logContext)
           << "Will ignore follower "

@@ -103,7 +103,7 @@ TEST(LogStatusTest, leader_status) {
   leaderStatus.local = statistics;
   leaderStatus.term = LogTerm{2};
   leaderStatus.largestCommonIndex = LogIndex{1};
-  leaderStatus.acceptedParticipantConfig.generation = 14;
+  leaderStatus.activeParticipantConfig.generation = 14;
   leaderStatus.committedParticipantConfig.generation = 18;
   std::unordered_map<ParticipantId, FollowerStatistics> follower({
       {

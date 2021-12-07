@@ -74,19 +74,11 @@ auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId, Rebo
                          LogId logId, agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result;
 
-enum class ParticipantFlag {
-  Excluded,
-  Forced,
-  Failed
-};
-using ParticipantFlags = std::set<ParticipantFlag>;
-
 struct ParticipantStateTuple : implement_compare<ParticipantStateTuple> {
   LogIndex index;
   ParticipantId id;
+  bool failed = false;
   ParticipantFlags flags;
-
-  ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags);
 
   [[nodiscard]] auto isExcluded() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
@@ -98,8 +90,6 @@ struct ParticipantStateTuple : implement_compare<ParticipantStateTuple> {
 
 auto operator<=(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept -> bool;
 auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
-auto operator<<(std::ostream& os, ParticipantFlag const& f) noexcept
- -> std::ostream&;
 
 struct CalculateCommitIndexOptions {
   std::size_t const _writeConcern{0};       // might be called quorumSize in other places

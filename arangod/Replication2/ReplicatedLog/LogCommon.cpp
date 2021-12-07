@@ -112,11 +112,6 @@ auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice) -> PersistingLo
   return PersistingLogEntry(logTerm, logIndex, std::move(payload));
 }
 
-auto PersistingLogEntry::operator==(PersistingLogEntry const& other) const noexcept -> bool {
-  return other._logIndex == _logIndex && other._logTerm == _logTerm &&
-         other._payload == _payload;
-}
-
 auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
   return TermIndexPair{_logTerm, _logIndex};
 }
@@ -293,17 +288,6 @@ auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
   builder.add(VPackStringRef(StaticStrings::SoftWriteConcern), VPackValue(softWriteConcern));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
-}
-
-auto replication2::operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool {
-  // TODO How can we make sure that we never forget a field here?
-  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern &&
-         left.softWriteConcern == right.softWriteConcern &&
-         left.replicationFactor == right.replicationFactor;
-}
-
-auto replication2::operator!=(const LogConfig& left, const LogConfig& right) noexcept -> bool {
-  return !(left == right);
 }
 
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
@@ -503,6 +487,17 @@ auto replication2::ParticipantFlags::fromVelocyPack(velocypack::Slice s) -> Part
   auto const forced = s.get("forced").isTrue();
   auto const excluded = s.get("excluded").isTrue();
   return ParticipantFlags{forced, excluded};  // {.forced = forced, .excluded = excluded}
+}
+
+auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f) -> std::ostream& {
+  os << "{ ";
+  if (f.excluded) {
+    os << "excluded ";
+  }
+  if (f.forced) {
+    os << "forced ";
+  }
+  return os << "}";
 }
 
 void replication2::ParticipantsConfig::toVelocyPack(velocypack::Builder& builder) const {

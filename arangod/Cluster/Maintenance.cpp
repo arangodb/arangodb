@@ -569,7 +569,7 @@ void arangodb::maintenance::diffReplicatedLogs(
 
           // check if participants generation has changed (in case we are the leader)
           if (auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
-            if (leaderStatus->acceptedParticipantConfig.generation <
+            if (leaderStatus->activeParticipantConfig.generation <
                 spec.participantsConfig.generation) {
               return true;
             }
@@ -1245,7 +1245,7 @@ static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::Leade
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
       leader.term = status.term;
-      leader.committedParticipantsConfig = status.acceptedParticipantConfig;
+      leader.committedParticipantsConfig = status.activeParticipantConfig;
       return leader;
     }
   }
