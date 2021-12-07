@@ -183,7 +183,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     // the assertion below where we check that we are in the list of
     // failoverCandidates!
     uint64_t currVersion = 0;
-    while (true) {
+    while (collection.vocbase().server()) {
       VPackBuilder builder;
       uint64_t raftIndex = agencyCache.get(builder, "Current/Version");
       if (!builder.isEmpty()) {
