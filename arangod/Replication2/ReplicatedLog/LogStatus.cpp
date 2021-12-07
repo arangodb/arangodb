@@ -139,7 +139,6 @@ void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   spearHead.toVelocyPack(builder);
   builder.add(VPackValue("lastErrorReason"));
   lastErrorReason.toVelocyPack(builder);
-  builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason.error)));
   builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS.count()));
   builder.add(VPackValue("state"));
   internalState.toVelocyPack(builder);
