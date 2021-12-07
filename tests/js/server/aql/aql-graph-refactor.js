@@ -64,16 +64,18 @@ var createBaseGraph = function () {
   edgeCollection = db[edgeName];
 
   // populate graph
-  vertices.A = vertexCollection.save({_key: 'A'})._id;
-  vertices.B = vertexCollection.save({_key: 'B'})._id;
-  vertices.C = vertexCollection.save({_key: 'C'})._id;
-  vertices.D = vertexCollection.save({_key: 'D'})._id;
-  vertices.E = vertexCollection.save({_key: 'E'})._id;
-  vertices.F = vertexCollection.save({_key: 'F'})._id;
+  vertices.A = vertexCollection.save({_key: 'A', theTruth: true})._id;
+  vertices.B = vertexCollection.save({_key: 'B', theTruth: true})._id;
+  vertices.C = vertexCollection.save({_key: 'C', theTruth: true})._id;
+  vertices.D = vertexCollection.save({_key: 'D', theTruth: false})._id;
+  vertices.E = vertexCollection.save({_key: 'E', theTruth: false})._id;
+  vertices.F = vertexCollection.save({_key: 'F', theTruth: false})._id;
 
-  edges.AB = edgeCollection.save(vertices.A, vertices.B, {})._id;
-  edges.BC = edgeCollection.save(vertices.B, vertices.C, {})._id;
-  edges.CD = edgeCollection.save(vertices.C, vertices.D, {})._id;
+  edges.AB = edgeCollection.save(vertices.A, vertices.B, {theTruth: true})._id;
+  edges.BC = edgeCollection.save(vertices.B, vertices.C, {theTruth: true})._id;
+  edges.CD = edgeCollection.save(vertices.C, vertices.D, {theTruth: true})._id;
+  edges.DE = edgeCollection.save(vertices.D, vertices.E, {theTruth: false})._id;
+  edges.EF = edgeCollection.save(vertices.E, vertices.F, {theTruth: false})._id;
 };
 
 /*
@@ -82,7 +84,7 @@ var createBaseGraph = function () {
  */
 function dfsSingleServerDevelopmedgeNametSuite() {
   const refactorDisabled = `OPTIONS {"refactor": false}`;
-  const refactorEnabled = `OPTIONS {"refactor": true}`;
+  const refactorEnabled = `OPTIONS {"refactor": true} `;
   return {
     setUpAll: function () {
       createBaseGraph();
@@ -126,13 +128,52 @@ function dfsSingleServerDevelopmedgeNametSuite() {
       `;
       let r1 = db._query(q1).toArray();
       let r2 = db._query(q2).toArray();
-      console.error("Old:");
-      console.warn(r1);
-      console.error("New:");
-      console.warn(r2);
-
-      assertEqual(JSON.stringify(r1), JSON.stringify(r2));
+      assertTrue(_.isEqual(r1, r2));
     },
+
+    testDFSTraveralsNewWithPruneOnEdge: function () {
+      const startVertex = vertices.A;
+      let qOld = `
+        FOR v,e,p IN 1..5 OUTBOUND "${startVertex}" GRAPH ${graphName}
+        PRUNE e.theTruth == true
+        RETURN p
+      `;
+      let qRefactor = `
+        FOR v,e,p IN 1..5 OUTBOUND "${startVertex}" GRAPH ${graphName}
+        PRUNE e.theTruth == true
+        ${refactorEnabled}
+        RETURN p
+      `;
+      let rOld = db._query(qOld);
+      let rRefactor = db._query(qRefactor);
+      console.warn(rOld.getExtra().stats);
+      console.warn(rRefactor.getExtra().stats);
+
+      assertEqual(rOld.getExtra().stats.scannedIndex, rRefactor.getExtra().stats.scannedIndex);
+    },
+
+    testDFSTraveralsNewWithFilterOnEdge: function () {
+      const startVertex = vertices.A;
+      let qOld = `
+        FOR v,e,p IN 1..5 OUTBOUND "${startVertex}" GRAPH ${graphName}
+        FILTER e.theTruth == true
+        RETURN p
+      `;
+      let qRefactor = `
+        FOR v,e,p IN 1..5 OUTBOUND "${startVertex}" GRAPH ${graphName}
+        ${refactorEnabled}
+        FILTER e.theTruth == true
+        RETURN p
+      `;
+      let rOld = db._query(qOld);
+      let rRefactor = db._query(qRefactor);
+      console.warn(rOld.getExtra().stats);
+      console.warn(rRefactor.getExtra().stats);
+
+      assertEqual(rOld.getExtra().stats.scannedIndex, rRefactor.getExtra().stats.scannedIndex);
+    },
+
+
 
   };
 }
