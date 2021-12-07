@@ -28,8 +28,6 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 
-#include "Basics/debugging.h"
-
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
 class LogFollower;
@@ -52,9 +50,9 @@ struct ReplicatedStateFeature {
     auto factory =
         std::make_shared<InternalFactory<S, Factory>>(std::in_place,
                                                       std::forward<Args>(args)...);
-    auto [iter, was_inserted] =
+    auto [iter, wasInserted] =
         factories.try_emplace(std::move(name), std::move(factory));
-    TRI_ASSERT(was_inserted) << "duplicated state implementation name?";
+    assertWasInserted(name, wasInserted);
   }
 
   /**
@@ -68,6 +66,7 @@ struct ReplicatedStateFeature {
       -> std::shared_ptr<ReplicatedStateBase>;
 
  private:
+  static void assertWasInserted(std::string_view name, bool wasInserted);
   struct InternalFactoryBase : std::enable_shared_from_this<InternalFactoryBase> {
     virtual ~InternalFactoryBase() = default;
     virtual auto createReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog>)

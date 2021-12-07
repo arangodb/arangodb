@@ -23,6 +23,10 @@
 
 #include "Basics/Exceptions.h"
 
+#include "Logger/LogMacros.h"
+#include "Basics/debugging.h"
+#include "Basics/application-exit.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 
@@ -34,4 +38,12 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
     return iter->second->createReplicatedState(std::move(log));
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);  // TODO fix error code
+}
+
+void replicated_state::ReplicatedStateFeature::assertWasInserted(std::string_view name,
+                                                                 bool wasInserted) {
+  if (!wasInserted) {
+    LOG_TOPIC("5b761", FATAL, Logger::REPLICATED_STATE) << "register state type with duplicated name " << name;
+    FATAL_ERROR_EXIT();
+  }
 }
