@@ -90,7 +90,6 @@ struct AppendEntriesErrorReason {
   ErrorType error = ErrorType::kNone;
   std::optional<std::string> details = std::nullopt;
 
-  [[nodiscard]] auto getDetails() const noexcept -> std::string_view;
   [[nodiscard]] auto getErrorMessage() const noexcept -> std::string_view;
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesErrorReason;
@@ -99,7 +98,7 @@ struct AppendEntriesErrorReason {
   friend auto operator==(AppendEntriesErrorReason const& left, AppendEntriesErrorReason const& right) noexcept -> bool = default;
 };
 
-[[nodiscard]] auto to_string(AppendEntriesErrorReason const& reason) noexcept -> std::string_view;
+[[nodiscard]] auto to_string(AppendEntriesErrorReason::ErrorType error) noexcept -> std::string_view;
 
 struct LogStatistics {
   TermIndexPair spearHead{};

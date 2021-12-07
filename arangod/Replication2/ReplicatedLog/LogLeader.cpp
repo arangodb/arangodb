@@ -660,7 +660,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
       LOG_CTX("35134", TRACE, follower.logContext)
           << "received append entries response, messageId = " << response.messageId
           << ", errorCode = " << to_string(response.errorCode)
-          << ", reason  = " << to_string(response.reason);
+          << ", reason  = " << to_string(response.reason.error);
 
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
@@ -683,7 +683,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           default:
             LOG_CTX("1bd0b", DEBUG, follower.logContext)
                 << "received error from follower, reason = "
-                << to_string(response.reason) << " message id = " << messageId;
+                << to_string(response.reason.error) << " message id = " << messageId;
             ++follower.numErrorsSinceLastAnswer;
         }
       }

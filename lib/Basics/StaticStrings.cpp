@@ -369,7 +369,6 @@ std::string const StaticStrings::Spearhead("spearhead");
 std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
-std::string const StaticStrings::Details("details");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");

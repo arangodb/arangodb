@@ -94,13 +94,6 @@ auto replicated_log::operator!=(LogStatistics const &left,
   return !(left == right);
 }
 
-auto replicated_log::AppendEntriesErrorReason::getDetails() const noexcept -> std::string_view {
-  if (details) {
-    return std::string_view(details.value());
-  }
-  return {};
-}
-
 auto replicated_log::AppendEntriesErrorReason::getErrorMessage()
     const noexcept -> std::string_view {
   switch (error) {
@@ -158,9 +151,9 @@ auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(std::string_v
                                 str.size(), str.data());
 }
 
-auto replicated_log::to_string(AppendEntriesErrorReason const& reason) noexcept
+auto replicated_log::to_string(AppendEntriesErrorReason::ErrorType error) noexcept
     -> std::string_view {
-  switch (reason.error) {
+  switch (error) {
     case AppendEntriesErrorReason::ErrorType::kNone:
       return kNoneString;
     case AppendEntriesErrorReason::ErrorType::kInvalidLeaderId:
@@ -180,16 +173,18 @@ auto replicated_log::to_string(AppendEntriesErrorReason const& reason) noexcept
   }
   LOG_TOPIC("c2058", FATAL, Logger::REPLICATION2)
       << "Invalid AppendEntriesErrorReason "
-      << static_cast<std::underlying_type_t<decltype(reason.error)>>(reason.error);
+      << static_cast<std::underlying_type_t<decltype(error)>>(error);
   FATAL_ERROR_ABORT();
 }
 
+constexpr static std::string_view kDetailsString = "details";
+
 void replicated_log::AppendEntriesErrorReason::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Error, VPackValue(to_string(*this)));
+  builder.add(StaticStrings::Error, VPackValue(to_string(error)));
   builder.add(StaticStrings::ErrorMessage, VPackValue(getErrorMessage()));
   if (details) {
-    builder.add(StaticStrings::Details, VPackValue(details.value()));
+    builder.add(VPackStringRef{kDetailsString}, VPackValue(details.value()));
   }
 }
 
@@ -200,7 +195,7 @@ auto replicated_log::AppendEntriesErrorReason::fromVelocyPack(velocypack::Slice 
   auto error = errorTypeFromString(errorSlice.copyString());
 
   std::optional<std::string> details;
-  if (auto detailsSlice = slice.get(StaticStrings::Details); !detailsSlice.isNone()) {
+  if (auto detailsSlice = slice.get(kDetailsString); !detailsSlice.isNone()) {
     details = detailsSlice.copyString();
   }
   return {error, std::move(details)};
