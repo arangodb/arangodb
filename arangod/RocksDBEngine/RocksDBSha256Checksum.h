@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Mutex.h"
 
-
 #include <openssl/evp.h>
 #include <rocksdb/file_checksum.h>
 #include <rocksdb/listener.h>
@@ -53,8 +52,6 @@ class RocksDBSha256Checksum : public rocksdb::FileChecksumGenerator {
 
   char const* Name() const override { return "RocksDBSha256Checksum"; }
 
-
-
  private:
   std::string const _fileName;
   std::shared_ptr<RocksDBShaFileManager> _shaFileManager;
@@ -70,7 +67,6 @@ class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_
   bool storeShaItems(std::string const& fileName, std::string const& checksum);
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
   void deleteFile(std::string const& pathName);
-
  private:
   template <typename T>
   bool isSstFilename(T const& fileName) const;
