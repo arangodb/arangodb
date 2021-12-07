@@ -793,7 +793,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexe
           algorithms::ParticipantStateTuple{.index = lastAckedEntry.index,
                                             .id = follower->_impl->getParticipantId(),
                                             .failed = false,
-                                            .flags = std::move(flags)});
+                                            .flags = flags});
     } else {
       LOG_CTX("54869", TRACE, _self._logContext)
           << "Will ignore follower "
