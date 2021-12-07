@@ -331,7 +331,7 @@ struct LogMultiplexerImplementation
   void digestAvailableEntries() override {
     auto log = this->_interface->copyInMemoryLog();
     auto iter = log.getIteratorFrom(LogIndex{0});
-    auto waitForIndex = this->_guardedData.template doUnderLock([&](auto& self) {
+    auto waitForIndex = this->_guardedData.doUnderLock([&](auto& self) {
       self.digestIterator(*iter);
       return self.checkWaitFor();
     });
