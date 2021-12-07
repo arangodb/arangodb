@@ -33,6 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 #include "Basics/hashes.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
@@ -43,7 +44,10 @@
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -140,7 +144,7 @@ struct TimeTracker {
   TimeTracker& operator=(TimeTracker const&) = delete;
 
   explicit TimeTracker(arangodb::TransactionStatistics const& statistics, 
-                       std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram) noexcept
+                       std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram) noexcept
       : statistics(statistics),
         histogram(histogram) {
     if (statistics._exportReadWriteMetrics) {
@@ -164,20 +168,20 @@ struct TimeTracker {
   }
   
   arangodb::TransactionStatistics const& statistics;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram;
+  std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram;
   std::chrono::time_point<std::chrono::steady_clock> start;
 };
 
 /// @brief helper RAII class to count and time-track a CRUD read operation
 struct ReadTimeTracker : public TimeTracker {
-  ReadTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+  ReadTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
                   arangodb::TransactionStatistics& statistics) noexcept
       : TimeTracker(statistics, histogram) {}
 };
 
 /// @brief helper RAII class to count and time-track CRUD write operations
 struct WriteTimeTracker : public TimeTracker {
-  WriteTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+  WriteTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
                    arangodb::TransactionStatistics& statistics,
                    arangodb::OperationOptions const& options) noexcept
       : TimeTracker(statistics, histogram) {
@@ -194,7 +198,7 @@ struct WriteTimeTracker : public TimeTracker {
 
 /// @brief helper RAII class to count and time-track truncate operations
 struct TruncateTimeTracker : public TimeTracker {
-  TruncateTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+  TruncateTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
                       arangodb::TransactionStatistics& statistics,
                       arangodb::OperationOptions const& options) noexcept
       : TimeTracker(statistics, histogram) {
@@ -208,6 +212,21 @@ struct TruncateTimeTracker : public TimeTracker {
     }
   }
 };
+
+void reportPrimaryIndexInconsistency(
+    arangodb::Result const& res,
+    arangodb::velocypack::StringRef const& key,
+    arangodb::LocalDocumentId const& rev) {
+
+  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    // Scandal! A primary index entry is pointing to nowhere! Let's report
+    // this to the authorities immediately:
+    LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
+        << "Found primary index entry for which there is no actual "
+           "document: _key=" << key << ", _rev=" << rev.id();
+    TRI_ASSERT(false);
+  }
+}
 
 }  // namespace
 
@@ -223,7 +242,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
           collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _numIndexCreations(0),
       _statistics(
-        collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
+        collection.vocbase().server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled) {
     createCache();
@@ -239,7 +258,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
           collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
       _numIndexCreations(0),
       _statistics(
-        collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
+        collection.vocbase().server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   if (_cacheEnabled) {
     createCache();
@@ -836,13 +855,17 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     RocksDBSavePoint savepoint(_logicalCollection.id(), *state, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
-    LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
+    LocalDocumentId docId = RocksDBKey::documentId(iter->key());
     auto res = removeDocument(&trx, savepoint, docId, docBuffer.slice(), options, rid);
 
     if (res.ok()) {
       res = savepoint.finish(newRevisionId());
-    }
     
+      if (res.ok()) {
+        res = state->performIntermediateCommitIfRequired(_logicalCollection.id());
+      }
+    }
+
     if (res.fail()) {  // Failed to remove document in truncate.
       return res;
     }
@@ -917,12 +940,17 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 
   rocksdb::PinnableSlice ps;
   Result res;
+  LocalDocumentId documentId;
   do {
-    LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key, readOwnWrites);
+    documentId = primaryIndex()->lookupKey(trx, key, readOwnWrites);
     if (!documentId.isSet()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      break;
+      return res;
     }  // else found
+
+    TRI_IF_FAILURE("RocksDBCollection::read-delay") {
+      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    }
 
     res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
     if (res.ok()) {
@@ -930,6 +958,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->ensureSnapshot());
+  ::reportPrimaryIndexInconsistency(res, key, documentId);
   return res;
 }
 
@@ -1054,7 +1083,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
   return performUpdateOrReplace(trx, newSlice, resultMdr, options, previousMdr, false);
 }
-                                  
+
 Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
                                                  velocypack::Slice newSlice,
                                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
@@ -1088,6 +1117,7 @@ Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
   res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
     /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {
+    ::reportPrimaryIndexInconsistency(res, keyStr, oldDocumentId);
     return res;
   }
 
@@ -1212,7 +1242,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     expectedId = RevisionId::fromSlice(slice);
   }
 
-  return remove(trx, documentId, expectedId, previousMdr, options);
+  Result res = remove(trx, documentId, expectedId, previousMdr, options);
+  ::reportPrimaryIndexInconsistency(res, keyStr, documentId);
+  return res;
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,

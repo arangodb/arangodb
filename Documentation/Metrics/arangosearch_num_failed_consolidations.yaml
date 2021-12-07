@@ -1,10 +1,10 @@
-name: arangodb_arangosearch_num_failed_consolidations
+name: arangosearch_num_failed_consolidations
 introducedIn: "3.10.0"
 help: |
   Number of failed consolidations.
 unit: number
 type: gauge
-category: Disk
+category: ArangoSearch
 complexity: advanced
 exposedBy:
   - dbserver

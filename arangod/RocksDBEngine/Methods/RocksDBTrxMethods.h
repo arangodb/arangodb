@@ -48,9 +48,7 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
   /// @brief performs an intermediate commit if necessary
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed
-  Result checkIntermediateCommit(bool& hasPerformedIntermediateCommit) override;
+  Result checkIntermediateCommit() override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
                       rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
@@ -75,14 +73,10 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only
   /// be rolled back until this point of time.
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed Not thread safe
-  Result triggerIntermediateCommit(bool& hasPerformedIntermediateCommit);
+  Result triggerIntermediateCommit();
 
   /// @brief check sizes and call internalCommit if too big
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed
-  Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
+  Result checkIntermediateCommit(uint64_t newSize);
 
   void initializeReadWriteBatch();
   void releaseReadWriteBatch() noexcept;

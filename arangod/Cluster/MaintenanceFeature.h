@@ -31,13 +31,16 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/MetricsFeature.h"
+
+#include "Metrics/Fwd.h"
 
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <map>
 
 namespace arangodb {
 class LogicalCollection;
@@ -89,6 +92,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
 
   // @brief #databases last time we checked allDatabases
   size_t lastNumberOfDatabases() const;
@@ -528,27 +532,27 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   size_t _lastNumberOfDatabases;
 
  public:
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase2_runtime_msec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _agency_sync_total_runtime_msec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<uint64_t>>>> _phase1_runtime_msec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<uint64_t>>>> _phase2_runtime_msec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<uint64_t>>>> _agency_sync_total_runtime_msec;
 
-  std::optional<std::reference_wrapper<Counter>> _phase1_accum_runtime_msec;
-  std::optional<std::reference_wrapper<Counter>> _phase2_accum_runtime_msec;
-  std::optional<std::reference_wrapper<Counter>> _agency_sync_total_accum_runtime_msec;
+  std::optional<std::reference_wrapper<metrics::Counter>> _phase1_accum_runtime_msec;
+  std::optional<std::reference_wrapper<metrics::Counter>> _phase2_accum_runtime_msec;
+  std::optional<std::reference_wrapper<metrics::Counter>> _agency_sync_total_accum_runtime_msec;
 
-  std::optional<std::reference_wrapper<Counter>> _action_duplicated_counter;
-  std::optional<std::reference_wrapper<Counter>> _action_registered_counter;
-  std::optional<std::reference_wrapper<Counter>> _action_done_counter;
+  std::optional<std::reference_wrapper<metrics::Counter>> _action_duplicated_counter;
+  std::optional<std::reference_wrapper<metrics::Counter>> _action_registered_counter;
+  std::optional<std::reference_wrapper<metrics::Counter>> _action_done_counter;
 
   struct ActionMetrics {
-    Histogram<log_scale_t<uint64_t>>& _runtime_histogram;
-    Histogram<log_scale_t<uint64_t>>& _queue_time_histogram;
-    Counter& _accum_runtime;
-    Counter& _accum_queue_time;
-    Counter& _failure_counter;
+    metrics::Histogram<metrics::LogScale<uint64_t>>& _runtime_histogram;
+    metrics::Histogram<metrics::LogScale<uint64_t>>& _queue_time_histogram;
+    metrics::Counter& _accum_runtime;
+    metrics::Counter& _accum_queue_time;
+    metrics::Counter& _failure_counter;
 
-    ActionMetrics(Histogram<log_scale_t<uint64_t>>& a,
-                  Histogram<log_scale_t<uint64_t>>& b, Counter& c, Counter& d, Counter& e)
+    ActionMetrics(metrics::Histogram<metrics::LogScale<uint64_t>>& a,
+                  metrics::Histogram<metrics::LogScale<uint64_t>>& b, metrics::Counter& c, metrics::Counter& d, metrics::Counter& e)
         : _runtime_histogram(a),
           _queue_time_histogram(b),
           _accum_runtime(c),
@@ -557,12 +561,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   };
 
   std::unordered_map<std::string, ActionMetrics> _maintenance_job_metrics_map;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _maintenance_action_runtime_msec;
+  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<uint64_t>>>> _maintenance_action_runtime_msec;
 
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_out_of_sync;
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_total_count;
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_leader_count;
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_not_replicated_count;
+  std::optional<std::reference_wrapper<metrics::Gauge<uint64_t>>> _shards_out_of_sync;
+  std::optional<std::reference_wrapper<metrics::Gauge<uint64_t>>> _shards_total_count;
+  std::optional<std::reference_wrapper<metrics::Gauge<uint64_t>>> _shards_leader_count;
+  std::optional<std::reference_wrapper<metrics::Gauge<uint64_t>>> _shards_not_replicated_count;
 };
 
 }  // namespace arangodb

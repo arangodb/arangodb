@@ -23,26 +23,25 @@
 #include "ReplicatedLogMetrics.h"
 
 #include "Replication2/ReplicatedLog/ReplicatedLogMetricsDeclarations.h"
-#include "RestServer/Metrics.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb::replication2::replicated_log;
 
-ReplicatedLogMetrics::ReplicatedLogMetrics(arangodb::MetricsFeature& metricsFeature)
+ReplicatedLogMetrics::ReplicatedLogMetrics(metrics::MetricsFeature& metricsFeature)
     : ReplicatedLogMetrics(&metricsFeature) {}
 
 template <typename Builder, bool mock>
-auto ReplicatedLogMetrics::createMetric(arangodb::MetricsFeature* metricsFeature)
-    -> std::shared_ptr<typename Builder::metric_t> {
+auto ReplicatedLogMetrics::createMetric(metrics::MetricsFeature* metricsFeature)
+    -> std::shared_ptr<typename Builder::MetricT> {
   TRI_ASSERT((metricsFeature == nullptr) == mock);
   if constexpr (!mock) {
     return metricsFeature->addShared(Builder{});
   } else {
-    return std::dynamic_pointer_cast<typename Builder::metric_t>(Builder{}.build());
+    return std::dynamic_pointer_cast<typename Builder::MetricT>(Builder{}.build());
   }
 }
 
-template <typename MFP, std::enable_if_t<std::is_same_v<arangodb::MetricsFeature*, MFP> || std::is_null_pointer_v<MFP>, int>, bool mock>
+template <typename MFP, std::enable_if_t<std::is_same_v<arangodb::metrics::MetricsFeature*, MFP> || std::is_null_pointer_v<MFP>, int>, bool mock>
 ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
     : replicatedLogNumber(
           createMetric<arangodb_replication2_replicated_log_number, mock>(metricsFeature)),
@@ -85,7 +84,7 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
 #endif
 }
 
-MeasureTimeGuard::MeasureTimeGuard(std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> histogram) noexcept
+MeasureTimeGuard::MeasureTimeGuard(std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> histogram) noexcept
     : _start(std::chrono::steady_clock::now()), _histogram(std::move(histogram)) {}
 
 void MeasureTimeGuard::fire() {
@@ -101,7 +100,7 @@ void MeasureTimeGuard::fire() {
 MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
 
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(
-    arangodb::MetricsFeature*);
+    arangodb::metrics::MetricsFeature*);
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::ReplicatedLogMetrics(std::nullptr_t);
 #endif

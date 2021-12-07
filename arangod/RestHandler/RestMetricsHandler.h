@@ -24,7 +24,6 @@
 #pragma once
 
 #include "RestHandler/RestBaseHandler.h"
-#include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
 class RestMetricsHandler : public arangodb::RestBaseHandler {

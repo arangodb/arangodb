@@ -30,6 +30,7 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/H2CommTask.h"
 #include "GeneralServer/HttpCommTask.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -174,7 +175,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, std::move(handler));
+  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler)));
 }
 
 template <>
@@ -244,7 +245,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     
     _server.registerTask(std::move(task));
   };
-  ptr->handshake(std::move(cb));
+  ptr->handshake(withLogContext(std::move(cb)));
 }
 
 template <>
@@ -268,7 +269,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, std::move(handler));
+  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler)));
 }
 }  // namespace rest
 }  // namespace arangodb
