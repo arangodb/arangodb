@@ -1141,7 +1141,7 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
               << "configuration committed, generation " << config->generation;
         } else {
           LOG_CTX("fd245", TRACE, self->_logContext)
-              << "configuration already new than generation " << config->generation;
+              << "configuration already newer than generation " << config->generation;
         }
       } catch (arangodb::basics::Exception const& err) {
         if (err.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
