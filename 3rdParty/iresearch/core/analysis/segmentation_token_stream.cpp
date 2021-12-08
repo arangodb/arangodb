@@ -36,12 +36,14 @@
 #include "utils/utf8_character_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME{"case"};
-constexpr VPackStringRef BREAK_PARAM_NAME       {"break"};
+constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
+constexpr std::string_view BREAK_PARAM_NAME       {"break"};
 
 const frozen::unordered_map<
     string_ref,

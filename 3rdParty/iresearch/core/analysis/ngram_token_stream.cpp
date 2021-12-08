@@ -34,14 +34,16 @@
 #include "utils/vpack_utils.hpp"
 #include "utils/utf8_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
-constexpr VPackStringRef MIN_PARAM_NAME               {"min"};
-constexpr VPackStringRef MAX_PARAM_NAME               {"max"};
-constexpr VPackStringRef PRESERVE_ORIGINAL_PARAM_NAME {"preserveOriginal"};
-constexpr VPackStringRef STREAM_TYPE_PARAM_NAME       {"streamType"};
-constexpr VPackStringRef START_MARKER_PARAM_NAME      {"startMarker"};
-constexpr VPackStringRef END_MARKER_PARAM_NAME        {"endMarker"};
+constexpr std::string_view MIN_PARAM_NAME               {"min"};
+constexpr std::string_view MAX_PARAM_NAME               {"max"};
+constexpr std::string_view PRESERVE_ORIGINAL_PARAM_NAME {"preserveOriginal"};
+constexpr std::string_view STREAM_TYPE_PARAM_NAME       {"streamType"};
+constexpr std::string_view START_MARKER_PARAM_NAME      {"startMarker"};
+constexpr std::string_view END_MARKER_PARAM_NAME        {"endMarker"};
 
 constexpr frozen::unordered_map<irs::string_ref, irs::analysis::ngram_token_stream_base::InputType, 2> STREAM_TYPE_CONVERT_MAP = {
   { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },

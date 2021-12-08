@@ -107,8 +107,8 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
     std::move(tokens));
 }
 
-constexpr VPackStringRef STOPWORDS_PARAM_NAME {"stopwords"};
-constexpr VPackStringRef HEX_PARAM_NAME {"hex"};
+constexpr std::string_view STOPWORDS_PARAM_NAME {"stopwords"};
+constexpr std::string_view HEX_PARAM_NAME {"hex"};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
