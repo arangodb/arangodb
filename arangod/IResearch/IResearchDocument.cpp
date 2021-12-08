@@ -973,7 +973,7 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
-    auto const valueSlice = storeFunc(_currentTypedAnalyzer? _currentTypedAnalyzer.get() : analyzer.get(),
+    auto const valueSlice = storeFunc(_currentTypedAnalyzer? _currentTypedAnalyzer.get() : _value._analyzer.get(),
                                       value, _buffer);
 
     if (!valueSlice.isNone()) {

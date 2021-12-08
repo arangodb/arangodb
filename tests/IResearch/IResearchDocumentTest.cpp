@@ -53,6 +53,7 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchVPackTermAttribute.h"
+#include "IResearch/GeoAnalyzer.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -506,6 +507,14 @@ class IResearchDocumentTest
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number-array",
         "iresearch-document-typed-array",
         arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")->slice(),
+        arangodb::iresearch::Features{});
+    EXPECT_TRUE(res.ok());
+
+    res = analyzers.emplace(
+        result,
+        arangodb::StaticStrings::SystemDatabase + "::my_geo",
+        "geojson",
+        arangodb::velocypack::Parser::fromJson("{\"type\": \"point\"}")->slice(),
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
   }
@@ -2990,6 +2999,127 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_object_prim
   };
 
   arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  it.reset(json->slice(), indexMeta);
+
+  size_t fieldIdx{};
+  for (auto& assertField : assertFields) {
+    SCOPED_TRACE(testing::Message("Field Idx: ") << (fieldIdx++));
+    ASSERT_TRUE(it.valid());
+    assertField(server, it);
+    ++it;
+  }
+
+  ASSERT_FALSE(it.valid());
+}
+
+TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
+  auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
+      R"({"fields" : [{"name": "boost"},
+                  {"name": "never_present", "analyzer": "my_geo"},
+                  {"name": "keys[*]"},
+                  {"name": "geo_field", "analyzer": "my_geo"},
+                  {"name": "keys2[*]", "analyzer": "my_geo"},
+                  {"name": "depth[*]"},
+                  {"name": "fields.fieldA.name", "analyzer": "iresearch-document-number"},
+                  {"name": "array[*].id"},
+                  {"name": "array[*].subobj.id", "analyzer": "my_geo"}]})");
+
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  std::string error;
+  ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
+                             error, sysVocbase.get()->name()));
+
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({
+    "nested": {"foo": "str"},
+    "keys": ["1", "2"],
+    "geo_field": { "type": "Point", "coordinates": [ 37.615895, 55.7039]},
+    "keys2": [{ "type": "Point", "coordinates": [37.615895, 55.7039]},
+              { "type": "Point", "coordinates": [37.615895, 55.7039]}],
+    "boost": 10,
+    "depth": [20, 30, 40],
+    "fields": {"fieldA" : {"name" : "1"}, "fieldB" : {"name" : "b"}},
+    "listValuation": "ignored",
+    "array": [
+      {"id": 1, "subobj": {"id": { "type": "Point", "coordinates": [ 37.615895, 55.7039]} }},
+      {"subobj": {"name": "foo" }, "id": "2"},
+      {"id": "3", "subobj": {"id": { "type": "Point", "coordinates": [ 37.615895, 55.7039]} }},
+      {"No_id": "3", "subobj": {"id": { "type": "Point", "coordinates": [ 37.615895, 55.7039]} }}],
+    "last_not_present": "ignored"})");
+
+  std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(server, *it,
+                                            mangleInvertedIndexStringIdentity("keys"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(server, *it,
+                                            mangleInvertedIndexStringIdentity("keys"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+            server, *it, "geo_field", "my_geo");
+      },
+      [](auto& server, auto const& it) {
+        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+            server, *it, "keys2", "my_geo");
+      },
+      [](auto& server, auto const& it) {
+        assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
+            server, *it, "keys2", "my_geo");
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("fields.fieldA.name"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("array.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(server, *it,
+                                            mangleInvertedIndexStringIdentity("array.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(server, *it,
+                                            mangleInvertedIndexStringIdentity("array.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<arangodb::iresearch::GeoJSONAnalyzer>(server, *it,
+                                                          "array.subobj.id",
+                                                          "my_geo");
+      },
+      [](auto& server, auto const& it) {
+        assertField<arangodb::iresearch::GeoJSONAnalyzer>(server, *it,
+                                                          "array.subobj.id",
+                                                          "my_geo");
+      },
+      [](auto& server, auto const& it) {
+        assertField<arangodb::iresearch::GeoJSONAnalyzer>(server, *it,
+                                                          "array.subobj.id",
+                                                          "my_geo");
+      },
+  };
+
+  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+                                                     arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
 
   size_t fieldIdx{};

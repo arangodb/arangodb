@@ -920,12 +920,12 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback,
   auto& server = _collection.vocbase().server();
   if (!server.hasFeature<DatabasePathFeature>()) {
     return {TRI_ERROR_INTERNAL,
-            "failure to find feature 'DatabasePath' while initializing link '" +
+            "failure to find feature 'DatabasePath' while initializing data store '" +
                 std::to_string(_id.id()) + "'"};
   }
   if (!server.hasFeature<FlushFeature>()) {
     return {TRI_ERROR_INTERNAL,
-            "failure to find feature 'FlushFeature' while initializing link '" +
+            "failure to find feature 'FlushFeature' while initializing data store '" +
                 std::to_string(_id.id()) + "'"};
   }
 
