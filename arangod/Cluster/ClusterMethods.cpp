@@ -42,8 +42,6 @@
 #include "Futures/Utilities.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
-#include "Graph/Traverser.h"
-#include "Graph/TraverserOptions.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
