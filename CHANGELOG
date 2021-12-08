@@ -1,12 +1,8 @@
-v3.8.6 (XXXX-XX-XX)
+v3.8.5 (XXXX-XX-XX)
 -------------------
 
 * Improve visibility in case of potential data corruption between primary index
   and actual document store in documents column family.
-
-
-v3.8.5 (XXXX-XX-XX)
--------------------
 
 * Added the following metrics for revision trees:
   - `arangodb_revision_tree_hibernations_total`: number of times a revision tree
