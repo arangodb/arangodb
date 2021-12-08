@@ -62,6 +62,7 @@
       'views': 'views',
       'view/:name': 'viewInfo',
       'view/:name/settings': 'viewSettings',
+      'view/:name/consolidation': 'viewConsolidation',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -1270,6 +1271,14 @@
 
       this.init.then(
         () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewConsolidation: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, { name }),
           document.getElementById('content')));
     },
 

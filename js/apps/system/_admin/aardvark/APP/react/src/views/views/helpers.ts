@@ -60,14 +60,14 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
     Info: {
       route: defaultRoute
     },
-    Links: {
-      route: `${defaultRoute}/links`
-    },
-    'Consolidation Policy': {
-      route: `${defaultRoute}/consolidationPolicy`
-    },
     Settings: {
       route: `${defaultRoute}/settings`
+    },
+    Consolidation: {
+      route: `${defaultRoute}/consolidation`
+    },
+    Links: {
+      route: `${defaultRoute}/links`
     },
     Raw: {
       route: `${defaultRoute}/raw`

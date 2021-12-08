@@ -2,7 +2,6 @@ import { FormProps } from "../../../utils/constants";
 import { BytesAccumConsolidationPolicy, TierConsolidationPolicy, ViewProperties } from "../constants";
 import React, { ChangeEvent } from "react";
 import { get } from "lodash";
-import { Cell, Grid } from "../../../components/pure-css/grid";
 import Select from "../../../components/pure-css/form/Select";
 import Textbox from "../../../components/pure-css/form/Textbox";
 import { getNumericFieldSetter, getNumericFieldValue } from "../../../utils/helpers";
@@ -14,12 +13,15 @@ const BytesAccumConsolidationPolicyForm = ({
                                            }: FormProps<BytesAccumConsolidationPolicy>) => {
   const threshold = get(formState, ['consolidationPolicy', 'threshold'], '');
 
-  return <Grid>
-    <Cell size={'1-2'}>
-      <Textbox type={'number'} label={'Threshold'} value={threshold} disabled={disabled}
+  return <tr className="tableRow" id="row_change-view-threshold">
+    <th className="collectionTh">
+      Threshold:
+    </th>
+    <th className="collectionTh">
+      <Textbox type={'number'} value={threshold} disabled={disabled}
                onChange={getNumericFieldSetter('consolidationPolicy.threshold', dispatch)}/>
-    </Cell>
-  </Grid>;
+    </th>
+  </tr>;
 };
 
 const TierConsolidationPolicyForm = ({
@@ -32,24 +34,46 @@ const TierConsolidationPolicyForm = ({
   const segmentsBytesMax = get(formState, ['consolidationPolicy', 'segmentsBytesMax'], '');
   const segmentsBytesFloor = get(formState, ['consolidationPolicy', 'segmentsBytesFloor'], '');
 
-  return <Grid>
-    <Cell size={'1-4'}>
-      <Textbox type={'number'} label={'Segments Min'} value={segmentsMin} disabled={disabled}
-               onChange={getNumericFieldSetter('consolidationPolicy.segmentsMin', dispatch)}/>
-    </Cell>
-    <Cell size={'1-4'}>
-      <Textbox type={'number'} label={'Segments Max'} value={segmentsMax} disabled={disabled}
-               onChange={getNumericFieldSetter('consolidationPolicy.segmentsMax', dispatch)}/>
-    </Cell>
-    <Cell size={'1-4'}>
-      <Textbox type={'number'} label={'Segments Bytes Max'} value={segmentsBytesMax} disabled={disabled}
-               onChange={getNumericFieldSetter('consolidationPolicy.segmentsBytesMax', dispatch)}/>
-    </Cell>
-    <Cell size={'1-4'}>
-      <Textbox type={'number'} label={'Segments Bytes Floor'} value={segmentsBytesFloor} disabled={disabled}
-               onChange={getNumericFieldSetter('consolidationPolicy.segmentsBytesFloor', dispatch)}/>
-    </Cell>
-  </Grid>;
+  return <>
+    <tr className="tableRow" id="row_change-view-segmentsMin">
+      <th className="collectionTh">
+        Segments Min:
+      </th>
+      <th className="collectionTh">
+        <Textbox type={'number'} value={segmentsMin} disabled={disabled}
+                 onChange={getNumericFieldSetter('consolidationPolicy.segmentsMin', dispatch)}/>
+      </th>
+    </tr>
+
+    <tr className="tableRow" id="row_change-view-segmentsMax">
+      <th className="collectionTh">
+        Segments Max:
+      </th>
+      <th className="collectionTh">
+        <Textbox type={'number'} value={segmentsMax} disabled={disabled}
+                 onChange={getNumericFieldSetter('consolidationPolicy.segmentsMax', dispatch)}/>
+      </th>
+    </tr>
+    <tr className="tableRow" id="row_change-view-segmentsBytesMax">
+      <th className="collectionTh">
+        Segments Bytes Max:
+      </th>
+      <th className="collectionTh">
+        <Textbox type={'number'} value={segmentsBytesMax} disabled={disabled}
+                 onChange={getNumericFieldSetter('consolidationPolicy.segmentsBytesMax', dispatch)}/>
+      </th>
+    </tr>
+
+    <tr className="tableRow" id="row_change-view-segmentsBytesFloor">
+      <th className="collectionTh">
+        Segments Bytes Floor:
+      </th>
+      <th className="collectionTh">
+        <Textbox type={'number'} value={segmentsBytesFloor} disabled={disabled}
+                 onChange={getNumericFieldSetter('consolidationPolicy.segmentsBytesFloor', dispatch)}/>
+      </th>
+    </tr>
+  </>;
 };
 
 const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<ViewProperties>) => {
@@ -65,30 +89,40 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
 
   const policyType = get(formState, ['consolidationPolicy', 'type'], 'tier');
 
-  return <Grid>
-    <Cell size={'1-4'}>
-      <Textbox type={'number'} label={'Consolidation Interval (msec)'} disabled={disabled}
-               value={getNumericFieldValue(formState.consolidationIntervalMsec)}
-               onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
-    </Cell>
-    <Cell size={'1-4'}>
-      <Select label={'Consolidation Policy Type'} disabled={disabled} value={policyType}
-              onChange={updateConsolidationPolicyType}>
-        <option key={'tier'} value={'tier'}>Tier</option>
-        <option key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
-      </Select>
-    </Cell>
-    <Cell size={'1-2'}/>
-    <Cell size={'1'}>
-      {
-        policyType === 'tier'
-          ? <TierConsolidationPolicyForm formState={formState as TierConsolidationPolicy} dispatch={dispatch}
-                                         disabled={disabled}/>
-          : <BytesAccumConsolidationPolicyForm formState={formState as BytesAccumConsolidationPolicy}
-                                               dispatch={dispatch} disabled={disabled}/>
-      }
-    </Cell>
-  </Grid>;
+  return <table>
+    <tbody>
+    <tr className="tableRow" id="row_change-view-consolidationIntervalMsec">
+      <th className="collectionTh">
+        Consolidation Interval (msec):
+      </th>
+      <th className="collectionTh">
+        <Textbox type={'number'} disabled={disabled}
+                 value={getNumericFieldValue(formState.consolidationIntervalMsec)}
+                 onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
+      </th>
+    </tr>
+
+    <tr className="tableRow" id="row_change-view-policyType">
+      <th className="collectionTh">
+        Consolidation Policy Type:
+      </th>
+      <th className="collectionTh">
+        <Select disabled={disabled} value={policyType} onChange={updateConsolidationPolicyType}>
+          <option key={'tier'} value={'tier'}>Tier</option>
+          <option key={'bytes_accum'} value={'bytes_accum'}>Bytes Accum [DEPRECATED]</option>
+        </Select>
+      </th>
+    </tr>
+
+    {
+      policyType === 'tier'
+        ? <TierConsolidationPolicyForm formState={formState as TierConsolidationPolicy} dispatch={dispatch}
+                                       disabled={disabled}/>
+        : <BytesAccumConsolidationPolicyForm formState={formState as BytesAccumConsolidationPolicy}
+                                             dispatch={dispatch} disabled={disabled}/>
+    }
+    </tbody>
+  </table>;
 };
 
 export default ConsolidationPolicyForm;
