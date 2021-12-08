@@ -223,6 +223,13 @@ set(immer_BUILD_DOCS OFF CACHE BOOL "don't docs")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
 
 ################################################################################
+## FMT
+################################################################################
+
+set(FMT_VERSION "8.0.1")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt/fmt-${FMT_VERSION} EXCLUDE_FROM_ALL)
+
+################################################################################
 ## DATE
 ################################################################################
 
