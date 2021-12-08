@@ -135,7 +135,7 @@ class WindowExecutorTest
 
   auto buildExecutorInfos() -> WindowExecutorInfos {
     WindowInput const& input = getWindowParams();
-    std::vector<std::string_view> aggregateTypes{input.name};
+    std::vector<std::string> aggregateTypes{input.name};
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{2, input.inReg}};
 
     return WindowExecutorInfos(input.bounds, input.rangeReg,
