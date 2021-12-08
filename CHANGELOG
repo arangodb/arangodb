@@ -1,6 +1,10 @@
 v3.7.17 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-611: In some cases AQL queries, in particular in a cluster,
+  reported the wrong fullCount when the optimizer rule(s)
+  `late-document-materialization and/or `sort-limit` were active.
+
 * Make `db.<collection>.figures(true)` operate on the same snapshot when
   counting the number of documents in the documents column family and the
   indexes. This ensures consistency for the results of a single figures result.
