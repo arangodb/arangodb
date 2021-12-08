@@ -137,8 +137,8 @@ void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
   builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
-  builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
-  builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
+  builder.add(VPackValue("lastErrorReason"));
+  lastErrorReason.toVelocyPack(builder);
   builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS.count()));
   builder.add(VPackValue("state"));
   internalState.toVelocyPack(builder);
@@ -148,7 +148,7 @@ auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStat
   FollowerStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
-  stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
+  stats.lastErrorReason = AppendEntriesErrorReason::fromVelocyPack(slice.get("lastErrorReason"));
   stats.lastRequestLatencyMS = std::chrono::duration<double, std::milli>{
       slice.get("lastRequestLatencyMS").getDouble()};
   stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));
