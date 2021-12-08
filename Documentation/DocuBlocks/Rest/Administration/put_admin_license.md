@@ -9,6 +9,9 @@
 @RESTQUERYPARAM{force,boolean,optional}
 Set to `true` to change the license even if it expires sooner than the current one.
 
+@RESTALLBODYPARAM{license,string,required}
+The body has to contain the hexadecimal encoded string.
+
 @RESTDESCRIPTION
 Set a new license for an Enterprise Edition instance.
 Can be called on single servers, Coordinators, and DB-Servers.
