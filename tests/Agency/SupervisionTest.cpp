@@ -300,17 +300,6 @@ static std::shared_ptr<VPackBuilder> runEnforceReplication(Node const& snap) {
   return envelope;
 }
 
-static std::shared_ptr<VPackBuilder> runCleanupHotbackupTransferJobs(
-    Node const& snap) {
-  auto envelope = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder guard(envelope.get());
-    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
-      snap, envelope);
-  }
-  return envelope;
-}
-
 static void checkSupervisionJob(VPackSlice v, std::string const& type,
                                 std::string const& database,
                                 std::string const& coll,
@@ -435,10 +424,19 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop_distributeshardslike) {
   EXPECT_EQ(content.length(), 0);
 }
 
+static void makeHotbackupTransferJob(Node& snapshot, size_t year, size_t id,
+                                     char const* job) {
+  std::string st = std::string(job)
+      + "\"Timestamp\": \"" + std::to_string(year)
+      + "-02-25T12:38:29Z\"\n}";
+  snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(id))
+    = createNode(st.c_str());
+}
+
 TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   for (size_t i = 0; i < 200; ++i) {
-    char const* job =
-          R"=(
+    makeHotbackupTransferJob(_snapshot, 1900 + i, 1000000 + i,
+R"=(
 {
   "DBServers": {
     "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
@@ -459,16 +457,16 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
     }
   },
   "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
-)=";
-    std::string st = std::string(job)
-        + "\"Timestamp\": \"" + std::to_string(1900 + i)
-        + "-02-25T12:38:29Z\"\n}";
-    _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
-      = createNode(st.c_str());
-  }
-  std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
-      _snapshot);
+)=");
+  };
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
   VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 1);
+  content = content[0];
   EXPECT_EQ(content.length(), 100);
   // We expect the first 100 jobs to be deleted:
   for (size_t i = 0; i < 100; ++i) {
@@ -482,8 +480,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
 
 TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
   for (size_t i = 0; i < 200; ++i) {
-    char const* job =
-          R"=(
+    makeHotbackupTransferJob(_snapshot, 1900 + i, 1000000 + i,
+R"=(
 {
   "DBServers": {
     "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
@@ -492,16 +490,16 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
     }
   },
   "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
-)=";
-    std::string st = std::string(job)
-        + "\"Timestamp\": \"" + std::to_string(1900 + i)
-        + "-02-25T12:38:29Z\"\n}";
-    _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
-      = createNode(st.c_str());
+)=");
   }
-  std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
-      _snapshot);
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
   VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 1);
+  content = content[0];
   EXPECT_EQ(content.length(), 100);
   // We expect the first 100 jobs to be deleted:
   for (size_t i = 0; i < 100; ++i) {
@@ -511,6 +509,297 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
     EXPECT_TRUE(guck.hasKey("op"));
     EXPECT_EQ(guck.get("op").copyString(), "delete");
   }
+}
+
+TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_diverse) {
+  // First create the jobs which shall remain:
+  for (size_t i = 0; i < 100; ++i) {
+    makeHotbackupTransferJob(_snapshot, 2000 + i, 2000000 + i,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+  }
+  // Now create a selection of jobs which ought to be removed, since they
+  // are old:
+
+  // An old job which is ongoing:
+  makeHotbackupTransferJob(_snapshot, 1900, 1000000,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 3
+      },
+      "Status": "STARTED"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "Status": "COMPLETED"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+
+  // An old job which is has fewer DBServers:
+  makeHotbackupTransferJob(_snapshot, 1901, 1000001,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 3
+      },
+      "Status": "STARTED"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+
+  // An old job which has never started:
+  makeHotbackupTransferJob(_snapshot, 1902, 1000002,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+
+  // An old job which is partially failed:
+  makeHotbackupTransferJob(_snapshot, 1903, 1000003,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 3
+      },
+      "Status": "FAILED"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "Status": "COMPLETED"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+
+  // An old job which is partially failed:
+  makeHotbackupTransferJob(_snapshot, 1904, 1000004,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 3
+      },
+      "Status": "FAILED"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+
+  // Now a new style job which is ongoing, must not be deleted:
+  makeHotbackupTransferJob(_snapshot, 1905, 1000005,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 3
+      },
+      "rebootId": 1,
+      "Status": "STARTED"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "rebootId": 1,
+      "Status": "STARTED"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+
+  // Now a new style job which has not even started:
+  makeHotbackupTransferJob(_snapshot, 1906, 1000006,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Status": "NEW"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Status": "NEW"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
+  VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 1);
+  content = content[0];
+  EXPECT_EQ(content.length(), 5);
+  // We expect the oldest suitable jobs to be deleted:
+  for (size_t i = 0; i < 5; ++i) {
+    std::string jobId = "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
+    VPackSlice guck = content.get(jobId);
+    EXPECT_TRUE(guck.isObject());
+    EXPECT_TRUE(guck.hasKey("op"));
+    EXPECT_EQ(guck.get("op").copyString(), "delete");
+  }
+}
+
+TEST_F(SupervisionTestClass, cleanup_hotback_transfer_locks) {
+  // Add 5 old completed transfer jobs:
+  for (size_t i = 0; i < 5; ++i) {
+    makeHotbackupTransferJob(_snapshot, 1900 + i, 1000000 + i,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "Status": "COMPLETED"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "Status": "COMPLETED"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+  };
+  // Add 200 old transfer locks:
+  for (size_t i = 0; i < 200; ++i) {
+    _snapshot.getOrCreate("/Target/HotBackup/Transfers/Upload/xyz" + std::to_string(i) + "abc")
+        = createNode(R"=(
+{
+  "some": 1,
+  "arbitrary": 2,
+  "data": 3
+}
+          )=");
+  }
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
+  VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 2);
+  VPackSlice action = content[0];
+  EXPECT_TRUE(action.isObject());
+  EXPECT_EQ(action.length(), 1);
+  // We expect all transfer locks to be deleted:
+  VPackSlice guck = action.get("/Target/HotBackup/Transfers/");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_TRUE(guck.hasKey("op"));
+  EXPECT_EQ(guck.get("op").copyString(), "set");
+  EXPECT_TRUE(guck.hasKey("new"));
+  VPackSlice guck2 = guck.get("new");
+  EXPECT_TRUE(guck2.isObject());
+  EXPECT_EQ(guck2.length(), 0);
+  // The second item is an enormous precondition:
+  VPackSlice precond = content[1];
+  EXPECT_TRUE(precond.isObject());
+  EXPECT_EQ(precond.length(), 1);
+  guck = precond.get("/Target/HotBackup/TransferJobs/");
+  EXPECT_TRUE(guck.isObject());
+}
+
+TEST_F(SupervisionTestClass, cleanup_hotback_transfer_locks_dont) {
+  // Add 5 new running transfer jobs:
+  for (size_t i = 0; i < 5; ++i) {
+    makeHotbackupTransferJob(_snapshot, 1900 + i, 1000000 + i,
+R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 4
+      },
+      "rebootId": 1,
+      "Status": "RUNNING"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "rebootId": 1,
+      "Status": "COMPLETED"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=");
+  };
+  // Add 200 old transfer locks:
+  for (size_t i = 0; i < 200; ++i) {
+    _snapshot.getOrCreate("/Target/HotBackup/Transfers/Upload/xyz" + std::to_string(i) + "abc")
+        = createNode(R"=(
+{
+  "some": 1,
+  "arbitrary": 2,
+  "data": 3
+}
+          )=");
+  }
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
+  EXPECT_TRUE(envelope->isEmpty());
 }
 
 TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {

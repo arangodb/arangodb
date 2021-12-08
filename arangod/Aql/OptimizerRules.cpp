@@ -1721,7 +1721,6 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
     if (!n->isDeterministic()) {
       // we will only move expressions up that cannot throw and that are
       // deterministic
-
       continue;
     }
     if (n->getType() == EN::CALCULATION) {
@@ -1729,16 +1728,11 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
       if (::accessesCollectionVariable(plan.get(), nn, vars)) {
         isAccessCollection = true;
       }
-    } else {
-      // if it's a subquery node, it cannot move upwards if there's a
-      // modification keyword in the subquery e.g.
-      // INSERT would not be scope-limited by the outermost subqueries, so we could end up
-      // inserting a smaller amount of documents than what's actually proposed in the query.
-      auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
-      if (nn->isModificationNode()) { 
-        continue;
-      }
-    }
+    } 
+    // note: if it's a subquery node, it cannot move upwards if there's a
+    // modification keyword in the subquery e.g.
+    // INSERT would not be scope-limited by the outermost subqueries, so we could end up
+    // inserting a smaller amount of documents than what's actually proposed in the query.
 
     neededVars.clear();
     n->getVariablesUsedHere(neededVars);

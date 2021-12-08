@@ -126,6 +126,38 @@ TEST(LogStatusTest, commit_fail_reason) {
   EXPECT_ANY_THROW({CommitFailReason::fromVelocyPack(jsonSlice);});
 }
 
+TEST(LogStatusTest, append_entries_error_reason) {
+  // Default, no error
+  {
+    AppendEntriesErrorReason reason;
+    VPackBuilder builder;
+    reason.toVelocyPack(builder);
+    auto slice = builder.slice();
+    auto fromVPack = AppendEntriesErrorReason::fromVelocyPack(slice);
+    EXPECT_EQ(reason, fromVPack);
+  }
+
+  // Error and details
+  {
+    auto jsonBuffer = R"({
+      "error": "MessageOutdated",
+      "errorMessage": "Message is outdated",
+      "details": "foo bar"
+    })"_vpack;
+    auto jsonSlice = velocypack::Slice(jsonBuffer.data());
+    auto reason = AppendEntriesErrorReason{
+        AppendEntriesErrorReason::ErrorType::kMessageOutdated,
+        "foo bar"
+    };
+    VPackBuilder builder;
+    reason.toVelocyPack(builder);
+    auto slice = builder.slice();
+    EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
+        << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
+    EXPECT_EQ(reason, AppendEntriesErrorReason::fromVelocyPack(jsonSlice));
+  }
+}
+
 TEST(LogStatusTest, follower_statistics_exceptions) {
   // Missing commitIndex
   EXPECT_ANY_THROW({
@@ -135,7 +167,7 @@ TEST(LogStatusTest, follower_statistics_exceptions) {
         "term": 2,
         "index": 4
       },
-      "lastErrorReason": 0,
+      "lastErrorReason": {"error": "None"},
       "lastRequestLatencyMS": 0.012983,
       "state": {
         "state": "up-to-date"
@@ -151,7 +183,7 @@ TEST(LogStatusTest, follower_statistics_exceptions) {
         "term": 2,
         "index": 4
       },
-      "lastErrorReason": 0,
+      "lastErrorReason": {"error": "None"},
       "lastRequestLatencyMS": 0.012983,
       "state": {
         "state": "up-to-date"
@@ -174,26 +206,18 @@ TEST(LogStatusTest, leader_status) {
         "PRMR-45c56239-6a83-4ab0-961e-9adea5078286",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
         "commitIndex": 4,
-        "spearhead": {
-          "term": 2,
-          "index": 4
-        },
-        "lastErrorReason": 0,
+        "spearhead": {"term": 2, "index": 4},
+        "lastErrorReason": {"error": "None"},
         "lastRequestLatencyMS": 0.012983,
-        "state": {
-          "state": "up-to-date"
-        }
+        "state": {"state": "up-to-date"}
         })"_vpack.data()))
       },
       {
         "PRMR-13608015-4a2c-46aa-985f-73b6b8a73568",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
           "commitIndex": 3,
-          "spearhead": {
-            "term": 2,
-            "index": 3
-          },
-          "lastErrorReason": 7,
+          "spearhead": {"term": 2, "index": 3},
+          "lastErrorReason": {"error": "CommunicationError", "details": "foo"},
           "lastRequestLatencyMS": 11159.799272,
           "state": {
             "state": "request-in-flight",
