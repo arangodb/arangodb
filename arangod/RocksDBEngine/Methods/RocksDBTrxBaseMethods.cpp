@@ -111,9 +111,8 @@ rocksdb::SequenceNumber RocksDBTrxBaseMethods::GetSequenceNumber() const noexcep
   return _db->GetLatestSequenceNumber();
 }
 
-/// @brief add an operation for a transaction collection
-Result RocksDBTrxBaseMethods::addOperation(DataSourceId cid, RevisionId revisionId,
-                                           TRI_voc_document_operation_e operationType) {
+/// @brief add an operation for a transaction
+Result RocksDBTrxBaseMethods::addOperation(TRI_voc_document_operation_e operationType) {
   TRI_IF_FAILURE("addOperationSizeError") {
     return Result(TRI_ERROR_RESOURCE_LIMIT);
   }
@@ -125,7 +124,7 @@ Result RocksDBTrxBaseMethods::addOperation(DataSourceId cid, RevisionId revision
     "aborting transaction because maximal transaction size limit of " +
         std::to_string(_state->options().maxTransactionSize) +
         " bytes is reached";
-    return Result(TRI_ERROR_RESOURCE_LIMIT, message);
+    return Result(TRI_ERROR_RESOURCE_LIMIT, std::move(message));
   }
 
   switch (operationType) {

@@ -377,10 +377,12 @@ class Methods {
                                               arangodb::velocypack::Slice value);
 
  private:
+  // perform a (deferred) intermediate commit if required
+  Result performIntermediateCommitIfRequired(DataSourceId collectionId);
+
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
-
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              velocypack::Builder& builder, DataSourceId cid,
                              arangodb::velocypack::StringRef const& key, RevisionId rid,
@@ -500,12 +502,11 @@ class Methods {
   bool _mainTransaction;
 
   Future<Result> replicateOperations(
-      LogicalCollection* collection,
+      std::shared_ptr<LogicalCollection> collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
       std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops,
-      std::unordered_set<size_t> const& excludePositions,
-      FollowerInfo& followerInfo);
+      std::unordered_set<size_t> excludePositions);
 
   /// @brief transaction hints
   transaction::Hints _localHints;

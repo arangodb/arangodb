@@ -72,6 +72,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server, in
       _typeExport("json"),
       _queryMaxRuntime(0.0),
       _useMaxRuntime(false),
+      _escapeCsvFormulae(true),
       _xgmmlLabelOnly(false),
       _overwrite(false),
       _progress(true),
@@ -119,6 +120,11 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--documents-per-batch", "number of documents to return in each batch",
                      new UInt64Parameter(&_documentsPerBatch))
                      .setIntroducedIn(30800);
+  
+  options->addOption("--escape-csv-formulae", "prefix string cells in CSV output with extra single quote "
+                     "to prevent formula injection",
+                     new BooleanParameter(&_escapeCsvFormulae))
+                     .setIntroducedIn(30805);
 
   options->addOption("--overwrite", "overwrite data in output directory",
                      new BooleanParameter(&_overwrite));
@@ -449,13 +455,13 @@ void ExportFeature::writeFirstLine(ManagedDirectory::File & fd, std::string cons
     bool isFirstValue = true;
     for (auto const& str : _csvFields) {
       if (isFirstValue) {
-        firstLine += str;
         isFirstValue = false;
       } else {
-        firstLine += "," + str;
+        firstLine.push_back(',');
       }
+      appendCsvStringValue(firstLine, str);
     }
-    firstLine += "\n";
+    firstLine.push_back('\n');
     writeToFile(fd, firstLine);
   }
 }
@@ -490,6 +496,7 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
       writeToFile(fd, line);
     }
   } else if (_typeExport == "csv") {
+    std::string value;
     for (auto const& doc : it) {
       line.clear();
       bool isFirstValue = true;
@@ -502,38 +509,30 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
         }
 
         VPackSlice val = doc.get(key);
-        if (!val.isNone()) {
-          std::string value;
-          bool escape = false;
-          if (val.isArray() || val.isObject()) {
-            value = val.toJson();
-            escape = true;
+        if (val.isNone()) {
+          continue;
+        }
+        bool escape = false;
+        if (val.isArray() || val.isObject()) {
+          value = val.toJson();
+          escape = true;
+        } else if (val.isNull() || val.isBoolean() || val.isNumber()) {
+          value = val.toString();
+          escape = false;
+        } else {
+          if (val.isString()) {
+            value = val.copyString();
           } else {
-            if (val.isString()) {
-              value = val.copyString();
-              escape = true;
-            } else {
-              value = val.toString();
-            }
+            value = val.toString();
           }
+          escape = true;
+        }
 
-          if (escape) {
-            value = std::regex_replace(value, std::regex("\""), "\"\"");
-
-            if (value.find(',') != std::string::npos ||
-                value.find('\"') != std::string::npos ||
-                value.find('\r') != std::string::npos ||
-                value.find('\n') != std::string::npos) {
-              // escape value and put it in quotes
-              line.push_back('\"');
-              line.append(value);
-              line.push_back('\"');
-
-              continue;
-            }
-          }
-
+        if (escape) {
+          appendCsvStringValue(line, value);
+        } else {
           // write unescaped
+          TRI_ASSERT(!val.isString());
           line.append(value);
         }
       }
@@ -832,6 +831,25 @@ void ExportFeature::xgmmlWriteOneAtt(ManagedDirectory::File & fd,
     xmlTag = "  </att>\n";
     writeToFile(fd, xmlTag);
   }
+}
+
+void ExportFeature::appendCsvStringValue(std::string& output, std::string const& value) {
+  // escape value and put it in quotes
+  output.push_back('\"');
+  // if we are going to emit a string, we have to take some security precautions.
+  // for example, to prevent formula injection in MS Excel and LibreOffice calc, any
+  // string cells starting with one of the characters =, +, -, @ need to be escaped
+  // with an extra single quote (') so that their contents will not be interpreted
+  // as formulae 🙄
+  // https://infosecwriteups.com/formula-injection-exploiting-csv-functionality-cd3d8efd02ec
+  if (_escapeCsvFormulae && !value.empty()) {
+    bool escapeFormula = value.front() == '=' || value.front() == '+' || value.front() == '-' || value.front() == '@';
+    if (escapeFormula) {
+      output.push_back('\'');
+    }
+  }
+  output.append(basics::StringUtils::replace(value, "\"", "\"\""));
+  output.push_back('\"');
 }
 
 }  // namespace arangodb
