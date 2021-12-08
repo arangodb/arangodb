@@ -65,8 +65,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
 
   {
     auto result = AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
-                                      AppendEntriesErrorReason::NONE,
-                                      follower->currentRequest().messageId};
+                                      {}, follower->currentRequest().messageId};
     follower->resolveRequest(std::move(result));
   }
 

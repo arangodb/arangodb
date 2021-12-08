@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Basics/voc-errors.h"
+
 #include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
@@ -61,8 +63,7 @@ struct FakeFollower : AbstractFollower {
   void handleAllRequestsWithOk() {
     while (hasPendingRequests()) {
       resolveRequest(AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
-                                         AppendEntriesErrorReason::NONE,
-                                         currentRequest().messageId});
+                                         {}, currentRequest().messageId});
     }
   }
 

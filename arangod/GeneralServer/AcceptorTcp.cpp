@@ -175,7 +175,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler)));
+  _acceptor.async_accept(socket, peer, std::move(handler)); //withLogContext(std::move(handler)));
 }
 
 template <>
@@ -269,7 +269,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler)));
+  _acceptor.async_accept(socket, peer, std::move(handler)); //withLogContext(std::move(handler)));
 }
 }  // namespace rest
 }  // namespace arangodb
