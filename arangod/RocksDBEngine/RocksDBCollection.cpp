@@ -212,14 +212,16 @@ struct TruncateTimeTracker : public TimeTracker {
 void reportPrimaryIndexInconsistency(
     arangodb::Result const& res,
     arangodb::velocypack::StringRef const& key,
-    arangodb::LocalDocumentId const& rev) {
+    arangodb::LocalDocumentId const& rev,
+    arangodb::LogicalCollection const& collection) {
 
   if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     // Scandal! A primary index entry is pointing to nowhere! Let's report
     // this to the authorities immediately:
     LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
         << "Found primary index entry for which there is no actual "
-           "document: _key=" << key << ", _rev=" << rev.id();
+           "document: collection=" << collection.name() << ", _key=" 
+        << key << ", _rev=" << rev.id();
     TRI_ASSERT(false);
   }
 }
@@ -977,7 +979,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->ensureSnapshot());
-  ::reportPrimaryIndexInconsistency(res, key, documentId);
+  ::reportPrimaryIndexInconsistency(res, key, documentId, _logicalCollection);
   return res;
 }
 
@@ -1231,7 +1233,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
     /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {
-    ::reportPrimaryIndexInconsistency(res, keyStr, oldDocumentId);
+    ::reportPrimaryIndexInconsistency(res, keyStr, oldDocumentId, _logicalCollection);
     return res;
   }
 
@@ -1348,7 +1350,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   }
 
   Result res = remove(trx, documentId, expectedId, previousMdr, options);
-  ::reportPrimaryIndexInconsistency(res, keyStr, documentId);
+  ::reportPrimaryIndexInconsistency(res, keyStr, documentId, _logicalCollection);
   return res;
 }
 
