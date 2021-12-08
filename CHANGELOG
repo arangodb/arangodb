@@ -30,7 +30,6 @@ devel
   the read operation could erroneously return a "document not found" error
   although the document actually existed. This only happened for single
   document operations, i.e., no transactions or AQL queries.
->>>>>>> 545754ed6abfae20af4b6091f8a92d2014610717
 
 * Fix GitHub issue #15084. Fixed a potential use-after-free on Windows for
   queries that used the NeighborsEnumerator (though other PathEnumerators
