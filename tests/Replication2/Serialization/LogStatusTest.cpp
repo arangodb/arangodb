@@ -71,7 +71,7 @@ TEST(LogStatusTest, commit_fail_reason) {
   auto jsonBuffer = R"({
     "reason": "NothingToCommit"
   })"_vpack;
-  auto jsonSlice = velocypack::Slice(jsonBuffer.data());
+  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
             << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
@@ -90,7 +90,7 @@ TEST(LogStatusTest, commit_fail_reason) {
   EXPECT_EQ(reason, fromVPack);
 
   jsonBuffer = R"({"xyz": "NothingToCommit", "reason": "xyz"})"_vpack;
-  jsonSlice = velocypack::Slice(jsonBuffer.data());
+  jsonSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_ANY_THROW({CommitFailReason::fromVelocyPack(jsonSlice);});
 }
 
@@ -112,7 +112,7 @@ TEST(LogStatusTest, append_entries_error_reason) {
       "errorMessage": "Message is outdated",
       "details": "foo bar"
     })"_vpack;
-    auto jsonSlice = velocypack::Slice(jsonBuffer.data());
+    auto jsonSlice = velocypack::Slice(jsonBuffer->data());
     auto reason = AppendEntriesErrorReason{
         AppendEntriesErrorReason::ErrorType::kMessageOutdated,
         "foo bar"
