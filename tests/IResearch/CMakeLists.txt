@@ -100,7 +100,6 @@ target_include_directories(arangodbtests-iresearch PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
   ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
   ${PROJECT_SOURCE_DIR}/tests
-  ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # add these includes as system includes because otherwise
