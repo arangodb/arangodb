@@ -5,6 +5,9 @@ devel
   tests. A test file that did not perform any test, but only had a function to 
   sleep, was removed. Two test files were renamed so they would not be skipped.
 
+* Fix BTS-535: TakeoverShardLeadership waits properly for Current data in
+  ClusterInfo. This avoids a fake warning and fake test failure.
+
 * APM-256: make arangoexport escape potential formulae in CSV exports.
   This addresses a potential security issue when exporting specially
   crafted documents to CSV, opening the CSV file in MS Excel or OpenOffice
