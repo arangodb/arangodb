@@ -74,7 +74,7 @@ auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId, Rebo
                          LogId logId, agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result;
 
-struct ParticipantStateTuple : implement_compare<ParticipantStateTuple> {
+struct ParticipantStateTuple {
   LogIndex index;
   ParticipantId id;
   bool failed = false;
@@ -84,11 +84,11 @@ struct ParticipantStateTuple : implement_compare<ParticipantStateTuple> {
   [[nodiscard]] auto isForced() const noexcept -> bool;
   [[nodiscard]] auto isFailed() const noexcept -> bool;
 
-  friend auto operator<=(ParticipantStateTuple const&, ParticipantStateTuple const&) noexcept -> bool;
+  friend auto operator<=>(ParticipantStateTuple const&, ParticipantStateTuple const&) noexcept;
   friend auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
 };
 
-auto operator<=(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept -> bool;
+auto operator<=>(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept;
 auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
 
 struct CalculateCommitIndexOptions {

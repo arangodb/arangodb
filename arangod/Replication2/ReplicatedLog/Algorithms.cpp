@@ -31,6 +31,7 @@
 
 #include <type_traits>
 #include <random>
+#include <tuple>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -356,14 +357,8 @@ auto ParticipantStateTuple::isFailed() const noexcept -> bool {
   return failed;
 };
 
-auto operator<=(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept -> bool {
-  if (left.index < right.index) {
-    return true;
-  } else if (left.index==right.index) {
-    return left.id <= right.id;
-  } else {
-    return false;
-  }
+auto operator<=>(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept {
+  return std::tie(left.index, left.id) <=> std::tie(right.index, right.id);
 }
 
 algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(

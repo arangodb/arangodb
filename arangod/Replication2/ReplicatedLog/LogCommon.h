@@ -58,31 +58,6 @@ class Slice;
 
 namespace arangodb::replication2 {
 
-/**
- * This implements all comparsion operators for a type `T` with another type
- * `S`, given that `operator<=(T const&, S const&)` is available.
- * @tparam T
- * @tparam S defaults to T
- */
-template <typename T, typename S = T>
-struct implement_compare {
-  [[nodiscard]] friend auto operator==(T const& left, S const& right) -> bool {
-    return left <= right && right <= left;
-  }
-  [[nodiscard]] friend auto operator!=(T const& left, S const& right) -> bool {
-    return !(left == right);
-  }
-  [[nodiscard]] friend auto operator<(T const& left, S const& right) -> bool {
-    return !(right <= left);
-  }
-  [[nodiscard]] friend auto operator>=(T const& left, S const& right) -> bool {
-    return right <= left;
-  }
-  [[nodiscard]] friend auto operator>(T const& left, S const& right) -> bool {
-    return right < left;
-  }
-};
-
 struct LogIndex {
   constexpr LogIndex() noexcept : value{0} {}
   constexpr explicit LogIndex(std::uint64_t value) noexcept : value{value} {}
