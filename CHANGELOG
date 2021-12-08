@@ -1,8 +1,31 @@
-v3.8.4 (XXXX-XX-XX)
+v3.8.6 (XXXX-XX-XX)
 -------------------
 
 * Improve visibility in case of potential data corruption between primary index
   and actual document store in documents column family.
+
+
+v3.8.5 (XXXX-XX-XX)
+-------------------
+
+* Added the following metrics for revision trees:
+  - `arangodb_revision_tree_hibernations_total`: number of times a revision tree
+    was compressed in RAM and set to hibernation
+  - `arangodb_revision_tree_resurrections_total`: number of times a revision
+    tree was resurrected from hibernation and uncompressed in RAM
+  - `arangodb_revision_tree_memory_usage`: total memory usage (in bytes) by all
+    active revision trees
+
+* Added metric `rocksdb_wal_sequence` to track the current tip of the WAL's
+  sequence number.
+
+
+v3.8.4 (2021-11-30)
+-------------------
+
+* Cleanup and properly fail hotbackup upload and download jobs if a dbserver
+  fails or is restarted during the transfer. This gets rid of upload and
+  download blockages in these circumstances.
 
 * Reduce memory usage for in-memory revision trees. Previously, a revision tree
   instance for a non-empty collection/shard was using 4 MB of memory when

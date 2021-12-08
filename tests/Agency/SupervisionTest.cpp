@@ -437,10 +437,9 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop_distributeshardslike) {
 
 TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   for (size_t i = 0; i < 200; ++i) {
-    _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
-      = createNode(R"=(
+    char const* job =
+          R"=(
 {
-  "Timestamp": "2021-02-25T12:38:29Z",
   "DBServers": {
     "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
       "Progress": {
@@ -459,13 +458,207 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
       "Status": "COMPLETED"
     }
   },
-  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0"
-}
-        )=");
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=";
+    std::string st = std::string(job)
+        + "\"Timestamp\": \"" + std::to_string(1900 + i)
+        + "-02-25T12:38:29Z\"\n}";
+    _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
+      = createNode(st.c_str());
   }
   std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
       _snapshot);
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 100);
+  // We expect the first 100 jobs to be deleted:
+  for (size_t i = 0; i < 100; ++i) {
+    std::string jobId = "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
+    VPackSlice guck = content.get(jobId);
+    EXPECT_TRUE(guck.isObject());
+    EXPECT_TRUE(guck.hasKey("op"));
+    EXPECT_EQ(guck.get("op").copyString(), "delete");
+  }
+}
+
+TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
+  for (size_t i = 0; i < 200; ++i) {
+    char const* job =
+          R"=(
+{
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0",
+)=";
+    std::string st = std::string(job)
+        + "\"Timestamp\": \"" + std::to_string(1900 + i)
+        + "-02-25T12:38:29Z\"\n}";
+    _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
+      = createNode(st.c_str());
+  }
+  std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
+      _snapshot);
+  VPackSlice content = envelope->slice();
+  EXPECT_EQ(content.length(), 100);
+  // We expect the first 100 jobs to be deleted:
+  for (size_t i = 0; i < 100; ++i) {
+    std::string jobId = "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
+    VPackSlice guck = content.get(jobId);
+    EXPECT_TRUE(guck.isObject());
+    EXPECT_TRUE(guck.hasKey("op"));
+    EXPECT_EQ(guck.get("op").copyString(), "delete");
+  }
+}
+
+TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
+  // We put in three transfer jobs. One of the DBServers is healthy
+  // and its rebootId has not changed ==> nothing ought to be done.
+  // For the other ones either the dbserver is FAILED or its rebootId
+  // has changed, in this case we want the job aborted and the lock
+  // removed.
+  _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1234567))
+      = createNode(R"=(
+{
+  "Timestamp": "2021-02-25T12:38:29Z",
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 4
+      },
+      "rebootId": 1,
+      "lockLocation": "Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27",
+      "Status": "RUNNING"
+    },
+    "PRMR-fe142532-2536-426f-23aa-123534feb253": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 2
+      },
+      "rebootId": 1,
+      "lockLocation": "Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-fe142532-2536-426f-23aa-123534feb253",
+      "Status": "RUNNING"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 3
+      },
+      "rebootId": 1,
+      "lockLocation": "Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03",
+      "Status": "RUNNING"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0"
+}
+        )=");
+  _snapshot("/Current/ServersKnown")
+      = createNode(R"=(
+{
+  "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+    "rebootId": 1
+  },
+  "PRMR-fe142532-2536-426f-23aa-123534feb253": {
+    "rebootId": 1
+  },
+  "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    "rebootId": 2
+  }
+}
+        )=");
+  _snapshot("/Supervision/Health")
+      = createNode(R"=(
+{
+  "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+    "ShortName": "DBServer0001",
+    "Endpoint": "tcp://[::1]:8629",
+    "Host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "SyncStatus": "SERVING",
+    "Status": "GOOD",
+    "Version": "3.8.4",
+    "Engine": "rocksdb",
+    "Timestamp": "2021-11-26T11:05:22Z",
+    "SyncTime": "2021-11-26T11:05:22Z",
+    "LastAckedTime": "2021-11-26T11:05:22Z"
+  },
+  "PRMR-fe142532-2536-426f-23aa-123534feb253": {
+    "ShortName": "DBServer0002",
+    "Endpoint": "tcp://[::1]:8630",
+    "Host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "SyncStatus": "SERVING",
+    "Status": "FAILED",
+    "Version": "3.8.4",
+    "Engine": "rocksdb",
+    "Timestamp": "2021-11-26T11:05:22Z",
+    "SyncTime": "2021-11-26T11:05:22Z",
+    "LastAckedTime": "2021-11-26T11:05:22Z"
+  },
+  "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+    "ShortName": "DBServer0003",
+    "Endpoint": "tcp://[::1]:8631",
+    "Host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "SyncStatus": "SERVING",
+    "Status": "GOOD",
+    "Version": "3.8.4",
+    "Engine": "rocksdb",
+    "Timestamp": "2021-11-26T11:05:22Z",
+    "SyncTime": "2021-11-26T11:05:22Z",
+    "LastAckedTime": "2021-11-26T11:05:22Z"
+  }
+}
+        )=");
+  auto envelope = std::make_shared<VPackBuilder>();
+  arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(
+    _snapshot, envelope);
+  VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 2);  // two transactions
+
+  // We are expecting two transactions, but do not really know the order
+  // in which they arrive (the Supervision iterates over a std::unordered_map,
+  // which is - as the name suggests - unordered:
+  size_t i = 0;
+  if (!content[0][0].hasKey("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-fe142532-2536-426f-23aa-123534feb253/Status")) {
+    i = 1;
+  }
+
+  VPackSlice trx = content[i];
+  EXPECT_TRUE(trx.isArray());
+  EXPECT_EQ(trx.length(), 2);  // with precondition
+
+  VPackSlice action = trx[0];
+  VPackSlice guck = action.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-fe142532-2536-426f-23aa-123534feb253/Status");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_EQ(guck.length(), 2);
+  EXPECT_EQ(guck["op"].copyString(), "set");
+  EXPECT_EQ(guck["new"].copyString(), "FAILED");
+  guck = action.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-fe142532-2536-426f-23aa-123534feb253");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_EQ(guck["op"].copyString(), "delete");
+  VPackSlice precond = trx[1];
+  guck = precond.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-fe142532-2536-426f-23aa-123534feb253/Status");
+  EXPECT_EQ(guck.copyString(), "RUNNING");
+
+  trx = content[1-i];
+  EXPECT_TRUE(trx.isArray());
+  EXPECT_EQ(trx.length(), 2);  // with precondition
+
+  action = trx[0];
+  guck = action.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03/Status");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_EQ(guck["op"].copyString(), "set");
+  EXPECT_EQ(guck["new"].copyString(), "FAILED");
+  guck = action.get("/Target/Hotbackup/Transfers/Upload/local:/tmp/backups/2021-11-26T09.21.00Z_c95725ed-7572-4dac-bc8d-ea786d05f833/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03");
+  EXPECT_TRUE(guck.isObject());
+  EXPECT_EQ(guck["op"].copyString(), "delete");
+  precond = trx[1];
+  guck = precond.get("/Target/HotBackup/TransferJobs/1234567/DBServers/PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03/Status");
+  EXPECT_EQ(guck.copyString(), "RUNNING");
 }
 
