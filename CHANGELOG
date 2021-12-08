@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed BTS-611: In some cases AQL queries, in particular in a cluster,
+  reported the wrong fullCount when the optimizer rule(s)
+  `late-document-materialization and/or `sort-limit` were active.
+
 * Fix BTS-535: TakeoverShardLeadership waits properly for Current data in
   ClusterInfo. This avoids a fake warning and fake test failure.
 
