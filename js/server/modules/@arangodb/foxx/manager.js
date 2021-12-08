@@ -562,6 +562,16 @@ function _prepareService (serviceInfo, legacy = false) {
       _buildServiceBundleFromScript(tempServicePath, tempBundlePath, serviceInfo);
     } else if (/^https?:/i.test(serviceInfo)) {
       // Remote path
+      if (!internal.foxxAllowInstallFromRemote() &&
+          !/^https?:\/\/([^:\.]+:[^@\.]*@)?(www\.)?github\.com\//i.test(serviceInfo)) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_FORBIDDEN.code,
+          errorMessage: dd`
+            ${errors.ERROR_SERVICE_FORBIDDEN.message}
+            Installing apps from remote URLs is disabled
+          `
+        });
+      }
       const tempFile = downloadServiceBundleFromRemote(serviceInfo);
       try {
         _buildServiceFromFile(tempServicePath, tempBundlePath, tempFile);
