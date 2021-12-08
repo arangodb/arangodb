@@ -97,7 +97,9 @@ target_link_libraries(arangodbtests-iresearch
 )
 
 target_include_directories(arangodbtests-iresearch PRIVATE
-  ${INCLUDE_DIRECTORIES}
+  ${PROJECT_SOURCE_DIR}/arangod
+  ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+  ${PROJECT_SOURCE_DIR}/tests
 )
 
 # add these includes as system includes because otherwise
