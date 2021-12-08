@@ -89,6 +89,7 @@ class MaterializeExecutor {
   struct Properties {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    // TODO this could be set to true!
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
