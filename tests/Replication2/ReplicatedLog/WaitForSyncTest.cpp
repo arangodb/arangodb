@@ -63,8 +63,7 @@ TEST_F(WaitForSyncTest, no_wait_for_sync) {
 
   {
     auto result = AppendEntriesResult{term, TRI_ERROR_NO_ERROR,
-                                      AppendEntriesErrorReason::NONE,
-                                      follower->currentRequest().messageId};
+                                      {}, follower->currentRequest().messageId};
     follower->resolveRequest(std::move(result));
   }
 }
@@ -94,8 +93,7 @@ TEST_F(WaitForSyncTest, global_wait_for_sync) {
 
   {
     auto result = AppendEntriesResult{term, TRI_ERROR_NO_ERROR,
-                                      AppendEntriesErrorReason::NONE,
-                                      follower->currentRequest().messageId};
+                                      {}, follower->currentRequest().messageId};
     follower->resolveRequest(std::move(result));
   }
 }
@@ -125,8 +123,7 @@ TEST_F(WaitForSyncTest, per_entry_wait_for_sync) {
 
   {
     auto result = AppendEntriesResult{term, TRI_ERROR_NO_ERROR,
-                                      AppendEntriesErrorReason::NONE,
-                                      follower->currentRequest().messageId};
+                                      {}, follower->currentRequest().messageId};
     follower->resolveRequest(std::move(result));
   }
 }

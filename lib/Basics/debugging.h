@@ -49,7 +49,7 @@
 
 #else
 
-#define TRI_IF_FAILURE(what) if (false)
+#define TRI_IF_FAILURE(what) if constexpr (false)
 
 #endif
 

@@ -187,7 +187,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     LogIndex lastAckedLCI = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
-    AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
+    AppendEntriesErrorReason lastErrorReason;
     LoggerContext const logContext;
 
     enum class State {

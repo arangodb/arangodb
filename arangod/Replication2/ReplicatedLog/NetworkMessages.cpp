@@ -140,6 +140,10 @@ auto replicated_log::operator<<(std::ostream& os, MessageId id) -> std::ostream&
   return os << id.value;
 }
 
+auto replicated_log::to_string(MessageId id) -> std::string {
+  return std::to_string(id.value);
+}
+
 MessageId::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
@@ -149,11 +153,12 @@ void replicated_log::AppendEntriesResult::toVelocyPack(velocypack::Builder& buil
     velocypack::ObjectBuilder ob(&builder);
     builder.add("term", VPackValue(logTerm.value));
     builder.add("errorCode", VPackValue(errorCode));
-    builder.add("reason", VPackValue(int(reason)));
+    builder.add(VPackValue("reason"));
+    reason.toVelocyPack(builder);
     builder.add("messageId", VPackValue(messageId));
     if (conflict.has_value()) {
       TRI_ASSERT(errorCode == TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
-      TRI_ASSERT(reason == AppendEntriesErrorReason::NO_PREV_LOG_MATCH);
+      TRI_ASSERT(reason.error == AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch);
       builder.add(VPackValue("conflict"));
       conflict->toVelocyPack(builder);
     }
@@ -164,36 +169,39 @@ auto replicated_log::AppendEntriesResult::fromVelocyPack(velocypack::Slice slice
 -> AppendEntriesResult {
   auto logTerm = slice.get("term").extract<LogTerm>();
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
-  auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
+  auto reason = AppendEntriesErrorReason::fromVelocyPack(slice.get("reason"));
   auto messageId = slice.get("messageId").extract<MessageId>();
 
-  if (reason == AppendEntriesErrorReason::NO_PREV_LOG_MATCH) {
+  if (reason.error == AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch) {
     TRI_ASSERT(errorCode == TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
     auto conflict = slice.get("conflict");
     TRI_ASSERT(conflict.isObject());
-    return AppendEntriesResult{logTerm, messageId, TermIndexPair::fromVelocyPack(conflict)};
+    return AppendEntriesResult{logTerm, messageId, TermIndexPair::fromVelocyPack(conflict), std::move(reason)};
   }
 
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
-             reason != replicated_log::AppendEntriesErrorReason::NONE);
+             reason.error != AppendEntriesErrorReason::ErrorType::kNone);
   return AppendEntriesResult{logTerm, errorCode, reason, messageId};
 }
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
                                                          AppendEntriesErrorReason reason,
                                                          MessageId id) noexcept
-    : logTerm(logTerm), errorCode(errorCode), reason(reason), messageId(id) {
+    : logTerm(logTerm), errorCode(errorCode), reason(std::move(reason)), messageId(id) {
+  static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
   TRI_ASSERT(errorCode == TRI_ERROR_NO_ERROR ||
-             reason != replicated_log::AppendEntriesErrorReason::NONE);
+             reason.error != AppendEntriesErrorReason::ErrorType::kNone);
 }
+
 replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm logTerm, MessageId id) noexcept
-    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, AppendEntriesErrorReason::NONE, id) {}
+    : AppendEntriesResult(logTerm, TRI_ERROR_NO_ERROR, {}, id) {}
 
 replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm term,
                                                          replicated_log::MessageId id,
-                                                         TermIndexPair conflict) noexcept
-    : AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                          AppendEntriesErrorReason::NO_PREV_LOG_MATCH, id) {
+                                                         TermIndexPair conflict,
+                                                         AppendEntriesErrorReason reason) noexcept
+    : AppendEntriesResult(term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, std::move(reason), id) {
+  static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
   this->conflict = conflict;
 }
 
@@ -201,14 +209,15 @@ auto replicated_log::AppendEntriesResult::withConflict(LogTerm term,
                                                        replicated_log::MessageId id,
                                                        TermIndexPair conflict) noexcept
 -> replicated_log::AppendEntriesResult {
-  return {term, id, conflict};
+  return {term, id, conflict, {AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch}};
 }
 
 auto replicated_log::AppendEntriesResult::withRejection(LogTerm term, MessageId id,
                                                         AppendEntriesErrorReason reason) noexcept
 -> AppendEntriesResult {
+  static_assert(std::is_nothrow_move_constructible_v<AppendEntriesErrorReason>);
   return {term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                             reason, id};
+                             std::move(reason), id};
 }
 
 auto replicated_log::AppendEntriesResult::withPersistenceError(LogTerm term,
@@ -216,7 +225,11 @@ auto replicated_log::AppendEntriesResult::withPersistenceError(LogTerm term,
                                                                Result const& res) noexcept
 -> replicated_log::AppendEntriesResult {
   return {term, res.errorNumber(),
-                             AppendEntriesErrorReason::PERSISTENCE_FAILURE, id};
+          {
+              AppendEntriesErrorReason::ErrorType::kPersistenceFailure,
+              std::string{res.errorMessage()}
+          },
+          id};
 }
 
 auto replicated_log::AppendEntriesResult::withOk(LogTerm term, replicated_log::MessageId id) noexcept
