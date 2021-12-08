@@ -65,7 +65,7 @@
 #include "utils/string.hpp"
 #include "utils/utf8_path.hpp"
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "../3rdParty/iresearch/tests/tests_config.hpp"
 
 #include <libplatform/libplatform.h>
 #include <v8.h>
