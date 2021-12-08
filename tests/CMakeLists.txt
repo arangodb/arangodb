@@ -342,6 +342,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
+  Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
 )
 
 if (LINUX)
