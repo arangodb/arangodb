@@ -77,7 +77,7 @@ bool parse_vpack_options(const VPackSlice slice,
         CASE_CONVERT_PARAM_NAME.data());
       return false;
     }
-    auto case_convert = case_convert_slice.stringRef();
+    auto case_convert = case_convert_slice.stringView();
     auto itr = CASE_CONVERT_MAP.find(string_ref(case_convert.data(),
                                      case_convert.size()));
 
@@ -99,9 +99,9 @@ bool parse_vpack_options(const VPackSlice slice,
         BREAK_PARAM_NAME.data());
       return false;
     }
-    auto break_type = break_type_slice.stringRef();
+    auto break_type = break_type_slice.stringView();
     auto itr = BREAK_CONVERT_MAP.find(string_ref(break_type.data(),
-                                                      break_type.size()));
+                                                 break_type.size()));
 
     if (itr == BREAK_CONVERT_MAP.end()) {
       IR_FRMT_WARN(

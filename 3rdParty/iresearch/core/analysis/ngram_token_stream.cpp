@@ -162,7 +162,7 @@ bool parse_vpack_options(const VPackSlice slice,
         STREAM_TYPE_PARAM_NAME.data());
       return false;
     }
-    auto stream_type = stream_type_slice.stringRef();
+    auto stream_type = stream_type_slice.stringView();
     auto itr = STREAM_TYPE_CONVERT_MAP.find(irs::string_ref(stream_type.data(),
                                                             stream_type.size()));
     if (itr == STREAM_TYPE_CONVERT_MAP.end()) {

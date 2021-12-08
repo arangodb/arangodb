@@ -94,7 +94,7 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
       return nullptr;
     }
     std::string token;
-    auto value = (*itr).stringRef();
+    auto value = (*itr).stringView();
     if (!hex) {
       tokens.emplace(std::string(value.data(), value.length())); // interpret verbatim
     } else if (hex_decode(token, value)) {
