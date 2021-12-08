@@ -75,7 +75,10 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief The condition given in PRUNE (might be empty)
   ///        The Node keeps responsibility
-  std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
+  // TODO [GraphRefactor]: This got changed to shared_ptr as the options of the
+  // PathValidator needs the PruneExpression. Using unique_ptrs causes troubles
+  // with the auto generated default constructors.
+  std::shared_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
   /// @brief The condition given for PostFilters (might be empty)
   ///        The Node keeps responsibility
@@ -168,6 +171,10 @@ struct TraverserOptions : public graph::BaseOptions {
   std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
   double estimateCost(size_t& nrItems) const override;
+
+  std::shared_ptr<aql::PruneExpressionEvaluator> createPruneEvaluator(
+      std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+      size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
 
   void activatePrune(std::vector<aql::Variable const*> vars,
                      std::vector<aql::RegisterId> regs, size_t vertexVarIdx,

@@ -33,6 +33,7 @@
 namespace arangodb {
 namespace aql {
 class PruneExpressionEvaluator;
+class InputAqlItemRow;
 }
 namespace graph {
 
@@ -52,9 +53,10 @@ class ValidationResult;
 template <class Provider, class PathStore, VertexUniquenessLevel vertexUniqueness>
 class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
+  using Step = typename Provider::Step;
 
  public:
-  PathValidator(Provider& provider, PathStore const& store, PathValidatorOptions opts);
+  PathValidator(Provider& provider, PathStore& store, PathValidatorOptions opts);
   ~PathValidator();
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
@@ -62,14 +64,20 @@ class PathValidator {
                     PathValidator<Provider, PathStore, vertexUniqueness> const& otherValidator)
       -> ValidationResult;
 
-  void setPruneEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
-
-  void setPostFilterEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
-
   void reset();
 
+  // Prune section
+  bool usesPrune() const;
+  void setPruneContext(aql::InputAqlItemRow& inputRow);
+
+  // Post filter section
+  void setPostFilterEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
+
  private:
-  PathStore const& _store;
+  // TODO [GraphRefactor]: const of _store has been removed as it is now necessary
+  // to build a PathResult in place. Please double check if we find a better and
+  // more elegant solution.
+  PathStore& _store;
   Provider& _provider;
 
   // Only for applied vertex uniqueness
@@ -78,8 +86,6 @@ class PathValidator {
   ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
 
   PathValidatorOptions _options;
-
-  std::unique_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
 
   std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
 

@@ -38,6 +38,10 @@
 
 namespace arangodb {
 
+namespace aql {
+class InputAqlItemRow;
+}
+
 namespace velocypack {
 class Builder;
 class HashedStringRef;
@@ -131,6 +135,9 @@ class OneSidedEnumerator : public TraversalEnumerator {
    * the last time this method was called.
    */
   auto stealStats() -> aql::TraversalStats override;
+
+  auto validatorUsesPrune() const -> bool;
+  auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow) -> void;
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;

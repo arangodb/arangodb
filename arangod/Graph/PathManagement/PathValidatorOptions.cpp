@@ -38,6 +38,22 @@ void PathValidatorOptions::setAllVerticesExpression(std::unique_ptr<aql::Express
   _allVerticesExpression = std::move(expression);
 }
 
+void PathValidatorOptions::setPruneEvaluator(std::shared_ptr<aql::PruneExpressionEvaluator>&& expression) {
+  _pruneEvaluator = std::move(expression);
+}
+
+std::shared_ptr<aql::PruneExpressionEvaluator>& PathValidatorOptions::getPruneEvaluator() {
+  return _pruneEvaluator;
+}
+
+bool PathValidatorOptions::usesPrune() const {
+  return _pruneEvaluator != nullptr;
+}
+
+void PathValidatorOptions::setPruneContext(arangodb::aql::InputAqlItemRow& inputRow) {
+  _pruneEvaluator->prepareContext(inputRow);
+}
+
 void PathValidatorOptions::setVertexExpression(uint64_t depth,
                                                std::unique_ptr<aql::Expression> expression) {
   // Should not respecifiy the condition on a certain depth

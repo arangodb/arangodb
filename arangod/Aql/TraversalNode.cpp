@@ -36,6 +36,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalExecutor.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Variable.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -663,7 +664,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   TraverserOptions* opts = this->options();
   std::unique_ptr<Traverser> traverser;
 
-  if (pruneExpression() != nullptr) {
+  /*
+   * PRUNE SECTION
+   */
+  auto checkPruneAvailability = [&](bool refactor, std::shared_ptr<aql::PruneExpressionEvaluator>& evaluator) {
     std::vector<Variable const*> pruneVars;
     getPruneVariables(pruneVars);
     std::vector<RegisterId> pruneRegs;
@@ -689,9 +693,22 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       }
     }
 
-    opts->activatePrune(std::move(pruneVars), std::move(pruneRegs),
-                        vertexRegIdx, edgeRegIdx, pathRegIdx, pruneExpression());
+    if (!refactor) {
+      opts->activatePrune(std::move(pruneVars), std::move(pruneRegs), vertexRegIdx,
+                          edgeRegIdx, pathRegIdx, pruneExpression());
+    } else {
+      auto expr = opts->createPruneEvaluator(std::move(pruneVars), std::move(pruneRegs), vertexRegIdx,
+                                             edgeRegIdx, pathRegIdx, pruneExpression());
+      evaluator = std::move(expr);
+    }
+  };
+
+  if (!opts->refactor()) {
+    // [GraphRefactor] TODO: evaluator not needed here - we need to clean this up later
+    std::shared_ptr<aql::PruneExpressionEvaluator> evaluator;
+    checkPruneAvailability(false, evaluator);
   }
+
   if (postFilterExpression() != nullptr) {
     std::vector<Variable const*> postFilterVars;
     getPostFilterVariables(postFilterVars);
@@ -784,6 +801,34 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
       arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth, opts->maxDepth};
       PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx()};
+
+      // Prune Section
+      if (pruneExpression() != nullptr) {
+        std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
+        checkPruneAvailability(true, pruneEvaluator);
+        validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
+      }
+
+      // Vertex Expressions Section
+      // TODO [GraphRefactor]: Currently not clear yet.
+      // I. Set the list of allowed collections
+      validatorOptions.addAllowedVertexCollections(opts->vertexCollections);
+
+      // II. Global prune expression
+      if (opts->_baseVertexExpression != nullptr) {
+        auto baseVertexExpression = opts->_baseVertexExpression->clone(_plan->getAst());
+        validatorOptions.setAllVerticesExpression(std::move(baseVertexExpression));
+        // TODO [GraphRefactor]: Clarify this, why is _baseVertexExpression and _vertexExpressions not populated in SS Case
+      }
+
+      // III. Depth-based prune expressions
+      for (auto const& vertexExpressionPerDepth : opts->_vertexExpressions) {
+        // TODO [GraphRefactor]: Seems that this is not supported right now at all?
+        auto depth = vertexExpressionPerDepth.first;
+        auto expression = vertexExpressionPerDepth.second->clone(_plan->getAst());
+        validatorOptions.setVertexExpression(depth, std::move(expression));
+      }
+
       using SingleServerDFSRefactored =
           DFSEnumerator<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE>;
 

@@ -29,6 +29,7 @@
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 
@@ -43,7 +44,7 @@ using namespace arangodb::graph;
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 PathValidator<ProviderType, PathStore, vertexUniqueness>::PathValidator(
-    ProviderType& provider, PathStore const& store, PathValidatorOptions opts)
+    ProviderType& provider, PathStore& store, PathValidatorOptions opts)
     : _store(store), _provider(provider), _options(std::move(opts)) {}
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
@@ -169,6 +170,46 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCon
     return ValidationResult{ValidationResult::Type::FILTER};
   }
 
+  // evaluate if vertex needs to be pruned
+  if (_options.usesPrune()) {
+    // TODO [GraphRefactor]: Possible performance optimization. Please double
+    // check if we can do better then using three different types of builders
+    VPackBuilder vertexBuilder, edgeBuilder, pathBuilder;
+
+    auto& evaluator = _options.getPruneEvaluator();
+
+    if (evaluator->needsVertex()) {
+      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+      evaluator->injectVertex(vertexBuilder.slice());
+    }
+    if (evaluator->needsEdge()) {
+      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      evaluator->injectEdge(edgeBuilder.slice());
+    }
+    if (evaluator->needsPath()) {
+      // TODO [GraphRefactor]: Improve this section. Currently, I do not like the design here.
+      // I. Drop of PathStore const& qualifier was necessary to initialize PathResultInterface.
+      // II. I don't want to distinguish between different ProviderTypes here if possible (best case).
+      if (std::is_same_v<ProviderType, SingleServerProvider<SingleServerProviderStep>>) {
+        using ResultPathType = SingleProviderPathResult<ProviderType, PathStore, Step>;
+        std::unique_ptr<PathResultInterface> currentPath = std::make_unique<ResultPathType>(step, _provider, _store);
+        currentPath->toVelocyPack(pathBuilder);
+        evaluator->injectPath(pathBuilder.slice());
+      } else {
+        PathResult<ProviderType, Step> currentPath{_provider, _provider};
+        _store.buildPath(step, currentPath);
+        currentPath.toVelocyPack(pathBuilder);
+        evaluator->injectPath(pathBuilder.slice());
+        // Currently unused
+        TRI_ASSERT(false);
+      }
+    }
+    if (evaluator->evaluate()) {
+      return ValidationResult{ValidationResult::Type::PRUNE};
+    }
+  }
+
+  // Evaluate depth-based vertex expressions
   auto expr = _options.getVertexExpression(step.getDepth());
   if (expr != nullptr) {
     _tmpObjectBuilder.clear();
@@ -206,12 +247,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexExp
 }
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPruneEvaluator(
-    std::unique_ptr<aql::PruneExpressionEvaluator> eval) {
-  _pruneEvaluator = std::move(eval);
-}
-
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPostFilterEvaluator(
     std::unique_ptr<aql::PruneExpressionEvaluator> eval) {
   _postFilterEvaluator = std::move(eval);
@@ -223,6 +258,21 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness>::reset() {
     _uniqueVertices.clear();
   }
 }
+
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+bool PathValidator<ProviderType, PathStore, vertexUniqueness>::usesPrune() const {
+  if (_options.usesPrune()) {
+    return true;
+  }
+  return false;
+}
+
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPruneContext(aql::InputAqlItemRow& inputRow) {
+  TRI_ASSERT(_options.usesPrune());
+  _options.setPruneContext(inputRow);
+}
+
 
 namespace arangodb {
 namespace graph {

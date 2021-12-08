@@ -530,6 +530,12 @@ bool TraversalExecutor<FinderType>::initTraverser(AqlItemBlockInputRange& input)
       std::string sourceString;
       TRI_ASSERT(_inputRow.isInitialized());
 
+      if (_finder.validatorUsesPrune()) {
+        // Replace by inputRow
+        _finder.setPruneValidatorContext(_inputRow);
+        TRI_ASSERT(_inputRow.isInitialized());
+      }
+
       if (_infos.usesFixedSource()) {
         sourceString = _infos.getFixedSource();
       } else {
@@ -581,6 +587,7 @@ if (variableSlice.isArray()) {
   }
 
   TRI_ASSERT(false);
+  return false;
 }
 
 template <class FinderType>

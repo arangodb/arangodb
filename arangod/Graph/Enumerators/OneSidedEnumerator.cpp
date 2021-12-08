@@ -129,12 +129,12 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
   }
   ValidationResult res = _validator.validatePath(step);
 
-  // TODO: Adjust log output
   LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
-      << std::boolalpha << "<Traverser> Validated Vertex: " << step.getVertex().getID()
-      << " filtered " << res.isFiltered() << " pruned " << res.isPruned()
-      << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
-      << "<= " << _options.getMaxDepth();
+      << std::boolalpha
+      << "<Traverser> Validated Vertex: " << step.getVertex().getID() << " filtered: ("
+      << res.isFiltered() << ") pruned: (" << res.isPruned() << ") depth: Min("
+      << _options.getMinDepth() << ") <= Current(" << step.getDepth() << ")"
+      << " <= Max(" << _options.getMaxDepth() << ")";
   if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
     // Include it in results.
     _results.emplace_back(step);
@@ -281,6 +281,16 @@ auto OneSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
   _stats.~TraversalStats();
   new (&_stats) aql::TraversalStats{};
   return t;
+}
+
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::validatorUsesPrune() const -> bool {
+  return _validator.usesPrune();
+}
+
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::setPruneValidatorContext(aql::InputAqlItemRow& inputRow) -> void {
+  _validator.setPruneContext(inputRow);
 }
 
 /* SingleServerProvider Section */
