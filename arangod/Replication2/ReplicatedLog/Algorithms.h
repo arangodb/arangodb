@@ -78,7 +78,7 @@ struct ParticipantStateTuple {
   LogIndex index;
   ParticipantId id;
   bool failed = false;
-  ParticipantFlags flags;
+  ParticipantFlags flags{};
 
   [[nodiscard]] auto isExcluded() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
