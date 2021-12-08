@@ -40,13 +40,13 @@ class GaugeBuilder : public GenericBuilder<Derived> {
 
 }  // namespace arangodb::metrics
 
-#define DECLARE_GAUGE(x, type, help)                    \
-  struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    static constexpr std::string_view kName = #x;       \
-    x() {                                               \
-      _name = #x;                                       \
-      _help = help;                                     \
-    }                                                   \
+#define DECLARE_GAUGE(x, type, help)                               \
+  struct x : arangodb::metrics::GaugeBuilder<x, type> {            \
+    [[maybe_unused]] static constexpr std::string_view kName = #x; \
+    x() {                                                          \
+      _name = #x;                                                  \
+      _help = help;                                                \
+    }                                                              \
   }
 
 // This macro is needed to ignore the script that checks that the metric has documentation
