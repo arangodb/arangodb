@@ -1,7 +1,5 @@
 # -*- mode: CMAKE; -*-
 
-include_directories(.)
-
 ################################################################################
 ## LIB_ARANGO
 ################################################################################
@@ -28,9 +26,6 @@ else ()
 endif ()
 
 set(LIB_ARANGO_LINENOISE
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/ConvertUTF.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
   Utilities/LinenoiseShell.cpp
   Utilities/LineEditor.cpp
   Utilities/ShellBase.cpp
@@ -238,9 +233,27 @@ target_link_libraries(arango
   boost_system
   boost_boost
   velocypack
+  linenoise-ng
+  date_interface
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
+  ${ICU_LIBS}
 )
+
+# this is "."
+target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+# some auto-generated headers live here, like "Basics/build.h"
+target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(arango PUBLIC ${BUILD_DIR})
+
+target_include_directories(arango SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/3rdParty/function2)
+target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
+target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
+
+target_link_libraries(arango rocksdb_interface)
+target_link_libraries(arango zlib_interface)
+target_link_libraries(arango v8_interface)
 
 add_dependencies(arango v8_build)
 
@@ -252,7 +265,6 @@ add_dependencies(arango snappy)
 target_link_libraries(arango snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
-include_directories(${SNAPPY_INCLUDE_DIR})
 
 if (USE_LIBUNWIND)
   target_link_libraries(arango ${LIBUNWIND_LIB})
@@ -295,6 +307,7 @@ add_library(arango_greenspun STATIC
 
 target_link_libraries(arango_greenspun immer)
 target_link_libraries(arango_greenspun arango)
+target_link_libraries(arango_greenspun date_interface)
 
 ################################################################################
 ## LIB_ARANGO_GEO
@@ -355,14 +368,29 @@ add_library(arango_v8_no_deadline STATIC
   )
 
 target_link_libraries(arango_v8
-    boost_system
-    boost_boost
-)
+  boost_system
+  boost_boost
+  velocypack
+  )
+
+target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
+target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
+target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(arango_v8 v8_interface)
+target_link_libraries(arango_v8_deadline v8_interface)
+target_link_libraries(arango_v8_no_deadline v8_interface)
+
+target_link_libraries(arango_v8_deadline velocypack)
+target_link_libraries(arango_v8_no_deadline velocypack)
 
 # Enterprise
 if (USE_ENTERPRISE)
   target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  target_include_directories(arango_v8 PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
 if (USE_FAIL_ON_WARNINGS)
