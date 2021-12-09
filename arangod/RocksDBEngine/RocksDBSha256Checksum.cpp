@@ -67,7 +67,6 @@ void RocksDBSha256Checksum::Finalize() {
     TRI_ASSERT(false);
   }
   _checksum = basics::StringUtils::encodeHex(reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
-
   _shaFileManager->storeShaItems(_fileName, _checksum);
 }
 
@@ -78,13 +77,8 @@ std::string RocksDBSha256Checksum::GetChecksum() const {
   
 std::unique_ptr<rocksdb::FileChecksumGenerator> RocksDBSha256ChecksumFactory::CreateFileChecksumGenerator(
     rocksdb::FileChecksumGenContext const& context) {
-  if (context.requested_checksum_func_name == "RocksDBSha256Checksum") {
-    return std::make_unique<RocksDBSha256Checksum>(context.file_name, _shaFileManager);
-  }
+  // we can get away with this because rocksdb has internally other checksum calculations for the old sha files
   return std::make_unique<RocksDBSha256Checksum>(context.file_name, _shaFileManager);
-  // for everything else fall back to CRC32 checksum
- // LOG_DEVEL << (void*) this <<  " GENERATING CRC";
- // return std::make_unique<rocksdb::FileChecksumGenCrc32c>(context);
 }
 
 bool RocksDBShaFileManager::storeShaItems(std::string const& fileName, std::string const& checksum) {

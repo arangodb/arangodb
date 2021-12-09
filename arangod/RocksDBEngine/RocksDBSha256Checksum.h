@@ -42,10 +42,10 @@ class RocksDBSha256Checksum : public rocksdb::FileChecksumGenerator {
   explicit RocksDBSha256Checksum(std::string const& filename, std::shared_ptr<RocksDBShaFileManager> shaFileManager);
   ~RocksDBSha256Checksum();
 
-  void Update(char const* data, size_t n) override; // incrementally calculates
-                                                    // the checksum and is called
-                                                    // multiple times for individual data blocks
-  void Finalize() override; // called only once, will write sha file to disk
+  // incrementally calculates the checksum and is called multiple times for individual data blocks
+  void Update(char const* data, size_t n) override;
+  // called only once, will write sha file to disk
+  void Finalize() override;
 
   std::string GetChecksum() const override;
 
@@ -61,11 +61,12 @@ class RocksDBSha256Checksum : public rocksdb::FileChecksumGenerator {
 class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_shared_from_this<RocksDBShaFileManager> {
  public:
   RocksDBShaFileManager(std::string const& path) : _rootPath{path} {}
-  void checkMissingShaFiles(); // updates hash table of key .sst files and .sha as values, can write or remove files
-  void OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& /*info*/) override; // will delete sha files
-
-  bool storeShaItems(std::string const& fileName, std::string const& checksum); // updates the hash table
-                                                                                // and writes sha files
+  // updates hash table of key .sst files and .sha as values, can write or remove files
+  void checkMissingShaFiles();
+  // will delete sha files
+  void OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& /*info*/) override;
+  // updates hash table and writes sha files
+  bool storeShaItems(std::string const& fileName, std::string const& checksum);
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
   void deleteFile(std::string const& pathName);
  private:
