@@ -41,7 +41,7 @@
 #include <velocypack/Builder.h>
 
 #include <memory>
-#include <string_view>
+#include <string>
 
 namespace arangodb {
 namespace aql {

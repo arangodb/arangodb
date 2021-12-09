@@ -34,6 +34,7 @@
 
 #include <deque>
 #include <memory>
+#include <string>
 
 namespace arangodb {
 namespace aql {

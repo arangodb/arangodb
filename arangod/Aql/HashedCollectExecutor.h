@@ -38,7 +38,7 @@
 #include "Containers/FlatHashMap.h"
 
 #include <memory>
-#include <string_view>
+#include <string>
 
 namespace arangodb {
 struct ResourceMonitor;
