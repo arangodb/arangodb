@@ -340,6 +340,8 @@ function exportTest (options) {
     testName = "exportQuery" + idx;
     results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
     results[testName].failed = results[testName].status ? 0 : 1;
+
+
     
     testName = "parseQuery" + idx;
     try {
@@ -359,6 +361,38 @@ function exportTest (options) {
         message: e
       };
     }
+
+    print(CYAN + Date() + ': Export query with bindvars (jsonl)' + RESET);
+    args['type'] = 'jsonl';
+    args['query'] = 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc';
+    args['query-bindvars'] = '{"@@collectionName": "UnitTestsExport", "name": "test"}';
+    delete args['graph-name'];
+    delete args['collection'];
+
+    testName = "exportQuery" + idx;
+    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+    results[testName].failed = results[testName].status ? 0 : 1;
+
+
+    testName = "parseQueryWithBindvars" + idx;
+    try {
+      fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
+          .filter(line => line.trim() !== '')
+          .forEach(line => JSON.parse(line));
+      results[testName] = {
+        failed: 0,
+        status: true
+      };
+    } catch (e) {
+      print(e);
+      results.failed += 1;
+      results[testName] = {
+        failed: 1,
+        status: false,
+        message: e
+      };
+    }
+
 
     print(CYAN + Date() + ': Export query (jsonl.gz)' + RESET);
     args['compress-output'] = 'true';

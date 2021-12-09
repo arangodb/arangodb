@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added new option `--query-bindvars` to arangoexport, so queries given via 
+  option `--query` can have bind variables in them.
+
 * Fix BTS-580: Trimmed the password field from the payload in the client 
   requests when displaying error messages in arangorestore, because they 
   displayed the password as plain text. 

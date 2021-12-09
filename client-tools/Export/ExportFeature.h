@@ -52,6 +52,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override final;
   void start() override final;
+  std::shared_ptr<VPackBuilder> customQueryBindVars() const { return _queryBindVarsBuilder; }
 
  private:
   void collectionExport(httpclient::SimpleHttpClient* httpClient);
@@ -91,6 +92,8 @@ class ExportFeature final : public application_features::ApplicationFeature,
   uint64_t _httpRequestsDone;
   std::string _currentCollection;
   std::string _currentGraph;
+  std::string _queryBindVars;
+  std::shared_ptr<VPackBuilder> _queryBindVarsBuilder;
   std::unique_ptr<ManagedDirectory> _directory;
 
   int* _result;

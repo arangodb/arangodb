@@ -104,6 +104,12 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new DoubleParameter(&_queryMaxRuntime))
                      .setIntroducedIn(30800);
 
+  options
+      ->addOption("--query-bindvars",
+                  "bind parameters to be used in the 'custom-query' testcase.",
+                  new StringParameter(&_queryBindVars))
+      .setIntroducedIn(31000);
+
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
 
@@ -178,6 +184,17 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     LOG_TOPIC("6ff88", FATAL, Logger::CONFIG)
         << "expecting either a list of collections or an AQL query";
     FATAL_ERROR_EXIT();
+  }
+
+  if (!_queryBindVars.empty()) {
+    try {
+      _queryBindVarsBuilder = VPackParser::fromJson(_queryBindVars);
+    } catch (...) {
+      LOG_TOPIC("bafc2", FATAL, arangodb::Logger::BENCH)
+          << "For flag '--query-bindvars "
+          << _queryBindVars << "': invalid JSON format.";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   if (_typeExport == "xgmml" && _graphName.empty()) {
