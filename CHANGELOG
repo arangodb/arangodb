@@ -1,6 +1,13 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
+* BTS-624: The `move-calculations-up` optimization rule is now also applied to
+  subqueries, when they don't have dependencies on the outer nodes, don't have
+  modification nodes and don't read their own writes. This fixed the execution
+  of a query without the splicing-subqueries option being faster than the
+  execution of a query with this option (after version 3.8, this option cannot
+  be switched off). 
+
 * Added the following metrics for revision trees:
   - `arangodb_revision_tree_hibernations_total`: number of times a revision tree
     was compressed in RAM and set to hibernation
