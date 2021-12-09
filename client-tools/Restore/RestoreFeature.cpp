@@ -411,8 +411,6 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
       httpClient.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
   return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(),
                                               "restoring collection", body, arangodb::HttpResponseChecker::PayloadType::JSON);
-
- // return ::checkHttpResponse(httpClient, response, "restoring collection", body);
 }
 
 /// @brief Recreate a collection given its description
