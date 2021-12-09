@@ -33,7 +33,7 @@ namespace arangodb {
 
 RocksDBSha256Checksum::RocksDBSha256Checksum(std::string const& filename, std::shared_ptr<RocksDBShaFileManager> shaFileManager)
     : _fileName(filename),
-      _shaFileManager{shaFileManager},
+      _shaFileManager{std::move(shaFileManager)},
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
       _context(EVP_MD_CTX_new()) {
 #else
