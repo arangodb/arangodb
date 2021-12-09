@@ -421,7 +421,10 @@ target_include_directories(arangodbtests PRIVATE
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 PRIVATE
-    ${INCLUDE_DIRECTORIES}
+    ${PROJECT_SOURCE_DIR}/arangod
+    ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
   )
   target_link_libraries(arangodbtests_replication2 arango)
 endif()
