@@ -364,23 +364,36 @@ float floatDecimal(std::string_view value);
 
 /// @brief convert char const* or std::string to number with error handling
 template <typename T>
-static bool toNumber(std::string_view value, T& val) noexcept {
-  size_t n = value.size();
+static bool toNumber(std::string const& key, T& val) noexcept {
+  size_t n = key.size();
   if (n == 0) {
     return false;
   }
-  char const* s = value.data();
-  std::errc ec;
-  if constexpr (std::is_integral<T>::value) {
-    ec = std::from_chars(s, s + n, val).ec;
-  } else if constexpr (std::is_same<long double, typename std::remove_cv<T>::type>::value) {
-    ec = std::from_chars(s, s + n, val, std::chars_format::general).ec;
-  } else if constexpr (std::is_same<double, typename std::remove_cv<T>::type>::value) {
-    ec = std::from_chars(s, s + n, val, std::chars_format::general).ec;
-  } else if constexpr (std::is_same<float, typename std::remove_cv<T>::type>::value) {
-    ec = std::from_chars(s, s + n, val, std::chars_format::general).ec;
+  try {
+    if constexpr (std::is_integral<T>::value) {
+      char const* s = key.data();
+      // TODO: no error checking missing here
+      std::from_chars(s, s + n, val);
+    } else if constexpr (std::is_same<long double, typename std::remove_cv<T>::type>::value) {
+      // TODO: move this to std::from_chars(s, s + n, val). g++ only supports
+      // from_chars for the long double type from g++11 onwards, although it is
+      // a c++17 feature
+      val = stold(key);
+    } else if constexpr (std::is_same<double, typename std::remove_cv<T>::type>::value) {
+      // TODO: move this to std::from_chars(s, s + n, val). g++ only supports
+      // from_chars for the double type from g++11 onwards, although it is
+      // a c++17 feature
+      val = stod(key);
+    } else if constexpr (std::is_same<float, typename std::remove_cv<T>::type>::value) {
+      // TODO: move this to std::from_chars(s, s + n, val). g++ only supports
+      // from_chars for the float type from g++11 onwards, although it is
+      // a c++17 feature
+      val = stof(key);
+    }
+  } catch (...) {
+    return false;
   }
-  return ec == std::errc();
+  return true;
 }
 
 // -----------------------------------------------------------------------------
