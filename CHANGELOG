@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-580: Trimmed the password field from the payload in the client 
+  requests when displaying error messages in arangorestore, because they 
+  displayed the password as plain text. 
+
 * Refactored unit tests with the `grey` keyword, which is for skipping certain 
   tests. A test file that did not perform any test, but only had a function to 
   sleep, was removed. Two test files were renamed so they would not be skipped.
