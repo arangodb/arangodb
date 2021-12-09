@@ -2451,6 +2451,9 @@ void Supervision::checkReplicatedLogs() {
       auto checkResult = checkReplicatedLog(dbName, spec, current, info);
       envelope = std::visit(
           overload{[&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
+                     envelope = arangodb::replication2::agency::methods::removeElectionResult(
+                         std::move(envelope), dbName, spec.id);
+
                      return arangodb::replication2::agency::methods::updateTermSpecificationTrx(
                          std::move(envelope), dbName, spec.id, newSpec,
                          spec.currentTerm.has_value()

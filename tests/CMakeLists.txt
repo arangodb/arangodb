@@ -69,6 +69,7 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
 )
 
 add_subdirectory(IResearch)
@@ -342,6 +343,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
+  Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
+  Replication2/Serialization/LogCommonTest.cpp
   Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
 )
 
@@ -421,7 +424,10 @@ target_include_directories(arangodbtests PRIVATE
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 PRIVATE
-    ${INCLUDE_DIRECTORIES}
+    ${PROJECT_SOURCE_DIR}/arangod
+    ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
   )
   target_link_libraries(arangodbtests_replication2 arango)
 endif()

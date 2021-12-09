@@ -66,6 +66,7 @@ void WeightedEnumerator::clear() {
 
 void WeightedEnumerator::setStartVertex(std::string_view startVertex) {
   PathEnumerator::setStartVertex(startVertex);
+  clear();
   _schreier.emplace_back(startVertex);
 }
 
