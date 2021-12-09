@@ -1,6 +1,10 @@
 devel
 -----
 
+* Refactored unit tests with the `grey` keyword, which is for skipping certain 
+  tests. A test file that did not perform any test, but only had a function to 
+  sleep, was removed. Two test files were renamed so they would not be skipped.
+
 * Fixed BTS-611: In some cases AQL queries, in particular in a cluster,
   reported the wrong fullCount when the optimizer rule(s)
   `late-document-materialization and/or `sort-limit` were active.
