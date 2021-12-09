@@ -374,11 +374,11 @@ static bool toNumber(std::string_view value, T& val) noexcept {
   if constexpr (std::is_integral<T>::value) {
     ec = std::from_chars(s, s + n, val).ec;
   } else if constexpr (std::is_same<long double, typename std::remove_cv<T>::type>::value) {
-    ec = std::from_chars(s, s + n, val).ec;
+    ec = std::from_chars(s, s + n, val, std::chars_format::general).ec;
   } else if constexpr (std::is_same<double, typename std::remove_cv<T>::type>::value) {
-    ec = std::from_chars(s, s + n, val).ec;
+    ec = std::from_chars(s, s + n, val, std::chars_format::general).ec;
   } else if constexpr (std::is_same<float, typename std::remove_cv<T>::type>::value) {
-    ec = std::from_chars(s, s + n, val).ec;
+    ec = std::from_chars(s, s + n, val, std::chars_format::general).ec;
   }
   return ec == std::errc();
 }
