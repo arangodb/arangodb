@@ -212,7 +212,7 @@ class RocksDBShaFileHandlerEnvGenerator {
   }
 
   std::string getFilePath(const char* name) {
-    std::string retpath;
+    std::string retpath = setup._directory;
     retpath = setup._directory;
     retpath += TRI_DIR_SEPARATOR_CHAR;
     retpath += name;
