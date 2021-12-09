@@ -23,9 +23,11 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 #include <variant>
+#include <optional>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
@@ -73,18 +75,32 @@ auto to_string(FollowerState const&) -> std::string_view;
 struct AppendEntriesRequest;
 struct AppendEntriesResult;
 
-enum class AppendEntriesErrorReason {
-  NONE,
-  INVALID_LEADER_ID,
-  LOST_LOG_CORE,
-  MESSAGE_OUTDATED,
-  WRONG_TERM,
-  NO_PREV_LOG_MATCH,
-  PERSISTENCE_FAILURE,
-  COMMUNICATION_ERROR,
+struct AppendEntriesErrorReason {
+  enum class ErrorType {
+    kNone,
+    kInvalidLeaderId,
+    kLostLogCore,
+    kMessageOutdated,
+    kWrongTerm,
+    kNoPrevLogMatch,
+    kPersistenceFailure,
+    kCommunicationError,
+  };
+
+  ErrorType error = ErrorType::kNone;
+  std::optional<std::string> details = std::nullopt;
+
+  [[nodiscard]] auto getErrorMessage() const noexcept -> std::string_view;
+  void toVelocyPack(velocypack::Builder& builder) const;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesErrorReason;
+  static auto errorTypeFromString(std::string_view str) -> ErrorType;
+
+  friend auto operator==(AppendEntriesErrorReason const& left,
+                         AppendEntriesErrorReason const& right) noexcept -> bool = default;
 };
 
-[[nodiscard]] auto to_string(AppendEntriesErrorReason reason) noexcept -> std::string_view;
+[[nodiscard]] auto to_string(AppendEntriesErrorReason::ErrorType error) noexcept
+    -> std::string_view;
 
 struct LogStatistics {
   TermIndexPair spearHead{};

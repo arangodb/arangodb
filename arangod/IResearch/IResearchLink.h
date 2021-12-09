@@ -33,6 +33,7 @@
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Indexes/Index.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
 #include "Utils/OperationOptions.h"
@@ -472,26 +473,27 @@ class IResearchLink {
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                  // the index identifier
   TRI_voc_tick_t _lastCommittedTick;  // protected by _commitMutex
+  size_t _cleanupIntervalCount;
   IResearchLinkMeta const _meta;  // how this collection should be indexed (read-only, set via init())
   std::mutex _commitMutex;  // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback;  // for insert(...)/remove(...)
   std::string const _viewGuid;  // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery;  // link was created based on recovery marker
 
-  GuardMetric<LinkStats>* _linkStats;
+  metrics::Batch<LinkStats>* _linkStats;
 
-  Gauge<uint64_t>* _numFailedCommits;
-  Gauge<uint64_t>* _numFailedCleanups;
-  Gauge<uint64_t>* _numFailedConsolidations;
+  metrics::Gauge<uint64_t>* _numFailedCommits;
+  metrics::Gauge<uint64_t>* _numFailedCleanups;
+  metrics::Gauge<uint64_t>* _numFailedConsolidations;
 
   std::atomic_uint64_t _commitTimeNum;
-  Gauge<uint64_t>* _avgCommitTimeMs;
+  metrics::Gauge<uint64_t>* _avgCommitTimeMs;
 
   std::atomic_uint64_t _cleanupTimeNum;
-  Gauge<uint64_t>* _avgCleanupTimeMs;
+  metrics::Gauge<uint64_t>* _avgCleanupTimeMs;
 
   std::atomic_uint64_t _consolidationTimeNum;
-  Gauge<uint64_t>* _avgConsolidationTimeMs;
+  metrics::Gauge<uint64_t>* _avgConsolidationTimeMs;
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

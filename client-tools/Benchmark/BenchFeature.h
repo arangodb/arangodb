@@ -59,7 +59,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   void start() override final;
 
   bool async() const { return _async; }
-  uint64_t concurrency() const { return _concurrency; }
+  uint64_t threadCount() const { return _threadCount; }
   uint64_t operations() const { return _operations; }
   uint64_t batchSize() const { return _batchSize; }
   bool keepAlive() const { return _keepAlive; }
@@ -80,6 +80,8 @@ class BenchFeature final : public application_features::ApplicationFeature {
   
   std::string const& customQuery() const { return _customQuery; }
   std::string const& customQueryFile() const { return _customQueryFile; }
+  std::shared_ptr<VPackBuilder> customQueryBindVars() const { return _customQueryBindVarsBuilder; }
+
 
  private:
   void status(std::string const& value);
@@ -89,7 +91,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   void setupHistogram(std::stringstream& pp);
   void updateStatsValues(std::stringstream& pp, VPackBuilder& builder, std::vector<std::unique_ptr<arangodb::arangobench::BenchmarkThread>> const&  threads, arangodb::arangobench::BenchmarkStats& totalStats);
 
-  uint64_t _concurrency;
+  uint64_t _threadCount;
   uint64_t _operations;
   uint64_t _realOperations;
   uint64_t _batchSize;
@@ -114,6 +116,8 @@ class BenchFeature final : public application_features::ApplicationFeature {
   
   std::string _customQuery;
   std::string _customQueryFile;
+  std::string _customQueryBindVars;
+  std::shared_ptr<VPackBuilder> _customQueryBindVarsBuilder;
 
   int* _result;
 

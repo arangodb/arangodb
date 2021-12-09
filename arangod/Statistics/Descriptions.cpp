@@ -26,7 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -433,7 +433,7 @@ stats::Descriptions::Descriptions(application_features::ApplicationServer& serve
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   auto& dealer = _server.getFeature<V8DealerFeature>();
 
-  ServerStatistics const& info = _server.getFeature<MetricsFeature>().serverStatistics();
+  ServerStatistics const& info = _server.getFeature<metrics::MetricsFeature>().serverStatistics();
   b.add("uptime", VPackValue(info.uptime()));
   b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 

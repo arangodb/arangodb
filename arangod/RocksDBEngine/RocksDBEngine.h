@@ -33,6 +33,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "Metrics/Fwd.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
@@ -334,7 +335,13 @@ class RocksDBEngine final : public StorageEngine {
   /// so don't call it from other features during their start() if they are
   /// earlier in the startup sequence
   bool dbExisted() const noexcept { return _dbExisted; }
-  
+
+  void trackRevisionTreeHibernation() noexcept;
+  void trackRevisionTreeResurrection() noexcept;
+
+  void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
+  void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
+
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
@@ -579,12 +586,15 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
   
-  Gauge<uint64_t>& _metricsWalSequenceLowerBound;
-  Gauge<uint64_t>& _metricsArchivedWalFiles;
-  Gauge<uint64_t>& _metricsPrunableWalFiles;
-  Gauge<uint64_t>& _metricsWalPruningActive;
-  Counter& _metricsTreeRebuildsSuccess;
-  Counter& _metricsTreeRebuildsFailure;
+  metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;
+  metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
+  metrics::Gauge<uint64_t>& _metricsWalPruningActive;
+  metrics::Gauge<uint64_t>& _metricsTreeMemoryUsage;
+  metrics::Counter& _metricsTreeRebuildsSuccess;
+  metrics::Counter& _metricsTreeRebuildsFailure;
+  metrics::Counter& _metricsTreeHibernations;
+  metrics::Counter& _metricsTreeResurrections;
   
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBLogPersistor> _logPersistor;

@@ -23,6 +23,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -75,7 +76,7 @@ using namespace arangodb::rest;
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Bench"),
-      _concurrency(NumberOfCores::getValue()),
+      _threadCount(NumberOfCores::getValue()),
       _operations(1000),
       _realOperations(0),
       _batchSize(0),
@@ -139,9 +140,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--async", "send asynchronous requests", new BooleanParameter(&_async));
 
-  options->addOption("--concurrency",
-                     "number of parallel threads and connections",
-                     new UInt64Parameter(&_concurrency));
+  options->addOldOption("--concurrency", "threads");
+  options->addOption("--threads", "number of parallel threads and connections",
+                     new UInt64Parameter(&_threadCount))
+                     .setIntroducedIn(31000);
 
   options->addOption("--requests", "total number of operations",
                      new UInt64Parameter(&_operations));
@@ -225,6 +227,12 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           new StringParameter(&_customQueryFile))
       .setIntroducedIn(30800);
 
+  options
+      ->addOption("--custom-query-bindvars",
+                  "bind parameters to be used in the 'custom-query' testcase.",
+                  new StringParameter(&_customQueryBindVars))
+      .setIntroducedIn(31000);
+
   options->addOption("--quiet", "suppress status messages", new BooleanParameter(&_quiet));
 
   options->addObsoleteOption(
@@ -247,6 +255,16 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       LOG_TOPIC("ad47b", WARN, arangodb::Logger::BENCH)
           << "For flag '--histogram.percentiles "
           << _percentiles << "': histogram is disabled by default. Enable it with flag '--histogram.generate = true'.";
+    }
+  }
+  if (!_customQueryBindVars.empty()) {
+    try {
+      _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
+    } catch (...) {
+      LOG_TOPIC("a3468", FATAL, arangodb::Logger::BENCH)
+          << "For flag '--custom-query-bindvars "
+          << _customQueryBindVars << "': invalid JSON format.";
+      FATAL_ERROR_EXIT();
     }
   }
 }
@@ -275,7 +293,7 @@ void BenchFeature::setupHistogram(std::stringstream& pp) {
 void BenchFeature::updateStatsValues(std::stringstream& pp, VPackBuilder& builder,
                                      const std::vector<std::unique_ptr<BenchmarkThread>>& threads,
                                      BenchmarkStats& totalStats) {
-  for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
+  for (size_t i = 0; i < static_cast<size_t>(_threadCount); ++i) {
     if (_duration != 0) {
       _realOperations += threads[i]->_counter;
     }
@@ -371,7 +389,7 @@ void BenchFeature::start() {
   } else {
     _realOperations = _operations;
   }
-  double const stepSize = (double)_operations / (double)_concurrency;
+  double const stepSize = (double)_operations / (double)_threadCount;
   uint64_t realStep = static_cast<uint64_t>(stepSize);
 
   if (stepSize - static_cast<double>(static_cast<uint64_t>(stepSize)) > 0.0) {
@@ -414,7 +432,7 @@ void BenchFeature::start() {
     // start client threads
     _started = 0;
 
-    for (uint64_t i = 0; i < _concurrency; ++i) {
+    for (uint64_t i = 0; i < _threadCount; ++i) {
       auto thread = std::make_unique<BenchmarkThread>(
           server(), benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
           static_cast<int>(i), _batchSize, &operationsCounter, client,
@@ -425,7 +443,7 @@ void BenchFeature::start() {
     }
 
     // give all threads a chance to start so they will not miss the broadcast
-    while (getStartCounter() < static_cast<int>(_concurrency)) {
+    while (getStartCounter() < static_cast<int>(_threadCount)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
@@ -470,7 +488,7 @@ void BenchFeature::start() {
 
     // sum up times of all threads
     double requestTime = 0.0;
-    for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(_threadCount); ++i) {
       requestTime += threads[i]->stats().total;
     }
 
@@ -535,7 +553,7 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> con
             << ", replication factor: " << _replicationFactor
             << ", number of shards: " << _numberOfShards
             << ", wait for sync: " << (_waitForSync ? "true" : "false")
-            << ", concurrency level (threads): " << _concurrency << std::endl;
+            << ", concurrency level (threads): " << _threadCount << std::endl;
 
   std::cout << "Test case: " << _testCase << ", complexity: " << _complexity
             << ", database: '" << client.databaseName() << "', collection: '"
@@ -549,7 +567,7 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> con
   builder.add("replicationFactor", VPackValue(_replicationFactor));
   builder.add("numberOfShards", VPackValue(_numberOfShards));
   builder.add("waitForSync", VPackValue(_waitForSync));
-  builder.add("concurrencyLevel", VPackValue(_concurrency));
+  builder.add("concurrencyLevel", VPackValue(_threadCount));
   builder.add("testCase", VPackValue(_testCase));
   builder.add("complexity", VPackValue(_complexity));
   builder.add("database", VPackValue(client.databaseName()));
@@ -664,19 +682,19 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
             << result._requestTime << " s" << std::endl;
   builder.add("requestTime", VPackValue(result._requestTime));
   std::cout << "Request/response duration (per thread): " << std::fixed
-            << (result._requestTime / (double)_concurrency) << " s" << std::endl;
+            << (result._requestTime / (double)_threadCount) << " s" << std::endl;
   builder.add("requestResponseDurationPerThread",
-              VPackValue(result._requestTime / (double)_concurrency));
+              VPackValue(result._requestTime / (double)_threadCount));
 
   std::cout << "Time needed per operation: " << std::fixed
             << (result._time / _realOperations) << " s" << std::endl;
   builder.add("timeNeededPerOperation", VPackValue(result._time / _realOperations));
 
   std::cout << "Time needed per operation per thread: " << std::fixed
-            << (result._time / (double)_realOperations * (double)_concurrency)
+            << (result._time / (double)_realOperations * (double)_threadCount)
             << " s" << std::endl;
   builder.add("timeNeededPerOperationPerThread",
-              VPackValue(result._time / (double)_realOperations * (double)_concurrency));
+              VPackValue(result._time / (double)_realOperations * (double)_threadCount));
 
   std::cout << "Operations per second rate: " << std::fixed
             << ((double)_realOperations / result._time) << std::endl;
