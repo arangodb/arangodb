@@ -52,6 +52,8 @@ const iconMap = {
     radial: <ShareAltOutlined />,
 };
 
+// /_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "male/bob" GRAPH "routeplanner" RETURN p
+
 function G6Graph() {
   const [state, setState] = React.useState({
     data2: null,

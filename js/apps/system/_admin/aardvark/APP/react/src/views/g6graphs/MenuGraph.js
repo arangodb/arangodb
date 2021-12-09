@@ -17,7 +17,8 @@ import {
   AppstoreFilled,
   CopyrightCircleFilled,
   CustomerServiceFilled,
-  ShareAltOutlined
+  ShareAltOutlined,
+  EditOutlined
 
 } from '@ant-design/icons';
 
@@ -241,6 +242,11 @@ const MenuGraph = () => {
             icon: <ExpandAltOutlined />,
             name: 'Expand (Routeplanner)',
         },
+        {
+          key: 'editnode',
+          icon: <EditOutlined />,
+          name: 'Edit node',
+      },
   ];
   
   const HandleChange = (menuItem, menuData) => {
@@ -257,6 +263,10 @@ const MenuGraph = () => {
             queryMethod = "DELETE";
             break;
         case "expand":
+            query = `/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${menuData.id}" GRAPH "routeplanner" RETURN p`;
+            queryMethod = "GET";
+            break;
+        case "editnode":
             query = `/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${menuData.id}" GRAPH "routeplanner" RETURN p`;
             queryMethod = "GET";
             break;
@@ -296,7 +306,7 @@ const MenuGraph = () => {
           extra={<LayoutSelector options={layouts} value={type} onChange={handleChange} />}
         >
           <Graphin data={graphData} layout={layout}>
-            <ContextMenu style={{ width: '80px' }}>
+            <ContextMenu>
               <Menu options={options} onChange={HandleChange} bindType="node" />
             </ContextMenu>
             <MiniMap />
