@@ -81,8 +81,7 @@ struct CFilesSetup {
     FILE* fd = fopen(filename.c_str(), "wb");
 
     if (fd) {
-      size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
-      (void)numWritten;
+      [[maybe_unused]] size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
       fclose(fd);
     } else {
       EXPECT_TRUE(false);
@@ -98,8 +97,7 @@ struct CFilesSetup {
     FILE* fd = fopen(filename.c_str(), "wb");
 
     if (fd) {
-      size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
-      (void)numWritten;
+      [[maybe_unused]] size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
       fclose(fd);
     } else {
       EXPECT_TRUE(false);
@@ -198,8 +196,7 @@ class RocksDBShaFileHandlerEnvGenerator {
   }
 
   std::string getFilePath(const char* name) {
-    std::string retpath;
-    retpath = setup._directory;
+    std::string retpath = setup._directory;
     retpath += TRI_DIR_SEPARATOR_CHAR;
     retpath += name;
     return retpath;
