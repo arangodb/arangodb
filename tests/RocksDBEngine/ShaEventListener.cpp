@@ -82,7 +82,6 @@ struct CFilesSetup {
 
     if (fd) {
       [[maybe_unused]] size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
-      (void)numWritten;
       fclose(fd);
     } else {
       EXPECT_TRUE(false);
