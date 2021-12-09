@@ -47,7 +47,7 @@ class RocksDBSha256Checksum : public rocksdb::FileChecksumGenerator {
 
   std::string GetChecksum() const override;
 
-  char const* Name() const override { return "RocksDBSha256Checksum"; }
+  char const* Name() const override { return "ADBSha256"; }
 
  private:
   std::string const _fileName;
