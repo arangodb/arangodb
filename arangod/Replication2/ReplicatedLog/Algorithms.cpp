@@ -358,7 +358,9 @@ auto ParticipantStateTuple::isFailed() const noexcept -> bool {
 };
 
 auto operator<=>(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept {
-  return std::tie(left.index, left.id) <=> std::tie(right.index, right.id);
+  // return std::tie(left.index, left.id) <=> std::tie(right.index, right.id); -- not supported by apple clang
+  if (auto c = left.index <=> right.index; c != 0) { return c; }
+  return left.id <=> right.id;
 }
 
 algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
