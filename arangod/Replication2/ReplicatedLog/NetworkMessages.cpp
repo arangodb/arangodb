@@ -131,10 +131,6 @@ auto AppendEntriesRequest::operator=(replicated_log::AppendEntriesRequest&& othe
   FATAL_ERROR_ABORT();
 }
 
-auto replicated_log::operator<=(MessageId left, MessageId right) noexcept -> bool {
-  return left.value <= right.value;
-}
-
 auto replicated_log::operator++(MessageId& id) -> MessageId& {
   ++id.value;
   return id;
