@@ -276,31 +276,10 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   }
 
   std::string const body = builder.slice().toJson();
-
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(RequestType::POST, "/_api/database", body.c_str(), body.size()));
-  if (response == nullptr || !response->isComplete()) {
-    return {TRI_ERROR_INTERNAL};
-  }
-
-  auto returnCode = response->getHttpReturnCode();
-  if (returnCode == static_cast<int>(ResponseCode::OK) ||
-      returnCode == static_cast<int>(ResponseCode::CREATED)) {
-    // all ok
-    return {TRI_ERROR_NO_ERROR};
-  }
-  if (returnCode == static_cast<int>(ResponseCode::UNAUTHORIZED) ||
-      returnCode == static_cast<int>(ResponseCode::FORBIDDEN)) {
-    // invalid authorization
-    auto res = arangodb::HttpResponseChecker::check(httpClient->getErrorMessage(), response.get(), "creating database", body);
- //   auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
-    return {TRI_ERROR_FORBIDDEN, res.errorMessage()};
-  }
-
-  // any other error
-  auto res = arangodb::HttpResponseChecker::check(httpClient->getErrorMessage(), response.get(), "creating database", body);
- // auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
-  return {TRI_ERROR_INTERNAL, res.errorMessage()};
+  return arangodb::HttpResponseChecker::check(httpClient->getErrorMessage(), response.get(),
+                                              "creating database", body, arangodb::HttpResponseChecker::PayloadType::JSON);
 }
 
 /// @check If directory is encrypted, check that key option is specified
@@ -430,7 +409,8 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
 
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
-  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "restoring collection", body);
+  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(),
+                                              "restoring collection", body, arangodb::HttpResponseChecker::PayloadType::JSON);
 
  // return ::checkHttpResponse(httpClient, response, "restoring collection", body);
 }
@@ -482,7 +462,8 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const body = viewDefinition.toJson();
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
-  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "restoring view", body);
+  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(),
+                                              "restoring view", body, arangodb::HttpResponseChecker::PayloadType::JSON);
 }
 
 arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpClient) {
@@ -496,7 +477,8 @@ arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpCli
       httpClient.request(arangodb::rest::RequestType::POST, statusUrl,
                          body.c_str(), body.length()));
 
-  auto res = arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "check status", body);
+  auto res = arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(),
+                                                  "check status", body, arangodb::HttpResponseChecker::PayloadType::JSON);
   if (res.ok() && response) {
     try {
       if (!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
@@ -514,9 +496,8 @@ arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpCli
     httpClient.request(arangodb::rest::RequestType::POST, FoxxHealUrl,
                        body.c_str(), body.length())
   );
-  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(), "trigger self heal", body);
-
- // return ::checkHttpResponse(httpClient, response, "trigger self heal", body);
+  return arangodb::HttpResponseChecker::check(httpClient.getErrorMessage(), response.get(),
+                                              "trigger self heal", body, arangodb::HttpResponseChecker::PayloadType::JSON);
 }
 
 arangodb::Result processInputDirectory(
@@ -1076,7 +1057,9 @@ Result RestoreFeature::RestoreJob::sendRestoreData(arangodb::httpclient::SimpleH
 
   std::unique_ptr<SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize, headers));
-  arangodb::Result res = arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get(), "restoring data", "");
+  arangodb::Result res = arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get(), "restoring data",
+                                                              std::string_view(buffer, bufferSize),
+                                                              arangodb::HttpResponseChecker::PayloadType::JSONL);
   
   if (res.fail()) {
     // error
@@ -1529,7 +1512,8 @@ Result RestoreFeature::RestoreMainJob::sendRestoreIndexes(arangodb::httpclient::
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::PUT, url, body.c_str(), body.size()));
-  return arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get(), "restoring indexes", body);
+  return arangodb::HttpResponseChecker::check(client.getErrorMessage(), response.get(), "restoring indexes",
+                                              body, arangodb::HttpResponseChecker::PayloadType::JSON);
 }
 
 RestoreFeature::RestoreSendJob::RestoreSendJob(RestoreFeature& feature,
