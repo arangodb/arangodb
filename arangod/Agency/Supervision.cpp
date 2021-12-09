@@ -1729,21 +1729,28 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
   // This deletes old Hotbackup transfer jobs in 
   // /Target/HotBackup/TransferJobs according to their time stamp.
   // We keep at most 100 transfer jobs which are completed.
+  // We also delete old hotbackup transfer job locks if needed.
   constexpr uint64_t maximalNumberTransferJobs = 100;
   constexpr char const* prefix = HOTBACKUP_TRANSFER_JOBS;
 
-  auto const& jobs = snapshot.hasAsChildren(prefix).first;
-  if (jobs.size() <= maximalNumberTransferJobs + 6) {
-    // We tolerate some more jobs before we take action. This is to
-    // avoid that we go through all jobs every second. Oasis takes
+  auto jobs = snapshot.hasAsChildren(prefix);
+  auto locks = snapshot.hasAsChildren(HOTBACKUP_TRANSFER_LOCKS);
+  bool locksFound = locks.second && locks.first.size() > 0;
+  if (jobs.first.size() <= maximalNumberTransferJobs + 6 && !locksFound) {
+    // We tolerate some more jobs before we take action. This
+    // is to avoid that we go through all jobs every second. Oasis takes
     // a hotbackup every 2h, so this number 6 would lead to the list
     // being traversed approximately every 12h.
+    // The locks are cleaned up if no jobs is ongoing and no cleanup is needed
+    // for the jobs. To get to this code, we enter it every 60th time, even
+    // if there is no need for it from the perspective of the transfer jobs.
     return;
   }
   typedef std::pair<std::string, std::string> keyDate;
   std::vector<keyDate> v;
-  v.reserve(jobs.size());
-  for (auto const& p : jobs) {
+  v.reserve(jobs.first.size());
+  bool foundOngoing = false;
+  for (auto const& p : jobs.first) {
     auto const& dbservers = p.second->hasAsChildren("DBServers");
     if (!dbservers.second) {
       continue;
@@ -1751,32 +1758,68 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
     // Now check if everything is completed or failed, or if the job
     // has no status information whatsoever:
     bool completed = true;
-    bool hasStatus = false;
     for (auto const& pp : dbservers.first) {
       auto const& status = pp.second->hasAsString("Status");
-      if (!status.second) {
-        completed = false;
-      } else {
-        hasStatus = true;
+      if (status.second) {
         if (status.first.compare("COMPLETED") != 0 &&
             status.first.compare("FAILED") != 0) {
-          completed = false;
+          // If we get here, we might be looking at an old leftover which
+          // appears to be ongoing, or at a new style, properly ongoing
+          // We ignore non-completedness of old crud and only consider
+          // new jobs with a rebootId as incomplete:
+          auto const& rebootId = pp.second->hasAsUInt("rebootId");
+          if (status.first.compare("NEW") == 0 || rebootId.second) {
+            completed = false;
+          }
         }
       }
     }
-    if (completed || !hasStatus) {
+    if (completed) {
       auto created = p.second->hasAsString("Timestamp");
       if (created.second) {
         v.emplace_back(p.first, created.first);
       } else {
         v.emplace_back(p.first, "1970");  // will be sorted very early
       }
+    } else {
+      foundOngoing = true;
     }
   }
   std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
     return a.second < b.second;
   });
   if (v.size() <= maximalNumberTransferJobs) {
+    // Now check if anything was ongoing, if not, then we cleanup all locks
+    // in /arango/Target/Hotbackup/Transfers, provided nothing has changed
+    // with the transfer jobs:
+    if (!foundOngoing) {
+      VPackArrayBuilder guard(envelope.get());
+      {
+        // mutation part:
+        VPackObjectBuilder guard2(envelope.get());
+        envelope->add(VPackValue(HOTBACKUP_TRANSFER_LOCKS));
+        {
+          VPackObjectBuilder guard3(envelope.get());
+          envelope->add("op", VPackValue("set"));
+          envelope->add(VPackValue("new"));
+          {
+            VPackObjectBuilder guard4(envelope.get());
+          }
+        }
+      }
+      {
+        // precondition part:
+        VPackObjectBuilder guard2(envelope.get());
+        envelope->add(VPackValue(HOTBACKUP_TRANSFER_JOBS));
+        {
+          VPackObjectBuilder guard3(envelope.get());
+          envelope->add(VPackValue("old"));
+          auto oldJobs = snapshot.hasAsNode(HOTBACKUP_TRANSFER_JOBS);
+          TRI_ASSERT(oldJobs.second);
+          oldJobs.first.toBuilder(*envelope);
+        }
+      }
+    }
     return;
   }
   size_t toBeDeleted = v.size() - maximalNumberTransferJobs;  // known to be positive
@@ -1784,12 +1827,18 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
                                            << " old transfer jobs"
                                               " in "
                                            << prefix;
-  // We build a transaction here
-  for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
-    envelope->add(VPackValue(prefix + it->first));
+  // We build a single transaction here
+  {
+    VPackArrayBuilder guard(envelope.get());
     {
       VPackObjectBuilder guard2(envelope.get());
-      envelope->add("op", VPackValue("delete"));
+      for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+        envelope->add(VPackValue(prefix + it->first));
+        {
+          VPackObjectBuilder guard2(envelope.get());
+          envelope->add("op", VPackValue("delete"));
+        }
+      }
     }
   }
 }
@@ -1862,17 +1911,14 @@ void Supervision::cleanupHotbackupTransferJobs() {
   _lock.assertLockedByCurrentThread();
 
   auto envelope = std::make_shared<VPackBuilder>();
-  {
-    VPackArrayBuilder guard1(envelope.get());
-    VPackObjectBuilder guard2(envelope.get());
-    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
-        snapshot(), envelope);
-  }
-  if (envelope->slice()[0].length() > 0) {
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+      snapshot(), envelope);
+  if (envelope->size() > 0) {
+    LOG_DEVEL << "Sending transaction to agency: " << envelope->toJson();
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
-      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION) << "Failed to remove old transfer jobs: " << envelope->toJson();
+      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION) << "Failed to remove old transfer jobs or locks: " << envelope->toJson();
     }
   }
 }
