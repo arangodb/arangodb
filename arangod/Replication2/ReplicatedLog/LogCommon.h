@@ -28,6 +28,7 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <variant>
 
 #if (_MSC_VER >= 1)
@@ -56,31 +57,6 @@ class Slice;
 }  // namespace arangodb::velocypack
 
 namespace arangodb::replication2 {
-
-/**
- * This implements all comparsion operators for a type `T` with another type
- * `S`, given that `operator<=(T const&, S const&)` is available.
- * @tparam T
- * @tparam S defaults to T
- */
-template <typename T, typename S = T>
-struct implement_compare {
-  [[nodiscard]] friend auto operator==(T const& left, S const& right) -> bool {
-    return left <= right && right <= left;
-  }
-  [[nodiscard]] friend auto operator!=(T const& left, S const& right) -> bool {
-    return !(left == right);
-  }
-  [[nodiscard]] friend auto operator<(T const& left, S const& right) -> bool {
-    return !(right <= left);
-  }
-  [[nodiscard]] friend auto operator>=(T const& left, S const& right) -> bool {
-    return right <= left;
-  }
-  [[nodiscard]] friend auto operator>(T const& left, S const& right) -> bool {
-    return right < left;
-  }
-};
 
 struct LogIndex {
   constexpr LogIndex() noexcept : value{0} {}
@@ -214,7 +190,8 @@ class PersistingLogEntry {
   void toVelocyPack(velocypack::Builder& builder, OmitLogIndex) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> PersistingLogEntry;
 
-  [[nodiscard]] auto operator==(PersistingLogEntry const&) const noexcept -> bool;
+  friend auto operator==(PersistingLogEntry const&, PersistingLogEntry const&) noexcept
+      -> bool = default;
 
  private:
   void entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const;
@@ -313,20 +290,46 @@ struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
 
 struct LogConfig {
   std::size_t writeConcern = 1;
+  std::size_t softWriteConcern = 1;
   std::size_t replicationFactor = 1;
   bool waitForSync = false;
 
   auto toVelocyPack(velocypack::Builder&) const -> void;
   explicit LogConfig(velocypack::Slice);
   LogConfig() noexcept = default;
-  LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept;
+  LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
+            std::size_t replicationFactor, bool waitForSync) noexcept;
 
-  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
-  friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept
+      -> bool = default;
 };
 
-[[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+struct ParticipantFlags {
+  bool forced = false;
+  bool excluded = false;
+
+  friend auto operator==(ParticipantFlags const& left,
+                         ParticipantFlags const& right) noexcept -> bool = default;
+
+  friend auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
+
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
+};
+
+auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
+
+struct ParticipantsConfig {
+  std::size_t generation = 0;
+  std::unordered_map<ParticipantId, ParticipantFlags> participants;
+
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> ParticipantsConfig;
+
+  // to be defaulted soon
+  friend auto operator==(ParticipantsConfig const& left,
+                         ParticipantsConfig const& right) noexcept -> bool = default;
+};
 
 // These settings are initialised by the ReplicatedLogFeature based on command line arguments
 struct ReplicatedLogGlobalSettings {
@@ -341,7 +344,6 @@ struct ReplicatedLogGlobalSettings {
   std::size_t _thresholdRocksDBWriteBatchSize{defaultThresholdRocksDBWriteBatchSize};
 };
 
-
 namespace replicated_log {
 struct CommitFailReason {
   CommitFailReason() = default;
@@ -349,8 +351,8 @@ struct CommitFailReason {
   struct NothingToCommit {
     static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
     void toVelocyPack(velocypack::Builder& builder) const;
-    friend auto operator==(NothingToCommit const& left,
-                           NothingToCommit const& right) -> bool = default;
+    friend auto operator==(NothingToCommit const& left, NothingToCommit const& right)
+        -> bool = default;
   };
   struct QuorumSizeNotReached {
     static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
@@ -375,8 +377,8 @@ struct CommitFailReason {
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
 
-  friend auto operator==(CommitFailReason const& left,
-                         CommitFailReason const& right)-> bool = default;
+  friend auto operator==(CommitFailReason const& left, CommitFailReason const& right)
+      -> bool = default;
 
  private:
   template <typename... Args>
@@ -385,7 +387,6 @@ struct CommitFailReason {
 
 auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log
-
 
 }  // namespace arangodb::replication2
 
