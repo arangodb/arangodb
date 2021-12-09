@@ -67,6 +67,7 @@ void WeightedEnumerator::clear() {
 void WeightedEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
   PathEnumerator::setStartVertex(startVertex);
   _schreier.emplace_back(startVertex);
+  clear();
 }
 
 bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
