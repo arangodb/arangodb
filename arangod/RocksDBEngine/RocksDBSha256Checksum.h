@@ -56,7 +56,7 @@ class RocksDBSha256Checksum : public rocksdb::FileChecksumGenerator {
   std::string _checksum;
 };
 
-class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_shared_from_this<RocksDBShaFileManager>{
+class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_shared_from_this<RocksDBShaFileManager> {
  public:
   RocksDBShaFileManager(std::string const& path) : _rootPath{path} {};
   void checkMissingShaFiles();
