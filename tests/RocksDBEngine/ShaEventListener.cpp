@@ -168,22 +168,6 @@ TEST(RocksDBShaFileHandlerTest, write_file_with_checksum) {
           .c_str()));
 }
 
-/*
-TEST(RocksDBShaFileHandlerTest, write_file_name_too_small) {
-  CFilesSetup s;
-
-  std::string new_sst = s._directory.c_str();
-  new_sst += TRI_DIR_SEPARATOR_CHAR;
-  new_sst += "foo";
-  auto ret_val = TRI_WriteFile(new_sst.c_str(), "12345 67890 12345 67890", 23);
-  EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
-
-  arangodb::RocksDBShaFileManager shaFileManager(s._directory.c_str());
-  EXPECT_TRUE(!shaFileManager.writeShaFile(new_sst, "e7f5561536b5891e35d6021015d67d5798b3731088b44dcebf6bad03785ac8c2"));
-
-}
-*/
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test checkMissingShaFiles scenarios
 ////////////////////////////////////////////////////////////////////////////////
