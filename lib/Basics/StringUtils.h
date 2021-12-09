@@ -24,13 +24,14 @@
 
 #pragma once
 
-#include <stddef.h>
 #include <charconv>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -60,17 +61,17 @@ namespace StringUtils {
 ///
 /// This method escapes a unicode character string by replacing the unicode
 /// characters by a \\uXXXX sequence.
-std::string escapeUnicode(std::string const& name, bool escapeSlash = true);
+std::string escapeUnicode(std::string_view value, bool escapeSlash = true);
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source, char delim = ',');
+std::vector<std::string> split(std::string_view source, char delim = ',');
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source, std::string const& delim);
+std::vector<std::string> split(std::string_view source, std::string_view delim);
 
 /// @brief joins a string
 template <typename C>
-std::string join(C const& source, std::string const& delim) {
+std::string join(C const& source, std::string_view delim) {
   std::string result;
   bool first = true;
 
@@ -78,7 +79,7 @@ std::string join(C const& source, std::string const& delim) {
     if (first) {
       first = false;
     } else {
-      result += delim;
+      result.append(delim);
     }
 
     result += c;
@@ -107,7 +108,7 @@ std::string join(C const& source, char delim = ',') {
 
 /// @brief joins a string
 template <typename C, typename T>
-std::string join(C const& source, std::string const& delim,
+std::string join(C const& source, std::string_view delim,
                  std::function<std::string(T)> const& cb) {
   std::string result;
   bool first = true;
@@ -116,7 +117,7 @@ std::string join(C const& source, std::string const& delim,
     if (first) {
       first = false;
     } else {
-      result += delim;
+      result.append(delim);
     }
 
     result += cb(c);
@@ -126,35 +127,35 @@ std::string join(C const& source, std::string const& delim,
 }
 
 /// @brief removes leading and trailing whitespace
-std::string trim(std::string const& sourceStr,
-                 std::string const& trimStr = " \t\n\r");
+std::string trim(std::string_view sourceStr,
+                 std::string_view trimStr = " \t\n\r");
 
 /// @brief removes leading and trailing whitespace in place
-void trimInPlace(std::string& str, std::string const& trimStr = " \t\n\r");
+void trimInPlace(std::string& str, std::string_view trimStr = " \t\n\r");
 
 /// @brief removes leading whitespace
-std::string lTrim(std::string const& sourceStr,
-                  std::string const& trimStr = " \t\n\r");
+std::string lTrim(std::string_view sourceStr,
+                  std::string_view trimStr = " \t\n\r");
 
 /// @brief removes trailing whitespace
-std::string rTrim(std::string const& sourceStr,
-                  std::string const& trimStr = " \t\n\r");
+std::string rTrim(std::string_view sourceStr,
+                  std::string_view trimStr = " \t\n\r");
 
-void rTrimInPlace(std::string& str, std::string const& trimStr = " \t\n\r");
+void rTrimInPlace(std::string& str, std::string_view trimStr = " \t\n\r");
 
 /// @brief fills string from left
-std::string lFill(std::string const& sourceStr, size_t size, char fill = ' ');
+std::string lFill(std::string_view sourceStr, size_t size, char fill = ' ');
 
 /// @brief fills string from right
-std::string rFill(std::string const& sourceStr, size_t size, char fill = ' ');
+std::string rFill(std::string_view sourceStr, size_t size, char fill = ' ');
 
 /// @brief wrap longs lines
-std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
-                              std::string const& breaks = " ");
+std::vector<std::string> wrap(std::string_view sourceStr, size_t size,
+                              std::string_view breaks = " ");
 
 /// @brief substring replace
-std::string replace(std::string const& sourceStr, std::string const& fromString,
-                    std::string const& toString);
+std::string replace(std::string_view sourceStr, std::string_view fromString,
+                    std::string_view toString);
 
 static inline char tolower(char c) noexcept {
   return c + ((static_cast<unsigned char>(c - 65) < 26U) << 5);
@@ -172,18 +173,23 @@ static inline unsigned char toupper(unsigned char c) noexcept {
   return c - ((c - 97U < 26U) << 5);
 }
 
+/// @brief converts string to lower case - locale-independent, ASCII inputs only!
+void tolower(std::string_view str, std::string& result);
+
+/// @brief converts string to lower case - locale-independent, ASCII inputs only!
+std::string tolower(std::string_view str);
+
 /// @brief converts string to lower case in place - locale-independent, ASCII inputs only!
 void tolowerInPlace(std::string& str);
 
-/// @brief converts string to lower case - locale-independent, ASCII inputs only!
-std::string tolower(std::string&& str);
-std::string tolower(std::string const& str);
+/// @brief converts string to upper case - locale-independent, ASCII inputs only!
+void toupper(std::string_view str, std::string& result);
+
+/// @brief converts string to upper case - locale-independent, ASCII inputs only!
+std::string toupper(std::string_view str);
 
 /// @brief converts string to upper case in place - locale-independent, ASCII inputs only!
 void toupperInPlace(std::string& str);
-
-/// @brief converts string to upper case - locale-independent, ASCII inputs only!
-std::string toupper(std::string const& str);
 
 /// @brief case insensitive string comparison. locale-independent, ASCII inputs only!
 template<typename T1, typename T2>
@@ -226,32 +232,29 @@ template<typename T1, typename T2>
 }
 
 /// @brief checks for a prefix
-bool isPrefix(std::string const& str, std::string const& prefix);
+bool isPrefix(std::string_view str, std::string_view prefix);
 
 /// @brief checks for a suffix
-bool isSuffix(std::string const& str, std::string const& postfix);
+bool isSuffix(std::string_view str, std::string_view postfix);
 
 /// @brief url decodes the string
-std::string urlDecodePath(std::string const& str);
-std::string urlDecode(std::string const& str);
+std::string urlDecodePath(std::string_view str);
+std::string urlDecode(std::string_view str);
 
 /// @brief url encodes the string
 std::string urlEncode(char const* src, size_t len);
+std::string urlEncode(std::string_view value);
 
 /// @brief url encodes the string into the result buffer
 void encodeURIComponent(std::string& result, char const* src, size_t len);
 
 /// @brief uri encodes the component string
-std::string encodeURIComponent(std::string const& str);
-
-/// @brief uri encodes the component string
 std::string encodeURIComponent(char const* src, size_t len);
-
-/// @brief converts input string to soundex code
-std::string soundex(std::string const& str);
+std::string encodeURIComponent(std::string_view value);
 
 /// @brief converts input string to soundex code
 std::string soundex(char const* src, size_t len);
+std::string soundex(std::string_view value);
 
 /// @brief converts input string to vector of character codes
 std::vector<uint32_t> characterCodes(char const* s, size_t length);
@@ -261,9 +264,6 @@ unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size
 
 /// @brief calculates the levenshtein distance between the input strings
 size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2);
-
-/// @brief url encodes the string
-std::string urlEncode(std::string const& str);
 
 // -----------------------------------------------------------------------------
 // CONVERT TO STRING
@@ -328,95 +328,59 @@ inline int hex2int(char ch, int errorValue = 0) {
 }
 
 /// @brief parses a boolean
-bool boolean(std::string const& str);
+bool boolean(std::string_view str);
 
 /// @brief parses an integer
-inline int64_t int64(char const* value, size_t size) noexcept {
-  int64_t result = 0;
-  std::from_chars(value, value + size, result, 10);
-  return result;
-}
-inline int64_t int64(std::string const& value) noexcept {
-  return StringUtils::int64(value.data(), value.size());
-}
+int64_t int64(char const* value, size_t size) noexcept;
+int64_t int64(std::string_view value) noexcept;
 
 /// @brief parses an unsigned integer
-inline uint64_t uint64(char const* value, size_t size) noexcept {
-  uint64_t result = 0;
-  std::from_chars(value, value + size, result, 10);
-  return result;
-}
-inline uint64_t uint64(std::string const& value) noexcept {
-  return StringUtils::uint64(value.data(), value.size());
-}
-inline uint64_t uint64(std::string_view const& value) noexcept {
-  return StringUtils::uint64(value.data(), value.size());
-}
+uint64_t uint64(char const* value, size_t size) noexcept;
+uint64_t uint64(std::string_view value) noexcept;
 
 /// @brief parses an unsigned integer
 /// the caller must make sure that the input buffer only contains valid
 /// numeric characters - otherwise the uint64_t result will be wrong.
 /// because the input is restricted to some valid characters, this function
 /// is highly optimized
-uint64_t uint64_trusted(char const* value, size_t length);
-inline uint64_t uint64_trusted(std::string const& value) {
-  return uint64_trusted(value.data(), value.size());
-}
+uint64_t uint64_trusted(char const* value, size_t length) noexcept;
+uint64_t uint64_trusted(std::string_view value) noexcept;
 
 /// @brief parses an integer
-inline int32_t int32(char const* value, size_t size) noexcept {
-  int32_t result = 0;
-  std::from_chars(value, value + size, result, 10);
-  return result;
-}
-inline int32_t int32(std::string const& value) noexcept {
-  return StringUtils::int32(value.data(), value.size());
-}
+int32_t int32(char const* value, size_t size) noexcept;
+int32_t int32(std::string_view value) noexcept;
 
 /// @brief parses an unsigned integer
-inline uint32_t uint32(char const* value, size_t size) noexcept {
-  uint32_t result = 0;
-  std::from_chars(value, value + size, result, 10);
-  return result;
-}
-inline uint32_t uint32(std::string const& value) noexcept {
-  return StringUtils::uint32(value.data(), value.size());
-}
-
-/// @brief parses a decimal
-double doubleDecimal(std::string const& str);
+uint32_t uint32(char const* value, size_t size) noexcept;
+uint32_t uint32(std::string_view value) noexcept;
 
 /// @brief parses a decimal
 double doubleDecimal(char const* value, size_t size);
-
-/// @brief parses a decimal
-float floatDecimal(std::string const& str);
+double doubleDecimal(std::string_view value);
 
 /// @brief parses a decimal
 float floatDecimal(char const* value, size_t size);
+float floatDecimal(std::string_view value);
 
 /// @brief convert char const* or std::string to number with error handling
 template <typename T>
-static bool toNumber(std::string const& key, T& val) noexcept {
-  size_t n = key.size();
+static bool toNumber(std::string_view value, T& val) noexcept {
+  size_t n = value.size();
   if (n == 0) {
     return false;
   }
-  try {
-    if constexpr (std::is_integral<T>::value) {
-      char const* s = key.data();
-      std::from_chars(s, s + n, val);
-    } else if constexpr (std::is_same<long double, typename std::remove_cv<T>::type>::value) {
-      val = stold(key);
-    } else if constexpr (std::is_same<double, typename std::remove_cv<T>::type>::value) {
-      val = stod(key);
-    } else if constexpr (std::is_same<float, typename std::remove_cv<T>::type>::value) {
-      val = stof(key);
-    }
-  } catch (...) {
-    return false;
+  char const* s = value.data();
+  std::errc ec;
+  if constexpr (std::is_integral<T>::value) {
+    ec = std::from_chars(s, s + n, val).ec;
+  } else if constexpr (std::is_same<long double, typename std::remove_cv<T>::type>::value) {
+    ec = std::from_chars(s, s + n, val).ec;
+  } else if constexpr (std::is_same<double, typename std::remove_cv<T>::type>::value) {
+    ec = std::from_chars(s, s + n, val).ec;
+  } else if constexpr (std::is_same<float, typename std::remove_cv<T>::type>::value) {
+    ec = std::from_chars(s, s + n, val).ec;
   }
-  return true;
+  return ec == std::errc();
 }
 
 // -----------------------------------------------------------------------------
@@ -425,41 +389,40 @@ static bool toNumber(std::string const& key, T& val) noexcept {
 
 /// @brief converts to base64
 std::string encodeBase64(char const* value, size_t length);
-std::string encodeBase64(std::string const&);
-std::string encodeBase64(std::string_view);
+std::string encodeBase64(std::string_view value);
 
 /// @brief converts from base64
-std::string decodeBase64(std::string const&);
+std::string decodeBase64(std::string_view);
 
 /// @brief converts to base64, URL friendly
 ///
 /// '-' and '_' are used instead of '+' and '/'
-std::string encodeBase64U(std::string const&);
+std::string encodeBase64U(std::string_view);
 
 /// @brief converts from base64, URL friendly
 ///
 /// '-' and '_' are used instead of '+' and '/'
-std::string decodeBase64U(std::string const&);
+std::string decodeBase64U(std::string_view);
 
 // -----------------------------------------------------------------------------
 // ADDITIONAL STRING UTILITIES
 // -----------------------------------------------------------------------------
 
 /// @brief replaces incorrect path delimiter character for window and linux
-std::string correctPath(std::string const& incorrectPath);
+std::string correctPath(std::string_view incorrectPath);
 
 /// @brief converts to hex
 std::string encodeHex(char const* value, size_t length);
-std::string encodeHex(std::string const& value);
+std::string encodeHex(std::string_view value);
 
 /// @brief converts from hex
 /// any invalid character in the input sequence will make the function return
 /// an empty string
 std::string decodeHex(char const* value, size_t length);
-std::string decodeHex(std::string const& value);
+std::string decodeHex(std::string_view value);
 
 void escapeRegexParams(std::string& out, const char* ptr, size_t length);
-std::string escapeRegexParams(std::string const& in);
+std::string escapeRegexParams(std::string_view in);
 
 /// @brief returns a human-readable size string, e.g.
 /// - 0 => "0 bytes"
@@ -575,4 +538,3 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
 }  // namespace StringUtils
 }  // namespace basics
 }  // namespace arangodb
-
