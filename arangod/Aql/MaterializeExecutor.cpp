@@ -112,11 +112,16 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> arangodb::aql::MaterializeEx
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   size_t skipped = 0;
 
-  if (call.getLimit() > 0) {
+  // hasDataRow may only occur during fullCount due to previous overfetching
+  TRI_ASSERT(!inputRange.hasDataRow() || call.getOffset() == 0);
+
+  if (call.getOffset() > 0) {
     // we can only account for offset
-    skipped = inputRange.skip(call.getOffset());
+    skipped += inputRange.skip(call.getOffset());
   } else {
-    skipped = inputRange.skipAll();
+    skipped += inputRange.countAndSkipAllRemainingDataRows();
+
+    skipped += inputRange.skipAll();
   }
   call.didSkip(skipped);
 
