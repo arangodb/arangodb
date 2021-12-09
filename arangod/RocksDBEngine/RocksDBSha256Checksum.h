@@ -81,7 +81,7 @@ class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_
 class RocksDBSha256ChecksumFactory : public rocksdb::FileChecksumGenFactory {
  public:
   RocksDBSha256ChecksumFactory(std::shared_ptr<RocksDBShaFileManager> shaFileManager)
-      : _shaFileManager{shaFileManager} {};
+      : _shaFileManager{std::move(shaFileManager)} {}
   std::unique_ptr<rocksdb::FileChecksumGenerator> CreateFileChecksumGenerator(
       rocksdb::FileChecksumGenContext const& context) override;
   char const* Name() const override { return "RocksDBSha256ChecksumFactory"; }
