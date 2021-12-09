@@ -127,6 +127,7 @@ void RocksDBShaFileManager::deleteFile(std::string const& pathName) {
     MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
     auto it = _calculatedHashes.find(TRI_Basename(pathName));
     if (it != _calculatedHashes.end()) {
+      TRI_ASSERT(pathName.size() >= 4);
       fileNameBuilder.append(pathName, 0, pathName.size() - 4);  // append without .sst
       TRI_ASSERT(!isSstFilename(fileNameBuilder));
       fileNameBuilder.append(".sha.");
