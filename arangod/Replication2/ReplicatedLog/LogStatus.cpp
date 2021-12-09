@@ -78,6 +78,10 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   local.toVelocyPack(builder);
   builder.add(VPackValue("lastCommitStatus"));
   lastCommitStatus.toVelocyPack(builder);
+  builder.add(VPackValue("activeParticipantConfig"));
+  activeParticipantConfig.toVelocyPack(builder);
+  builder.add(VPackValue("committedParticipantConfig"));
+  committedParticipantConfig.toVelocyPack(builder);
   {
     VPackObjectBuilder ob2(&builder, StaticStrings::Follower);
     for (auto const& [id, stat] : follower) {
@@ -98,38 +102,16 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
       slice.get("commitLagMS").extract<double>()};
   status.lastCommitStatus =
       CommitFailReason::fromVelocyPack(slice.get("lastCommitStatus"));
+  status.activeParticipantConfig = ParticipantsConfig::fromVelocyPack(
+      slice.get("activeParticipantConfig"));
+  status.committedParticipantConfig = ParticipantsConfig::fromVelocyPack(
+      slice.get("committedParticipantConfig"));
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
     status.follower.emplace(std::move(id), stat);
   }
   return status;
-}
-
-auto replicated_log::operator==(LeaderStatus const& left,
-                                LeaderStatus const& right) -> bool {
-  bool result = left.local == right.local &&
-                left.term == right.term &&
-                left.largestCommonIndex == right.largestCommonIndex &&
-                left.commitLagMS == right.commitLagMS &&
-                left.lastCommitStatus == right.lastCommitStatus
-                && left.follower.size() == right.follower.size();
-  if (!result) {
-    return false;
-  }
-  for (auto const& [participantId, followerStatistics] : left.follower) {
-    auto search = right.follower.find(participantId);
-    if (search == right.follower.end() || !(search->second == followerStatistics)) {
-      result = false;
-      break;
-    }
-  }
-  return result;
-}
-
-auto replicated_log::operator!=(LeaderStatus const& left,
-                                LeaderStatus const& right) -> bool {
-  return !(left == right);
 }
 
 void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
@@ -218,4 +200,8 @@ auto LogStatus::getVariant() const noexcept -> VariantType const& {
 
 auto LogStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
   std::visit([&](auto const& s) { s.toVelocyPack(builder); }, _variant);
+}
+
+auto LogStatus::asLeaderStatus() const noexcept -> LeaderStatus const* {
+  return std::get_if<LeaderStatus>(&_variant);
 }
