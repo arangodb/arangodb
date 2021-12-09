@@ -48,6 +48,11 @@ struct FakeFollower : AbstractFollower {
     requests.pop_front();
   }
 
+  void resolveWithOk() {
+    resolveRequest(AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
+                                       {}, currentRequest().messageId});
+  }
+
   template <typename E>
   void resolveRequestWithException(E&& e) {
     requests.front().promise.setException(std::forward<E>(e));
@@ -62,8 +67,7 @@ struct FakeFollower : AbstractFollower {
 
   void handleAllRequestsWithOk() {
     while (hasPendingRequests()) {
-      resolveRequest(AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
-                                         {}, currentRequest().messageId});
+      resolveWithOk();
     }
   }
 
