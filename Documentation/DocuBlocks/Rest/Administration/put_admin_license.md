@@ -10,13 +10,21 @@
 Set to `true` to change the license even if it expires sooner than the current one.
 
 @RESTALLBODYPARAM{license,string,required}
-The body has to contain the hexadecimal encoded string.
+The body has to contain the Base64 encoded string wrapped in double quotes.
 
 @RESTDESCRIPTION
 Set a new license for an Enterprise Edition instance.
 Can be called on single servers, Coordinators, and DB-Servers.
 
-**Examples**
+@RESTRETURNCODES
+
+@RESTRETURNCODE{400}
+If the license expires earlier than the previously installed one
+
+@RESTRETURNCODE{201}
+License successfully deployed.
+
+@EXAMPLES
 
 ```
 shell> curl -XPUT http://localhost:8529/_admin/license -d '"<license-string>"'
