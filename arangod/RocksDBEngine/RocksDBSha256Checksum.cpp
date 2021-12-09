@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBSha256Checksum.h"
