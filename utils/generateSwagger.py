@@ -1356,7 +1356,7 @@ def TrimThisParam(text, indent):
     text = text.rstrip('\n').lstrip('\n')
     text = removeDoubleLF.sub("\n", text)
     if indent > 0:
-        indent = (indent + 2) # align the text right of the list...
+        indent = (indent + 4) # align the text right of the list...
     return removeLF.sub("\n" + ' ' * indent, text)
 
 def unwrapPostJson(reference, layer):
