@@ -678,13 +678,13 @@ void RocksDBEngine::start() {
     _options.max_open_files = -1;
   }
 
-  auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
   if (_createShaFiles) {
-
+    auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
     // Register checksum factory
     _options.file_checksum_gen_factory = std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
+    // Do an initial check in the database directory for missing SHA checksum files
     shaFileManager->checkMissingShaFiles();
-    _options.listeners.push_back(shaFileManager);
+    _options.listeners.push_back(std::move(shaFileManager));
   }
 
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
