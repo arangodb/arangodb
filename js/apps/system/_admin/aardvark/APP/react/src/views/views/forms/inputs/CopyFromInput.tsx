@@ -9,9 +9,9 @@ import { IconButton } from "../../../../components/arango/buttons";
 
 type CopyFromInputProps = {
   views: FormState[];
-} & Pick<FormProps<FormState>, 'dispatch'>;
+} & Pick<FormProps<FormState>, 'dispatch' | 'formState'>;
 
-const CopyFromInput = ({ views, dispatch }: CopyFromInputProps) => {
+const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const [sortedViews, setSortedViews] = useState(sortBy(views, 'name'));
   const [selectedView, setSelectedView] = useState(sortedViews[0]);
   const { data } = useSWR(`/view/${selectedView.name}/properties`, (path) => getApiRouteForCurrentDB().get(path));
@@ -30,7 +30,7 @@ const CopyFromInput = ({ views, dispatch }: CopyFromInputProps) => {
   }, [selectedView.name, sortedViews]);
 
   const copyFormState = () => {
-    fullView.name = '';
+    fullView.name = formState.name;
     validateAndFix(fullView);
 
     dispatch({

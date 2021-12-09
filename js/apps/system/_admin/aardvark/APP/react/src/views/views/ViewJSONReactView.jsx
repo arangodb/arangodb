@@ -61,7 +61,8 @@ const ViewJSONReactView = ({ name }) => {
             <div className="tab-pane tab-pane-modal active" id="JSON">
               <Grid>
                 <Cell size={'1'} style={{ paddingLeft: 10 }}>
-                  {views.length ? <CopyFromInput views={views} dispatch={dispatch}/> : null}
+                  {views.length ? <CopyFromInput views={views} dispatch={dispatch}
+                                                 formState={formState}/> : null}
                 </Cell>
                 <Cell size={'1'}>
                   <JsonForm formState={formState} dispatch={dispatch} renderKey={state.renderKey}/>
