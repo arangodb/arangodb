@@ -63,6 +63,7 @@
       'view/:name': 'viewInfo',
       'view/:name/settings': 'viewSettings',
       'view/:name/consolidation': 'viewConsolidation',
+      'view/:name/links': 'viewLinks',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -1279,6 +1280,14 @@
 
       this.init.then(
         () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewLinks: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewLinksReactView, { name }),
           document.getElementById('content')));
     },
 

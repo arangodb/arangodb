@@ -73,7 +73,7 @@ const facets = ['db', 'name', 'type'];
 
 const AnalyzersReactView = () => {
   const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
-  const { data: permData } = usePermissions();
+  const permissions = usePermissions();
 
   const [filterExpr, setFilterExpr] = useState('');
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
@@ -100,9 +100,7 @@ const AnalyzersReactView = () => {
     processAndSetFilteredAnalyzers(facetedFilter(filterExpr, analyzers, facets));
   }, [analyzers, filterExpr, processAndSetFilteredAnalyzers]);
 
-  if (data && permData) {
-    const permission = permData.body.result;
-
+  if (data) {
     if (!isEqual(map(data.body.result, 'name'), map(analyzers, 'name'))) {
       setAnalyzers(data.body.result);
       processAndSetFilteredAnalyzers(data.body.result);
@@ -173,7 +171,7 @@ const AnalyzersReactView = () => {
                       <ArangoTD seq={1}>{analyzer.name}</ArangoTD>
                       <ArangoTD seq={2}>{typeNameMap[analyzer.type]}</ArangoTD>
                       <ArangoTD seq={3}>
-                        <Actions analyzer={analyzer} permission={permission} modalCidSuffix={idx}/>
+                        <Actions analyzer={analyzer} permission={permissions} modalCidSuffix={idx}/>
                       </ArangoTD>
                     </tr>
                   ))

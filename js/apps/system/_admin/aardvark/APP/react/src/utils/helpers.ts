@@ -26,22 +26,16 @@ export const usePrevious = (value: any) => {
 };
 
 
-export const usePermissions = () => useSWR(
-  `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
-  (path) => getApiRouteForCurrentDB().get(path)
-);
+export const usePermissions = () => {
+  const { data } = useSWR(
+    `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
+    (path) => getApiRouteForCurrentDB().get(path)
+  );
 
-export const isAdminUser = (permData: { body: { result: string } } | string) => {
-  let permission: string;
-
-  if (typeof permData === 'string') {
-    permission = permData;
-  } else {
-    permission = permData.body.result;
-  }
-
-  return permission === 'rw' || !frontendConfig.authenticationEnabled;
+  return data ? data.body.result : 'none';
 };
+
+export const isAdminUser = (permission: string) => permission === 'rw' || !frontendConfig.authenticationEnabled;
 
 export const facetedFilter = (filterExpr: string, list: { [key: string]: any }[], facets: string[]) => {
   let filteredList = list;

@@ -4,6 +4,7 @@ import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { FormState } from "./constants";
 import { pick } from 'lodash';
 import { IconButton } from "../../components/arango/buttons";
+import { mutate } from "swr";
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: { [key: string]: any };
@@ -21,6 +22,7 @@ export const SaveButton = ({ view, oldName }: SaveButtonProps) => {
     const route = getApiRouteForCurrentDB();
     let result;
     let error = false;
+    const path = `/view/${view.name}/properties`;
 
     try {
       if (view.name !== oldName) {
@@ -37,7 +39,7 @@ export const SaveButton = ({ view, oldName }: SaveButtonProps) => {
       if (!error) {
         const properties = pick(view, 'consolidationIntervalMsec', 'commitIntervalMsec',
           'cleanupIntervalStep', 'links', 'consolidationPolicy');
-        result = await route.patch(`/view/${view.name}/properties`, properties);
+        result = await route.patch(path, properties);
 
         if (result.body.error) {
           arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
@@ -46,6 +48,7 @@ export const SaveButton = ({ view, oldName }: SaveButtonProps) => {
           if (view.name !== oldName) {
             window.App.navigate(`#view/${view.name}/settings`, { trigger: true });
           }
+          await mutate(path);
           arangoHelper.arangoNotification('Success', `Updated View: ${view.name}`);
         }
       }

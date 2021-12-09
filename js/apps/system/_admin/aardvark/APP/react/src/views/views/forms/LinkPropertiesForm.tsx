@@ -2,7 +2,7 @@ import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { FormState, LinkProperties } from "../constants";
 import React, { Dispatch, useEffect, useState } from "react";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
-import { isEmpty, map, without } from 'lodash';
+import { chain, difference, isEmpty, isNull, map } from 'lodash';
 import LinkPropertiesInput from "./inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
 import { useLinkState } from "../helpers";
@@ -17,9 +17,13 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled }: FormProps<FormSta
 
   useEffect(() => {
     if (data) {
-      setOptions(map(data.body.result, 'name').sort());
+      const linkKeys = chain(links).omitBy(isNull).keys().value();
+      const collNames = map(data.body.result, 'name');
+      const tempOptions = difference(collNames, linkKeys).sort();
+
+      setOptions(tempOptions);
     }
-  }, [data]);
+  }, [data, links]);
 
   const updateCollection = (value: string | number) => {
     setCollection(value);
@@ -34,7 +38,6 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled }: FormProps<FormSta
       }
     });
     setCollection('');
-    setOptions(without(options, collection));
   };
 
   const removeLink = (collection: string) => {
@@ -59,7 +62,12 @@ const LinkPropertiesForm = ({ formState, dispatch, disabled }: FormProps<FormSta
         {
           disabled
             ? null
-            : <ArangoTH seq={0} style={{ width: '2%' }}><i className={'fa fa-trash-o'}/></ArangoTH>
+            : <ArangoTH seq={0} style={{
+              width: '2%',
+              textAlign: 'center'
+            }}>
+              <i className={'fa fa-trash-o'}/>
+            </ArangoTH>
         }
         <ArangoTH seq={disabled ? 0 : 1} style={{ width: '8%' }}>Collection</ArangoTH>
         <ArangoTH seq={disabled ? 1 : 2} style={{ width: '90%' }}>Properties</ArangoTH>

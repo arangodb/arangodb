@@ -30,7 +30,7 @@ const Checkbox = ({ id, checked, onChange, label, inline, disabled }: CheckboxPr
 
   if (inline && label) {
     return <label htmlFor={thisId} className="pure-checkbox">
-      <StyledCheckbox id={thisId} checked={checked} onChange={onChange} disabled={disabled}/>
+      <StyledCheckbox id={thisId} checked={checked || false} onChange={onChange} disabled={disabled}/>
       &nbsp;{label}
     </label>;
   }

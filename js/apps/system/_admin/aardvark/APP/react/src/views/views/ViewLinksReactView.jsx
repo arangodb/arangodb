@@ -2,10 +2,10 @@ import { cloneDeep } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
 import { SaveButton } from './Actions';
-import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
+import LinkPropertiesForm from './forms/LinkPropertiesForm';
 import { buildSubNav, postProcessor, useView } from './helpers';
 
-const ViewConsolidationReactView = ({ name }) => {
+const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
     formCache: { name }
@@ -26,7 +26,7 @@ const ViewConsolidationReactView = ({ name }) => {
   }, [view, name]);
 
   useEffect(() => {
-    buildSubNav(isAdminUser, name, 'Consolidation');
+    buildSubNav(isAdminUser, name, 'Links');
   }, [isAdminUser, name]);
 
   const tempIsAdminUser = userIsAdmin(permissions);
@@ -39,11 +39,10 @@ const ViewConsolidationReactView = ({ name }) => {
   return <div className={'centralContent'} id={'content'}>
     <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
          aria-labelledby={'myModalLabel'} aria-hidden={'true'}>
-      <div className="modal-body">
+      <div className="modal-body" style={{ overflowY: 'visible' }}>
         <div className={'tab-content'}>
-          <div className="tab-pane tab-pane-modal active" id="Consolidation">
-            <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
-                                     disabled={!isAdminUser}/>
+          <div className="tab-pane tab-pane-modal active" id="Links">
+            <LinkPropertiesForm formState={formState} dispatch={dispatch} disabled={!isAdminUser}/>
           </div>
         </div>
       </div>
@@ -54,4 +53,4 @@ const ViewConsolidationReactView = ({ name }) => {
   </div>;
 };
 
-window.ViewConsolidationReactView = ViewConsolidationReactView;
+window.ViewLinksReactView = ViewLinksReactView;

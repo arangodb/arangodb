@@ -4,7 +4,9 @@ import { formSchema, FormState, linksSchema } from './constants';
 import { useEffect, useMemo, useState } from 'react';
 import { DispatchArgs, State } from '../../utils/constants';
 import { getPath } from '../../utils/helpers';
-import { cloneDeep, escape, merge, set, truncate } from 'lodash';
+import { chain, cloneDeep, escape, isNull, merge, omit, set, truncate } from 'lodash';
+import useSWR from "swr";
+import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: any;
@@ -26,10 +28,28 @@ export function useLinkState (formState: { [key: string]: any }, formField: stri
   const fields = useMemo(() => (formState[formField] || {}), [formField, formState]);
 
   useEffect(() => {
-    setAddDisabled(!field || Object.keys(fields).includes(field));
+    const fieldKeys = chain(fields).omitBy(isNull).keys().value();
+
+    setAddDisabled(!field || fieldKeys.includes(field));
   }, [field, fields]);
 
   return [field, setField, addDisabled, fields];
+}
+
+export function useView (name: string) {
+  const [view, setView] = useState<object>({ name });
+  const { data } = useSWR(`/view/${name}/properties`,
+    path => getApiRouteForCurrentDB().get(path), {
+      revalidateOnFocus: false
+    });
+
+  useEffect(() => {
+    if (data) {
+      setView(omit(data.body, 'error', 'code'));
+    }
+  }, [data]);
+
+  return view;
 }
 
 export const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>) => {
@@ -69,8 +89,8 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
     Links: {
       route: `${defaultRoute}/links`
     },
-    Raw: {
-      route: `${defaultRoute}/raw`
+    JSON: {
+      route: `${defaultRoute}/json`
     }
   };
 
