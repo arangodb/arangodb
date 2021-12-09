@@ -750,6 +750,10 @@ void InvertedIndexFieldIterator::next() {
         }
         _valueSlice =
             get(_slice, _begin->attribute, arangodb::velocypack::Slice::noneSlice());
+        if (!_valueSlice.isNone() && !_valueSlice.isArray() &&
+            _begin->attribute.back().shouldExpand) {
+          _valueSlice = VPackSlice::noneSlice();
+        }
       }
       _nameBuffer.clear();
     }

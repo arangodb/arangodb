@@ -3133,7 +3133,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
   ASSERT_FALSE(it.valid());
 }
 
-TEST_F(IResearchDocumentTest, InvertedFieldIterator_invalid_array_expansion) {
+TEST_F(IResearchDocumentTest, InvertedFieldIterator_not_array_expansion) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
       R"({"fields" : [{"name": "boost"},
                       {"name": "keys[*]"}]})");
@@ -3151,13 +3151,44 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_invalid_array_expansion) {
                                      arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
-      R"({"keys": "not_an_array", "boost": 10)");
+      R"({"keys": "not_an_array", "boost": 10})");
 
-    arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
                                                      arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
   size_t fieldIdx{};
   ASSERT_TRUE(it.valid());
-  ASSERT_THROW(++it, arangodb::basics::Exception);
+  assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost"));
+  ++it; // keys is just ignored
   ASSERT_FALSE(it.valid());
 }
+
+TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
+  auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
+      R"({"fields" : [{"name": "boost"},
+                      {"name": "keys"}]})");
+
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+  arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
+  std::string error;
+  ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
+                             error, sysVocbase.get()->name()));
+
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({"keys": [1,2,3], "boost": 10})");
+
+  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+                                                     arangodb::IndexId(0));
+  it.reset(json->slice(), indexMeta);
+  size_t fieldIdx{};
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost"));
+  ASSERT_THROW(++it, arangodb::basics::Exception);
+}
+
