@@ -30,9 +30,6 @@
 #include <rocksdb/file_checksum.h>
 #include <rocksdb/listener.h>
 
-#include "Logger/LogMacros.h"
-
-
 #include <string>
 
 namespace arangodb {
