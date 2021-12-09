@@ -639,8 +639,10 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 }
 
 function killWithCoreDump (options, instanceInfo) {
-  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    crashUtils.stopProcdump (options, instanceInfo, true);
+  if (platform.substr(0, 3) === 'win') {
+    if (!options.disableMonitor) {
+      crashUtils.stopProcdump (options, instanceInfo, true);
+    }
     crashUtils.runProcdump (options, instanceInfo, instanceInfo.rootDir, instanceInfo.pid, true);
   }
   instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
