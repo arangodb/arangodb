@@ -96,8 +96,40 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
 
   menus[activeKey].active = true;
 
-  window.setImmediate(() => {
-    window.$('#subNavigationBar .breadcrumb').html(breadCrumb);
-    arangoHelper.buildSubNavBar(menus);
+  const $ = window.$;
+
+  // Directly render subnav when container divs already exist.
+  // This is used during client-side navigation.
+  $('#subNavigationBar .breadcrumb').html(breadCrumb);
+  arangoHelper.buildSubNavBar(menus);
+
+  // Setup observer to watch for container divs creation, then render subnav.
+  // This is used during direct page loads or a page rerfesh.
+  const target = $("#subNavigationBar")[0];
+  const observer = new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
+      const newNodes = mutation.addedNodes; // DOM NodeList
+      if (newNodes !== null) { // If there are new nodes added
+        const $nodes = $(newNodes); // jQuery set
+        $nodes.each(function (_idx: number, node: Element) {
+          const $node = $(node);
+          if ($node.hasClass("breadcrumb")) {
+            $node.html(breadCrumb);
+          } else if ($node.hasClass("bottom")) {
+            arangoHelper.buildSubNavBar(menus);
+          }
+        });
+      }
+    });
   });
+
+  const config = {
+    attributes: true,
+    childList: true,
+    characterData: true
+  };
+
+  observer.observe(target, config);
+
+  return observer;
 };

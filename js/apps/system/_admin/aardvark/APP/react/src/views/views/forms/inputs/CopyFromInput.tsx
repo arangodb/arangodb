@@ -2,7 +2,6 @@ import { FormState } from "../../constants";
 import { FormProps } from "../../../../utils/constants";
 import React, { ChangeEvent, useEffect, useState } from "react";
 import { find, sortBy } from "lodash";
-import { Cell, Grid } from "../../../../components/pure-css/grid";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { validateAndFix } from "../../helpers";
@@ -50,22 +49,17 @@ const CopyFromInput = ({ views, dispatch }: CopyFromInputProps) => {
     setSelectedView(tempSelectedView);
   };
 
-  return <Grid>
-    <Cell size={'2-3'}>
-      <select value={selectedView.name} style={{
-        width: 'auto',
-        float: 'right'
-      }} onChange={updateSelectedView}>
-        {
-          sortedViews.map((view, idx) =>
-            <option key={idx} value={view.name}>{view.name}</option>)
-        }
-      </select>
-    </Cell>
-    <Cell size={'1-3'}>
-      <IconButton icon={'hand-o-left'} type={'warning'} onClick={copyFormState}>Copy from</IconButton>
-    </Cell>
-  </Grid>;
+  return <>
+    <select value={selectedView.name} onChange={updateSelectedView}>
+      {
+        sortedViews.map((view, idx) =>
+          <option key={idx} value={view.name}>{view.name}</option>)
+      }
+    </select>
+    <IconButton icon={'hand-o-left'} type={'warning'} onClick={copyFormState}>
+      Copy from
+    </IconButton>
+  </>;
 };
 
 export default CopyFromInput;

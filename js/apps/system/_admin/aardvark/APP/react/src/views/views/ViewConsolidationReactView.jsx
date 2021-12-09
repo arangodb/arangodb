@@ -26,7 +26,9 @@ const ViewConsolidationReactView = ({ name }) => {
   }, [view, name]);
 
   useEffect(() => {
-    buildSubNav(isAdminUser, name, 'Consolidation');
+    const observer = buildSubNav(isAdminUser, name, 'Consolidation');
+
+    return () => observer.disconnect();
   }, [isAdminUser, name]);
 
   const tempIsAdminUser = userIsAdmin(permissions);

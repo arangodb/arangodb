@@ -24,7 +24,7 @@ const JsonForm = ({ formState, dispatch, renderKey }: JsonFormProps) => {
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const raiseError = useJsonFormErrorHandler(dispatch, setFormErrors);
 
-  useJsonFormUpdateEffect(validate, formState, raiseError);
+  useJsonFormUpdateEffect(validate, formState, raiseError, setFormErrors);
 
   const changeHandler = (json: FormState) => {
     if (validate(json)) {

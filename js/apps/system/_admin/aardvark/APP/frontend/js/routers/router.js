@@ -64,6 +64,7 @@
       'view/:name/settings': 'viewSettings',
       'view/:name/consolidation': 'viewConsolidation',
       'view/:name/links': 'viewLinks',
+      'view/:name/json': 'viewJSON',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -1288,6 +1289,14 @@
 
       this.init.then(
         () => ReactDOM.render(React.createElement(window.ViewLinksReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewJSON: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewJSONReactView, { name }),
           document.getElementById('content')));
     },
 

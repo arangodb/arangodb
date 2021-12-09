@@ -31,7 +31,9 @@ const ViewSettingsReactView = ({ name }) => {
   }, [view, name]);
 
   useEffect(() => {
-    buildSubNav(isAdminUser, name, 'Settings');
+    const observer = buildSubNav(isAdminUser, name, 'Settings');
+
+    return () => observer.disconnect();
   }, [isAdminUser, name]);
 
   const updateName = (event) => {

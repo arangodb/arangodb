@@ -15,9 +15,10 @@ type ButtonProps = {
 
 type SaveButtonProps = ButtonProps & {
   oldName: string;
+  menu?: string;
 };
 
-export const SaveButton = ({ view, oldName }: SaveButtonProps) => {
+export const SaveButton = ({ view, oldName, menu = 'settings' }: SaveButtonProps) => {
   const handleSave = async () => {
     const route = getApiRouteForCurrentDB();
     let result;
@@ -46,7 +47,7 @@ export const SaveButton = ({ view, oldName }: SaveButtonProps) => {
         } else {
 
           if (view.name !== oldName) {
-            window.App.navigate(`#view/${view.name}/settings`, { trigger: true });
+            window.App.navigate(`#view/${view.name}/${menu}`, { trigger: true });
           }
           await mutate(path);
           arangoHelper.arangoNotification('Success', `Updated View: ${view.name}`);

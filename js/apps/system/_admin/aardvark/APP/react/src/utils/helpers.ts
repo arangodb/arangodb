@@ -220,13 +220,16 @@ export function useJsonFormErrorHandler<FormState> (dispatch: Dispatch<DispatchA
 }
 
 export function useJsonFormUpdateEffect<FormState> (validate: ValidateFunction<FormState>, formState: FormState,
-                                                    raiseError: (errors: ErrorObject[] | null | undefined) => void) {
+                                                    raiseError: (errors: ErrorObject[] | null | undefined) => void,
+                                                    setFormErrors: (value: string[]) => void) {
   const prevFormState = usePrevious(formState);
 
   useEffect(() => {
     if (!isEqual(prevFormState, formState) && !validate(formState)) {
       raiseError(validate.errors);
+    } else {
+      setFormErrors([]);
     }
-  }, [formState, prevFormState, raiseError, validate]);
+  }, [formState, prevFormState, raiseError, setFormErrors, validate]);
 }
 

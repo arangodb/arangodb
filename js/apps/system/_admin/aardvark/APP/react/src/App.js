@@ -17,6 +17,7 @@ require('./views/views/ViewInfoReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewConsolidationReactView');
 require('./views/views/ViewLinksReactView');
+require('./views/views/ViewJSONReactView');
 
 // old libraries
 const jQuery = require('jquery');

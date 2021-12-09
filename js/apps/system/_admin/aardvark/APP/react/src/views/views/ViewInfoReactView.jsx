@@ -58,7 +58,9 @@ const ViewInfoReactView = ({ name }) => {
   const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
-    buildSubNav(isAdminUser, name, 'Info');
+    const observer = buildSubNav(isAdminUser, name, 'Info');
+
+    return () => observer.disconnect();
   }, [isAdminUser, name]);
 
   const tempIsAdminUser = userIsAdmin(permissions);

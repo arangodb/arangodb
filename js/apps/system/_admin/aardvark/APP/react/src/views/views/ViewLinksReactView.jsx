@@ -26,7 +26,9 @@ const ViewLinksReactView = ({ name }) => {
   }, [view, name]);
 
   useEffect(() => {
-    buildSubNav(isAdminUser, name, 'Links');
+    const observer = buildSubNav(isAdminUser, name, 'Links');
+
+    return () => observer.disconnect();
   }, [isAdminUser, name]);
 
   const tempIsAdminUser = userIsAdmin(permissions);
