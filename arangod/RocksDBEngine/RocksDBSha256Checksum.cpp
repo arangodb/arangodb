@@ -28,6 +28,7 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 
