@@ -71,6 +71,18 @@ using ReplicatedLogSpecMap =
     std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::agency::LogPlanSpecification>;
 using ReplicatedLogSpecByDatabase = std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
 
+/**
+ * @brief          Diff Plan Replicated Logs and Local Replicated Logs for phase
+ * 1 of Maintenance run
+ *
+ * @param database   Database under which to find the replicated logs
+ * @param localLogs  Locally existent logs on this DB server
+ * @param planLogs   All logs found in plan
+ * @param serverId   Current server ID
+ * @param makeDirty  Set of all databases that require changes
+ * @param callNotify Indicates whether any changes are needed on this DB server
+ * @param actions    Actions taken in order to perform updates
+ */
 void diffReplicatedLogs(DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
                         ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
                         MaintenanceFeature::errors_t& errors,
@@ -91,7 +103,6 @@ void diffReplicatedLogs(DatabaseID const& database, ReplicatedLogStatusMap const
  *
  * @return         Result
  */
-
 arangodb::Result diffPlanLocal(
     StorageEngine& engine,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
