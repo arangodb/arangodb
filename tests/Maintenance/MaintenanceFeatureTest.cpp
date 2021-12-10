@@ -34,7 +34,7 @@
 #include "Cluster/Action.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 
 #include "MaintenanceFeatureMock.h"
 
@@ -176,7 +176,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
 
   TestMaintenanceFeature tf(as);
@@ -211,7 +211,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
 
   TestMaintenanceFeature tf(as);
@@ -247,7 +247,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
@@ -281,7 +281,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
@@ -317,7 +317,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
@@ -352,7 +352,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
@@ -387,7 +387,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
@@ -425,7 +425,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
@@ -509,7 +509,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
@@ -572,7 +572,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
@@ -637,7 +637,7 @@ TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fa
                                                           std::string(), "path");
 
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
@@ -687,7 +687,7 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
@@ -748,7 +748,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_reschedule_and_valida
       std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
                                                           std::string(), "path");
   arangodb::application_features::ApplicationServer as(po, nullptr);
-  as.addFeature<arangodb::MetricsFeature>();
+  as.addFeature<arangodb::metrics::MetricsFeature>();
   as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(

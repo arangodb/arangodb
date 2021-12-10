@@ -47,6 +47,10 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "StorageEngine/HealthData.h"
 
 using namespace arangodb;
@@ -56,10 +60,10 @@ using namespace arangodb::cluster::paths;
 using namespace arangodb::cluster::paths::aliases;
 
 struct RuntimeScale {
-  static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 50, 8000, 10}; }
 };
 struct WaitForReplicationScale {
-  static log_scale_t<uint64_t> scale() { return {2, 10, 2000, 10}; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 10, 2000, 10}; }
 };
   
 DECLARE_LEGACY_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
@@ -205,19 +209,19 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_runtime_msec{})),
       _supervision_runtime_wait_for_sync_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_accum_runtime_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_accum_runtime_msec_total{})),
       _supervision_accum_runtime_wait_for_sync_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total{})),
       _supervision_failed_server_counter(
-        server.getFeature<arangodb::MetricsFeature>().add(
+        server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() {
@@ -1735,22 +1739,29 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
   // This deletes old Hotbackup transfer jobs in 
   // /Target/HotBackup/TransferJobs according to their time stamp.
   // We keep at most 100 transfer jobs which are completed.
+  // We also delete old hotbackup transfer job locks if needed.
   constexpr uint64_t maximalNumberTransferJobs = 100;
   constexpr char const* prefix = HOTBACKUP_TRANSFER_JOBS;
 
   auto static const noJobs = Node::Children{};
   auto const jobs = snapshot.hasAsChildren(prefix).value_or(noJobs).get();
+  auto locks = snapshot.hasAsChildren(HOTBACKUP_TRANSFER_LOCKS);
+  bool locksFound = locks && locks.value().get().size() > 0;
 
-  if (jobs.size() <= maximalNumberTransferJobs + 6) {
-    // We tolerate some more jobs before we take action. This is to
-    // avoid that we go through all jobs every second. Oasis takes
+  if (jobs.size() <= maximalNumberTransferJobs + 6 && !locksFound) {
+    // We tolerate some more jobs before we take action. This
+    // is to avoid that we go through all jobs every second. Oasis takes
     // a hotbackup every 2h, so this number 6 would lead to the list
     // being traversed approximately every 12h.
+    // The locks are cleaned up if no jobs is ongoing and no cleanup is needed
+    // for the jobs. To get to this code, we enter it every 60th time, even
+    // if there is no need for it from the perspective of the transfer jobs.
     return;
   }
   typedef std::pair<std::string, std::string> keyDate;
   std::vector<keyDate> v;
   v.reserve(jobs.size());
+  bool foundOngoing = false;
   for (auto const& p : jobs) {
     auto const& dbservers = p.second->hasAsChildren("DBServers");
     if (!dbservers) {
@@ -1759,32 +1770,68 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
     // Now check if everything is completed or failed, or if the job
     // has no status information whatsoever:
     bool completed = true;
-    bool hasStatus = false;
     for (auto const& pp : dbservers->get()) {
       auto const& status = pp.second->hasAsString("Status");
-      if (!status) {
-        completed = false;
-      } else {
-        hasStatus = true;
+      if (status) {
         if (status->compare("COMPLETED") != 0 &&
             status->compare("FAILED") != 0) {
-          completed = false;
+          // If we get here, we might be looking at an old leftover which
+          // appears to be ongoing, or at a new style, properly ongoing
+          // We ignore non-completedness of old crud and only consider
+          // new jobs with a rebootId as incomplete:
+          auto const& rebootId = pp.second->hasAsUInt("rebootId");
+          if (status.value().compare("NEW") == 0 || rebootId) {
+            completed = false;
+          }
         }
       }
     }
-    if (completed || !hasStatus) {
+    if (completed) {
       auto created = p.second->hasAsString("Timestamp");
       if (created) {
         v.emplace_back(p.first, *created);
       } else {
         v.emplace_back(p.first, "1970");  // will be sorted very early
       }
+    } else {
+      foundOngoing = true;
     }
   }
   std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
     return a.second < b.second;
   });
   if (v.size() <= maximalNumberTransferJobs) {
+    // Now check if anything was ongoing, if not, then we cleanup all locks
+    // in /arango/Target/Hotbackup/Transfers, provided nothing has changed
+    // with the transfer jobs:
+    if (!foundOngoing) {
+      VPackArrayBuilder guard(envelope.get());
+      {
+        // mutation part:
+        VPackObjectBuilder guard2(envelope.get());
+        envelope->add(VPackValue(HOTBACKUP_TRANSFER_LOCKS));
+        {
+          VPackObjectBuilder guard3(envelope.get());
+          envelope->add("op", VPackValue("set"));
+          envelope->add(VPackValue("new"));
+          {
+            VPackObjectBuilder guard4(envelope.get());
+          }
+        }
+      }
+      {
+        // precondition part:
+        VPackObjectBuilder guard2(envelope.get());
+        envelope->add(VPackValue(HOTBACKUP_TRANSFER_JOBS));
+        {
+          VPackObjectBuilder guard3(envelope.get());
+          envelope->add(VPackValue("old"));
+          auto oldJobs = snapshot.hasAsNode(HOTBACKUP_TRANSFER_JOBS);
+          TRI_ASSERT(oldJobs);
+          oldJobs.value().get().toBuilder(*envelope);
+        }
+      }
+    }
     return;
   }
   size_t toBeDeleted = v.size() - maximalNumberTransferJobs;  // known to be positive
@@ -1792,12 +1839,18 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
                                            << " old transfer jobs"
                                               " in "
                                            << prefix;
-  // We build a transaction here
-  for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
-    envelope->add(VPackValue(prefix + it->first));
+  // We build a single transaction here
+  {
+    VPackArrayBuilder guard(envelope.get());
     {
       VPackObjectBuilder guard2(envelope.get());
-      envelope->add("op", VPackValue("delete"));
+      for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+        envelope->add(VPackValue(prefix + it->first));
+        {
+          VPackObjectBuilder guard2(envelope.get());
+          envelope->add("op", VPackValue("delete"));
+        }
+      }
     }
   }
 }
@@ -1872,17 +1925,14 @@ void Supervision::cleanupHotbackupTransferJobs() {
   _lock.assertLockedByCurrentThread();
 
   auto envelope = std::make_shared<VPackBuilder>();
-  {
-    VPackArrayBuilder guard1(envelope.get());
-    VPackObjectBuilder guard2(envelope.get());
-    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
-        snapshot(), envelope);
-  }
-  if (envelope->slice()[0].length() > 0) {
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+      snapshot(), envelope);
+  if (envelope->size() > 0) {
+    LOG_DEVEL << "Sending transaction to agency: " << envelope->toJson();
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
-      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION) << "Failed to remove old transfer jobs: " << envelope->toJson();
+      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION) << "Failed to remove old transfer jobs or locks: " << envelope->toJson();
     }
   }
 }
@@ -2401,6 +2451,9 @@ void Supervision::checkReplicatedLogs() {
       auto checkResult = checkReplicatedLog(dbName, spec, current, info);
       envelope = std::visit(
           overload{[&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
+                     envelope = arangodb::replication2::agency::methods::removeElectionResult(
+                         std::move(envelope), dbName, spec.id);
+
                      return arangodb::replication2::agency::methods::updateTermSpecificationTrx(
                          std::move(envelope), dbName, spec.id, newSpec,
                          spec.currentTerm.has_value()

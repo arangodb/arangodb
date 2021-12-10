@@ -1,7 +1,5 @@
 # -*- mode: CMAKE; -*-
 
-include_directories(.)
-
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 ################################################################################
@@ -28,7 +26,11 @@ target_link_libraries(arango_shell
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  fuerte
+  v8_interface
 )
+
+target_include_directories(arango_shell PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 ################################################################################
 ## arangobench
@@ -114,6 +116,7 @@ if (USE_ENTERPRISE)
     ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
   )
   target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
+  target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangod)
 
   target_link_libraries(${BIN_ARANGOBACKUP}
     arango
@@ -431,10 +434,9 @@ add_executable(${BIN_ARANGOSH}
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOSH}
-  arango_v8_deadline
-  arango_v8
   arango
-  ${LINENOISE_LIBS}
+  arango_v8
+  arango_v8_deadline
   ${V8_LIBS}
   fuerte
   ${MSVC_LIBS}

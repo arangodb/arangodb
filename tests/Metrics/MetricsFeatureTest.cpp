@@ -25,7 +25,8 @@
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Metric.h"
+#include "Metrics/MetricsFeature.h"
 #include "MetricsFeatureTest.h"
 
 using namespace arangodb;
@@ -33,15 +34,15 @@ using namespace arangodb;
 auto opts = std::make_shared<arangodb::options::ProgramOptions>(
   "metrics_feature_test", std::string(), std::string(), "path");
 application_features::ApplicationServer server(opts, nullptr);
-MetricsFeature feature(server);
+metrics::MetricsFeature feature(server);
 
 class MetricsFeatureTest : public ::testing::Test {
 protected:
   MetricsFeatureTest() {}
 };
 
-Metric* thisMetric;
-Metric* thatMetric;
+metrics::Metric* thisMetric;
+metrics::Metric* thatMetric;
 
 TEST_F(MetricsFeatureTest, test_counter) {
 
