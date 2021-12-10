@@ -70,7 +70,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server, in
     : ApplicationFeature(server, "Export"),
       _xgmmlLabelAttribute("label"),
       _typeExport("json"),
-      _queryMaxRuntime(0.0),
+      _customQueryMaxRuntime(0.0),
       _useMaxRuntime(false),
       _escapeCsvFormulae(true),
       _xgmmlLabelOnly(false),
@@ -98,16 +98,22 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
 
-  options->addOption("--query", "AQL query to run", new StringParameter(&_query));
-  
-  options->addOption("--query-max-runtime", "runtime threshold for AQL queries (in seconds, 0 = no limit)", 
-                     new DoubleParameter(&_queryMaxRuntime))
-                     .setIntroducedIn(30800);
+  options->addOldOption("--query", "custom-query");
+  options
+      ->addOption("--custom-query", "AQL query to run", new StringParameter(&_customQuery))
+      .setIntroducedIn(31000);
+  options->addOldOption("--query-max-runtime", "custom-query-max-runtime");
+  options
+      ->addOption(
+          "--custom-query-max-runtime",
+          "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+          new DoubleParameter(&_customQueryMaxRuntime))
+      .setIntroducedIn(31000);
 
   options
-      ->addOption("--query-bindvars",
+      ->addOption("--custom-query-bindvars",
                   "bind parameters to be used in the 'custom-query' testcase.",
-                  new StringParameter(&_queryBindVars))
+                  new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
   options->addOption("--graph-name", "name of a graph to export",
@@ -174,25 +180,26 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
   TRI_NormalizePath(_outputDirectory);
 
-  if (_graphName.empty() && _collections.empty() && _query.empty()) {
+  if (_graphName.empty() && _collections.empty() && _customQuery.empty()) {
     LOG_TOPIC("488d8", FATAL, Logger::CONFIG)
         << "expecting at least one collection, a graph name or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
-  if (!_query.empty() && (!_collections.empty() || !_graphName.empty())) {
+  if (!_customQuery.empty() && (!_collections.empty() || !_graphName.empty())) {
     LOG_TOPIC("6ff88", FATAL, Logger::CONFIG)
         << "expecting either a list of collections or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
-  if (!_queryBindVars.empty()) {
+  if (!_customQueryBindVars.empty()) {
     try {
-      _queryBindVarsBuilder = VPackParser::fromJson(_queryBindVars);
+      _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
     } catch (...) {
       LOG_TOPIC("bafc2", FATAL, arangodb::Logger::BENCH)
-          << "For flag '--query-bindvars "
-          << _queryBindVars << "': invalid JSON format.";
+          << "For flag '--custom-query-bindvars "
+          << _customQueryBindVars
+          << "': invalid JSON format.";
       FATAL_ERROR_EXIT();
     }
   }
@@ -204,7 +211,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
 
   if ((_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "csv") &&
-      _collections.empty() && _query.empty()) {
+      _collections.empty() && _customQuery.empty()) {
     LOG_TOPIC("cdcf7", FATAL, Logger::CONFIG)
         << "expecting at least one collection or an AQL query";
     FATAL_ERROR_EXIT();
@@ -221,7 +228,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
   
   // we will use _maxRuntime only if the option was set by the user
-  _useMaxRuntime = options->processingResult().touched("--query-max-runtime");
+  _useMaxRuntime = options->processingResult().touched("--custom-query-max-runtime");
 }
 
 void ExportFeature::prepare() {
@@ -304,7 +311,7 @@ void ExportFeature::start() {
           exportedSize += fileSize;
         }
       }
-    } else if (!_query.empty()) {
+    } else if (!_customQuery.empty()) {
       queryExport(httpClient.get());
 
       std::string filePath =
@@ -400,20 +407,24 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   std::string errorMsg;
 
   if (_progress) {
-    std::cout << "# Running AQL query '" << _query << "'..." << std::endl;
+    std::cout << "# Running AQL query '" << _customQuery << "'..." << std::endl;
   }
 
   std::string const url = "_api/cursor";
 
   VPackBuilder post;
   post.openObject();
-  post.add("query", VPackValue(_query));
+  post.add("query", VPackValue(_customQuery));
+  if (!_customQueryBindVars.empty()) {
+    post.add("bindVars", _customQueryBindVarsBuilder->slice());
+  }
   post.add("ttl", VPackValue(::ttlValue));
   post.add("batchSize", VPackValue(_documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
   if (_useMaxRuntime) {
-    post.add("maxRuntime", VPackValue(_queryMaxRuntime));
+    post.add("maxRuntime", VPackValue(_customQueryMaxRuntime));
   }
+
   post.add("stream", VPackSlice::trueSlice());
   post.close();
   post.close();
@@ -421,7 +432,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   std::shared_ptr<VPackBuilder> parsedBody =
       httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
   VPackSlice body = parsedBody->slice();
-
+  LOG_DEVEL << "json: " << post.toJson();
   std::string fileName = "query." + _typeExport;
 
   std::unique_ptr<ManagedDirectory::File> fd = _directory->writableFile(fileName, _overwrite, 0, true);

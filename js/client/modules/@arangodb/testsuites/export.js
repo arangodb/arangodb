@@ -121,82 +121,35 @@ function exportTest (options) {
   databases.forEach((name, idx) => {
     try {
       fs.removeDirectory(tmpPath);
-    } catch (err) {}
-    
-    const args = {
+    } catch (err) {
+    }
+
+    const commonArgValues = {
       'configuration': fs.join(pu.CONFIG_DIR, 'arangoexport.conf'),
       'server.username': options.username,
       'server.password': options.password,
       'server.endpoint': instanceInfo.endpoint,
       'server.database': name,
-      'collection': 'UnitTestsExport',
       'type': 'json',
       'overwrite': true,
       'output-directory': tmpPath
     };
 
+
     let testName;
 
-    print(CYAN + Date() + ': Export data (json)' + RESET);
-    testName = "exportJson" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-
-    testName = "parseJson" + idx;
-    try {
-      JSON.parse(fs.read(fs.join(tmpPath, 'UnitTestsExport.json')));
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
-    }
-
-    print(CYAN + Date() + ': Export data (json.gz)' + RESET);
-    args['compress-output'] = 'true';
-    testName = "exportJsonGz" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-
-    testName = "parseJsonGz" + idx;
-    try {
-      const zipBuffer = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.json.gz'));
-      JSON.parse(zipBuffer);
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
-    }
-    args['compress-output'] = 'false';
-
-    if (!skipEncrypt) {
-      print(CYAN + Date() + ': Export data (json encrypt)' + RESET);
-      args['encryption.keyfile'] = keyfile;
-      if (fs.exists(fs.join(tmpPath, 'ENCRYPTION'))) {
-        fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
-      }
-    
-      testName = "exportJsonEncrypt" + idx;
+    {
+      print(CYAN + Date() + ': Export data (json)' + RESET);
+      let args = Object.assign({}, commonArgValues);
+      args['collection'] = 'UnitTestsExport';
+      testName = "exportJson" + idx;
       results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
       results[testName].failed = results[testName].status ? 0 : 1;
-
-      testName = "parseJsonEncrypt" + idx;
+    }
+    {
+      testName = "parseJson" + idx;
       try {
-        const decBuffer = fs.readDecrypt(fs.join(tmpPath, 'UnitTestsExport.json'), keyfile);
-        JSON.parse(decBuffer);
+        JSON.parse(fs.read(fs.join(tmpPath, 'UnitTestsExport.json')));
         results[testName] = {
           failed: 0,
           status: true
@@ -209,358 +162,461 @@ function exportTest (options) {
           message: e
         };
       }
-      delete args['encryption.keyfile'];
-      if (fs.exists(fs.join(tmpPath, 'ENCRYPTION'))) {
-        fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
+
+    }
+    print(CYAN + Date() + ': Export data (json.gz)' + RESET);
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['compress-output'] = 'true';
+      args['collection'] = 'UnitTestsExport';
+        testName = "exportJsonGz" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
+
+    }
+    {
+      testName = "parseJsonGz" + idx;
+      try {
+        const zipBuffer = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.json.gz'));
+        JSON.parse(zipBuffer);
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
+    }
+    {
+      if (!skipEncrypt) {
+        print(CYAN + Date() + ': Export data (json encrypt)' + RESET);
+        {
+          let args = Object.assign({}, commonArgValues);
+          args['encryption.keyfile'] = keyfile;
+          args['collection'] = 'UnitTestsExport';
+          if (fs.exists(fs.join(tmpPath, 'ENCRYPTION'))) {
+            fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
+          }
+
+          testName = "exportJsonEncrypt" + idx;
+          results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+          results[testName].failed = results[testName].status ? 0 : 1;
+
+        }
+        {
+          testName = "parseJsonEncrypt" + idx;
+          try {
+            const decBuffer = fs.readDecrypt(fs.join(tmpPath, 'UnitTestsExport.json'), keyfile);
+            JSON.parse(decBuffer);
+            results[testName] = {
+              failed: 0,
+              status: true
+            };
+          } catch (e) {
+            results.failed += 1;
+            results[testName] = {
+              failed: 1,
+              status: false,
+              message: e
+            };
+          }
+          if (fs.exists(fs.join(tmpPath, 'ENCRYPTION'))) {
+            fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
+          }
+        }
       }
     }
 
     print(CYAN + Date() + ': Export data (jsonl)' + RESET);
-    args['type'] = 'jsonl';
-      
-    testName = "exportJsonl" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseJsonl" + idx;
-    try {
-      fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
-      .filter(line => line.trim() !== '')
-      .forEach(line => JSON.parse(line));
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'jsonl';
+      args['collection'] = 'UnitTestsExport';
+      testName = "exportJsonl" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
+    }
+    {
+      testName = "parseJsonl" + idx;
+      try {
+        fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
+            .filter(line => line.trim() !== '')
+            .forEach(line => JSON.parse(line));
 
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
     }
 
     print(CYAN + Date() + ': Export data (jsonl.gz)' + RESET);
-    args['compress-output'] = 'true';
-    testName = "exportJsonlGz" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseJsonlGz" + idx;
-    try {
-      fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl.gz')).split('\n')
-      .filter(line => line.trim() !== '')
-      .forEach(line => JSON.parse(line));
-
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['compress-output'] = 'true';
+      args['collection'] = 'UnitTestsExport';
+      testName = "exportJsonlGz" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
     }
-    args['compress-output'] = 'false';
+    {
+      testName = "parseJsonlGz" + idx;
+      try {
+        fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl.gz')).split('\n')
+            .filter(line => line.trim() !== '')
+            .forEach(line => JSON.parse(line));
+
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
+    }
 
     print(CYAN + Date() + ': Export data (xgmml)' + RESET);
-    args['type'] = 'xgmml';
-    args['graph-name'] = 'UnitTestsExport';
-    testName = "exportXgmml" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseXgmml" + idx;
-    try {
-      const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
-      DOMParser.parseFromString(filesContent);
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-
-      if (xmlErrors !== null) {
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'xgmml';
+      args['graph-name'] = 'UnitTestsExport';
+      args['collection'] = 'UnitTestsExport';
+      testName = "exportXgmml" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
+    }
+    {
+      testName = "parseXgmml" + idx;
+      try {
+        const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
+        DOMParser.parseFromString(filesContent);
         results[testName] = {
+          failed: 0,
+          status: true
+        };
+
+        if (xmlErrors !== null) {
+          results[testName] = {
+            failed: 1,
+            status: false,
+            message: xmlErrors
+          };
+        }
+      } catch (e) {
+        results.failed += 1;
+        results.parseXgmml = {
           failed: 1,
           status: false,
-          message: xmlErrors
+          message: e
         };
       }
-    } catch (e) {
-      results.failed += 1;
-      results.parseXgmml = {
-        failed: 1,
-        status: false,
-        message: e
-      };
     }
-
     print(CYAN + Date() + ': Export data (xgmml.gz)' + RESET);
-    args['compress-output'] = 'true';
-    testName = "exportXgmmlGz" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseXgmmlGz" + idx;
-    try {
-      const filesContent = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.xgmml.gz'));
-      DOMParser.parseFromString(filesContent);
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['compress-output'] = 'true';
+      args['collection'] = 'UnitTestsExport';
+      testName = "exportXgmmlGz" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
+    }
+    {
+      testName = "parseXgmmlGz" + idx;
+      try {
+        const filesContent = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.xgmml.gz'));
+        DOMParser.parseFromString(filesContent);
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
 
-      if (xmlErrors !== null) {
+        if (xmlErrors !== null) {
+          results[testName] = {
+            failed: 1,
+            status: false,
+            message: xmlErrors
+          };
+        }
+      } catch (e) {
+        results.failed += 1;
         results[testName] = {
           failed: 1,
           status: false,
-          message: xmlErrors
+          message: e
         };
       }
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
     }
-    args['compress-output'] = 'false';
 
     print(CYAN + Date() + ': Export query (jsonl)' + RESET);
-    args['type'] = 'jsonl';
-    args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
-    delete args['graph-name'];
-    delete args['collection'];
-    
-    testName = "exportQuery" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'jsonl';
+      args['custom-query'] = 'FOR doc IN UnitTestsExport RETURN doc';
+      testName = "exportQuery" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
+    }
 
-
-    
-    testName = "parseQuery" + idx;
-    try {
-      fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
-      .filter(line => line.trim() !== '')
-      .forEach(line => JSON.parse(line));
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      print(e);
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+    {
+      testName = "parseQuery" + idx;
+      try {
+        fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
+            .filter(line => line.trim() !== '')
+            .forEach(line => JSON.parse(line));
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        print(e);
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
     }
 
     print(CYAN + Date() + ': Export query with bindvars (jsonl)' + RESET);
-    args['type'] = 'jsonl';
-    args['query'] = 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc';
-    args['query-bindvars'] = '{"@@collectionName": "UnitTestsExport", "name": "test"}';
-    delete args['graph-name'];
-    delete args['collection'];
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'jsonl';
+      //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+      //the double @s will be removed when this feature is deprecated
+      args['custom-query'] = 'FOR doc IN @@@@collectionName FILTER doc.value2 == @@value2 RETURN doc';
+      args['custom-query-bindvars'] = '{"@@collectionName": "UnitTestsExport", "value2": "this is export"}';
 
-    testName = "exportQuery" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-
-
-    testName = "parseQueryWithBindvars" + idx;
-    try {
-      fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
-          .filter(line => line.trim() !== '')
-          .forEach(line => JSON.parse(line));
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      print(e);
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+      testName = "exportQueryWithBindvars" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
     }
-
+    {
+      testName = "parseQueryWithBindvars" + idx;
+      try {
+        fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
+            .filter(line => line.trim() !== '')
+            .forEach(line => JSON.parse(line));
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        print(e);
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
+    }
 
     print(CYAN + Date() + ': Export query (jsonl.gz)' + RESET);
-    args['compress-output'] = 'true';
-    testName = "exportQueryGz" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseQueryGz" + idx;
-    try {
-      fs.readGzip(fs.join(tmpPath, 'query.jsonl.gz')).split('\n')
-      .filter(line => line.trim() !== '')
-      .forEach(line => JSON.parse(line));
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'jsonl';
+      args['compress-output'] = 'true';
+      args['custom-query'] = 'FOR doc IN UnitTestsExport RETURN doc';
+      testName = "exportQueryGz" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
     }
-    args['compress-output'] = 'false';
-    
-    print(CYAN + Date() + ': Export data (csv)' + RESET);
-    args['type'] = 'csv';
-    args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
-    args['fields'] = '_key,value1,value2,value3,value4';
-    
-    testName = "exportCsv" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseCsv" + idx;
-    try {
-      let content = fs.read(fs.join(tmpPath, 'query.csv'));
+    {
+      testName = "parseQueryGz" + idx;
+      try {
+        fs.readGzip(fs.join(tmpPath, 'query.jsonl.gz')).split('\n')
+            .filter(line => line.trim() !== '')
+            .forEach(line => JSON.parse(line));
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
+    }
 
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+    print(CYAN + Date() + ': Export data (csv)' + RESET);
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'csv';
+      args['custom-query'] = 'FOR doc IN UnitTestsExport RETURN doc';
+      args['fields'] = '_key,value1,value2,value3,value4';
+
+      testName = "exportCsv" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
     }
-    delete args['fields'];
+    {
+      testName = "parseCsv" + idx;
+      try {
+        let content = fs.read(fs.join(tmpPath, 'query.csv'));
+
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
+    }
     
     print(CYAN + Date() + ': Export data (csv, escaping)' + RESET);
-    args['type'] = 'csv';
-    args['query'] = 'FOR doc IN 1..2 RETURN { value1: 1, value2: [1, 2, 3], value3: true, value4: "foobar" }';
-    args['fields'] = 'value1,value2,value3,value4';
-    
-    testName = "exportCsvEscaped" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseCsvEscaped" + idx;
-    try {
-      let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
-      const expected = `"value1","value2","value3","value4"\n1,"[1,2,3]",true,"foobar"\n1,"[1,2,3]",true,"foobar"\n`;
-      if (content !== expected) {
-        throw "contents differ!";
-      }
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'csv';
+      args['custom-query'] = 'FOR doc IN 1..2 RETURN { value1: 1, value2: [1, 2, 3], value3: true, value4: "foobar" }';
+      args['fields'] = 'value1,value2,value3,value4';
 
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+      testName = "exportCsvEscaped" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
     }
-    delete args['fields'];
+    {
+      testName = "parseCsvEscaped" + idx;
+      try {
+        let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
+        const expected = `"value1","value2","value3","value4"\n1,"[1,2,3]",true,"foobar"\n1,"[1,2,3]",true,"foobar"\n`;
+        if (content !== expected) {
+          throw "contents differ!";
+        }
+
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
+    }
     
     print(CYAN + Date() + ': Export data (csv, escaping formulae)' + RESET);
-    args['escape-csv-formulae'] = 'true';
-    args['type'] = 'csv';
-    args['query'] = 'FOR doc IN 1..2 RETURN { value1: "@foobar", value2: "=HYPERLINK(\\\"evil\\\")", value3: "\\\"some string\\\"", value4: "+line\nbreak" }';
-    args['fields'] = 'value1,value2,value3,value4';
-    
-    testName = "exportCsvEscapedFormulae" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseCsvEscapedFormulae" + idx;
-    try {
-      let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
-      const expected = `"value1","value2","value3","value4"\n"'@foobar","'=HYPERLINK(""evil"")","""some string""","'+line\nbreak"\n"'@foobar","'=HYPERLINK(""evil"")","""some string""","'+line\nbreak"\n`;
-      if (content !== expected) {
-        throw "contents differ!";
-      }
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['escape-csv-formulae'] = 'true';
+      args['type'] = 'csv';
+      args['custom-query'] = 'FOR doc IN 1..2 RETURN { value1: "@foobar", value2: "=HYPERLINK(\\\"evil\\\")", value3: "\\\"some string\\\"", value4: "+line\nbreak" }';
+      args['fields'] = 'value1,value2,value3,value4';
 
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+      testName = "exportCsvEscapedFormulae" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
     }
-    delete args['fields'];
+    {
+      testName = "parseCsvEscapedFormulae" + idx;
+      try {
+        let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
+        const expected = `"value1","value2","value3","value4"\n"'@foobar","'=HYPERLINK(""evil"")","""some string""","'+line\nbreak"\n"'@foobar","'=HYPERLINK(""evil"")","""some string""","'+line\nbreak"\n`;
+        if (content !== expected) {
+          throw "contents differ!";
+        }
+
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
+    }
     
     print(CYAN + Date() + ': Export data (csv, not escaping formulae)' + RESET);
-    args['escape-csv-formulae'] = 'false';
-    args['type'] = 'csv';
-    args['query'] = 'FOR doc IN 1..2 RETURN { value1: "@foobar", value2: "=HYPERLINK(\\\"evil\\\")", value3: "\\\"some string\\\"", value4: "+line\nbreak" }';
-    args['fields'] = 'value1,value2,value3,value4';
-    
-    testName = "exportCsvUnescapedFormulae" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    
-    testName = "parseCsvUnescapedFormulae" + idx;
-    try {
-      let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
-      const expected = `"value1","value2","value3","value4"\n"@foobar","=HYPERLINK(""evil"")","""some string""","+line\nbreak"\n"@foobar","=HYPERLINK(""evil"")","""some string""","+line\nbreak"\n`;
-      if (content !== expected) {
-        throw "contents differ!";
-      }
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['escape-csv-formulae'] = 'false';
+      args['type'] = 'csv';
+      args['custom-query'] = 'FOR doc IN 1..2 RETURN { value1: "@foobar", value2: "=HYPERLINK(\\\"evil\\\")", value3: "\\\"some string\\\"", value4: "+line\nbreak" }';
+      args['fields'] = 'value1,value2,value3,value4';
 
-      results[testName] = {
-        failed: 0,
-        status: true
-      };
-    } catch (e) {
-      results.failed += 1;
-      results[testName] = {
-        failed: 1,
-        status: false,
-        message: e
-      };
+      testName = "exportCsvUnescapedFormulae" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
     }
-    delete args['fields'];
+    {
+      testName = "parseCsvUnescapedFormulae" + idx;
+      try {
+        let content = String(fs.read(fs.join(tmpPath, 'query.csv')));
+        const expected = `"value1","value2","value3","value4"\n"@foobar","=HYPERLINK(""evil"")","""some string""","+line\nbreak"\n"@foobar","=HYPERLINK(""evil"")","""some string""","+line\nbreak"\n`;
+        if (content !== expected) {
+          throw "contents differ!";
+        }
+
+        results[testName] = {
+          failed: 0,
+          status: true
+        };
+      } catch (e) {
+        results.failed += 1;
+        results[testName] = {
+          failed: 1,
+          status: false,
+          message: e
+        };
+      }
+    }
     
     print(CYAN + Date() + ': Export query (maxRuntime, failure)' + RESET);
-    args['type'] = 'jsonl';
-    args['query'] = 'RETURN SLEEP(4)';
-    args['query-max-runtime'] = '2.0';
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'jsonl';
+      args['custom-query'] = 'RETURN SLEEP(4)';
+      args['custom-query-max-runtime'] = '2.0';
 
-    testName = "exportQueryMaxRuntimeFail" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    // we expect a failure here!
-    results[testName].status = !results[testName].status;
-    results[testName].failed = results[testName].status ? 0 : 1;
-    delete args['query-max-runtime'];
+      testName = "exportQueryMaxRuntimeFail" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      // we expect a failure here!
+      results[testName].status = !results[testName].status;
+      results[testName].failed = results[testName].status ? 0 : 1;
+    }
     
     print(CYAN + Date() + ': Export query (maxRuntime, ok)' + RESET);
-    args['type'] = 'jsonl';
-    args['query'] = 'RETURN SLEEP(3)';
-    args['query-max-runtime'] = '20.0';
-    testName = "exportQueryMaxRuntimeOk" + idx;
-    results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
-    results[testName].failed = results[testName].status ? 0 : 1;
-    delete args['query-max-runtime'];
+    {
+      let args = Object.assign({}, commonArgValues);
+      args['type'] = 'jsonl';
+      args['custom-query'] = 'RETURN SLEEP(3)';
+      args['custom-query-max-runtime'] = '20.0';
+      testName = "exportQueryMaxRuntimeOk" + idx;
+      results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+      results[testName].failed = results[testName].status ? 0 : 1;
+    }
   });
 
   return shutdown();

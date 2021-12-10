@@ -468,16 +468,9 @@ void HttpCommTask<T>::doProcessRequest() {
     this->_generalServerFeature.countHttp1Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
-      std::string msgBody = StringUtils::escapeUnicode(body.toString());
-      size_t foundIndexStart = msgBody.find(",\"passwd\": \"");
-      if (foundIndexStart != std::string::npos) {
-        std::string msgObject = msgBody.substr(foundIndexStart + 12);
-        size_t foundIndexEnd = msgObject.find("\"");
-        msgBody.erase(msgBody.begin() + foundIndexStart, msgBody.begin() + foundIndexStart + 12 + foundIndexEnd);
-      }
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << msgBody << "\"";
+          << StringUtils::escapeUnicode(body.toString()) << "\"";
     }
   }
 
