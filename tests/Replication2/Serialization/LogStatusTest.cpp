@@ -22,10 +22,10 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include <gtest/gtest.h>
 
+#include "Aql/VelocyPackHelper.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/types.h"
 
@@ -33,40 +33,8 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::basics;
+using namespace arangodb::tests;
 using namespace std::literals::chrono_literals;
-
-static inline auto vpackFromJsonString(char const* c) -> VPackBuffer<uint8_t> {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  VPackParser parser(&options);
-  parser.parse(c);
-
-  std::shared_ptr<VPackBuilder> builder = parser.steal();
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer = builder->steal();
-  VPackBuffer<uint8_t> b = std::move(*buffer);
-  return b;
-}
-
-static inline auto operator"" _vpack(const char* json, size_t) {
-  return vpackFromJsonString(json);
-}
-
-TEST(LogStatusTest, term_index_pair) {
-  auto spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
-  VPackBuilder builder;
-  spearHead.toVelocyPack(builder);
-  auto slice = builder.slice();
-  auto fromVPack = TermIndexPair::fromVelocyPack(slice);
-  EXPECT_EQ(spearHead, fromVPack);
-
-  auto jsonBuffer = R"({
-    "term": 2,
-    "index": 1
-  })"_vpack;
-  auto jsonSlice = velocypack::Slice(jsonBuffer.data());
-  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
-            << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
-}
 
 TEST(LogStatusTest, log_statistics) {
   LogStatistics statistics;
@@ -87,7 +55,7 @@ TEST(LogStatusTest, log_statistics) {
       "index": 1
     }
   })"_vpack;
-  auto jsonSlice = velocypack::Slice(jsonBuffer.data());
+  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
       << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 }
@@ -103,7 +71,7 @@ TEST(LogStatusTest, commit_fail_reason) {
   auto jsonBuffer = R"({
     "reason": "NothingToCommit"
   })"_vpack;
-  auto jsonSlice = velocypack::Slice(jsonBuffer.data());
+  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
             << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
@@ -122,8 +90,40 @@ TEST(LogStatusTest, commit_fail_reason) {
   EXPECT_EQ(reason, fromVPack);
 
   jsonBuffer = R"({"xyz": "NothingToCommit", "reason": "xyz"})"_vpack;
-  jsonSlice = velocypack::Slice(jsonBuffer.data());
+  jsonSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_ANY_THROW({CommitFailReason::fromVelocyPack(jsonSlice);});
+}
+
+TEST(LogStatusTest, append_entries_error_reason) {
+  // Default, no error
+  {
+    AppendEntriesErrorReason reason;
+    VPackBuilder builder;
+    reason.toVelocyPack(builder);
+    auto slice = builder.slice();
+    auto fromVPack = AppendEntriesErrorReason::fromVelocyPack(slice);
+    EXPECT_EQ(reason, fromVPack);
+  }
+
+  // Error and details
+  {
+    auto jsonBuffer = R"({
+      "error": "MessageOutdated",
+      "errorMessage": "Message is outdated",
+      "details": "foo bar"
+    })"_vpack;
+    auto jsonSlice = velocypack::Slice(jsonBuffer->data());
+    auto reason = AppendEntriesErrorReason{
+        AppendEntriesErrorReason::ErrorType::kMessageOutdated,
+        "foo bar"
+    };
+    VPackBuilder builder;
+    reason.toVelocyPack(builder);
+    auto slice = builder.slice();
+    EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
+        << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
+    EXPECT_EQ(reason, AppendEntriesErrorReason::fromVelocyPack(jsonSlice));
+  }
 }
 
 TEST(LogStatusTest, follower_statistics_exceptions) {
@@ -135,12 +135,12 @@ TEST(LogStatusTest, follower_statistics_exceptions) {
         "term": 2,
         "index": 4
       },
-      "lastErrorReason": 0,
+      "lastErrorReason": {"error": "None"},
       "lastRequestLatencyMS": 0.012983,
       "state": {
         "state": "up-to-date"
       }
-      })"_vpack.data()));
+      })"_vpack->data()));
   });
 
   // Wrong type for commitIndex
@@ -151,12 +151,12 @@ TEST(LogStatusTest, follower_statistics_exceptions) {
         "term": 2,
         "index": 4
       },
-      "lastErrorReason": 0,
+      "lastErrorReason": {"error": "None"},
       "lastRequestLatencyMS": 0.012983,
       "state": {
         "state": "up-to-date"
       }
-      })"_vpack.data()));
+      })"_vpack->data()));
   });
 }
 
@@ -169,37 +169,33 @@ TEST(LogStatusTest, leader_status) {
   leaderStatus.local = statistics;
   leaderStatus.term = LogTerm{2};
   leaderStatus.largestCommonIndex = LogIndex{1};
+  leaderStatus.activeParticipantConfig.generation = 14;
+  leaderStatus.committedParticipantConfig.generation = 18;
   std::unordered_map<ParticipantId, FollowerStatistics> follower({
       {
         "PRMR-45c56239-6a83-4ab0-961e-9adea5078286",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
         "commitIndex": 4,
-        "spearhead": {
-          "term": 2,
-          "index": 4
-        },
-        "lastErrorReason": 0,
+        "spearhead": {"term": 2, "index": 4},
+        "lastErrorReason": {"error": "None"},
         "lastRequestLatencyMS": 0.012983,
         "state": {
           "state": "up-to-date"
         }
-        })"_vpack.data()))
+        })"_vpack->data()))
       },
       {
         "PRMR-13608015-4a2c-46aa-985f-73b6b8a73568",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
           "commitIndex": 3,
-          "spearhead": {
-            "term": 2,
-            "index": 3
-          },
-          "lastErrorReason": 7,
+          "spearhead": {"term": 2, "index": 3},
+          "lastErrorReason": {"error": "CommunicationError", "details": "foo"},
           "lastRequestLatencyMS": 11159.799272,
           "state": {
             "state": "request-in-flight",
             "durationMS": 4143.651874
           }
-        })"_vpack.data()))
+        })"_vpack->data()))
       }
   });
   leaderStatus.follower = std::move(follower);
@@ -227,7 +223,7 @@ TEST(LogStatusTest, follower_status) {
       }
     }
   })"_vpack;
-  auto followerSlice = velocypack::Slice(jsonBuffer.data());
+  auto followerSlice = velocypack::Slice(jsonBuffer->data());
   auto followerStatus = FollowerStatus::fromVelocyPack(followerSlice);
   EXPECT_TRUE(followerStatus.leader.has_value());
 
@@ -254,7 +250,7 @@ TEST(LogStatusTest, follower_status) {
       }
     }
   })"_vpack;
-  followerSlice = velocypack::Slice(jsonBuffer.data());
+  followerSlice = velocypack::Slice(jsonBuffer->data());
   auto followerStatusNoLeader = FollowerStatus::fromVelocyPack(followerSlice);
   EXPECT_FALSE(followerStatusNoLeader.leader.has_value());
   EXPECT_TRUE(VelocyPackHelper::equal(followerSlice, builderSlice, true))

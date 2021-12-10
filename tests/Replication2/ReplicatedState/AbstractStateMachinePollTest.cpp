@@ -111,7 +111,7 @@ TEST_F(PollStateMachineTest, check_apply_entries) {
   {
     auto follower = std::make_shared<Follower>(B, "B", LogTerm{1}, "A");
     auto leader = std::make_shared<Leader>(
-        A, LogConfig{2, 2, false}, "A", LogTerm{1},
+        A, LogConfig{2, 2, 2, false}, "A", LogTerm{1},
         std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
 
     leader->state->add("first");
@@ -135,7 +135,7 @@ TEST_F(PollStateMachineTest, check_apply_entries) {
   {
     auto follower = std::make_shared<Follower>(B, "B", LogTerm{2}, "A");
     auto leader = std::make_shared<Leader>(
-        A, LogConfig{2, 2, false}, "A", LogTerm{2},
+        A, LogConfig{2, 2, 2, false}, "A", LogTerm{2},
         std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
 
     auto f1 = leader->state->triggerPollEntries();
@@ -169,7 +169,7 @@ TEST_F(PollStateMachineTest, insert_multiple) {
   {
     auto follower = std::make_shared<Follower>(B, "B", LogTerm{1}, "A");
     auto leader = std::make_shared<Leader>(
-        A, LogConfig{2, 2, false}, "A", LogTerm{1},
+        A, LogConfig{2, 2, 2, false}, "A", LogTerm{1},
         std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
 
     leader->state->add("first");
@@ -189,7 +189,7 @@ TEST_F(PollStateMachineTest, insert_multiple) {
   {
     auto follower = std::make_shared<Follower>(B, "B", LogTerm{2}, "A");
     auto leader = std::make_shared<Leader>(
-        A, LogConfig{2, 2, false}, "A", LogTerm{2},
+        A, LogConfig{2, 2, 2, false}, "A", LogTerm{2},
         std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{follower->log});
 
     auto f2 = follower->state->triggerPollEntries();
