@@ -432,7 +432,6 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   std::shared_ptr<VPackBuilder> parsedBody =
       httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
   VPackSlice body = parsedBody->slice();
-  LOG_DEVEL << "json: " << post.toJson();
   std::string fileName = "query." + _typeExport;
 
   std::unique_ptr<ManagedDirectory::File> fd = _directory->writableFile(fileName, _overwrite, 0, true);
