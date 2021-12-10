@@ -1,6 +1,15 @@
 devel
 -----
 
+* Raised minimal macOS supported version to 10.15 (Catalina).
+
+* Remove background thread `RocksDBShaThread` for background SHA256 checksum
+  calculation for .sst files in the Enterprise Edition. The checksums are now
+  calculated incrementally while writing into the .sst files, and the checksum
+  files will be stored on disk as soon as an .sst file is made durable by
+  RocksDB. There is no more need to periodically scan the database directory
+  and look for any additional .sst files.
+
 * Fix BTS-580: Trimmed the password field from the payload in the client 
   requests when displaying error messages in arangorestore, because they 
   displayed the password as plain text. 

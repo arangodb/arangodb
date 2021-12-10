@@ -24,30 +24,30 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include <velocypack/StringRef.h>
 
 #include <iosfwd>
+#include <string>
+#include <string_view>
 
 namespace arangodb {
 namespace aql {
 
-/// View on a query string, does no memory management
+/// View on a query string
 class QueryString {
  public:
   QueryString(QueryString const& other) = default;
-  QueryString& operator=(QueryString const& other) = default;
+  QueryString& operator=(QueryString const& other) = delete;
+  QueryString(QueryString&& other) = default;
+  QueryString& operator=(QueryString&& other) = delete;
 
   QueryString(char const* data, size_t length)
-      : _queryString(data, length), _hash(0), _hashed(false) {}
+      : _queryString(data, length), _hash(computeHash()) {}
 
-  explicit QueryString(arangodb::velocypack::StringRef const& ref)
-      : QueryString(ref.data(), ref.size()) {}
-
-  explicit QueryString(std::string const& val)
+  explicit QueryString(std::string_view val)
       : QueryString(val.data(), val.size()) {}
 
-  explicit QueryString(std::string&& val)
-      : _queryString(std::move(val)), _hash(0), _hashed(false) {}
+  explicit QueryString(std::string val)
+      : _queryString(std::move(val)), _hash(computeHash()) {}
 
   QueryString() : QueryString("", 0) {}
 
@@ -55,21 +55,22 @@ class QueryString {
 
  public:
   std::string const& string() const noexcept { return _queryString; }
-  char const* data() const { return _queryString.data(); }
-  size_t size() const { return _queryString.size(); }
-  size_t length() const { return _queryString.size(); }
-  bool empty() const {
+  char const* data() const noexcept { return _queryString.data(); }
+  size_t size() const noexcept { return _queryString.size(); }
+  size_t length() const noexcept { return _queryString.size(); }
+  bool empty() const noexcept {
     return (_queryString.empty() || _queryString[0] == '\0');
   }
+  uint64_t hash() const noexcept { return _hash; }
   void append(std::string& out) const;
-  uint64_t hash() const;
   std::string extract(size_t maxLength) const;
   std::string extractRegion(int line, int column) const;
 
  private:
-  std::string _queryString;
-  mutable uint64_t _hash;
-  mutable bool _hashed;
+  uint64_t computeHash() const noexcept;
+
+  std::string const _queryString;
+  uint64_t const _hash;
 };
 
 std::ostream& operator<<(std::ostream&, QueryString const&);

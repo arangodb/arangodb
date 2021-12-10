@@ -132,13 +132,13 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       // and "lastUncommittedLogTick"
       b.add("state", VPackValue(VPackValueType::Object));
       for (auto it : VPackObjectIterator(tmp.slice())) {
-        if (it.key.stringRef() == "lastLogTick" ||
-            it.key.stringRef() == "lastUncommittedLogTick") {
+        if (it.key.stringView() == "lastLogTick" ||
+            it.key.stringView() == "lastUncommittedLogTick") {
           // put into the tick from our own snapshot
-          b.add(it.key.stringRef(), VPackValue(snapTick));
+          b.add(it.key.stringView(), VPackValue(snapTick));
         } else {
           // write our other attributes as they are
-          b.add(it.key.stringRef(), it.value);
+          b.add(it.key.stringView(), it.value);
         }
       }
       b.close(); // state
@@ -832,7 +832,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       // avoid double freeing
       TRI_StealStringBuffer(dump.stringBuffer());
     } else {
-      _response->addRawPayload(VPackStringRef(dump.data(), dump.length()));
+      _response->addRawPayload(std::string_view(dump.data(), dump.length()));
       _response->setGenerateBody(true);
     }
   }

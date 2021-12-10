@@ -234,7 +234,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
      * */
 
     VertexSumAggregator* agg = (VertexSumAggregator*)getWriteAggregator(DA_AGG);
-    agg->aggregate(this->shard(), this->key().toString(), 1.0 / context()->vertexCount());
+    agg->aggregate(this->shard(), std::string(this->key()), 1.0 / context()->vertexCount());
     // DoubleDenseVector init = new DoubleDenseVector(
     //                                               (int)
     //                                               getTotalNumVertices());
@@ -268,7 +268,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
       }
     });
     VertexSumAggregator* newDA = (VertexSumAggregator*)getWriteAggregator(DA_AGG);
-    newDA->aggregate(this->shard(), this->key().toString(), newEntryDA);
+    newDA->aggregate(this->shard(), std::string(this->key()), newEntryDA);
   }
 
   /**
@@ -282,10 +282,10 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
     // DoubleDenseVector finalDA = getAggregatedValue(DA_AGG);
     // vertex.getValue().getWeightedInDegree();
     double weightedInDegree = vertexState->weightedInDegree;
-    double lsAggValue = finalDA->getAggregatedValue(shard(), key().toString()) * weightedInDegree;
+    double lsAggValue = finalDA->getAggregatedValue(shard(), std::string(key())) * weightedInDegree;
 
     VertexSumAggregator* tmpLS = (VertexSumAggregator*)getWriteAggregator(LS_AGG);
-    tmpLS->aggregate(this->shard(), this->key().toString(), lsAggValue);
+    tmpLS->aggregate(this->shard(), std::string(this->key()), lsAggValue);
 
     // finalDA->aggregateValue(shard(), key(), );
     // int vertexID = (int) vertex.getId().get();
@@ -312,7 +312,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
 
       float senderWeight = message->weight;
 
-      float myInfluence = (float)vecLS->getAggregatedValue(this->shard(), this->key().toString());
+      float myInfluence = (float)vecLS->getAggregatedValue(this->shard(), std::string(this->key()));
       myInfluence *= senderWeight;
 
       /**

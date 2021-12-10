@@ -135,10 +135,9 @@ std::atomic<bool> killHard(false);
 
 /// @brief appends null-terminated string src to dst,
 /// advances dst pointer by length of src
-void appendNullTerminatedString(char const* src, char*& dst) {
-  size_t len = strlen(src);
-  memcpy(static_cast<void*>(dst), src, len);
-  dst += len;
+void appendNullTerminatedString(std::string_view src, char*& dst) {
+  memcpy(static_cast<void*>(dst), src.data(), src.size());
+  dst += src.size();
   *dst = '\0';
 }
 
@@ -203,7 +202,7 @@ void appendAddress(unw_word_t pc, long base, char*& dst) {
 /// Assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
 /// (4096 bytes should be more than enough).
-size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info, void* ucontext) {
+size_t buildLogMessage(char* s, std::string_view context, int signal, siginfo_t const* info, void* ucontext) {
   // build a crash message
   char* p = s;
   appendNullTerminatedString("💥 ArangoDB ", p);
@@ -290,7 +289,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   return p - s;
 }
 
-void logCrashInfo(char const* context, int signal, siginfo_t* info, void* ucontext) try {
+void logCrashInfo(std::string_view context, int signal, siginfo_t* info, void* ucontext) try {
   // buffer for constructing temporary log messages (to avoid malloc)
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
@@ -690,7 +689,7 @@ void CrashHandler::logBacktrace() {
 }
 
 /// @brief logs a fatal message and crashes the program
-void CrashHandler::crash(char const* context) {
+void CrashHandler::crash(std::string_view context) {
   ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
   ::logBacktrace();
   ::logProcessInfo();
@@ -724,7 +723,7 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* func
     appendNullTerminatedString(message, p);
   }
 
-  crash(&buffer[0]);
+  crash(std::string_view(&buffer[0], p - &buffer[0]));
 }
 
 /// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
@@ -827,7 +826,7 @@ void CrashHandler::installCrashHandler() {
       appendNullTerminatedString(msg, p);
     }
 
-    CrashHandler::crash(&buffer[0]);
+    CrashHandler::crash(std::string_view(&buffer[0], p - &buffer[0]));
   });
 }
 

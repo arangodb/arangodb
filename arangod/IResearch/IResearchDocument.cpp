@@ -277,7 +277,7 @@ inline Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& 
 
 std::string getDocumentId(irs::string_ref collection,
                           VPackSlice document) {
-  VPackStringRef const key = arangodb::transaction::helpers::extractKeyPart(document);
+  std::string_view const key = arangodb::transaction::helpers::extractKeyPart(document);
   if (key.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to extract key value from document");
   }

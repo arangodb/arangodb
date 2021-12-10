@@ -255,7 +255,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     bool viewFound{false};
     arangodb::iresearch::CountApproximate actualApproximate{arangodb::iresearch::CountApproximate::Exact};
     for (auto const& node : nodes) {
-      if (node.get("type").stringRef() == "EnumerateViewNode") {
+      if (node.get("type").stringView() == "EnumerateViewNode") {
         viewFound = true;
         auto optionsSlice = node.get("options");
         ASSERT_TRUE(optionsSlice.isObject());
@@ -501,7 +501,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   auto reader = std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
       std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(), snapshot);
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({{"value", false}}, true);
+  sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader, arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
@@ -564,7 +564,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   auto reader =  std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
       std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(), snapshot);
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({{"value", false}}, true);
+  sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
                                                 arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
@@ -636,7 +636,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   auto reader =  std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
       std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(), snapshot);
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({{"value", false}}, true);
+  sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(reader,
                                                 arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},

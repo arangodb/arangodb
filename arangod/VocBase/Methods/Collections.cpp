@@ -167,7 +167,7 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
     if (s.isBoolean() && s.getBoolean() &&
         ((replicationFactorSlice.isNumber() && replicationFactorSlice.getNumber<int>() == 0) ||
          (replicationFactorSlice.isString() &&
-          replicationFactorSlice.stringRef() == StaticStrings::Satellite))) {
+          replicationFactorSlice.stringView() == StaticStrings::Satellite))) {
       return {TRI_ERROR_BAD_PARAMETER,
               "invalid combination of 'isSmart' and 'satellite' "
               "replicationFactor"};

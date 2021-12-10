@@ -64,7 +64,7 @@ RestStatus RestUploadHandler::execute() {
   }
 
   std::string relativeString = TRI_GetFilename(filename);
-  arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
+  std::string_view bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();
   size_t bodySize = bodyStr.size();
 
@@ -124,7 +124,7 @@ bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
 
-  VPackStringRef bodyPtr = _request->rawPayload();
+  std::string_view bodyPtr = _request->rawPayload();
   char const* beg = bodyPtr.data();
   char const* end = beg + bodyPtr.size();
 

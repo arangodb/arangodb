@@ -52,7 +52,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -62,8 +61,8 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-VPackStringRef const writeKey("write");
-VPackStringRef const exclusiveKey("exclusive");
+constexpr std::string_view writeKey("write");
+constexpr std::string_view exclusiveKey("exclusive");
 } // namespace
 
 RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
@@ -578,7 +577,7 @@ class AqlExecuteCall {
 namespace {
 // hack for MSVC
 auto getStringView(velocypack::Slice slice) -> std::string_view {
-  velocypack::StringRef ref = slice.stringRef();
+  std::string_view ref = slice.stringView();
   return std::string_view(ref.data(), ref.size());
 }
 }  // namespace

@@ -22,15 +22,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VALUETYPE_H
-#define VELOCYPACK_VALUETYPE_H 1
+#pragma once
 
 #include <iosfwd>
 
 #include "velocypack-common.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 enum class ValueType : uint8_t {
   None,    // not yet initialized
@@ -59,8 +57,7 @@ char const* valueTypeName(ValueType);
 ValueType valueTypeGroup(ValueType type);
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::velocypack::ValueType);
 
-#endif
+using VPackValueType = arangodb::velocypack::ValueType;

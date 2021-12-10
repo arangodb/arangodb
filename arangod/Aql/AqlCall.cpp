@@ -39,14 +39,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-// hack for MSVC
-auto getStringView(velocypack::Slice slice) -> std::string_view {
-  velocypack::StringRef ref = slice.stringRef();
-  return std::string_view(ref.data(), ref.size());
-}
-}  // namespace
-
 auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
@@ -84,7 +76,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
       message += "When reading limit: ";
       if (slice.isString()) {
         message += "Unexpected value '";
-        message += getStringView(slice);
+        message += slice.stringView();
         message += "'";
       } else {
         message += "Unexpected type ";
@@ -106,7 +98,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
       message += slice.typeName();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
-    auto value = getStringView(slice);
+    auto value = slice.stringView();
     if (value == StaticStrings::AqlRemoteLimitTypeSoft) {
       return {AqlCall::LimitType::SOFT};
     } else if (value == StaticStrings::AqlRemoteLimitTypeHard) {
@@ -156,7 +148,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
       return Result(TRI_ERROR_TYPE_ERROR,
                     "When deserializating AqlCall: Key is not a string");
     }
-    auto const key = getStringView(keySlice);
+    auto const key = keySlice.stringView();
 
     if (auto propIt = expectedPropertiesFound.find(key);
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {

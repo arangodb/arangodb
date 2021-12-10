@@ -27,12 +27,12 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <chrono>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <unordered_set>
 
@@ -165,14 +165,14 @@ uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
 void makeAttributesUnique(arangodb::velocypack::Builder& builder,
                           arangodb::velocypack::Slice slice) {
   if (slice.isObject()) {
-    std::unordered_set<arangodb::velocypack::StringRef> keys;
+    std::unordered_set<std::string_view> keys;
 
     builder.openObject();
 
     auto it = arangodb::velocypack::ObjectIterator(slice, true);
 
     while (it.valid()) {
-      if (!keys.emplace(it.key().stringRef()).second) {
+      if (!keys.emplace(it.key().stringView()).second) {
         // duplicate key
         it.next();
         continue;
@@ -747,13 +747,13 @@ arangodb::Result processInputDirectory(
                                          arangodb::RestoreFeature::CREATED});
       }
 
-      if (name.isString() && name.stringRef() == arangodb::StaticStrings::UsersCollection) {
+      if (name.isString() && name.stringView() == arangodb::StaticStrings::UsersCollection) {
         // special treatment for _users collection - this must be the very last,
         // and run isolated from all previous data loading operations - the
         // reason is that loading into the users collection may change the
         // credentials for the current arangorestore connection!
         usersData = std::move(job);
-      } else if (name.isString() && name.stringRef() == StaticStrings::AnalyzersCollection) {
+      } else if (name.isString() && name.stringView() == StaticStrings::AnalyzersCollection) {
         // special treatment for _analyzers collection - this must be the very first
         stats.totalCollections++;
         analyzersData = std::move(job);

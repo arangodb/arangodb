@@ -55,7 +55,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
@@ -72,8 +71,8 @@ static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
 
-static VPackStringRef const PRIMARY("primary");
-static VPackStringRef const EDGE("edge");
+static std::string_view const PRIMARY("primary");
+static std::string_view const EDGE("edge");
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
@@ -124,7 +123,7 @@ static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbn
     VPackArrayBuilder a(&builder);
     for (auto const& pindex : VPackArrayIterator(plan)) {
       // Skip primary and edge indexes
-      VPackStringRef ptype = pindex.get(StaticStrings::IndexType).stringRef();
+      std::string_view ptype = pindex.get(StaticStrings::IndexType).stringView();
       if (ptype == PRIMARY || ptype == EDGE) {
         continue;
       }
@@ -139,7 +138,7 @@ static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbn
       if (local.isArray()) {
         for (auto const& lindex : VPackArrayIterator(local)) {
           // Skip primary and edge indexes
-          VPackStringRef ltype = lindex.get(StaticStrings::IndexType).stringRef();
+          std::string_view ltype = lindex.get(StaticStrings::IndexType).stringView();
           if (ltype == PRIMARY || ltype == EDGE) {
             continue;
           }
@@ -148,9 +147,9 @@ static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbn
           TRI_ASSERT(localId.isString());
           // The local ID has the form <collectionName>/<ID>, to compare,
           // we need to extract the local ID:
-          VPackStringRef localIdS = localId.stringRef();
+          std::string_view localIdS = localId.stringView();
           auto pos = localIdS.find('/');
-          if (pos != std::string::npos) {
+          if (pos != std::string_view::npos) {
             localIdS = localIdS.substr(pos + 1);
           }
 
@@ -415,7 +414,7 @@ static void handleLocalShard(std::string const& dbname, std::string const& colna
 
   std::unordered_set<std::string>::const_iterator it = commonShrds.find(colname);
 
-  auto localLeader = cprops.get(THE_LEADER).stringRef();
+  auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
     // This collection is not planned anymore, can drop it
@@ -471,7 +470,7 @@ static void handleLocalShard(std::string const& dbname, std::string const& colna
   if (cprops.hasKey(INDEXES)) {
     if (cprops.get(INDEXES).isArray()) {
       for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
-        VPackStringRef type = index.get(StaticStrings::IndexType).stringRef();
+        std::string_view type = index.get(StaticStrings::IndexType).stringView();
         if (type != PRIMARY && type != EDGE) {
           std::string const id = index.get(ID).copyString();
 
@@ -511,7 +510,7 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
         }
 
         for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
-          shardMap.add(shard.key.stringRef(), shard.value);
+          shardMap.add(shard.key.stringView(), shard.value);
         }
       }
     }
@@ -1165,7 +1164,7 @@ bool equivalent(VPackSlice const& local, VPackSlice const& current) {
   TRI_ASSERT(local.isObject());
   TRI_ASSERT(current.isObject());
   for (auto const& i : VPackObjectIterator(local, true)) {
-    if (!VPackNormalizedCompare::equals(i.value, current.get(i.key.stringRef()))) {
+    if (!VPackNormalizedCompare::equals(i.value, current.get(i.key.stringView()))) {
       return false;
     }
   }
@@ -1688,7 +1687,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             TRI_ASSERT(ldb.isObject());
             
             if (servers.isArray() && servers.length() > 0  // servers in current
-                && servers[0].stringRef() == serverId     // we are leading
+                && servers[0].stringView() == serverId     // we are leading
                 && !ldb.hasKey(shName)  // no local collection
                 && !shardMap.slice().hasKey(shName)) {  // no such shard in plan
               report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
@@ -1883,7 +1882,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
     TRI_ASSERT(pdb.isObject());
     for (auto const& pcol : VPackObjectIterator(pdb)) {
-      VPackStringRef const colname = pcol.key.stringRef();
+      std::string_view colname = pcol.key.stringView();
 
       TRI_ASSERT(cdb.isObject());
       VPackSlice const cdbcol = cdb.get(colname);
@@ -1893,10 +1892,10 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
       TRI_ASSERT(pcol.value.isObject());
       for (auto const& pshrd : VPackObjectIterator(pcol.value.get(SHARDS))) {
-        VPackStringRef const shname = pshrd.key.stringRef();
+        std::string_view const shname = pshrd.key.stringView();
 
         // First check if the shard is locked:
-        auto it = shardActionMap.find(shname.toString());
+        auto it = shardActionMap.find(std::string(shname));
         if (it != shardActionMap.end()) {
           LOG_TOPIC("aaed5", DEBUG, Logger::MAINTENANCE)
             << "Skipping SyncReplicatedShardsWithLeader for shard " << shname
@@ -1941,10 +1940,10 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
           std::map<std::string, std::string>{
             {NAME, SYNCHRONIZE_SHARD},
             {DATABASE, dbname},
-            {COLLECTION, colname.toString()},
-            {SHARD, shname.toString()},
+            {COLLECTION, std::string(colname)},
+            {SHARD, std::string(shname)},
             {THE_LEADER, std::move(leader)},
-            {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
+            {SHARD_VERSION, std::to_string(feature.shardVersion(std::string(shname)))}},
           SYNCHRONIZE_PRIORITY, true);
         std::string shardName = description->get(SHARD);
         bool ok = feature.lockShard(shardName, description);
