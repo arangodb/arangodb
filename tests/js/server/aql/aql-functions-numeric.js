@@ -3950,6 +3950,38 @@ function ahuacatlNumericFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test pround function
+////////////////////////////////////////////////////////////////////////////////
+    
+testPRound : function () {
+  var expected = [ 1 ];
+  var actual = getQueryResults("FOR r IN [ 1.123456 ] return PROUND(r, 0)");
+  assertEqual(expected, actual);
+
+  actual = getQueryResults("FOR r IN [ 1.123456 ] return NOOPT(PROUND(r, 0))");
+  assertEqual(expected, actual);
+
+  expected = [ 1.1 ];
+  var actual = getQueryResults("FOR r IN [ 1.123456 ] return PROUND(r, 1)");
+  assertEqual(expected, actual);
+  actual = getQueryResults("FOR r IN [ 1.123456 ] return NOOPT(PROUND(r, 1))");
+  assertEqual(expected, actual);
+
+  expected = [ 1.12 ];
+  var actual = getQueryResults("FOR r IN [ 1.123456 ] return PROUND(r, 2)");
+  assertEqual(expected, actual);
+  actual = getQueryResults("FOR r IN [ 1.123456 ] return NOOPT(PROUND(r, 2))");
+  assertEqual(expected, actual);
+
+  expected = [ 1.1235 ];
+  var actual = getQueryResults("FOR r IN [ 1.123456 ] return PROUND(r, 4)");
+  assertEqual(expected, actual);
+  actual = getQueryResults("FOR r IN [ 1.123456 ] return NOOPT(PROUND(r, 4))");
+  assertEqual(expected, actual);
+
+},
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test round function
 ////////////////////////////////////////////////////////////////////////////////
 
