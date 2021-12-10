@@ -138,7 +138,8 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
                         <legend style={{ fontSize: '12pt' }}>Configuration</legend>
                         {getForm({
                           formState,
-                          dispatch: noop
+                          dispatch: noop,
+                          disabled: true
                         })}
                       </fieldset>
                     </Cell>
