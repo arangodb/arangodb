@@ -2,7 +2,9 @@ devel
 -----
 
 * Added new option `--query-bindvars` to arangoexport, so queries given via 
-  option `--query` can have bind variables in them.
+  option `--query` can have bind variables in them. Also changed the flag names
+  `--query` to `--custom-query` and `--query-max-runtime` to 
+  `--custom-query-max-runtime` to be like in the other client-tools.
 
 * Raised minimal macOS supported version to 10.15 (Catalina).
 
