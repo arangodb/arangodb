@@ -351,7 +351,7 @@ void RocksDBThrottle::RecalculateThrottle() {
     int64_t new_throttle;
     // non-level0 data available?
     if (0 != tot_bytes && 0 != tot_micros.count()) {
-      // average bytes per secon for level 1+ compactions
+      // average bytes per second for level 1+ compactions
       //  (adjust bytes upward by 1000000 since dividing by microseconds,
       //   yields integer bytes per second)
       new_throttle = ((tot_bytes * 1000000) / tot_micros.count());
@@ -519,7 +519,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
 ///  it is performing.  The routine is called HEAVILY.
 void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
 #ifndef _WIN32
-  // initialize thread infor if this the first time the thread has ever called
+  // initialize thread info if this the first time the thread has ever called
   if (!gThreadPriority._baseSet) {
     pid_t tid = syscall(SYS_gettid);
     if (-1 != (int)tid) {
@@ -534,7 +534,7 @@ void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
     }    // if
   }      // if
 
-  // only change priorities if we
+  // only change priorities if we succeeded
   if (gThreadPriority._baseSet && (gThreadPriority._basePriority + Adjustment) !=
                                       gThreadPriority._currentPriority) {
     pid_t tid;
