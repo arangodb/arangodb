@@ -1,0 +1,15 @@
+name: rocksdb_wal_sequence
+introducedIn: "3.8.5"
+help: |
+  Current RocksDB WAL sequence number.
+unit: number
+type: gauge
+category: RocksDB
+complexity: high
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exposes the current RocksDB WAL sequence number. Any
+  write operations into the database will increase the sequence number.
