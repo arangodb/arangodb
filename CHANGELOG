@@ -1,5 +1,5 @@
-v3.9.0-alpha.1 (2021-11-30)
----------------------------
+v3.9.0 (XXXX-XX-XX)
+-------------------
 
 * Added the following metrics for revision trees:
   - `arangodb_revision_tree_hibernations_total`: number of times a revision tree
