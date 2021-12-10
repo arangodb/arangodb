@@ -68,6 +68,8 @@ class ExportFeature final : public application_features::ApplicationFeature,
                                          std::string const& url, arangodb::rest::RequestType,
                                          std::string postBody = "");
 
+  void appendCsvStringValue(std::string& output, std::string const& value);
+
   std::vector<std::string> _collections;
   std::string _query;
   std::string _graphName;
@@ -78,6 +80,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::string _outputDirectory;
   double _queryMaxRuntime;
   bool _useMaxRuntime; 
+  bool _escapeCsvFormulae;
   bool _xgmmlLabelOnly;
   bool _overwrite;
   bool _progress;
