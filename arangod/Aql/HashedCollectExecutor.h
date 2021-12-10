@@ -37,8 +37,6 @@
 
 #include "Containers/FlatHashMap.h"
 
-#include <Containers/FlatHashMap.h>
-
 #include <memory>
 
 namespace arangodb {
