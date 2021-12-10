@@ -210,6 +210,23 @@ struct TruncateTimeTracker : public TimeTracker {
   }
 };
 
+void reportPrimaryIndexInconsistency(
+    arangodb::Result const& res,
+    arangodb::velocypack::StringRef const& key,
+    arangodb::LocalDocumentId const& rev,
+    arangodb::LogicalCollection const& collection) {
+
+  if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    // Scandal! A primary index entry is pointing to nowhere! Let's report
+    // this to the authorities immediately:
+    LOG_TOPIC("42536", ERR, arangodb::Logger::ENGINES)
+        << "Found primary index entry for which there is no actual "
+           "document: collection=" << collection.name() << ", _key=" 
+        << key << ", _rev=" << rev.id();
+    TRI_ASSERT(false);
+  }
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -949,11 +966,12 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 
   rocksdb::PinnableSlice ps;
   Result res;
+  LocalDocumentId documentId;
   do {
-    LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key, readOwnWrites);
+    documentId = primaryIndex()->lookupKey(trx, key, readOwnWrites);
     if (!documentId.isSet()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-      break;
+      return res;
     }  // else found
 
     TRI_IF_FAILURE("RocksDBCollection::read-delay") {
@@ -966,6 +984,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->ensureSnapshot());
+  ::reportPrimaryIndexInconsistency(res, key, documentId, _logicalCollection);
   return res;
 }
 
@@ -1219,6 +1238,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   res = lookupDocumentVPack(trx, oldDocumentId, previousPS,
     /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
   if (res.fail()) {
+    ::reportPrimaryIndexInconsistency(res, keyStr, oldDocumentId, _logicalCollection);
     return res;
   }
 
@@ -1334,7 +1354,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     expectedId = RevisionId::fromSlice(slice);
   }
 
-  return remove(trx, documentId, expectedId, previousMdr, options);
+  Result res = remove(trx, documentId, expectedId, previousMdr, options);
+  ::reportPrimaryIndexInconsistency(res, keyStr, documentId, _logicalCollection);
+  return res;
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
