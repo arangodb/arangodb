@@ -732,8 +732,9 @@ void InvertedIndexFieldIterator::next() {
         if (_begin->expansion.empty()) {
           _valueSlice = *_arrayStack.back();
         } else {
+          // fo array subobjects we index "null" in case of absence as declared for other indicies
           _valueSlice = get(*_arrayStack.back(), _begin->expansion,
-                            arangodb::velocypack::Slice::noneSlice());
+                            arangodb::velocypack::Slice::nullSlice());
         }
         ++_arrayStack.back();
         _nameBuffer.resize(_prefixLength); // FIXME: just clear should work!
