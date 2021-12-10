@@ -48,6 +48,8 @@ inline constexpr std::string_view String_TransferSnapshot = "TransferSnapshot";
 inline constexpr std::string_view String_NothingToApply = "NothingToApply";
 inline constexpr std::string_view String_ApplyRecentEntries =
     "ApplyRecentEntries";
+inline constexpr std::string_view String_UninitializedState =
+    "UninitializedState";
 
 inline constexpr auto String_Role = velocypack::StringRef{"role"};
 inline constexpr auto String_Detail = velocypack::StringRef{"detail"};
@@ -56,7 +58,9 @@ inline constexpr auto String_Log = velocypack::StringRef{"log"};
 inline constexpr auto String_Generation = velocypack::StringRef{"generation"};
 
 auto followerStateFromString(std::string_view str) -> FollowerInternalState {
-  if (str == String_WaitForLeaderConfirmation) {
+  if (str == String_UninitializedState) {
+    return FollowerInternalState::kUninitializedState;
+  } else if (str == String_WaitForLeaderConfirmation) {
     return FollowerInternalState::kWaitForLeaderConfirmation;
   } else if (str == String_TransferSnapshot) {
     return FollowerInternalState::kTransferSnapshot;
@@ -72,7 +76,9 @@ auto followerStateFromString(std::string_view str) -> FollowerInternalState {
 }
 
 auto leaderStateFromString(std::string_view str) -> LeaderInternalState {
-  if (str == String_IngestingExistingLog) {
+  if (str == String_UninitializedState) {
+    return LeaderInternalState::kUninitializedState;
+  } else if (str == String_IngestingExistingLog) {
     return LeaderInternalState::kIngestingExistingLog;
   } else if (str == String_RecoveryInProgress) {
     return LeaderInternalState::kRecoveryInProgress;
@@ -98,6 +104,8 @@ auto replicated_state::to_string(LeaderInternalState state) noexcept -> std::str
       return String_RecoveryInProgress;
     case LeaderInternalState::kServiceAvailable:
       return String_ServiceAvailable;
+    case LeaderInternalState::kUninitializedState:
+      return String_UninitializedState;
   }
   TRI_ASSERT(false) << "invalid state value " << int(state);
   return "(unknown-internal-leader-state)";
@@ -113,6 +121,8 @@ auto replicated_state::to_string(FollowerInternalState state) noexcept -> std::s
       return String_NothingToApply;
     case FollowerInternalState::kApplyRecentEntries:
       return String_ApplyRecentEntries;
+    case FollowerInternalState::kUninitializedState:
+      return String_UninitializedState;
   }
   TRI_ASSERT(false) << "invalid state value " << int(state);
   return "(unknown-internal-follower-state)";

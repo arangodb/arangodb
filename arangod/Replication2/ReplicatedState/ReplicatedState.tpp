@@ -58,7 +58,7 @@ struct ReplicatedState<S>::LeaderState : StateBase,
   std::weak_ptr<ReplicatedState> parent;
   std::shared_ptr<replicated_log::LogLeader> logLeader;
 
-  LeaderInternalState internalState;
+  LeaderInternalState internalState{LeaderInternalState::kUninitializedState};
   std::chrono::system_clock::time_point lastInternalStateChange;
   std::optional<LogRange> recoveryRange;
 
@@ -100,7 +100,7 @@ struct ReplicatedState<S>::FollowerState : StateBase,
   std::weak_ptr<ReplicatedState> parent;
   std::shared_ptr<replicated_log::LogFollower> logFollower;
 
-  FollowerInternalState internalState;
+  FollowerInternalState internalState{FollowerInternalState::kUninitializedState};
   std::chrono::system_clock::time_point lastInternalStateChange;
   std::optional<LogRange> ingestionRange;
 
@@ -290,7 +290,6 @@ void ReplicatedState<S>::FollowerState::ingestLogData() {
     LOG_TOPIC("ea777", TRACE, Logger::REPLICATED_STATE)
         << "check if new snapshot is required";
 
-
     LOG_TOPIC("26c55", DEBUG, Logger::REPLICATED_STATE)
         << "starting service as follower";
     state->_stream = stream;
@@ -443,25 +442,5 @@ template <typename S>
 auto ReplicatedState<S>::getStatus() -> StateStatus {
   return currentState->getStatus();
 }
-
-/*
-template <typename S>
-auto ReplicatedState<S>::getCurrentGeneration() const noexcept -> StateGeneration {
-  return generation;
-}
-
-template <typename S>
-void ReplicatedState<S>::updateGeneration(StateGeneration newGeneration) {
-  if (newGeneration > generation) {
-    LOG_TOPIC("f7b28", DEBUG, Logger::REPLICATED_STATE)
-        << "updating generation from " << generation << " to " << newGeneration;
-    generation = newGeneration;
-    flush();
-  } else {
-    LOG_TOPIC("834f2", TRACE, Logger::REPLICATED_STATE)
-        << "did not update generation, because old generation is " << generation
-        << ", but new generation " << newGeneration << " is smaller";
-  }
-}*/
 
 }  // namespace arangodb::replication2::replicated_state

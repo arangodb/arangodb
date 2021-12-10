@@ -36,6 +36,7 @@ class Slice;
 namespace arangodb::replication2::replicated_state {
 
 enum class LeaderInternalState {
+  kUninitializedState,
   kWaitingForLeadershipEstablished,
   kIngestingExistingLog,
   kRecoveryInProgress,
@@ -65,6 +66,7 @@ struct LeaderStatus {
 };
 
 enum class FollowerInternalState {
+  kUninitializedState,
   kWaitForLeaderConfirmation,
   kTransferSnapshot,
   kNothingToApply,
