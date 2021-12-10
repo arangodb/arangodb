@@ -74,18 +74,28 @@ class PathValidatorOptions {
    * validator has been set.
    */
   std::shared_ptr<aql::PruneExpressionEvaluator>& getPruneEvaluator();
+  std::shared_ptr<aql::PruneExpressionEvaluator>& getPostFilterEvaluator();
 
   /**
-   * @brief Check whether Prune is enabled or disabled.
+   * @brief Check whether Prune or PostFilter is enabled or disabled.
    */
   bool usesPrune() const;
+  bool usesPostFilter() const;
 
   /**
-   * @brief In case prune is enabled, the prune context must be set during the
-   * processing of all DataRows (InputAqlItemRow) from within the specific
-   * Executor.
+   * @brief In case prune or postFilter has been enabled, we need to unprepare
+   * the context of the inputRow. See explanation in TraversalExecutor.cpp L200
+   */
+  void unpreparePruneContext();
+  void unpreparePostFilterContext();
+
+  /**
+   * @brief In case prune or postFilter is enabled, the prune context must be
+   * set during the processing of all DataRows (InputAqlItemRow) from within the
+   * specific Executor.
    */
   void setPruneContext(arangodb::aql::InputAqlItemRow& inputRow);
+  void setPostFilterContext(arangodb::aql::InputAqlItemRow& inputRow);
 
   /**
    * @brief Get the Expression a vertex needs to hold if defined on the given
@@ -123,6 +133,7 @@ class PathValidatorOptions {
 
   // Prune section
   std::shared_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
+  std::shared_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
 
   // TODO [GraphRefactor]: Post filter section - to be implemented
 

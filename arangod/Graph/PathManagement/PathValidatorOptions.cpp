@@ -46,12 +46,26 @@ std::shared_ptr<aql::PruneExpressionEvaluator>& PathValidatorOptions::getPruneEv
   return _pruneEvaluator;
 }
 
+std::shared_ptr<aql::PruneExpressionEvaluator>& PathValidatorOptions::getPostFilterEvaluator() {
+  return _postFilterEvaluator;
+}
+
 bool PathValidatorOptions::usesPrune() const {
   return _pruneEvaluator != nullptr;
 }
 
+bool PathValidatorOptions::usesPostFilter() const {
+  return _postFilterEvaluator != nullptr;
+}
+
 void PathValidatorOptions::setPruneContext(arangodb::aql::InputAqlItemRow& inputRow) {
+  TRI_ASSERT(_pruneEvaluator != nullptr);
   _pruneEvaluator->prepareContext(inputRow);
+}
+
+void PathValidatorOptions::setPostFilterContext(arangodb::aql::InputAqlItemRow& inputRow) {
+  TRI_ASSERT(_postFilterEvaluator != nullptr);
+  _postFilterEvaluator->prepareContext(inputRow);
 }
 
 void PathValidatorOptions::setVertexExpression(uint64_t depth,
@@ -67,6 +81,18 @@ aql::Expression* PathValidatorOptions::getVertexExpression(uint64_t depth) const
     return it->second.get();
   }
   return _allVerticesExpression.get();
+}
+
+void PathValidatorOptions::unpreparePruneContext() {
+  if (_pruneEvaluator != nullptr) {
+    _pruneEvaluator->unPrepareContext();
+  }
+}
+
+void PathValidatorOptions::unpreparePostFilterContext() {
+  if (_postFilterEvaluator != nullptr) {
+    _postFilterEvaluator->unPrepareContext();
+  }
 }
 
 void PathValidatorOptions::addAllowedVertexCollection(std::string const& collectionName) {

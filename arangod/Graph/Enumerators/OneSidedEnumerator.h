@@ -137,7 +137,13 @@ class OneSidedEnumerator : public TraversalEnumerator {
   auto stealStats() -> aql::TraversalStats override;
 
   auto validatorUsesPrune() const -> bool;
+  auto validatorUsesPostFilter() const -> bool;
+
   auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow) -> void;
+  auto setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow) -> void;
+
+  auto unpreparePruneValidatorContext() -> void;
+  auto unpreparePostFilterValidatorContext() -> void;
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;

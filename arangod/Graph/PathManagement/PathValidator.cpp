@@ -209,6 +209,16 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCon
     }
   }
 
+  // TODO [GraphRefactor]: Check how this is actually supposed to work.
+  // Somehow existent old code in DepthFirstEnumerator::next() is a little bit
+  // confusing.
+  if (_options.usesPostFilter()) {
+    auto& evaluator = _options.getPostFilterEvaluator();
+    if (evaluator->evaluate()) {
+      return ValidationResult{ValidationResult::Type::FILTER};
+    }
+  }
+
   // Evaluate depth-based vertex expressions
   auto expr = _options.getVertexExpression(step.getDepth());
   if (expr != nullptr) {
@@ -247,12 +257,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexExp
 }
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPostFilterEvaluator(
-    std::unique_ptr<aql::PruneExpressionEvaluator> eval) {
-  _postFilterEvaluator = std::move(eval);
-}
-
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 void PathValidator<ProviderType, PathStore, vertexUniqueness>::reset() {
   if constexpr (vertexUniqueness != VertexUniquenessLevel::NONE) {
     _uniqueVertices.clear();
@@ -268,11 +272,36 @@ bool PathValidator<ProviderType, PathStore, vertexUniqueness>::usesPrune() const
 }
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+bool PathValidator<ProviderType, PathStore, vertexUniqueness>::usesPostFilter() const {
+  if (_options.usesPostFilter()) {
+    return true;
+  }
+  return false;
+}
+
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
 void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPruneContext(aql::InputAqlItemRow& inputRow) {
   TRI_ASSERT(_options.usesPrune());
   _options.setPruneContext(inputRow);
 }
 
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPostFilterContext(aql::InputAqlItemRow& inputRow) {
+  TRI_ASSERT(_options.usesPostFilter());
+  _options.setPostFilterContext(inputRow);
+}
+
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness>::unpreparePruneContext(){
+  TRI_ASSERT(_options.usesPrune());
+  _options.unpreparePruneContext();
+}
+
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness>::unpreparePostFilterContext(){
+  TRI_ASSERT(_options.usesPostFilter());
+  _options.unpreparePostFilterContext();
+}
 
 namespace arangodb {
 namespace graph {

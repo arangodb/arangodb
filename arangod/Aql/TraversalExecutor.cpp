@@ -221,6 +221,12 @@ TraversalExecutor<FinderType>::~TraversalExecutor() {
     }
   } else {
     _finder.clear(false);
+    if (_finder.validatorUsesPrune()) {
+      _finder.unpreparePruneValidatorContext();
+    }
+    if (_finder.validatorUsesPostFilter()) {
+      _finder.unpreparePostFilterValidatorContext();
+    }
   }
 };
 
@@ -533,6 +539,12 @@ bool TraversalExecutor<FinderType>::initTraverser(AqlItemBlockInputRange& input)
       if (_finder.validatorUsesPrune()) {
         // Replace by inputRow
         _finder.setPruneValidatorContext(_inputRow);
+        TRI_ASSERT(_inputRow.isInitialized());
+      }
+
+      if (_finder.validatorUsesPostFilter()) {
+        // Replace by inputRow
+        _finder.setPostFilterValidatorContext(_inputRow);
         TRI_ASSERT(_inputRow.isInitialized());
       }
 

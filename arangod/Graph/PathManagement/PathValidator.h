@@ -71,7 +71,15 @@ class PathValidator {
   void setPruneContext(aql::InputAqlItemRow& inputRow);
 
   // Post filter section
-  void setPostFilterEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
+  bool usesPostFilter() const;
+  void setPostFilterContext(aql::InputAqlItemRow& inputRow);
+
+  /**
+   * @brief In case prune or postFilter has been enabled, we need to unprepare
+   * the context of the inputRow. See explanation in TraversalExecutor.cpp L200
+   */
+  void unpreparePruneContext();
+  void unpreparePostFilterContext();
 
  private:
   // TODO [GraphRefactor]: const of _store has been removed as it is now necessary
@@ -86,8 +94,6 @@ class PathValidator {
   ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
 
   PathValidatorOptions _options;
-
-  std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
 
   arangodb::velocypack::Builder _tmpObjectBuilder;
 

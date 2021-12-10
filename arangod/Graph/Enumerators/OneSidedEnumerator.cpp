@@ -289,8 +289,32 @@ auto OneSidedEnumerator<Configuration>::validatorUsesPrune() const -> bool {
 }
 
 template <class Configuration>
-auto OneSidedEnumerator<Configuration>::setPruneValidatorContext(aql::InputAqlItemRow& inputRow) -> void {
+auto OneSidedEnumerator<Configuration>::validatorUsesPostFilter() const -> bool {
+  return _validator.usesPostFilter();
+}
+
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::setPruneValidatorContext(aql::InputAqlItemRow& inputRow)
+    -> void {
   _validator.setPruneContext(inputRow);
+}
+
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow)
+    -> void {
+  _validator.setPostFilterContext(inputRow);
+}
+
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::unpreparePruneValidatorContext()
+    -> void {
+  _validator.unpreparePruneContext();
+}
+
+template <class Configuration>
+auto OneSidedEnumerator<Configuration>::unpreparePostFilterValidatorContext()
+    -> void {
+  _validator.unpreparePostFilterContext();
 }
 
 /* SingleServerProvider Section */
