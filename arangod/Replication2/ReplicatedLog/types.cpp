@@ -187,7 +187,7 @@ void replicated_log::AppendEntriesErrorReason::toVelocyPack(velocypack::Builder&
   builder.add(StaticStrings::Error, VPackValue(to_string(error)));
   builder.add(StaticStrings::ErrorMessage, VPackValue(getErrorMessage()));
   if (details) {
-    builder.add(VPackStringRef{kDetailsString}, VPackValue(details.value()));
+    builder.add(kDetailsString, VPackValue(details.value()));
   }
 }
 
