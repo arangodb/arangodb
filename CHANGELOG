@@ -4,6 +4,32 @@ v3.9.0 (XXXX-XX-XX)
 * Second step of hotbackup transfer job cleanup. Now locks are also cleaned up
   as well as old, seemingly unfinished jobs.
 
+* Fix GitHub issue #15084. Fixed a potential use-after-free on Windows for
+  queries that used the NeighborsEnumerator (though other PathEnumerators
+  might have been affected as well).
+
+* BTS-624: The `move-calculations-up` optimization rule is now also applied to
+  subqueries, when they don't have dependencies on the outer nodes, don't have
+  modification nodes and don't read their own writes. This fixed the execution
+  of a query without the splicing-subqueries option being faster than the
+  execution of a query with this option (after version 3.8, this option cannot
+  be switched off). 
+
+* Added the following metrics for revision trees:
+  - `arangodb_revision_tree_hibernations_total`: number of times a revision tree
+    was compressed in RAM and set to hibernation
+  - `arangodb_revision_tree_resurrections_total`: number of times a revision
+    tree was resurrected from hibernation and uncompressed in RAM
+  - `arangodb_revision_tree_memory_usage`: total memory usage (in bytes) by all
+    active revision trees
+
+* Added metric `rocksdb_wal_sequence` to track the current tip of the WAL's
+  sequence number.
+
+
+v3.9.0-alpha.1 (2021-11-30)
+---------------------------
+
 * Cleanup and properly fail hotbackup upload and download jobs if a dbserver
   fails or is restarted during the transfer. This gets rid of upload and
   download blockages in these circumstances.
