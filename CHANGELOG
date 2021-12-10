@@ -1,7 +1,9 @@
 devel
 -----
 
-* Updated license behaviour to PM decision.
+* Updated Enterprise license behaviour: now there will be a one hour period for
+  a new deployment to provide the license. After that period, the read-only mode
+  will be enforced.
 
 * Cleanup and properly fail hotbackup upload and download jobs if a dbserver
   fails or is restarted during the transfer. This gets rid of upload and
