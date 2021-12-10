@@ -217,6 +217,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"FLOOR", ".", flags, &Functions::Floor});
   add({"CEIL", ".", flags, &Functions::Ceil});
   add({"ROUND", ".", flags, &Functions::Round});
+  add({"PROUND", ".,.", flags, &Functions::PRound});
   add({"ABS", ".", flags, &Functions::Abs});
   add({"SQRT", ".", flags, &Functions::Sqrt});
   add({"POW", ".,.", flags, &Functions::Pow});
@@ -492,7 +493,7 @@ void AqlFunctionFeature::addMiscFunctions() {
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
                            FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
        &Functions::MakeDistributeGraphInput});
-  
+
   // this is an internal function that is only here for testing. it cannot
   // be invoked by end users, because refering to internal functions from user
   // queries will pretend these functions do not exist.

@@ -3846,7 +3846,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
   AqlValue aqlLocal =
       ::timeAqlValue(expressionContext, AFN, tp_local,
                      info.offset.count() == 0 && info.save.count() == 0);
-  
+
   AqlValueGuard aqlLocalGuard(aqlLocal, true);
 
   if (showDetail) {
@@ -3866,7 +3866,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
     builder->add("zoneInfo", VPackValue(VPackValueType::Object));
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
-    builder->add("end", aqlEnd.slice());  
+    builder->add("end", aqlEnd.slice());
     builder->add("dst", VPackValue(info.save.count() != 0));
     builder->add("offset", VPackValue(info.offset.count()));
     builder->close();
@@ -3918,7 +3918,7 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
   auto const info = zoned.get_info();
   auto const tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
   AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_utc);
-  
+
   AqlValueGuard aqlUtcGuard(aqlUtc, true);
 
   if (showDetail) {
@@ -6784,6 +6784,18 @@ AqlValue Functions::Round(ExpressionContext*, AstNode const&,
   return ::numberValue(std::floor(input + 0.5), true);
 }
 
+/// @brief function PROUND
+AqlValue Functions::PRound(ExpressionContext*, AstNode const&,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& precision = extractFunctionParameterValue(parameters, 1);
+
+  double input = value.toDouble();
+  double exp = std::pow(10, precision.toDouble());
+
+  return ::numberValue(std::floor((input * exp) + 0.5) / exp, true);
+}
+
 /// @brief function ABS
 AqlValue Functions::Abs(ExpressionContext*, AstNode const&,
                         VPackFunctionParameters const& parameters) {
@@ -7021,7 +7033,7 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
 
   bool first = true;
   uint32_t result = 0;
-  
+
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValueMaterializer materializer(vopts);
@@ -7048,7 +7060,7 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
   if (first) {
     return AqlValue(AqlValueHintNull());
   }
-  
+
   return AqlValue(AqlValueHintUInt(result));
 }
 
@@ -7105,7 +7117,7 @@ AqlValue Functions::BitNegate(ExpressionContext* expressionContext, AstNode cons
     uint64_t value = (~testee) & ((uint64_t(1) << width) - 1);
     return AqlValue(AqlValueHintUInt(value));
   }
-      
+
   static char const* AFN = "BIT_NEGATE";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7122,7 +7134,7 @@ AqlValue Functions::BitTest(ExpressionContext* expressionContext, AstNode const&
       return AqlValue(AqlValueHintBool((testee & (uint64_t(1) << index)) != 0));
     }
   }
-      
+
   static char const* AFN = "BIT_TEST";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7143,7 +7155,7 @@ AqlValue Functions::BitShiftLeft(ExpressionContext* expressionContext, AstNode c
       }
     }
   }
-  
+
   static char const* AFN = "BIT_SHIFT_LEFT";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7164,7 +7176,7 @@ AqlValue Functions::BitShiftRight(ExpressionContext* expressionContext, AstNode 
       }
     }
   }
-  
+
   static char const* AFN = "BIT_SHIFT_RIGHT";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7200,7 +7212,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
     auto* vopts = &trx->vpackOptions();
     AqlValueMaterializer materializer(vopts);
     VPackSlice s = materializer.slice(value, false);
-  
+
     uint64_t result = 0;
     for (VPackSlice v : VPackArrayIterator(s)) {
       auto currentValue = bitOperationValue<uint64_t>(v);
@@ -7217,7 +7229,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
 
       result |= uint64_t(1) << currentValue.value();
     }
-  
+
     return AqlValue(AqlValueHintUInt(result));
   }
 
@@ -7276,7 +7288,7 @@ AqlValue Functions::BitToString(ExpressionContext* expressionContext, AstNode co
 
     return AqlValue(&buffer[0], static_cast<size_t>(p - &buffer[0]));
   }
-  
+
   static char const* AFN = "BIT_TO_STRING";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7310,7 +7322,7 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode 
       return AqlValue(AqlValueHintUInt(result));
     }
   }
-  
+
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
 }
