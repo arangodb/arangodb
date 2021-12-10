@@ -12,6 +12,10 @@ v3.9.0 (XXXX-XX-XX)
 * Added metric `rocksdb_wal_sequence` to track the current tip of the WAL's
   sequence number.
 
+
+v3.9.0-alpha.1 (2021-11-30)
+---------------------------
+
 * Cleanup and properly fail hotbackup upload and download jobs if a dbserver
   fails or is restarted during the transfer. This gets rid of upload and
   download blockages in these circumstances.
