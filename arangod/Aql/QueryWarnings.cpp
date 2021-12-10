@@ -110,7 +110,3 @@ std::string QueryWarnings::buildFormattedString(ErrorCode code, std::string_view
   std::string temp(details);
   return arangodb::basics::Exception::FillExceptionString(code, temp.c_str());
 }
-
-std::string QueryWarnings::buildFormattedString(ErrorCode code, char const* details) {
-  return arangodb::basics::Exception::FillExceptionString(code, details);
-}
