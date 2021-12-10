@@ -105,13 +105,22 @@ thread_local sPriorityInfo gThreadPriority = {false, 0, 0};
 thread_local std::chrono::steady_clock::time_point flushStart = std::chrono::steady_clock::time_point{};
 
 // Setup the object, clearing variables, but do no real work
-RocksDBThrottle::RocksDBThrottle()
+RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency, uint64_t scalingFactor,
+                                 uint64_t maxWriteRate, uint64_t slowdownWritesTrigger)
     : _internalRocksDB(nullptr),
       _throttleState(ThrottleState::NotStarted),
       _replaceIdx(2),
       _throttleBps(0),
-      _firstThrottle(true) {
-  memset(&_throttleData, 0, sizeof(_throttleData));
+      _firstThrottle(true),
+      _numSlots(numSlots),
+      _frequency(frequency),
+      _scalingFactor(scalingFactor),
+      _maxWriteRate(maxWriteRate == 0 ? std::numeric_limits<uint64_t>::max() : maxWriteRate), 
+      _slowdownWritesTrigger(slowdownWritesTrigger) {
+      
+  TRI_ASSERT(_scalingFactor != 0);
+  _throttleData = std::make_unique<std::vector<ThrottleData_t>>();
+  _throttleData->resize(numSlots);
 }
 
 // Shutdown the background thread only if it was ever started
@@ -224,6 +233,7 @@ void RocksDBThrottle::startup(rocksdb::DB* db) {
 
 void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
                                            uint64_t Keys, uint64_t Bytes, bool IsLevel0) {
+  TRI_ASSERT(Micros.count() >= 0);
   // throw out anything smaller than 32Mbytes ... be better if this
   //  was calculated against write_buffer_size, but that varies by column family
   if ((64 << 19) < Bytes) {
@@ -232,10 +242,12 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
     // index 0 for level 0 compactions, index 1 for all others
     unsigned target_idx = (IsLevel0 ? 0 : 1);
 
-    _throttleData[target_idx]._micros += Micros;
-    _throttleData[target_idx]._keys += Keys;
-    _throttleData[target_idx]._bytes += Bytes;
-    _throttleData[target_idx]._compactions += 1;
+    auto& throttleData = *_throttleData;
+
+    throttleData[target_idx]._micros += Micros;
+    throttleData[target_idx]._keys += Keys;
+    throttleData[target_idx]._bytes += Bytes;
+    throttleData[target_idx]._compactions += 1;
 
     // attempt to override throttle changes by rocksdb ... hammer this often
     //  (note that _threadMutex IS HELD)
@@ -273,7 +285,7 @@ void RocksDBThrottle::ThreadLoop() {
     } 
 
     ++_replaceIdx;
-    if (THROTTLE_INTERVALS == _replaceIdx) {
+    if (_numSlots == _replaceIdx) {
       _replaceIdx = 2;
     }
 
@@ -282,7 +294,7 @@ void RocksDBThrottle::ThreadLoop() {
 
     if (_throttleState.load(std::memory_order_relaxed) == ThrottleState::Running) {  
       // test in case of race at shutdown
-      _threadCondvar.wait(THROTTLE_SECONDS * 1000000);
+      _threadCondvar.wait(std::chrono::microseconds(_frequency * 1000));
     } 
   }
 
@@ -293,44 +305,40 @@ void RocksDBThrottle::ThreadLoop() {
 // Routine to actually perform the throttle calculation,
 //  now is external routing from ThreadLoop() to easy unit test
 void RocksDBThrottle::RecalculateThrottle() {
-  unsigned loop;
-  std::chrono::microseconds tot_micros;
-  uint64_t tot_bytes, tot_keys, tot_compact, adjustment_bytes;
-  int64_t new_throttle, compaction_backlog, temp_rate;
+  std::chrono::microseconds tot_micros{0};
+  uint64_t tot_bytes = 0;
+  uint64_t tot_keys = 0;
+  uint64_t tot_compact = 0;
   bool no_data;
 
-  tot_micros *= 0;
-  tot_keys = 0;
-  tot_bytes = 0;
-  tot_compact = 0;
-  temp_rate = 0;
-
-  compaction_backlog = ComputeBacklog();
+  int64_t compaction_backlog = ComputeBacklog();
+  TRI_ASSERT(_throttleData != nullptr);
+  auto& throttleData = *_throttleData;
 
   {
     MUTEX_LOCKER(mutexLocker, _threadMutex);
-
-    _throttleData[_replaceIdx] = _throttleData[1];
-    memset(&_throttleData[1], 0, sizeof(_throttleData[1]));
+    
+    throttleData[_replaceIdx] = throttleData[1];
+    throttleData[1] = ThrottleData_t{};
 
     // this could be faster by keeping running totals and
     //  subtracting [_replaceIdx] before copying [0] into it,
     //  then adding new [_replaceIdx].  But that needs more
     //  time for testing.
-    for (loop = 2; loop < THROTTLE_INTERVALS; ++loop) {
-      tot_micros += _throttleData[loop]._micros;
-      tot_keys += _throttleData[loop]._keys;
-      tot_bytes += _throttleData[loop]._bytes;
-      tot_compact += _throttleData[loop]._compactions;
+    for (uint64_t loop = 2; loop < _numSlots; ++loop) {
+      tot_micros += throttleData[loop]._micros;
+      tot_keys += throttleData[loop]._keys;
+      tot_bytes += throttleData[loop]._bytes;
+      tot_compact += throttleData[loop]._compactions;
     }  // for
 
     // flag to skip throttle changes if zero data available
-    no_data = (0 == tot_bytes && 0 == _throttleData[0]._bytes);
+    no_data = (0 == tot_bytes && 0 == throttleData[0]._bytes);
   }  // unique_lock
 
   // reduce bytes by 10% for each excess level_0 files and/or excess write
   // buffers
-  adjustment_bytes = (tot_bytes * compaction_backlog) / 10;
+  uint64_t adjustment_bytes = (tot_bytes * compaction_backlog) / 10;
   if (adjustment_bytes < tot_bytes) {
     tot_bytes -= adjustment_bytes;
   } else {
@@ -342,6 +350,7 @@ void RocksDBThrottle::RecalculateThrottle() {
   if (!no_data) {
     MUTEX_LOCKER(mutexLocker, _threadMutex);
 
+    int64_t new_throttle;
     // non-level0 data available?
     if (0 != tot_bytes && 0 != tot_micros.count()) {
       // average bytes per secon for level 1+ compactions
@@ -353,44 +362,49 @@ void RocksDBThrottle::RecalculateThrottle() {
     // attempt to most recent level0
     //  (only use most recent level0 until level1+ data becomes available,
     //   useful on restart of heavily loaded server)
-    else if (0 != _throttleData[0]._bytes && 0 != _throttleData[0]._micros.count()) {
+    else if (0 != throttleData[0]._bytes && 0 != throttleData[0]._micros.count()) {
       new_throttle =
-          (_throttleData[0]._bytes * 1000000) / _throttleData[0]._micros.count();
+          (throttleData[0]._bytes * 1000000) / throttleData[0]._micros.count();
     }  // else if
     else {
       new_throttle = 1;
     }  // else
 
-    if (0 == new_throttle) new_throttle = 1;  // throttle must have an effect
+    if (0 == new_throttle) {
+      new_throttle = 1;  // throttle must have an effect
+    }
 
     // change the throttle slowly
     //  (+1 & +2 keep throttle moving toward goal when difference new and
-    //   old is less than THROTTLE_SCALING)
+    //   old is less than _scalingFactor)
     if (!_firstThrottle) {
-      temp_rate = _throttleBps;
+      int64_t temp_rate = _throttleBps.load(std::memory_order_relaxed);
 
-      if (temp_rate < new_throttle)
-        temp_rate += (new_throttle - temp_rate) / THROTTLE_SCALING + 1;
-      else
-        temp_rate -= (temp_rate - new_throttle) / THROTTLE_SCALING + 2;
+      if (temp_rate < new_throttle) {
+        temp_rate += (new_throttle - temp_rate) / _scalingFactor + 1;
+      } else {
+        temp_rate -= (temp_rate - new_throttle) / _scalingFactor + 2;
+      }
 
       // +2 can make this go negative
-      if (temp_rate < 1) temp_rate = 1;  // throttle must always have an effect
+      if (temp_rate < 1) {
+        temp_rate = 1;  // throttle must always have an effect
+      }
 
       LOG_TOPIC("46d4a", DEBUG, arangodb::Logger::ENGINES)
-          << "RecalculateThrottle(): old " << _throttleBps << ", new " << temp_rate;
+          << "RecalculateThrottle(): old " << _throttleBps << ", new " << temp_rate << ", cap: " << _maxWriteRate;
 
-      _throttleBps = temp_rate;
-
+      _throttleBps = std::min(static_cast<uint64_t>(temp_rate), _maxWriteRate);
+      
       // prepare for next interval
-      memset(&_throttleData[0], 0, sizeof(_throttleData[0]));
+      throttleData[0] = ThrottleData_t{};
     } else if (1 < new_throttle) {
       // never had a valid throttle, and have first hint now
-      _throttleBps = new_throttle;
+      _throttleBps = std::min(static_cast<uint64_t>(new_throttle), _maxWriteRate);
 
       LOG_TOPIC("e0bbb", DEBUG, arangodb::Logger::ENGINES)
           << "RecalculateThrottle(): first " << _throttleBps;
-
+        
       _firstThrottle = false;
     }  // else if
 
@@ -399,7 +413,6 @@ void RocksDBThrottle::RecalculateThrottle() {
     //  Add back only if this becomes a pluggable WriteController with
     //  access to db mutex.
     // SetThrottle();
-
   }  // !no_data && unlock _threadMutex
 
 }  // RocksDBThrottle::RecalculateThrottle
@@ -470,7 +483,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
   }  // else
 
   // loop through column families to obtain family specific counts
-  for (auto& cf : _families) {
+  for (auto const& cf : _families) {
     property_name = rocksdb::DB::Properties::kNumFilesAtLevelPrefix;
     property_name.append("0");
     ret_flag = _internalRocksDB->GetProperty(cf, property_name, &ret_string);
@@ -480,8 +493,8 @@ int64_t RocksDBThrottle::ComputeBacklog() {
       temp = 0;
     }  // else
 
-    if (kL0_SlowdownWritesTrigger <= temp) {
-      temp -= (kL0_SlowdownWritesTrigger - 1);
+    if (static_cast<int>(_slowdownWritesTrigger) <= temp) {
+      temp -= (static_cast<int>(_slowdownWritesTrigger) - 1);
     } else {
       temp = 0;
     }  // else
