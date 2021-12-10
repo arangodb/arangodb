@@ -392,7 +392,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
   
-  options->addOption("--rocksdb.throttle-max-write-rate", "maximum write rate enforced by throttle (in bytes, 0 = unlimited)",
+  options->addOption("--rocksdb.throttle-max-write-rate", "maximum write rate enforced by throttle (in bytes per second, 0 = unlimited)",
                      new UInt64Parameter(&_throttleMaxWriteRate),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
