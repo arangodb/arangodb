@@ -30,7 +30,7 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 
@@ -45,7 +45,7 @@ using namespace arangodb;
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
   application_features::ApplicationServer server{nullptr, nullptr};
-  server.addFeature<MetricsFeature>();
+  server.addFeature<metrics::MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
@@ -65,7 +65,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
   application_features::ApplicationServer server{nullptr, nullptr};
-  server.addFeature<MetricsFeature>();
+  server.addFeature<metrics::MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 

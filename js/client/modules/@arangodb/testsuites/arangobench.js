@@ -143,7 +143,52 @@ const benchTodos = [{
   // test with Unicode database name
   'server.database': '이것은 테스트입니까 ! @abc " mötör',
   'create-database': true
-}];
+}, {
+  'histogram.generate': true,
+  'requests': '100',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true,
+  'collection': 'testCollection',
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}'
+}, {
+  'histogram.generate': true,
+  'requests': '100',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true,
+  'collection': 'testCollection',
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "value": "test"}',
+  'expected-failure': true
+}, {
+  'histogram.generate': true,
+  'requests': '100',
+  'threads': '1',
+  'test-case': 'version',
+  'keep-alive': 'true',
+  // test with Unicode database name
+  'server.database': '이것은 테스트입니까 ! @abc " mötör',
+  'create-database': true,
+  'collection': 'testCollection',
+  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  //the double @s will be removed when this feature is deprecated
+  'custom-query': 'FOR doc IN @@@@testCollection FILTER doc.name == @@name RETURN doc',
+  'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}',
+  'expected-failure': true
+}
+];
 
 function arangobench (options) {
   if (options.skipArangoBench === true) {
@@ -201,66 +246,84 @@ function arangobench (options) {
 
       let args = _.clone(benchTodo);
       delete args.transaction;
-
+      delete args['expected-failure'];
       if (options.hasOwnProperty('benchargs')) {
         args = Object.assign(args, options.benchargs);
       }
-
       let oneResult = pu.run.arangoBenchmark(options, instanceInfo, args, instanceInfo.rootDir, options.coreCheck);
-      print();
+      if (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']) {
+        continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+        if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
+          if (internal.db._databases().find(
+              dbName => dbName === benchTodo['server.database']) !== undefined) {
+            internal.db._dropDatabase(benchTodo['server.database']);
+          }
+        }
+        results[name] = oneResult;
+        results[name].total++;
+        results[name].failed = 0;
 
-      if (benchTodo.hasOwnProperty('duration')) {
-        oneResult.status = oneResult.status && oneResult.duration >= benchTodo['duration'];
-        if (!oneResult.status) {
-          oneResult.message += ` didn't run for the expected time ${benchTodo.duration} but only ${oneResult.duration}`;
+        if (results[name].status) {
+          results[name].failed = 1;
+          results.status = false;
+          results.failed += 1;
         }
-        if (!oneResult.status && options.extremeVerbosity){
-          print("Duration test failed: " + JSON.stringify(oneResult));
+        if (oneResult.status && !options.force) {
+          break;
         }
-      }
+      } else {
+        if (benchTodo.hasOwnProperty('duration')) {
+          oneResult.status = oneResult.status && oneResult.duration >= benchTodo['duration'];
+          if (!oneResult.status) {
+            oneResult.message += ` didn't run for the expected time ${benchTodo.duration} but only ${oneResult.duration}`;
+          }
+          if (!oneResult.status && options.extremeVerbosity) {
+            print("Duration test failed: " + JSON.stringify(oneResult));
+          }
+        }
 
-      if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
-        if (internal.db._databases().find(
-          dbName => dbName === benchTodo['server.database']) === undefined) {
-          oneResult.message += " no database was created!";
-          oneResult.status = false;
-        } else {
-          internal.db._dropDatabase(benchTodo['server.database']);
+        if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
+          if (internal.db._databases().find(
+              dbName => dbName === benchTodo['server.database']) === undefined) {
+            oneResult.message += " no database was created!";
+            oneResult.status = false;
+          } else {
+            internal.db._dropDatabase(benchTodo['server.database']);
+          }
         }
-      }
-      let content;
-      try {
-        content = fs.read(reportfn);
-        const jsonResult = JSON.parse(content);
-        const haveResultFields = jsonResult.hasOwnProperty('histogram') &&
-          jsonResult.hasOwnProperty('results') &&
+        let content;
+        try {
+          content = fs.read(reportfn);
+          const jsonResult = JSON.parse(content);
+          const haveResultFields = jsonResult.hasOwnProperty('histogram') &&
+              jsonResult.hasOwnProperty('results') &&
               jsonResult.hasOwnProperty('avg');
-        if (!haveResultFields) {
+          if (!haveResultFields) {
+            oneResult.status = false;
+            oneResult.message += "critical fields have been missing in the json result: '" +
+                content + "'";
+          }
+        } catch (x) {
+          oneResult.message += "failed to parse json report for '" +
+              reportfn + "' - '" + x.message + "' - content: '" + content;
           oneResult.status = false;
-          oneResult.message += "critical fields have been missing in the json result: '" +
-            content + "'";
         }
-      } catch (x) {
-        oneResult.message += "failed to parse json report for '" +
-          reportfn + "' - '" + x.message + "' - content: '" + content;
-        oneResult.status = false;
-      }
-      
-      results[name] = oneResult;
-      results[name].total++;
-      results[name].failed = 0;
 
-      if (!results[name].status) {
-        results[name].failed = 1;
-        results.status = false;
-        results.failed += 1;
-      }
+        results[name] = oneResult;
+        results[name].total++;
+        results[name].failed = 0;
 
+        if (!results[name].status) {
+          results[name].failed = 1;
+          results.status = false;
+          results.failed += 1;
+        }
       continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
 
       if (oneResult.status !== true && !options.force) {
         break;
       }
+    }
     }
   }
 

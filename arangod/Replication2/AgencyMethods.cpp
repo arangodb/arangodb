@@ -159,11 +159,24 @@ auto methods::createReplicatedLog(DatabaseID const& database, LogPlanSpecificati
   return sendAgencyWriteTransaction(std::move(trx));
 }
 
+auto methods::removeElectionResult(arangodb::agency::envelope envelope,
+                                   DatabaseID const& database, LogId id)
+    -> arangodb::agency::envelope {
+  auto path =
+      paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
+
+  return envelope.write()
+      .remove(path + "/supervision/election")
+      .inc(paths::current()->version()->str())
+      .end();
+}
+
 auto methods::updateElectionResult(arangodb::agency::envelope envelope,
                                    DatabaseID const& database, LogId id,
                                    LogCurrentSupervisionElection const& result)
     -> arangodb::agency::envelope {
-  auto path = paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
+  auto path =
+      paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
 
   return envelope.write()
       .emplace_object(path + "/supervision/election",

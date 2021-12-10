@@ -1,6 +1,69 @@
 devel
 -----
 
+* Remove background thread `RocksDBShaThread` for background SHA256 checksum
+  calculation for .sst files in the Enterprise Edition. The checksums are now
+  calculated incrementally while writing into the .sst files, and the checksum
+  files will be stored on disk as soon as an .sst file is made durable by
+  RocksDB. There is no more need to periodically scan the database directory
+  and look for any additional .sst files.
+
+* Fix BTS-580: Trimmed the password field from the payload in the client 
+  requests when displaying error messages in arangorestore, because they 
+  displayed the password as plain text. 
+
+* Refactored unit tests with the `grey` keyword, which is for skipping certain 
+  tests. A test file that did not perform any test, but only had a function to 
+  sleep, was removed. Two test files were renamed so they would not be skipped.
+
+* Fixed BTS-611: In some cases AQL queries, in particular in a cluster,
+  reported the wrong fullCount when the optimizer rule(s)
+  `late-document-materialization and/or `sort-limit` were active.
+
+* Fix BTS-535: TakeoverShardLeadership waits properly for Current data in
+  ClusterInfo. This avoids a fake warning and fake test failure.
+
+* APM-256: make arangoexport escape potential formulae in CSV exports.
+  This addresses a potential security issue when exporting specially
+  crafted documents to CSV, opening the CSV file in MS Excel or OpenOffice
+  and then clicking links in any of the tainted cells.
+  
+  This change also adds a new option `--escape-csv-formulae` to
+  toggle the escaping behavior for potential formulae values. The
+  option is turned on by default.
+
+* Second step of hotbackup transfer job cleanup. Now locks are also cleaned up
+  as well as old, seemingly unfinished jobs.
+
+* Defer intermediate commits in the middle of a multi-document (array)
+  operation. This is to ensure that the RocksDB key locks for all participating
+  document keys are still held while the operations are replicating via the
+  synchronous replication.
+
+* Fix potential read inconsistency for single document operations.
+  Wen reading a single document that is concurrently being updated or replaced,
+  the read operation could erroneously return a "document not found" error
+  although the document actually existed. This only happened for single
+  document operations, i.e., no transactions or AQL queries.
+
+* Fix GitHub issue #15084. Fixed a potential use-after-free on Windows for
+  queries that used the NeighborsEnumerator (though other PathEnumerators
+  might have been affected as well).
+
+* Cleanup and properly fail hotbackup upload and download jobs if a dbserver
+  fails or is restarted during the transfer. This gets rid of upload and
+  download blockages in these circumstances.
+
+* Added new option `--custom-query-bindvars` to arangobench, so queries given via 
+  option `--custom-query` can have bind variables in them.
+
+* BTS-624: The `move-calculations-up` optimization rule is now also applied to
+  subqueries, when they don't have dependencies on the outer nodes, don't have
+  modification nodes and don't read their own writes. This fixed the execution
+  of a query without the splicing-subqueries option being faster than the
+  execution of a query with this option (after version 3.8, this option cannot
+  be switched off). 
+
 * Changed arangobench concurrency flag name from `--concurrency` to `--threads`.
 
 * Added the following metrics for revision trees:

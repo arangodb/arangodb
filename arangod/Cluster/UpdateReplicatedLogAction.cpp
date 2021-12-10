@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
@@ -35,32 +36,34 @@
 #include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::replication2;
 
+namespace {
+struct LogActionContextMaintenance : algorithms::LogActionContext {
+  LogActionContextMaintenance(TRI_vocbase_t& vocbase, network::ConnectionPool* pool)
+      : vocbase(vocbase), pool(pool) {}
 
+  auto dropReplicatedLog(LogId id) -> arangodb::Result override {
+    return vocbase.dropReplicatedLog(id);
+  }
+  auto ensureReplicatedLog(LogId id)
+      -> std::shared_ptr<replicated_log::ReplicatedLog> override {
+    return vocbase.ensureReplicatedLog(id, std::nullopt);
+  }
+  auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
+      -> std::shared_ptr<replicated_log::AbstractFollower> override {
+    return std::make_shared<replicated_log::NetworkAttachedFollower>(
+        pool, std::move(participantId), vocbase.name(), id);
+  }
+
+  TRI_vocbase_t& vocbase;
+  network::ConnectionPool* pool;
+};
+}
 
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
-  struct LogActionContextMaintenance : algorithms::LogActionContext {
-    LogActionContextMaintenance(TRI_vocbase_t& vocbase, network::ConnectionPool* pool)
-        : vocbase(vocbase), pool(pool) {}
-
-    auto dropReplicatedLog(LogId id) -> arangodb::Result override {
-      return vocbase.dropReplicatedLog(id);
-    }
-    auto ensureReplicatedLog(LogId id)
-        -> std::shared_ptr<replicated_log::ReplicatedLog> override {
-      return vocbase.ensureReplicatedLog(id, std::nullopt);
-    }
-    auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
-        -> std::shared_ptr<replicated_log::AbstractFollower> override {
-      return std::make_shared<replicated_log::NetworkAttachedFollower>(
-          pool, std::move(participantId), vocbase.name(), id);
-    }
-
-    TRI_vocbase_t& vocbase;
-    network::ConnectionPool* pool;
-  };
 
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
     auto buffer = StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));

@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -332,30 +333,31 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
 
   auto buffer = asio_ns::buffer(str->data(), str->size());
   asio_ns::async_write(this->_protocol->socket, buffer,
-                       [self(this->shared_from_this()), str(std::move(str)),
-                        req(std::move(req))](const asio_ns::error_code& ec, std::size_t) mutable {
-                         auto& me = static_cast<H2CommTask<T>&>(*self);
-                         if (ec) {
-                           me.close(ec);
-                           return;
-                         }
+                       withLogContext(
+                         [self(this->shared_from_this()), str(std::move(str)),
+                          req(std::move(req))](const asio_ns::error_code& ec, std::size_t) mutable {
+                            auto& me = static_cast<H2CommTask<T>&>(*self);
+                            if (ec) {
+                              me.close(ec);
+                              return;
+                            }
 
-                         submitConnectionPreface(me._session);
+                            submitConnectionPreface(me._session);
 
-                         // The HTTP/1.1 request that is sent prior to upgrade is assigned
-                         // a stream identifier of 1 (see Section 5.1.1).
-                         // Stream 1 is implicitly "half-closed" from the client toward the server
+                            // The HTTP/1.1 request that is sent prior to upgrade is assigned
+                            // a stream identifier of 1 (see Section 5.1.1).
+                            // Stream 1 is implicitly "half-closed" from the client toward the server
 
-                         TRI_ASSERT(req->messageId() == 1);
-                         auto* strm = me.createStream(1, std::move(req));
-                         TRI_ASSERT(strm);
+                            TRI_ASSERT(req->messageId() == 1);
+                            auto* strm = me.createStream(1, std::move(req));
+                            TRI_ASSERT(strm);
 
-                         // will start writing later
-                         me.processStream(*strm);
+                            // will start writing later
+                            me.processStream(*strm);
 
-                         // start reading
-                         me.asyncReadSome();
-                       });
+                            // start reading
+                            me.asyncReadSome();
+                          }));
 }
 
 template <SocketType T>
@@ -429,7 +431,7 @@ void H2CommTask<T>::setIOTimeout() {
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis);  // cancels old waiters
   this->_protocol->timer.async_wait(
-      [=, this, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+      withLogContext([=, this, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
         std::shared_ptr<CommTask> s;
         if (ec || !(s = self.lock())) {  // was canceled / deallocated
           return;
@@ -451,7 +453,7 @@ void H2CommTask<T>::setIOTimeout() {
         }
         // In all other cases we do nothing, since we have been posted to the
         // iocontext but the thing we should be timing out has already completed.
-      });
+      }));
 }
 
 #ifdef USE_DTRACE
@@ -829,8 +831,8 @@ void H2CommTask<T>::doWrite() {
 
   DTraceH2CommTaskBeforeAsyncWrite((size_t)this);
   asio_ns::async_write(this->_protocol->socket, outBuffers,
-                       [self = this->shared_from_this()](const asio_ns::error_code& ec,
-                                                         std::size_t nwrite) {
+                       withLogContext([self = this->shared_from_this()](const asio_ns::error_code& ec,
+                                                                        std::size_t nwrite) {
                          auto& me = static_cast<H2CommTask<T>&>(*self);
                          me._writing = false;
                          if (ec) {
@@ -841,7 +843,7 @@ void H2CommTask<T>::doWrite() {
                          DTraceH2CommTaskAfterAsyncWrite((size_t)self.get());
 
                          me.doWrite();
-                       });
+                       }));
 }
 
 template <SocketType T>

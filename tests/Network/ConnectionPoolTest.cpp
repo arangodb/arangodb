@@ -54,7 +54,7 @@ struct NetworkConnectionPoolTest
 };
 
 TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
-  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
+  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -74,7 +74,7 @@ TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
 }
 
 TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
-  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
+  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -102,7 +102,7 @@ TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
 }
 
 TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
-  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
+  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 5; // extra small for testing
@@ -131,7 +131,7 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
 }
 
 TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
-  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
+  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -201,7 +201,7 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
 }
 
 TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
-  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
+  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -276,7 +276,7 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
 }
 
 TEST_F(NetworkConnectionPoolTest, checking_expiration) {
-  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
+  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -343,7 +343,7 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration) {
 }
 
 TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
-  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
+  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing

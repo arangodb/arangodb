@@ -425,19 +425,6 @@ This is known to work under Linux and the `jeprof` tool comes with the
 Using it with the integration tests is possible; snapshots will be taken before
 the first and after each subsequent testcase executed.
 
-The `shell-sleep-grey.js` testsuite can be used to suspend execution for a
-specified amount of time:
-
-    export SLEEP_FOR=$((5*60))
-    ./scripts/unittest shell_client \
-       --memprof true \
-       --test shell-sleep-grey.js \
-       --oneTestTimeout ((6*60)) \
-       --cleanup false
-    ...
-    ... Saved /tmp/arangosh_qFu12G/shell_client/single_2207100_0_.heap
-    ...
-
 ### Core Dumps
 
 A core dump consists of the recorded state of the working memory of a process at

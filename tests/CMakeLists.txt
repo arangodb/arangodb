@@ -1,5 +1,3 @@
-include_directories(.)
-
 # ----------------------------------------
 # Greenspun tests
 # ----------------------------------------
@@ -11,11 +9,11 @@ add_subdirectory(Greenspun)
 # ----------------------------------------
 
 set(FUERTE_TESTS_SOURCES
-  Fuerte/test_vst.cpp
-  Fuerte/test_connection_basic.cpp
-  Fuerte/test_connection_concurrent.cpp
-  Fuerte/test_connection_failures.cpp
-  Fuerte/test_connection_timeouts.cpp
+  Fuerte/VstTest.cpp
+  Fuerte/ConnectionBasicTest.cpp
+  Fuerte/ConnectionConcurrentTest.cpp
+  Fuerte/ConnectionFailuresTest.cpp
+  Fuerte/ConnectionTimeoutsTest.cpp
 #    test_10000_writes.cpp
 )
 
@@ -31,6 +29,7 @@ target_link_libraries(fuertetest
     arango
     arango_v8server
     arango_v8
+    arangoserver
     ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
@@ -70,6 +69,7 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
 )
 
 add_subdirectory(IResearch)
@@ -253,6 +253,7 @@ set(ARANGODB_TESTS_SOURCES
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
+  Logger/LogContextTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
@@ -342,6 +343,9 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
   Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
+  Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
+  Replication2/Serialization/LogCommonTest.cpp
+  Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
 )
 
 if (LINUX)
@@ -412,13 +416,18 @@ if (USE_ENTERPRISE)
 endif ()
 
 target_include_directories(arangodbtests PRIVATE
-  ${INCLUDE_DIRECTORIES}
+  ${PROJECT_SOURCE_DIR}/arangod
+  ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 PRIVATE
-    ${INCLUDE_DIRECTORIES}
+    ${PROJECT_SOURCE_DIR}/arangod
+    ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
   )
   target_link_libraries(arangodbtests_replication2 arango)
 endif()
@@ -441,11 +450,12 @@ endif()
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests SYSTEM PRIVATE
-  ${V8_INCLUDE_DIR}
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
+
+target_link_libraries(arangodbtests v8_interface)
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
