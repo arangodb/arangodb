@@ -80,13 +80,20 @@ function isFoxxmaster () {
 
 function validateInstallUrl (url) {
   if (!internal.foxxAllowInstallFromRemote()) {
-    let checkRegex = /^https?:\/\/([^:\.]+:[^@\.]*@)?(www\.)?github\.com\//i;
     // check if a user-defined install baseurl exists
     let baseUrl = require('process').env.FOXX_BASE_URL;
+    let invalid = false;
     if (baseUrl) {
-      checkRegex = new RegExp('^' + baseUrl.replace(/([\.+*\[\]\(\)\\])/g, '\\$1'));
+      if (!url.startsWith(baseUrl)) {
+        // install url does not start with FOXX_BASE_URL
+        invalid = true;
+      }
+    } else {
+      const checkRegex = /^https?:\/\/([^:\.]+:[^@\.]*@)?(www\.)?github\.com\//i;
+      invalid = !checkRegex.test(url);
     }
-    if (!checkRegex.test(url)) {
+
+    if (invalid) {
       throw new ArangoError({
         errorNum: errors.ERROR_FORBIDDEN.code,
         errorMessage: dd`
