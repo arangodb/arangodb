@@ -54,8 +54,6 @@
 
 #include "../Mocks/Servers.h"
 
-#include <string_view>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
