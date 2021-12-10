@@ -80,7 +80,6 @@ function resolveAppInfo (appInfo, refresh) {
   if (/^git:/i.test(appInfo)) {
     const splitted = appInfo.split(':');
     const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com/';
-    FoxxManager.validateInstallUrl(baseUrl);
     return {source: `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`};
   }
   if (/^https?:/i.test(appInfo)) {
