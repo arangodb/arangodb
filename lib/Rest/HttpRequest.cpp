@@ -882,9 +882,9 @@ std::string const& HttpRequest::cookieValue(std::string const& key, bool& found)
   return it->second;
 }
 
-VPackStringRef HttpRequest::rawPayload() const {
-  return VPackStringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
-};
+std::string_view HttpRequest::rawPayload() const {
+  return std::string_view(reinterpret_cast<char const*>(_payload.data()), _payload.size());
+}
 
 VPackSlice HttpRequest::payload(bool strictValidation) {
   if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {

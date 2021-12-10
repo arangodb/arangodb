@@ -70,12 +70,12 @@ size_t VstRequest::contentLength() const {
   return (_payload.size() - _payloadOffset);
 }
 
-arangodb::velocypack::StringRef VstRequest::rawPayload() const {
+std::string_view VstRequest::rawPayload() const {
   if (_payload.size() <= _payloadOffset) {
-    return arangodb::velocypack::StringRef();
+    return std::string_view();
   }
-  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_payload.data() + _payloadOffset),
-                                         _payload.size() - _payloadOffset);
+  return std::string_view(reinterpret_cast<char const*>(_payload.data() + _payloadOffset),
+                          _payload.size() - _payloadOffset);
 }
 
 VPackSlice VstRequest::payload(bool strictValidation) {

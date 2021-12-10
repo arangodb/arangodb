@@ -25,7 +25,6 @@
 
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
-#include <velocypack/StringRef.h>
 #include <deque>
 
 namespace arangodb {
@@ -80,7 +79,7 @@ class ShortestPathResult {
 
   size_t length() { return _vertices.size(); }
 
-  void addVertex(arangodb::velocypack::StringRef v);
+  void addVertex(std::string_view v);
   void addEdge(arangodb::graph::EdgeDocumentToken e);
     
   static constexpr size_t resultItemMemoryUsage() {
@@ -96,7 +95,7 @@ class ShortestPathResult {
   // path is _vertices[0] , _edges[0], _vertices[1] etc.
 
   /// @brief vertices
-  std::deque<arangodb::velocypack::StringRef> _vertices;
+  std::deque<std::string_view> _vertices;
 
   /// @brief edges
   std::deque<arangodb::graph::EdgeDocumentToken> _edges;

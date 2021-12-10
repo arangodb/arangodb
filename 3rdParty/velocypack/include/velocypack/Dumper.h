@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_DUMPER_H
-#define VELOCYPACK_DUMPER_H 1
+#pragma once
 
 #include <string>
 
@@ -31,8 +30,7 @@
 #include "velocypack/Options.h"
 #include "velocypack/Slice.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 struct Sink;
 
 // Dumps VPack into a JSON output string
@@ -105,6 +103,5 @@ class Dumper {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackDumper = arangodb::velocypack::Dumper;

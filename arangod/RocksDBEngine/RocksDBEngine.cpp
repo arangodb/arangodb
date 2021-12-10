@@ -62,7 +62,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
-#include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
@@ -83,6 +82,7 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBSha256Checksum.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -678,6 +678,15 @@ void RocksDBEngine::start() {
     _options.max_open_files = -1;
   }
 
+  if (_createShaFiles) {
+    auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
+    // Register checksum factory
+    _options.file_checksum_gen_factory = std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
+    // Do an initial check in the database directory for missing SHA checksum files
+    shaFileManager->checkMissingShaFiles();
+    _options.listeners.push_back(std::move(shaFileManager));
+  }
+
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
@@ -693,11 +702,6 @@ void RocksDBEngine::start() {
     _options.listeners.push_back(_throttleListener);
   }
 
-  _shaListener = std::make_shared<RocksDBShaCalculator>(server(), _createShaFiles);
-  if (_createShaFiles) {
-    _options.listeners.push_back(_shaListener);
-  } 
-  
   _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
 
   _options.listeners.push_back(_errorListener);
@@ -974,10 +978,6 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // signal the event listener that we are going to shut down soon
-  if (_createShaFiles && _shaListener != nullptr) {
-    _shaListener->beginShutdown();
-  } 
 }
 
 void RocksDBEngine::stop() {
@@ -986,10 +986,6 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
-  
-  if (_createShaFiles && _shaListener != nullptr) {
-    _shaListener->waitForShutdown();
-  }
 
   if (_backgroundThread) {
     // stop the press
@@ -1724,8 +1720,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
-      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(),
-                                      arangodb::velocypack::StringRef(coll.guid()));
+      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(), coll.guid());
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
@@ -1843,8 +1838,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
       LogicalDataSource::Serialization::PersistenceWithInProgress);
   Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
-                                        arangodb::velocypack::StringRef(oldName)));
+      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), oldName));
 
   return res;
 }
@@ -1894,8 +1888,8 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   builder.close();
 
   auto logValue =
-      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
-                                arangodb::velocypack::StringRef(view.guid()));
+      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), view.guid());
+  
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
@@ -2498,8 +2492,7 @@ bool RocksDBEngine::systemDatabaseExists() {
   for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
     TRI_ASSERT(item.isObject());
     TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
-    if (item.get(StaticStrings::DatabaseName)
-            .compareString(arangodb::velocypack::StringRef(StaticStrings::SystemDatabase)) == 0) {
+    if (item.get(StaticStrings::DatabaseName).stringView() == StaticStrings::SystemDatabase) {
       return true;
     }
   }
@@ -3195,12 +3188,6 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   } while (true);
-}
-      
-void RocksDBEngine::checkMissingShaFiles(std::string const& pathname, int64_t requireAge) {
-  if (_shaListener != nullptr) {
-    _shaListener->checkMissingShaFiles(pathname, requireAge);
-  }
 }
 
 auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,

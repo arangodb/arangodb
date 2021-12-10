@@ -251,7 +251,7 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
   TRI_ASSERT(other._defaultWeight >= 0.);
 }
 
-template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(
-    std::deque<arangodb::velocypack::StringRef> const& vertexIds);
+template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<std::string_view>>(
+    std::deque<std::string_view> const& vertexIds);
 template void ShortestPathOptions::fetchVerticesCoordinator<std::vector<arangodb::velocypack::HashedStringRef>>(
     std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);

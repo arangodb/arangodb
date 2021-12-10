@@ -44,6 +44,8 @@
 #include "utils/hash_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace iresearch {
 namespace analysis {
 
@@ -72,9 +74,9 @@ namespace {
 
 using namespace irs;
 
-constexpr VPackStringRef LOCALE_PARAM_NAME      {"locale"};
-constexpr VPackStringRef CASE_CONVERT_PARAM_NAME{"case"};
-constexpr VPackStringRef ACCENT_PARAM_NAME      {"accent"};
+constexpr std::string_view LOCALE_PARAM_NAME      {"locale"};
+constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
+constexpr std::string_view ACCENT_PARAM_NAME      {"accent"};
 
 constexpr frozen::unordered_map<
     string_ref,

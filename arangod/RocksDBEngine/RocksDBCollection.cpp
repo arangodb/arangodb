@@ -215,7 +215,7 @@ struct TruncateTimeTracker : public TimeTracker {
 
 void reportPrimaryIndexInconsistency(
     arangodb::Result const& res,
-    arangodb::velocypack::StringRef const& key,
+    std::string_view key,
     arangodb::LocalDocumentId const& rev) {
 
   if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -891,7 +891,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   return {};
 }
 
-Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
+Result RocksDBCollection::lookupKey(transaction::Methods* trx, std::string_view key,
                                     std::pair<LocalDocumentId, RevisionId>& result, ReadOwnWrites readOwnWrites) const {
   result.first = LocalDocumentId::none();
   result.second = RevisionId::none();
@@ -917,7 +917,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   LocalDocumentId documentId;
   revisionId = RevisionId::none();
   // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key),
+  if (!primaryIndex()->lookupRevision(trx, key.stringView(),
                                       documentId, revisionId, readOwnWrites)) {
     // document not found
     TRI_ASSERT(revisionId.empty());
@@ -931,7 +931,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::StringRef const& key,
+                               std::string_view key,
                                IndexIterator::DocumentCallback const& cb,
                                ReadOwnWrites readOwnWrites) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
@@ -1100,7 +1100,7 @@ Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
   } else if (!keySlice.isString()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  auto keyStr = VPackStringRef(keySlice);
+  std::string_view keyStr = keySlice.stringView();
   if (keyStr.empty()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
@@ -1225,7 +1225,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   if (!keySlice.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
-  auto keyStr = VPackStringRef(keySlice);
+  std::string_view keyStr = keySlice.stringView();
   if (keyStr.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }

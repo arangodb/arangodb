@@ -26,8 +26,6 @@
 
 #include "LogicalDataSource.h"
 
-#include <velocypack/StringRef.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -141,21 +139,14 @@ arangodb::velocypack::ValuePair toValuePair(std::string const& value) {
 
 namespace arangodb {
 
-/*static*/ LogicalDataSource::Type const& LogicalDataSource::Type::emplace(
-    arangodb::velocypack::StringRef const& name) {
-  struct Less {
-    bool operator()(arangodb::velocypack::StringRef const& lhs,
-                    arangodb::velocypack::StringRef const& rhs) const noexcept {
-      return lhs.compare(rhs) < 0;
-    }
-  };
+/*static*/ LogicalDataSource::Type const& LogicalDataSource::Type::emplace(std::string_view name) {
   static std::mutex mutex;
-  static std::map<arangodb::velocypack::StringRef, LogicalDataSource::Type, Less> types;
+  static std::map<std::string_view, LogicalDataSource::Type> types;
   std::lock_guard<std::mutex> lock(mutex);
   auto itr = types.try_emplace(name, Type());
   if (itr.second && name.data()) {
-    const_cast<std::string&>(itr.first->second._name) = name.toString();  // update '_name'
-    const_cast<arangodb::velocypack::StringRef&>(itr.first->first) =
+    const_cast<std::string&>(itr.first->second._name) = std::string(name);  // update '_name'
+    const_cast<std::string_view&>(itr.first->first) =
         itr.first->second.name();  // point key at value stored in '_name'
   }
 

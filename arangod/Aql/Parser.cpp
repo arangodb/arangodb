@@ -32,6 +32,7 @@
 #include "Aql/QueryString.h"
 
 #include <sstream>
+#include <string_view>
 
 using namespace arangodb::aql;
 
@@ -215,7 +216,7 @@ void Parser::pushObjectElement(char const* attributeName, size_t nameLength, Ast
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object != nullptr);
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
-  auto element = _ast.createNodeObjectElement(attributeName, nameLength, node);
+  auto element = _ast.createNodeObjectElement(std::string_view(attributeName, nameLength), node);
   object->addMember(element);
 }
 

@@ -30,14 +30,13 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 #include <algorithm>
 
 namespace {
 
 /// @brief velocypack attribute name for serializing/unserializing projections
-arangodb::velocypack::StringRef const projectionsKey("projections");
+constexpr std::string_view projectionsKey("projections");
 
 /// @brief extract the (single) index to be used for an index scan. this will
 /// return the index if only a single index is used, or if the same index is

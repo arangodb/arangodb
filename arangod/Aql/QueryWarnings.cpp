@@ -105,6 +105,8 @@ std::vector<std::pair<ErrorCode, std::string>> QueryWarnings::all() const {
   return _list;
 }
 
-std::string QueryWarnings::buildFormattedString(ErrorCode code, char const* details) {
-  return arangodb::basics::Exception::FillExceptionString(code, details);
+std::string QueryWarnings::buildFormattedString(ErrorCode code, std::string_view details) {
+  // std::string_view is not necessarily NUL-terminated
+  std::string temp(details);
+  return arangodb::basics::Exception::FillExceptionString(code, temp.c_str());
 }

@@ -39,7 +39,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -70,7 +69,7 @@ TraverserDocumentCache::~TraverserDocumentCache() {
 // the cache from removing this specific object. Should not be retained
 // for a longer period of time.
 // DO NOT give it to a caller.
-cache::Finding TraverserDocumentCache::lookup(arangodb::velocypack::StringRef idString) {
+cache::Finding TraverserDocumentCache::lookup(std::string_view idString) {
   return _cache->find(idString.data(), static_cast<uint32_t>(idString.length()));
 }
 
@@ -81,7 +80,7 @@ void TraverserDocumentCache::insertEdgeIntoResult(EdgeDocumentToken const& idTok
   builder.add(lookupToken(idToken));
 }
 
-bool TraverserDocumentCache::appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result) {
+bool TraverserDocumentCache::appendVertex(std::string_view idString, arangodb::velocypack::Builder& result) {
   auto finding = lookup(idString);
   if (finding.found()) {
     auto val = finding.value();
@@ -98,7 +97,7 @@ bool TraverserDocumentCache::appendVertex(arangodb::velocypack::StringRef idStri
   return found;
 }
 
-bool TraverserDocumentCache::appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result) {
+bool TraverserDocumentCache::appendVertex(std::string_view idString, arangodb::aql::AqlValue& result) {
   auto finding = lookup(idString);
   if (finding.found()) {
     auto val = finding.value();
@@ -118,7 +117,7 @@ aql::AqlValue TraverserDocumentCache::fetchEdgeAqlResult(EdgeDocumentToken const
   return aql::AqlValue(lookupToken(idToken));
 }
 
-void TraverserDocumentCache::insertIntoCache(arangodb::velocypack::StringRef id,
+void TraverserDocumentCache::insertIntoCache(std::string_view id,
                                              arangodb::velocypack::Slice const& document) {
   void const* key = id.data();
   auto keySize = static_cast<uint32_t>(id.length());

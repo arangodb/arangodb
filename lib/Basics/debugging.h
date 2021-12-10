@@ -28,6 +28,7 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -59,30 +60,30 @@ class Builder;
 
 /// @brief intentionally cause a segmentation violation or other failures
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_TerminateDebugging(char const* value);
+void TRI_TerminateDebugging(std::string_view value);
 #else
-inline void TRI_TerminateDebugging(char const*) {}
+inline void TRI_TerminateDebugging(std::string_view) {}
 #endif
 
 /// @brief check whether we should fail at a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-bool TRI_ShouldFailDebugging(char const* value);
+bool TRI_ShouldFailDebugging(std::string_view value) noexcept;
 #else
-inline constexpr bool TRI_ShouldFailDebugging(char const*) { return false; }
+inline constexpr bool TRI_ShouldFailDebugging(std::string_view) noexcept { return false; }
 #endif
 
 /// @brief add a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_AddFailurePointDebugging(char const* value);
+void TRI_AddFailurePointDebugging(std::string_view value);
 #else
-inline void TRI_AddFailurePointDebugging(char const*) {}
+inline void TRI_AddFailurePointDebugging(std::string_view) {}
 #endif
 
 /// @brief remove a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_RemoveFailurePointDebugging(char const* value);
+void TRI_RemoveFailurePointDebugging(std::string_view value);
 #else
-inline void TRI_RemoveFailurePointDebugging(char const*) {}
+inline void TRI_RemoveFailurePointDebugging(std::string_view) {}
 #endif
 
 /// @brief clear all failure points

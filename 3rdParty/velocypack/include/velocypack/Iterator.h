@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_ITERATOR_H
-#define VELOCYPACK_ITERATOR_H 1
+#pragma once
 
 #include <iosfwd>
 #include <tuple>
@@ -33,8 +32,7 @@
 #include "velocypack/Slice.h"
 #include "velocypack/ValueType.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
  public:
@@ -323,7 +321,6 @@ class ObjectIterator : public std::iterator<std::forward_iterator_tag, ObjectIte
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&,
                          arangodb::velocypack::ArrayIterator const*);
@@ -337,4 +334,5 @@ std::ostream& operator<<(std::ostream&,
 std::ostream& operator<<(std::ostream&,
                          arangodb::velocypack::ObjectIterator const&);
 
-#endif
+using VPackArrayIterator = arangodb::velocypack::ArrayIterator;
+using VPackObjectIterator = arangodb::velocypack::ObjectIterator;
