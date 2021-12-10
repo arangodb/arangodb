@@ -811,7 +811,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         if (!_mergeAttributesInstructions.empty()) {
           lookUpTableValue = "0";
         }
-        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("0"));
+        _lineBuffer.appendText("0", 1);
       }
     } else if (datatype == "boolean") {
       if ((fieldLength == 5 && memcmp(field, "false", 5) == 0) ||
@@ -820,18 +820,18 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         if (!_mergeAttributesInstructions.empty()) {
           lookUpTableValue = "false";
         }
-        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("false"));
+        _lineBuffer.appendText("false", 5);
       } else {
         if (!_mergeAttributesInstructions.empty()) {
           lookUpTableValue = "true";
         }
-        _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("true"));
+        _lineBuffer.appendText("true", 4);
       }
     } else if (datatype == "null") {
       if (!_mergeAttributesInstructions.empty()) {
         lookUpTableValue = "null";
       }
-      _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
+      _lineBuffer.appendText("null", 4);
     } else {
       // string
       TRI_ASSERT(datatype == "string");
@@ -842,7 +842,7 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 
   if (*field == '\0' || fieldLength == 0) {
     // do nothing
-    _lineBuffer.appendText(TRI_CHAR_LENGTH_PAIR("null"));
+    _lineBuffer.appendText("null", 4);
     if (!_mergeAttributesInstructions.empty()) {
       lookUpTableValue = "null";
     }

@@ -295,8 +295,7 @@ struct MockGraphDatabase {
 
     {
       auto const* access =
-          ast->createNodeAttributeAccess(tmpId1, StaticStrings::ToString.c_str(),
-                                         StaticStrings::ToString.length());
+          ast->createNodeAttributeAccess(tmpId1, StaticStrings::ToString);
       auto const* cond =
           ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
       _toCondition->addMember(cond);
@@ -319,8 +318,7 @@ struct MockGraphDatabase {
     AstNode* tmpId2 = plan->getAst()->createNodeValueMutableString("", 0);
 
     auto const* access =
-        ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString.c_str(),
-                                       StaticStrings::FromString.length());
+        ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString);
     auto const* cond =
         ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
     fromCondition->addMember(cond);

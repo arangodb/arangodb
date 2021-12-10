@@ -39,7 +39,6 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <map>
@@ -171,7 +170,7 @@ futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& 
 
 Result fetchEdgesFromEngines(transaction::Methods& trx, graph::ClusterTraverserCache& travCache,
                              arangodb::aql::FixedVarExpressionContext const& opts,
-                             arangodb::velocypack::StringRef vertexId, size_t depth,
+                             std::string_view vertexId, size_t depth,
                              std::vector<arangodb::velocypack::Slice>& result);
 
 /// @brief fetch edges from TraverserEngines

@@ -41,7 +41,6 @@ namespace velocypack {
 
 class Builder;
 class Slice;
-class StringRef;
 
 }  // namespace velocypack
 } // arangodb

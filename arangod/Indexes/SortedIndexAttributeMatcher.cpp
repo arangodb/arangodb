@@ -34,8 +34,6 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/StringRef.h>
-
 using namespace arangodb;
 
 namespace {

@@ -55,7 +55,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -656,7 +655,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     while (k-- > 0 && cIter->hasMore()) {
       snapNumDocs++;
 
-      arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+      std::string_view key = RocksDBKey::primaryKey(cIter->iter->key());
       if (lowKey.empty()) {
         lowKey.assign(key.data(), key.size());
       }
@@ -680,7 +679,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
         } else {
           LOG_TOPIC("32e3b", WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
-              << "did not find document with key " << key.toString();
+              << "did not find document with key " << key;
           TRI_ASSERT(false);
           return rv.reset(TRI_ERROR_INTERNAL);
         }
@@ -776,7 +775,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   size_t from = chunk * chunkSize;
   if (from != cIter->lastSortedIteratorOffset) {
     if (!lowKey.empty()) {
-      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), arangodb::velocypack::StringRef(lowKey));
+      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), std::string_view(lowKey));
       cIter->iter->Seek(tmpKey.string());
       cIter->lastSortedIteratorOffset = from;
       TRI_ASSERT(cIter->iter->Valid());
@@ -833,16 +832,16 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
         docRev = RevisionId::fromSlice(
             VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
       } else {
-        arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+        std::string_view key = RocksDBKey::primaryKey(cIter->iter->key());
         LOG_TOPIC("41803", WARN, Logger::REPLICATION)
             << "inconsistent primary index, "
-            << "did not find document with key " << key.toString();
+            << "did not find document with key " << key;
         TRI_ASSERT(false);
         return rv.reset(TRI_ERROR_INTERNAL);
       }
     }
 
-    arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
+    std::string_view docKey(RocksDBKey::primaryKey(cIter->iter->key()));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
     b.add(docRev.toValuePair(ridBuffer));
@@ -894,7 +893,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   size_t from = chunk * chunkSize;
   if (from != cIter->lastSortedIteratorOffset) {
     if (!lowKey.empty()) {
-      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), arangodb::velocypack::StringRef(lowKey));
+      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), std::string_view(lowKey));
       cIter->iter->Seek(tmpKey.string());
       cIter->lastSortedIteratorOffset = from;
       TRI_ASSERT(cIter->iter->Valid());
@@ -975,10 +974,10 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
           TRI_ASSERT(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())).isObject());
           b.add(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
         } else {
-          arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+          std::string_view key = RocksDBKey::primaryKey(cIter->iter->key());
           LOG_TOPIC("d79df", WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
-              << "did not find document with key " << key.toString();
+              << "did not find document with key " << key;
           TRI_ASSERT(false);
           return Result(TRI_ERROR_INTERNAL);
         }

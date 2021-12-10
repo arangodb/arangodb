@@ -67,7 +67,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
@@ -1948,7 +1947,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
       auto mode = TRI_ObjectToString(isolate, optionsObject->Get(context, OverwriteModeKey).FromMaybe(v8::Local<v8::Value>()));
       
-      auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
+      auto overwriteMode = OperationOptions::determineOverwriteMode(mode);
       if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
         options.overwriteMode = overwriteMode;
 

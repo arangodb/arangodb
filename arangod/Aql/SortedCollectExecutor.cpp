@@ -122,7 +122,7 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, RegisterId expressionRegister,
-    Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
+    Variable const* expressionVariable, std::vector<std::string> aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     velocypack::Options const* opts)

@@ -22,6 +22,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "velocypack/velocypack-common.h"
@@ -355,12 +357,12 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
 
   builder.add(Value(ValueType::Object));
 
-  std::unordered_map<StringRef, Slice> rightValues;
+  std::unordered_map<std::string_view, Slice> rightValues;
   {
     ObjectIterator it(right);
     while (it.valid()) {
       auto current = (*it);
-      rightValues.emplace(current.key.stringRef(), current.value);
+      rightValues.emplace(current.key.stringView(), current.value);
       it.next();
     }
   }
@@ -370,7 +372,7 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
 
     while (it.valid()) {
       auto current = (*it);
-      auto key = current.key.stringRef();
+      auto key = current.key.stringView();
       auto found = rightValues.find(key);
 
       if (found == rightValues.end()) {
@@ -381,7 +383,7 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
         // merge both values
         auto& value = (*found).second;
         if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
-          builder.add(ValuePair(key, ValueType::String));
+          builder.add(Value(key));
           Collection::merge(builder, current.value, value, true, nullMeansRemove);
         }
         // clear the value in the map so its not added again

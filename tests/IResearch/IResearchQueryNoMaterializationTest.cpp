@@ -207,7 +207,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
     auto found = false;
     for (auto const node : nodes) {
-      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringRef() == "EnumerateViewNode") {
+      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringView() == "EnumerateViewNode") {
         EXPECT_TRUE(node.hasKey("noMaterialization") && node.get("noMaterialization").isBool() && node.get("noMaterialization").getBool());
         ASSERT_TRUE(node.hasKey("viewValuesVars") && node.get("viewValuesVars").isArray());
         ASSERT_EQ(numOfColumns, node.get("viewValuesVars").length());
@@ -715,7 +715,7 @@ TEST_P(IResearchQueryNoMaterializationTest, matchSortButNotEnoughAttributes) {
   arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
   auto found = false;
   for (auto const node : nodes) {
-    if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringRef() == "EnumerateViewNode") {
+    if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringView() == "EnumerateViewNode") {
       EXPECT_FALSE(node.hasKey("noMaterialization"));
       found = true;
       break;
