@@ -187,6 +187,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
     explicit RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree,
                                   LogicalCollection const& collection);
+    
+    ~RevisionTreeAccessor();
 
     void insert(std::vector<std::uint64_t> const& keys);
     void remove(std::vector<std::uint64_t> const& keys);
@@ -195,6 +197,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
     std::uint64_t count() const;
     std::uint64_t rootValue() const;
     std::uint64_t depth() const;
+    std::size_t memoryUsage() const;
 
     // potentially expensive! only call when necessary
     std::uint64_t compressedSize() const;
