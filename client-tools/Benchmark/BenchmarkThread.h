@@ -258,13 +258,13 @@ class BenchmarkThread : public arangodb::Thread {
     _payloadBuffer.clear();
     for (uint64_t i = 0; i < numOperations; ++i) {
       // append boundary
-      _payloadBuffer.append(TRI_CHAR_LENGTH_PAIR("--"));
+      _payloadBuffer.append("--", 2);
       _payloadBuffer.append(boundary, blen);
-      _payloadBuffer.append(TRI_CHAR_LENGTH_PAIR("\r\n"));
+      _payloadBuffer.append("\r\n", 2);
       // append content-type, this will also begin the body
-      _payloadBuffer.append(TRI_CHAR_LENGTH_PAIR("Content-Type: "));
+      _payloadBuffer.append(std::string_view("Content-Type: "));
       _payloadBuffer.append(StaticStrings::BatchContentType);
-      _payloadBuffer.append(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
+      _payloadBuffer.append("\r\n\r\n", 4);
 
       // everything else (i.e. part request header & body) will get into the
       // body
@@ -278,20 +278,20 @@ class BenchmarkThread : public arangodb::Thread {
       _payloadBuffer.append(HttpRequest::translateMethod(_requestData.type));
       _payloadBuffer.push_back(' ');
       _payloadBuffer.append(_requestData.url);
-      _payloadBuffer.append(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n\r\n"));
+      _payloadBuffer.append(std::string_view(" HTTP/1.1\r\n\r\n"));
       velocypack::Slice payloadSlice = _requestData.payload.slice();
       if (!payloadSlice.isNone()) {
         velocypack::StringSink sink(&_payloadBuffer);
         velocypack::Dumper dumper(&sink);
         dumper.dump(payloadSlice);
-        _payloadBuffer.append(TRI_CHAR_LENGTH_PAIR("\r\n"));
+        _payloadBuffer.append("\r\n", 2);
       }
     }
 
     // end of MIME
-    _payloadBuffer.append(TRI_CHAR_LENGTH_PAIR("--"));
+    _payloadBuffer.append("--", 2);
     _payloadBuffer.append(boundary, blen);
-    _payloadBuffer.append(TRI_CHAR_LENGTH_PAIR("--\r\n"));
+    _payloadBuffer.append("--\r\n", 4);
 
     _headers[StaticStrings::ContentTypeHeader] =
         StaticStrings::MultiPartContentType + "; boundary=" + boundary;

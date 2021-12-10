@@ -28,7 +28,6 @@
 #include "Containers/RollingVector.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
 #include <vector>
 
 namespace arangodb {
@@ -153,13 +152,13 @@ class Optimizer {
   void disableRule(ExecutionPlan* plan, int level);
   
   /// @brief disable a specific rule, by name
-  void disableRule(ExecutionPlan* plan, velocypack::StringRef name); 
+  void disableRule(ExecutionPlan* plan, std::string_view name); 
   
   /// @brief enable a specific rule
   void enableRule(ExecutionPlan* plan, int level);
   
   /// @brief enable a specific rule, by name
-  void enableRule(ExecutionPlan* plan, velocypack::StringRef name);
+  void enableRule(ExecutionPlan* plan, std::string_view name);
 
   /// @brief adds a plan, internal worker method
   void addPlanInternal(std::unique_ptr<ExecutionPlan> plan,

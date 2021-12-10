@@ -36,12 +36,6 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 
-// use non-throwing, non-allocating std::from_chars etc. from standard library
-
-/// @brief helper macro for calculating strlens for static strings at
-/// a compile-time (unless compiled with fno-builtin-strlen etc.)
-#define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
-
 namespace arangodb {
 namespace basics {
 

@@ -45,7 +45,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
@@ -639,15 +638,15 @@ std::string AstNode::getString() const {
   return std::string(getStringValue(), getStringLength());
 }
 
-/// @brief return the string value of a node, as a arangodb::velocypack::StringRef
-arangodb::velocypack::StringRef AstNode::getStringRef() const noexcept {
+/// @brief return the string value of a node
+std::string_view AstNode::getStringView() const noexcept {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
              type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
              type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_COLLECTION ||
              type == NODE_TYPE_VIEW || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
              type == NODE_TYPE_FCALL_USER);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
-  return arangodb::velocypack::StringRef(getStringValue(), getStringLength());
+  return std::string_view(getStringValue(), getStringLength());
 }
 
 /// @brief test if all members of a node are equality comparisons
@@ -953,13 +952,13 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
 
-    std::unordered_set<VPackStringRef> keys;
+    std::unordered_set<std::string_view> keys;
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {
-        VPackStringRef key(member->getStringValue(), member->getStringLength());
+        std::string_view key(member->getStringValue(), member->getStringLength());
 
         if (n > 1 && !keys.emplace(key).second) {
           // duplicate key, skip it
@@ -1522,7 +1521,7 @@ bool AstNode::willUseV8() const {
     if (func->name == "CALL" || func->name == "APPLY") {
       // CALL and APPLY can call arbitrary other functions...
       if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
-        auto s = getMemberUnchecked(0)->getStringRef();
+        auto s = getMemberUnchecked(0)->getStringView();
         if (s.find(':') != std::string::npos) {
           // a user-defined function.
           // this will use V8
@@ -1940,9 +1939,9 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
       } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
         TRI_ASSERT(member->numMembers() == 2);
 
-        buffer->appendText(TRI_CHAR_LENGTH_PAIR("$["));
+        buffer->appendText(std::string_view("$["));
         member->getMember(0)->stringify(buffer, verbose, failIfLong);
-        buffer->appendText(TRI_CHAR_LENGTH_PAIR("]:"));
+        buffer->appendText(std::string_view("]:"));
         member->getMember(1)->stringify(buffer, verbose, failIfLong);
       } else {
         TRI_ASSERT(false);
@@ -2010,7 +2009,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
 
   if (type == NODE_TYPE_ARRAY_LIMIT) {
     // not used by V8
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_LIMIT("));
+    buffer->appendText(std::string_view("_LIMIT("));
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(1)->stringify(buffer, verbose, failIfLong);
@@ -2020,7 +2019,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
 
   if (type == NODE_TYPE_EXPANSION) {
     // not used by V8
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_EXPANSION("));
+    buffer->appendText(std::string_view("_EXPANSION("));
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(1)->stringify(buffer, verbose, failIfLong);
@@ -2029,19 +2028,19 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
 
     auto filterNode = getMember(2);
     if (filterNode != nullptr && filterNode->type != NODE_TYPE_NOP) {
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" FILTER "));
+      buffer->appendText(std::string_view(" FILTER "));
       filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     auto limitNode = getMember(3);
     if (limitNode != nullptr && limitNode->type != NODE_TYPE_NOP) {
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" LIMIT "));
+      buffer->appendText(std::string_view(" LIMIT "));
       limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
       buffer->appendChar(',');
       limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
     }
     auto returnNode = getMember(4);
     if (returnNode != nullptr && returnNode->type != NODE_TYPE_NOP) {
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
+      buffer->appendText(std::string_view(" RETURN "));
       returnNode->stringify(buffer, verbose, failIfLong);
     }
 
@@ -2051,7 +2050,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
 
   if (type == NODE_TYPE_ITERATOR) {
     // not used by V8
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("_ITERATOR("));
+    buffer->appendText(std::string_view("_ITERATOR("));
     getMember(1)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(',');
     getMember(0)->stringify(buffer, verbose, failIfLong);
@@ -2147,7 +2146,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
     getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR(".."));
+    buffer->appendText(std::string_view(".."));
     getMember(1)->stringify(buffer, verbose, failIfLong);
     return;
   }
@@ -2175,9 +2174,9 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   switch (value.type) {
     case VALUE_TYPE_BOOL: {
       if (value.value._bool) {
-        buffer->appendText(TRI_CHAR_LENGTH_PAIR("true"));
+        buffer->appendText(std::string_view("true"));
       } else {
-        buffer->appendText(TRI_CHAR_LENGTH_PAIR("false"));
+        buffer->appendText(std::string_view("false"));
       }
       break;
     }
@@ -2190,7 +2189,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
     case VALUE_TYPE_DOUBLE: {
       double const v = value.value._double;
       if (std::isnan(v) || !std::isfinite(v) || v == HUGE_VAL || v == -HUGE_VAL) {
-        buffer->appendText(TRI_CHAR_LENGTH_PAIR("null"));
+        buffer->appendText(std::string_view("null"));
       } else {
         buffer->appendDecimal(value.value._double);
       }
@@ -2204,7 +2203,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
 
     case VALUE_TYPE_NULL:
     default: {
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("null"));
+      buffer->appendText(std::string_view("null"));
       break;
     }
   }

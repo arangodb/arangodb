@@ -1061,7 +1061,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       auto args = ast->createNodeArray();
       args->addMember(rhs);
       auto sorted =
-          ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
+          ast->createNodeFunctionCall("SORTED_UNIQUE", args, true);
       inNode->changeMember(1, sorted);
       modified = true;
       continue;
@@ -1157,7 +1157,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     auto args = ast->createNodeArray();
     args->addMember(originalArg);
     auto sorted =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
+        ast->createNodeFunctionCall("SORTED_UNIQUE", args, true);
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(ast, sorted);
@@ -2269,16 +2269,14 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       TRI_ASSERT(accessed != nullptr);
 
       if (accessed->type == NODE_TYPE_OBJECT) {
-        arangodb::velocypack::StringRef const attributeName(node->getStringValue(),
-                                                            node->getStringLength());
+        std::string_view attributeName(node->getStringView());
         bool isDynamic = false;
         size_t const n = accessed->numMembers();
         for (size_t i = 0; i < n; ++i) {
           auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              arangodb::velocypack::StringRef(member->getStringValue(),
-                                              member->getStringLength()) == attributeName) {
+              member->getStringView() == attributeName) {
             // found the attribute!
             AstNode* next = member->getMember(0);
             if (!next->isDeterministic()) {
@@ -2330,20 +2328,18 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       }
 
       if (accessed->type == NODE_TYPE_OBJECT) {
-        arangodb::velocypack::StringRef attributeName;
+        std::string_view attributeName;
         std::string indexString;
 
         if (indexValue->isStringValue()) {
           // string index, e.g. ['123']
-          attributeName =
-              arangodb::velocypack::StringRef(indexValue->getStringValue(),
-                                              indexValue->getStringLength());
+          attributeName = indexValue->getStringView();
         } else {
           // numeric index, e.g. [123]
           TRI_ASSERT(indexValue->isNumericValue());
           // convert the numeric index into a string
           indexString = std::to_string(indexValue->getIntValue());
-          attributeName = arangodb::velocypack::StringRef(indexString);
+          attributeName = std::string_view(indexString);
         }
 
         bool isDynamic = false;
@@ -2352,8 +2348,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              arangodb::velocypack::StringRef(member->getStringValue(),
-                                              member->getStringLength()) == attributeName) {
+              member->getStringView() == attributeName) {
             // found the attribute!
             AstNode* next = member->getMember(0);
             if (!next->isDeterministic()) {
@@ -4386,14 +4381,14 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             std::vector<AggregateVarInfo> dbServerAggVars;
             for (auto const& it : collectNode->aggregateVariables()) {
-              std::string func = Aggregator::pushToDBServerAs(it.type);
+              std::string_view func = Aggregator::pushToDBServerAs(it.type);
               if (func.empty()) {
                 eligible = false;
                 break;
               }
               // eligible!
               auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
-              dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, func});
+              dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, std::string(func)});
             }
 
             if (!eligible) {
@@ -5019,8 +5014,8 @@ bool isInputForModificationNode(ExecutionPlan const& plan, Collection const* col
         return false;
       }
       // attribute name must be _key or _id
-      if (n->getStringRef() != StaticStrings::KeyString &&
-          n->getStringRef() != StaticStrings::IdString) {
+      if (n->getStringView() != StaticStrings::KeyString &&
+          n->getStringView() != StaticStrings::IdString) {
         return false;
       }
       inputVariable = static_cast<Variable const*>(n->getMember(0)->getData());
@@ -6878,7 +6873,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 
     addLocationArg(args);
     AstNode* func =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args, true);
+        ast->createNodeFunctionCall("GEO_DISTANCE", args, true);
 
     TRI_ASSERT(info.maxDistanceExpr || info.minDistanceExpr || info.sorted);
     if (info.minDistanceExpr != nullptr) {
@@ -8420,31 +8415,30 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         }
         auto flags = ast->createNodeObject();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("allowSpecifiedKeys"),
+            "allowSpecifiedKeys",
             ast->createNodeValueBool(allowSpecifiedKeys)));
         flags->addMember(
-            ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+            ast->createNodeObjectElement("ignoreErrors",
                                          ast->createNodeValueBool(ignoreErrors)));
         auto const& collectionName = collection->name();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("collection"),
+            "collection",
             ast->createNodeValueString(collectionName.c_str(), collectionName.length())));
-        // args->addMember(ast->createNodeValueString(collectionName.c_str(), collectionName.length()));
 
         args->addMember(flags);
       } else {
         function = "MAKE_DISTRIBUTE_INPUT";
         auto flags = ast->createNodeObject();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("allowKeyConversionToObject"),
+            "allowKeyConversionToObject",
             ast->createNodeValueBool(allowKeyConversionToObject)));
         flags->addMember(
-            ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+            ast->createNodeObjectElement("ignoreErrors",
                                          ast->createNodeValueBool(ignoreErrors)));
         bool canUseCustomKey = collection->getCollection()->usesDefaultShardKeys() ||
                                allowSpecifiedKeys;
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("canUseCustomKey"), ast->createNodeValueBool(canUseCustomKey)));
+            "canUseCustomKey", ast->createNodeValueBool(canUseCustomKey)));
 
         args->addMember(flags);
       }
@@ -8623,15 +8617,13 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
         args->addMember(ast->createNodeValueNull());
       }
       auto flags = ast->createNodeObject();
-      flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("allowSpecifiedKeys"),
-          ast->createNodeValueBool(allowSpecifiedKeys)));
+      flags->addMember(ast->createNodeObjectElement("allowSpecifiedKeys", 
+                                                    ast->createNodeValueBool(allowSpecifiedKeys)));
       flags->addMember(
-          ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+          ast->createNodeObjectElement("ignoreErrors",
                                        ast->createNodeValueBool(ignoreErrors)));
       auto const& collectionName = collection->name();
-      flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("collection"),
+      flags->addMember(ast->createNodeObjectElement("collection",
           ast->createNodeValueString(collectionName.c_str(), collectionName.length())));
       // args->addMember(ast->createNodeValueString(collectionName.c_str(), collectionName.length()));
 
@@ -8640,15 +8632,15 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
       function = "MAKE_DISTRIBUTE_INPUT";
       auto flags = ast->createNodeObject();
       flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("allowKeyConversionToObject"),
+          "allowKeyConversionToObject",
           ast->createNodeValueBool(allowKeyConversionToObject)));
       flags->addMember(
-          ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+          ast->createNodeObjectElement("ignoreErrors",
                                        ast->createNodeValueBool(ignoreErrors)));
       bool canUseCustomKey = collection->getCollection()->usesDefaultShardKeys() ||
                              allowSpecifiedKeys;
       flags->addMember(
-          ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("canUseCustomKey"),
+          ast->createNodeObjectElement("canUseCustomKey",
                                        ast->createNodeValueBool(canUseCustomKey)));
 
       args->addMember(flags);

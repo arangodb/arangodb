@@ -25,8 +25,6 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/StringRef.h>
-
 #include <type_traits>
 
 namespace arangodb {
@@ -364,13 +362,13 @@ struct OptimizerRule {
 
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
-  velocypack::StringRef name;
+  std::string_view name;
   RuleFunction func;
   RuleLevel level;
   std::underlying_type<Flags>::type flags;
 
   OptimizerRule() = delete;
-  OptimizerRule(velocypack::StringRef name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
+  OptimizerRule(std::string_view name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
       : name(name),
         func(ruleFunc),
         level(level),

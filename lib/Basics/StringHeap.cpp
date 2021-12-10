@@ -29,7 +29,8 @@
 #include "Containers/Helpers.h"
 
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/StringRef.h>
+
+#include <string_view>
 
 using namespace arangodb;
 
@@ -48,13 +49,13 @@ StringHeap::~StringHeap() {
 
 /// @brief register a string
 template <>
-arangodb::velocypack::StringRef StringHeap::registerString<arangodb::velocypack::StringRef>(arangodb::velocypack::StringRef const& value) {
+std::string_view StringHeap::registerString<std::string_view>(std::string_view value) {
   char const* p = registerString(value.data(), value.size());
-  return arangodb::velocypack::StringRef(p, value.size());
+  return std::string_view(p, value.size());
 }
 
 template <>
-arangodb::velocypack::HashedStringRef StringHeap::registerString<arangodb::velocypack::HashedStringRef>(arangodb::velocypack::HashedStringRef const& value) {
+arangodb::velocypack::HashedStringRef StringHeap::registerString<arangodb::velocypack::HashedStringRef>(arangodb::velocypack::HashedStringRef value) {
   char const* p = registerString(value.data(), value.size());
   // We got a uint32_t size string in, we do not modify it, so static cast here is save.
   return arangodb::velocypack::HashedStringRef(p, static_cast<uint32_t>(value.size()));

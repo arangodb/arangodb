@@ -44,7 +44,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -118,7 +117,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   return VPackSlice(_mmdr.vpack());
 }
 
-bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
+bool TraverserCache::appendVertex(std::string_view id,
                                   arangodb::velocypack::Builder& result) {
   if (!_baseOptions->produceVertices()) {
     // this traversal does not produce any vertices
@@ -132,10 +131,10 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
     // _from/_to values or the traverser let an illegal start id through
     TRI_ASSERT(false);  // for maintainer mode
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
-                                   "edge contains invalid value " + id.toString());
+                                   "edge contains invalid value " + std::string(id));
   }
 
-  std::string collectionName = id.substr(0, pos).toString();
+  std::string collectionName = std::string(id.substr(0, pos));
 
   auto const& map = _baseOptions->collectionToShard();
   if (!map.empty()) {
@@ -182,14 +181,14 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
   ++_insertedDocuments;
 
   // Register a warning. It is okay though but helps the user
-  std::string msg = "vertex '" + id.toString() + "' not found";
+  std::string msg = "vertex '" + std::string(id) + "' not found";
   _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg);
   // This is expected, we may have dangling edges. Interpret as NULL
   result.add(arangodb::velocypack::Slice::nullSlice());
   return false;
 }
 
-bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
+bool TraverserCache::appendVertex(std::string_view id,
                                   arangodb::aql::AqlValue& result) {
   result = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
 
@@ -206,7 +205,7 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
     return false;
   }
 
-  std::string collectionName = id.substr(0, pos).toString();
+  std::string collectionName = std::string(id.substr(0, pos));
 
   auto const& map = _baseOptions->collectionToShard();
   if (!map.empty()) {
@@ -254,7 +253,7 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
   ++_insertedDocuments;
 
   // Register a warning. It is okay though but helps the user
-  std::string msg = "vertex '" + id.toString() + "' not found";
+  std::string msg = "vertex '" + std::string(id) + "' not found";
   _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
   // This is expected, we may have dangling edges. Interpret as NULL
   return false;
@@ -271,10 +270,10 @@ aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToke
   return aql::AqlValue(lookupToken(idToken));
 }
 
-arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef idString) {
+std::string_view TraverserCache::persistString(std::string_view idString) {
   return persistString(arangodb::velocypack::HashedStringRef(
                            idString.data(), static_cast<uint32_t>(idString.size())))
-      .stringRef();
+      .stringView();
 }
 
 arangodb::velocypack::HashedStringRef TraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) {

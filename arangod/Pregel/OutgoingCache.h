@@ -92,7 +92,7 @@ class OutCache {
     _sendCountNextGSS = 0;
     _removeContainedMessages();
   }
-  virtual void appendMessage(PregelShard shard, velocypack::StringRef const& key, M const& data) = 0;
+  virtual void appendMessage(PregelShard shard, std::string_view const& key, M const& data) = 0;
   virtual void flushMessages() = 0;
 };
 
@@ -108,7 +108,7 @@ class ArrayOutCache : public OutCache<M> {
       : OutCache<M>(state, format) {}
   ~ArrayOutCache();
 
-  void appendMessage(PregelShard shard, velocypack::StringRef const& key, M const& data) override;
+  void appendMessage(PregelShard shard, std::string_view const& key, M const& data) override;
   void flushMessages() override;
 };
 
@@ -117,7 +117,7 @@ class CombiningOutCache : public OutCache<M> {
   MessageCombiner<M> const* _combiner;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<velocypack::StringRef, M>> _shardMap;
+  std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>> _shardMap;
   void _removeContainedMessages() override;
 
  public:
@@ -125,7 +125,7 @@ class CombiningOutCache : public OutCache<M> {
                     MessageCombiner<M> const* combiner);
   ~CombiningOutCache();
 
-  void appendMessage(PregelShard shard, velocypack::StringRef const& key, M const& data) override;
+  void appendMessage(PregelShard shard, std::string_view const& key, M const& data) override;
   void flushMessages() override;
 };
 }  // namespace pregel

@@ -146,7 +146,7 @@ class TwoSidedEnumerator {
    * @brief Reset to new source and target vertices.
    * This API uses string references, this class will not take responsibility
    * for the referenced data. It is caller's responsibility to retain the
-   * underlying data and make sure the StringRefs stay valid until next
+   * underlying data and make sure the strings stay valid until next
    * call of reset.
    *
    * @param source The source vertex to start the paths

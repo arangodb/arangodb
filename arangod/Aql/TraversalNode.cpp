@@ -114,8 +114,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id,
   // Let us build the conditions on _from and _to. Just in case we need them.
   {
     auto const* access =
-        ast->createNodeAttributeAccess(_tmpObjVarNode, StaticStrings::FromString.c_str(),
-                                       StaticStrings::FromString.length());
+        ast->createNodeAttributeAccess(_tmpObjVarNode, StaticStrings::FromString);
     _fromCondition = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                                    access, _tmpIdNode);
   }
@@ -124,8 +123,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id,
 
   {
     auto const* access =
-        ast->createNodeAttributeAccess(_tmpObjVarNode, StaticStrings::ToString.c_str(),
-                                       StaticStrings::ToString.length());
+        ast->createNodeAttributeAccess(_tmpObjVarNode, StaticStrings::ToString);
     _toCondition = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                                  access, _tmpIdNode);
   }

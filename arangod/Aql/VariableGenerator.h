@@ -30,6 +30,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace arangodb {
@@ -59,7 +60,7 @@ class VariableGenerator {
   std::unordered_map<VariableId, std::string const> variables(bool includeTemporaries) const;
 
   /// @brief generate a variable
-  Variable* createVariable(std::string name, bool isUserDefined);
+  Variable* createVariable(std::string_view name, bool isUserDefined);
 
   /// @brief generate a variable from VelocyPack
   Variable* createVariable(arangodb::velocypack::Slice);
@@ -90,6 +91,10 @@ class VariableGenerator {
 
   /// @brief validate a variable name
   static bool isValidName(char const* p, char const* end) noexcept;
+
+  static bool isValidName(std::string_view name) noexcept {
+    return isValidName(name.data(), name.data() + name.size());
+  }
 
  private:
   /// @brief returns the next variable id

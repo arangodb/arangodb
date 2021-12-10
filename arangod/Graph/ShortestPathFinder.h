@@ -39,8 +39,8 @@ class ShortestPathFinder {
  public:
   virtual ~ShortestPathFinder() = default;
 
-  virtual bool shortestPath(arangodb::velocypack::Slice const& start,
-                            arangodb::velocypack::Slice const& target,
+  virtual bool shortestPath(arangodb::velocypack::Slice start,
+                            arangodb::velocypack::Slice target,
                             arangodb::graph::ShortestPathResult& result) = 0;
 
   void destroyEngines();

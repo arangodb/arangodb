@@ -120,8 +120,7 @@ class SingleServerProviderTest : public ::testing::Test {
         query->ast()->createNodeValueString(toMatch.c_str(), toMatch.length());
     auto keyAccess =
         query->ast()->createNodeAttributeAccess(_varNode,
-                                                StaticStrings::KeyString.c_str(),
-                                                StaticStrings::KeyString.length());
+                                                StaticStrings::KeyString);
     // This condition cannot be fulfilled
     auto condition = query->ast()->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
                                                             keyAccess, expectedKey);

@@ -75,7 +75,7 @@ traverser::TraverserOptions const* ClusterTraverserEdgeCursor::traverserOptions(
   return dynamic_cast<traverser::TraverserOptions const*>(_opts);
 }
 
-void ClusterTraverserEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
+void ClusterTraverserEdgeCursor::rearm(std::string_view vertexId,
                                        uint64_t depth) {
   _edgeList.clear();
   _position = 0;
@@ -96,7 +96,7 @@ ClusterShortestPathEdgeCursor::ClusterShortestPathEdgeCursor(graph::BaseOptions 
                                                              bool backward)
     : ClusterEdgeCursor(opts), _backward(backward) {}
 
-void ClusterShortestPathEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
+void ClusterShortestPathEdgeCursor::rearm(std::string_view vertexId,
                                           uint64_t /*depth*/) {
   _edgeList.clear();
   _position = 0;
