@@ -221,7 +221,7 @@ class FieldIterator {
 }; // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows to iterate over the provided VPack accoring the specified
+/// @brief allows to iterate over the provided VPack according to the specified
 ///        IResearchInvertedIndexMeta
 ////////////////////////////////////////////////////////////////////////////////
 class InvertedIndexFieldIterator {
