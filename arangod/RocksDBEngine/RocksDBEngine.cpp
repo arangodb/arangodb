@@ -377,7 +377,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_useThrottle),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
   
-  options->addOption("--rocksdb.throttle-slots", "number of historic slots to use for throttle calculation",
+  options->addOption("--rocksdb.throttle-slots", "number of historic metrics to use for throttle value calculation",
                      new UInt64Parameter(&_throttleSlots),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
@@ -397,7 +397,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
   
-  options->addOption("--rocksdb.throttle-slow-down-writes-tigger", "number of level 0 files that are considered as 'too many pending'",
+  options->addOption("--rocksdb.throttle-slow-down-writes-trigger", "number of level 0 files that are considered as 'too many pending'",
                      new UInt64Parameter(&_throttleSlowdownWritesTrigger),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
