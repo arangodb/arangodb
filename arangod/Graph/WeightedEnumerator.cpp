@@ -57,14 +57,16 @@ WeightedEnumerator::WeightedEnumerator(Traverser* traverser, TraverserOptions* o
   _schreier.reserve(32);
 }
 
-void WeightedEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
-  PathEnumerator::setStartVertex(startVertex);
-
+void WeightedEnumerator::clear() {
   _schreier.clear();
   _schreierIndex = 0;
   _lastReturned = 0;
   _queue.clear();
+}
 
+void WeightedEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+  clear();
   _schreier.emplace_back(startVertex);
 }
 

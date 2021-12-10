@@ -141,13 +141,17 @@ class GraphEnumerator : public PathEnumerator {
 
   ~GraphEnumerator() = default;
 
-  void setStartVertex(arangodb::velocypack::StringRef startVertex) override {
-    PathEnumerator::setStartVertex(startVertex);
-
+  void clear() override {
     _idx = 0;
     _depth = 0;
     _currentDepth.clear();
     _nextDepth.clear();
+  }
+
+  void setStartVertex(arangodb::velocypack::StringRef startVertex) override {
+    PathEnumerator::setStartVertex(startVertex);
+
+    clear();
     _nextDepth.emplace_back(startVertex);
   }
 
