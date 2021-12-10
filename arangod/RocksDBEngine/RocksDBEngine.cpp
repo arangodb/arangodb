@@ -397,7 +397,8 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
   
-  options->addOption("--rocksdb.throttle-slow-down-writes-trigger", "number of level 0 files that are considered as 'too many pending'",
+  options->addOption("--rocksdb.throttle-slow-down-writes-trigger", "number of level 0 files whose payload "
+                     "is not considered in throttle calculations when penalizing the presence of L0 files",
                      new UInt64Parameter(&_throttleSlowdownWritesTrigger),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
