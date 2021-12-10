@@ -19,7 +19,7 @@ Can be called on single servers, Coordinators, and DB-Servers.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the license expires earlier than the previously installed one
+If the license expires earlier than the previously installed one.
 
 @RESTRETURNCODE{200}
 License successfully deployed.
