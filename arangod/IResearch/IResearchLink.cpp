@@ -582,15 +582,15 @@ IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
   return _meta._storedValues;
 }
 
-const std::string& IResearchLink::getViewId() const noexcept {
+std::string const& IResearchLink::getViewId() const noexcept {
   return _viewGuid;
 }
 
-std::string IResearchLink::getDbName() const {
-  return std::to_string(_collection.vocbase().id());
+std::string const& IResearchLink::getDbName() const {
+  return _collection.vocbase().name();
 }
 
-const std::string& IResearchLink::getShardName() const noexcept {
+std::string const& IResearchLink::getShardName() const noexcept {
   if (ServerState::instance()->isDBServer()) {
     return _collection.name();
   }

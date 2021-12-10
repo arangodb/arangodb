@@ -164,9 +164,9 @@ class IResearchLink : public IResearchDataStore {
                 LocalDocumentId const documentId,
                 velocypack::Slice const doc);
 
-  const std::string& getViewId() const noexcept;
-  std::string getDbName() const;
-  const std::string& getShardName() const noexcept;
+  std::string const& getViewId() const noexcept;
+  std::string const& getDbName() const;
+  std::string const& getShardName() const noexcept;
   std::string getCollectionName() const;
 
   

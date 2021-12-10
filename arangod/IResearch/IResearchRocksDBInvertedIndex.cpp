@@ -73,7 +73,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(Logical
   if (!nameSlice.isNone()) {
     if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
       LOG_TOPIC("91ebd", ERR, iresearch::TOPIC) <<
-        std::string("failed to initialize index from definition, error in attribute '")
+        "failed to initialize index from definition, error in attribute '"
         + arangodb::StaticStrings::IndexName + "': "
         + definition.toString();
       return nullptr;
@@ -98,9 +98,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(Logical
 
   if (initRes.fail()) {
     LOG_TOPIC("9c9ac", ERR, iresearch::TOPIC)
-        << std::string(
-               "failed to do an init for index from definition, error setting "
-               "index properties ")
+        << "failed to do an init iresearch data store: "
         << initRes.errorMessage();
     return nullptr;
   }
@@ -109,7 +107,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(Logical
   initRes = index->properties(indexMeta);
   if (initRes.fail()) {
     LOG_TOPIC("9c949", ERR, iresearch::TOPIC) <<
-      std::string("failed to initialize index from definition, error setting index properties ")
+      "failed to initialize index from definition, error setting index properties: "
       << initRes.errorMessage();
     return nullptr;
   }

@@ -71,6 +71,7 @@ class IndexIterator {
  public:
   class CoveringData {
    public:
+    virtual ~CoveringData() = default;
     virtual VPackSlice at(size_t i) = 0;
     virtual bool isArray() const noexcept = 0;
     virtual VPackSlice value() const {

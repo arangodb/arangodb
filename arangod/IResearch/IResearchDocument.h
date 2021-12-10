@@ -242,6 +242,7 @@ class InvertedIndexFieldIterator {
 
   void reset(velocypack::Slice slice,
              InvertedIndexFieldMeta const& fieldsMeta) {
+    TRI_ASSERT(!_fieldsMeta->_fields.empty());
     _slice = slice;
     _fieldsMeta = &fieldsMeta;
     _begin = _fieldsMeta->_fields.data() - 1;
