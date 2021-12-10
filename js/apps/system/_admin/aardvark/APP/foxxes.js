@@ -28,8 +28,8 @@ const internal = require('internal');
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
-const { ArangoError, errors } = require('@arangodb');
 const crypto = require('@arangodb/crypto');
+const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const store = require('@arangodb/foxx/store');
 const FoxxGenerator = require('./generator');
@@ -152,15 +152,8 @@ installer.put('/git', function (req) {
   Install a Foxx with user/repository and version.
 `);
 
-installer.put('/url', function (req, res) {
+installer.put('/url', function (req) {
   req.body = `${req.body.url}`;
-  if (!internal.foxxAllowInstallFromRemote()) {
-    const error = new ArangoError({
-      errorNum: errors.ERROR_FORBIDDEN.code, 
-      errorMessage: errors.ERROR_FORBIDDEN.message + ". Installing apps from remote URLs is disabled"
-    });
-    res.throw(403, error);
-  }
 })
 .body(joi.object({
   url: joi.string().required(),
