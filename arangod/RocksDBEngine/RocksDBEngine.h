@@ -586,9 +586,9 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _throttleSlots = 63;
   // adaptiveness factor for throttle
   // following is a heuristic value, determined by trial and error.
-  //  its job is slow down the rate of change in the current throttle.
-  //  do not want sudden changes in one or two intervals to swing
-  //  the throttle value wildly.  Goal is a nice, even throttle value.
+  // its job is slow down the rate of change in the current throttle.
+  // we do not want sudden changes in one or two intervals to swing
+  // the throttle value wildly. the goal is a nice, even throttle value.
   uint64_t _throttleScalingFactor = 17;
   // max write rate enforced by throttle
   uint64_t _throttleMaxWriteRate = 0;
