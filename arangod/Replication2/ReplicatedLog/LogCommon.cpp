@@ -119,8 +119,8 @@ auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
 auto PersistingLogEntry::approxByteSize() const noexcept -> std::size_t {
   auto size = approxMetaDataSize;
 
-  if(_payload.has_value()) {
-      size += _payload->byteSize();
+  if (_payload.has_value()) {
+    size += _payload->byteSize();
   }
 
   return size;
@@ -267,11 +267,14 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair) -> std::ostr
 LogConfig::LogConfig(VPackSlice slice) {
   waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
   writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
+  softWriteConcern = slice.get(StaticStrings::SoftWriteConcern).extract<std::size_t>();
   replicationFactor = slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
 }
 
-LogConfig::LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept
+LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
+                     std::size_t replicationFactor, bool waitForSync) noexcept
     : writeConcern(writeConcern),
+      softWriteConcern(softWriteConcern),
       replicationFactor(replicationFactor),
       waitForSync(waitForSync) {}
 
@@ -279,6 +282,7 @@ auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  builder.add(VPackStringRef(StaticStrings::SoftWriteConcern), VPackValue(softWriteConcern));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
 }
 
@@ -453,4 +457,48 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
   };
 
   return std::visit(ToStringVisitor{}, r.value);
+}
+
+void replication2::ParticipantFlags::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("excluded", VPackValue(excluded));
+  builder.add("forced", VPackValue(forced));
+}
+
+auto replication2::ParticipantFlags::fromVelocyPack(velocypack::Slice s) -> ParticipantFlags {
+  auto const forced = s.get("forced").isTrue();
+  auto const excluded = s.get("excluded").isTrue();
+  return ParticipantFlags{forced, excluded};  // {.forced = forced, .excluded = excluded}
+}
+
+auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f) -> std::ostream& {
+  os << "{ ";
+  if (f.excluded) {
+    os << "excluded ";
+  }
+  if (f.forced) {
+    os << "forced ";
+  }
+  return os << "}";
+}
+
+void replication2::ParticipantsConfig::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("generation", VPackValue(generation));
+  VPackObjectBuilder pob(&builder, "participants");
+  for (auto const& [id, flags] : participants) {
+    builder.add(VPackValue(id));
+    flags.toVelocyPack(builder);
+  }
+}
+
+auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s) -> ParticipantsConfig {
+  ParticipantsConfig config;
+  config.generation = s.get("generation").extract<std::size_t>();
+  for (auto [key, value] : VPackObjectIterator(s.get("participants"))) {
+    auto id = key.copyString();
+    auto flags = ParticipantFlags::fromVelocyPack(value);
+    config.participants.emplace(std::move(id), flags);
+  }
+  return config;
 }

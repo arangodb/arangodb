@@ -122,7 +122,7 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
                                         LogTerm{1}, {follower});
   leader->triggerAsyncReplication();
   auto replicatedState = std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
@@ -194,7 +194,7 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
                                         LogTerm{1}, {follower});
   leader->triggerAsyncReplication();
   auto replicatedState = std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(

@@ -26,13 +26,13 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Metrics/Gauge.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
+#include <Basics/StringUtils.h>
 #include <Basics/debugging.h>
 #include <Basics/voc-errors.h>
 #include <Futures/Promise.h>
@@ -67,14 +67,14 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     LOG_CTX("d290d", DEBUG, _loggerContext)
         << "reject append entries - log core gone";
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
-                                              AppendEntriesErrorReason::LOST_LOG_CORE);
+                                              {AppendEntriesErrorReason::ErrorType::kLostLogCore});
   }
 
   if (data._lastRecvMessageId >= req.messageId) {
     LOG_CTX("d291d", DEBUG, _loggerContext)
         << "reject append entries - message id out dated: " << req.messageId;
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
-                                              AppendEntriesErrorReason::MESSAGE_OUTDATED);
+                                              {AppendEntriesErrorReason::ErrorType::kMessageOutdated});
   }
 
   if (req.leaderId != _leaderId) {
@@ -82,7 +82,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - wrong leader, given = " << req.leaderId
         << " current = " << _leaderId.value_or("<none>");
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
-                                              AppendEntriesErrorReason::INVALID_LEADER_ID);
+                                              {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId});
   }
 
   if (req.leaderTerm != _currentTerm) {
@@ -90,7 +90,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - wrong term, given = " << req.leaderTerm
         << ", current = " << _currentTerm;
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
-                                              AppendEntriesErrorReason::WRONG_TERM);
+                                              {AppendEntriesErrorReason::ErrorType::kWrongTerm});
   }
 
   // It is always allowed to replace the log entirely

@@ -61,12 +61,15 @@ struct LogPlanSpecification {
   std::optional<LogPlanTermSpecification> currentTerm;
 
   LogConfig targetConfig;
+  ParticipantsConfig participantsConfig;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanSpecification(from_velocypack_t, VPackSlice);
   LogPlanSpecification() = default;
 
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config);
+  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
+                       LogConfig config, ParticipantsConfig participantsConfig);
 };
 
 struct LogCurrentLocalState {
@@ -125,11 +128,16 @@ struct LogCurrent {
 
   struct Leader {
     LogTerm term;
+    ParticipantsConfig committedParticipantsConfig;
+
+    auto toVelocyPack(VPackBuilder&) const -> void;
+    static auto fromVelocyPack(VPackSlice) -> Leader;
   };
 
   std::optional<Leader> leader;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
+  static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent(from_velocypack_t, VPackSlice);
   LogCurrent() = default;
 };
