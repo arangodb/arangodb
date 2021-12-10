@@ -571,6 +571,23 @@ class RocksDBEngine final : public StorageEngine {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
+
+  // frequency for throttle in milliseconds
+  uint64_t _throttleFrequency = 60 * 1000; 
+
+  // number of historic data slots to keep around for throttle
+  uint64_t _throttleSlots = 63;
+  // adaptiveness factor for throttle
+  // following is a heuristic value, determined by trial and error.
+  // its job is slow down the rate of change in the current throttle.
+  // we do not want sudden changes in one or two intervals to swing
+  // the throttle value wildly. the goal is a nice, even throttle value.
+  uint64_t _throttleScalingFactor = 17;
+  // max write rate enforced by throttle
+  uint64_t _throttleMaxWriteRate = 0;
+  // trigger point where level-0 file is considered "too many pending"
+  // (from original Google leveldb db/dbformat.h)
+  uint64_t _throttleSlowdownWritesTrigger = 8;
   
   Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   Gauge<uint64_t>& _metricsArchivedWalFiles;
