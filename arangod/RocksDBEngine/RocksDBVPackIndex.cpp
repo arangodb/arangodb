@@ -143,7 +143,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps, canReadOwnWrites());
 
     if (s.ok()) {
-      auto data = SliceArrayCoveringData(RocksDBKey::indexedVPack(_key.ref()));
+      auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
       cb(LocalDocumentId(RocksDBValue::documentId(ps)),
          &data);
     }
@@ -258,7 +258,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       LocalDocumentId const documentId(
           _index->_unique ? RocksDBValue::documentId(_iterator->value())
                           : RocksDBKey::indexDocumentId(key));
-      auto data = SliceArrayCoveringData(RocksDBKey::indexedVPack(key));
+      auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
       cb(documentId, &data);
 
       if (!advance()) {

@@ -83,9 +83,9 @@ class IndexIterator {
 
   };
 
-  class SliceArrayCoveringData final : public CoveringData {
+  class SliceCoveringData final : public CoveringData {
    public:
-    explicit SliceArrayCoveringData(VPackSlice slice) : _slice(slice) {}
+    explicit SliceCoveringData(VPackSlice slice) : _slice(slice) {}
 
     VPackSlice at(size_t i) override {
       TRI_ASSERT(_slice.isArray());
