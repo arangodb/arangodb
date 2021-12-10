@@ -9,6 +9,7 @@ import { ContextMenu, FishEye } from '@antv/graphin-components';
 import SocialGraph from './SocialGraph.js';
 import AqlEditor from './AqlEditor.js';
 import MenuGraph from './MenuGraph.js';
+import HorizonGraph from './HorizonGraph.js';
 import LayoutedGraph from './LayoutedGraph.js';
 import DonutGraph from './DonutGraph.js';
 import 'antd/dist/antd.css';
