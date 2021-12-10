@@ -229,7 +229,7 @@ auto ConstrainedSortExecutor::produceRows(AqlItemBlockInputRange& input, OutputA
     output.copyRow(heapRow);
     output.advanceRow();
   }
-  if (doneProducing()) {
+  if (doneProducing() && doneSkipping()) {
     return {ExecutorState::DONE, NoStats{}, AqlCall{}};
   }
   return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};

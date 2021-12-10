@@ -41,6 +41,7 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN 1..10 FILTER i > 1 FILTER i < 4 FILTER i < 10 SORT i RETURN i",  [ 2, 3 ] ],
         [ "LET a = NOOPT(9) FOR i IN 1..10 FILTER i > 1 FILTER i < 4 FILTER i < a SORT i RETURN i",  [ 2, 3 ] ],
         [ "LET a = NOOPT(9), b = NOOPT(0) FOR i IN 1..10 FILTER i >= b FILTER i > 1 FILTER i < 4 FILTER i < a SORT i RETURN i",  [ 2, 3 ] ],
+        [ "FOR i IN 1..10 FILTER i > 1 FILTER i < (RETURN 4)[0] SORT i RETURN i",  [ 2, 3 ] ],
       ];
 
       queries.forEach(function(query) {
@@ -59,7 +60,6 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN 1..10 FILTER i > 1 FILTER i < NOOPT(4) SORT i RETURN i",  [ 2, 3 ] ],
         [ "FOR i IN 1..10 FILTER i > NOOPT(1) FILTER i < 4 SORT i RETURN i",  [ 2, 3 ] ],
         [ "FOR i IN 1..10 FILTER i > NOOPT(1) FILTER i < NOOPT(4) SORT i RETURN i",  [ 2, 3 ] ],
-        [ "FOR i IN 1..10 FILTER i > 1 FILTER i < (RETURN 4)[0] SORT i RETURN i",  [ 2, 3 ] ],
       ];
 
       queries.forEach(function(query) {
