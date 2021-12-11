@@ -32,12 +32,14 @@
 #include "utils/fasttext_utils.hpp"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
 using namespace irs::analysis;
 
-constexpr VPackStringRef MODEL_LOCATION_PARAM_NAME {"model_location"};
-constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
+constexpr std::string_view MODEL_LOCATION_PARAM_NAME {"model_location"};
+constexpr std::string_view TOP_K_PARAM_NAME {"top_k"};
 
 std::atomic<nearest_neighbors_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 

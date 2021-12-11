@@ -32,7 +32,6 @@
 #include "velocypack/Dumper.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Sink.h"
-#include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
 
@@ -100,7 +99,7 @@ constexpr size_t minSortEntriesAllocation = 32;
 thread_local std::unique_ptr<std::vector<SortEntry>> sortEntries;
 
 // thread-local, reusable set to track usage of duplicate keys
-thread_local std::unique_ptr<std::unordered_set<StringRef>> duplicateKeys;
+thread_local std::unique_ptr<std::unordered_set<std::string_view>> duplicateKeys;
 
 #endif
 
@@ -131,16 +130,16 @@ uint8_t const* findAttrName(uint8_t const* base, uint64_t& len) {
 }
 
 bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
-  std::array<StringRef, linearAttributeUniquenessCutoff> keys;
+  std::array<std::string_view, linearAttributeUniquenessCutoff> keys;
 
   do {
     // key(true) guarantees a String as returned type
-    StringRef key = it.key(true).stringRef();
+    std::string_view key = it.key(true).stringView();
 
     ValueLength index = it.index();
     // compare with all other already looked-at keys
     for (ValueLength i = 0; i < index; ++i) {
-      if (VELOCYPACK_UNLIKELY(keys[i].equals(key))) {
+      if (VELOCYPACK_UNLIKELY(keys[i] == key)) {
         return false;
       }
     }
@@ -154,22 +153,22 @@ bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
 
 bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
 #ifndef VELOCYPACK_NO_THREADLOCALS
-  std::unique_ptr<std::unordered_set<StringRef>>& tmp = ::duplicateKeys;
+  std::unique_ptr<std::unordered_set<std::string_view>>& tmp = ::duplicateKeys;
 
   if (::duplicateKeys == nullptr) {
-    ::duplicateKeys = std::make_unique<std::unordered_set<StringRef>>();
+    ::duplicateKeys = std::make_unique<std::unordered_set<std::string_view>>();
   } else {
     ::duplicateKeys->clear();
   }
 #else
-  auto tmp = std::make_unique<std::unordered_set<StringRef>>();
+  auto tmp = std::make_unique<std::unordered_set<std::string_view>>();
 #endif
 
   do {
-    Slice const key = it.key(true);
+    Slice key = it.key(true);
     // key(true) guarantees a String as returned type
     VELOCYPACK_ASSERT(key.isString());
-    if (VELOCYPACK_UNLIKELY(!tmp->emplace(key).second)) {
+    if (VELOCYPACK_UNLIKELY(!tmp->emplace(key.stringView()).second)) {
       // identical key
       return false;
     }
@@ -190,7 +189,10 @@ Builder::Builder()
         _arena(),
         _stack(_arena),
         _keyWritten(false),
-        options(&Options::Defaults) {}
+        options(&Options::Defaults) {
+  // do a full initial allocation in the arena, so we can maximize its usage
+  _stack.reserve(arenaSize / sizeof(decltype(_stack)::value_type));
+}
   
 // create an empty Builder, using Options 
 Builder::Builder(Options const* opts)
@@ -216,6 +218,9 @@ Builder::Builder(std::shared_ptr<Buffer<uint8_t>> buffer)
   }
   _start = _bufferPtr->data();
   _pos = _bufferPtr->size();
+  
+  // do a full initial allocation in the arena, so we can maximize its usage
+  _stack.reserve(arenaSize / sizeof(decltype(_stack)::value_type));
 }
   
 // create an empty Builder, using an existing buffer
@@ -236,7 +241,10 @@ Builder::Builder(Buffer<uint8_t>& buffer) noexcept
         _arena(),
         _stack(_arena),
         _keyWritten(false), 
-        options(&Options::Defaults) {}
+        options(&Options::Defaults) {
+  // do a full initial allocation in the arena, so we can maximize its usage
+  _stack.reserve(arenaSize / sizeof(decltype(_stack)::value_type));
+}
   
 // create a Builder that uses an existing Buffer. the Builder will not
 // claim ownership for its Buffer
@@ -277,6 +285,9 @@ Builder::Builder(Builder const& that)
   if (_bufferPtr != nullptr) {
     _start = _bufferPtr->data();
   }
+  
+  // do a full initial allocation in the arena, so we can maximize its usage
+  _stack.reserve(arenaSize / sizeof(decltype(_stack)::value_type));
 }
 
 Builder& Builder::operator=(Builder const& that) {
@@ -314,6 +325,8 @@ Builder::Builder(Builder&& that) noexcept
       _keyWritten(that._keyWritten),
       options(that.options) {
       
+  // do a full initial allocation in the arena, so we can maximize its usage
+  _stack.reserve(arenaSize / sizeof(decltype(_stack)::value_type));
   _stack = std::move(that._stack);
   
   if (_buffer != nullptr) {
@@ -343,6 +356,8 @@ Builder& Builder::operator=(Builder&& that) noexcept {
       _start = nullptr;
     }
     _pos = that._pos;
+    // do a full initial allocation in the arena, so we can maximize its usage
+    _stack.reserve(arenaSize / sizeof(decltype(_stack)::value_type));
     _stack = std::move(that._stack);
     _indexes = std::move(that._indexes);
     _keyWritten = that._keyWritten;

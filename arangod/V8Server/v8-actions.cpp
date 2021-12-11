@@ -66,6 +66,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -504,7 +506,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         }
       } catch ( ... ) {}
       // ok, no json/vpack after all ;-)
-      auto raw = request->rawPayload();
+      std::string_view raw = request->rawPayload();
       headers[StaticStrings::ContentLength] =
         StringUtils::itoa(raw.size());
       V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
@@ -518,7 +520,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     }
 
     if (rest::ContentType::JSON == request->contentType()) {
-      VPackStringRef body = request->rawPayload();
+      std::string_view body = request->rawPayload();
       req->Set(context, RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size())).FromMaybe(false);
       headers[StaticStrings::ContentLength] =
           StringUtils::itoa(request->contentLength());
@@ -929,7 +931,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       break;
 
       case Endpoint::TransportType::VST: {
-        response->addRawPayload(velocypack::StringRef(content, length));
+        response->addRawPayload(std::string_view(content, length));
         TRI_FreeString(content);
       }
       break;
@@ -1255,7 +1257,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
               std::string bodyStr = slice.toJson();
               buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
             } else {
-              auto raw = httpRequest->rawPayload();
+              std::string_view raw = httpRequest->rawPayload();
               buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             }
 
@@ -1267,7 +1269,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         case Endpoint::TransportType::VST: {
           if (request != nullptr) {
-            auto raw = request->rawPayload();
+            std::string_view raw = request->rawPayload();
             V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             v8::Local<v8::Object> bufferObject =
               v8::Local<v8::Object>::New(isolate, buffer->_handle);
@@ -1308,7 +1310,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
       auto request = static_cast<arangodb::HttpRequest*>(e->Value());
 
-      VPackStringRef bodyStr = request->rawPayload();
+      std::string_view bodyStr = request->rawPayload();
       char const* beg = bodyStr.data();
       char const* end = beg + bodyStr.size();
 

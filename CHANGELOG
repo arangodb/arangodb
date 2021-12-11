@@ -5,6 +5,8 @@ devel
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
 
+* Raised minimal macOS supported version to 10.15 (Catalina).
+
 * Remove background thread `RocksDBShaThread` for background SHA256 checksum
   calculation for .sst files in the Enterprise Edition. The checksums are now
   calculated incrementally while writing into the .sst files, and the checksum

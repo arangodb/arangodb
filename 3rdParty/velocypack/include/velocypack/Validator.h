@@ -22,14 +22,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VALIDATOR_H
-#define VELOCYPACK_VALIDATOR_H 1
+#pragma once
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Options.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 class Slice;
 
 class Validator {
@@ -70,6 +68,5 @@ class Validator {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackValidator = arangodb::velocypack::Validator;

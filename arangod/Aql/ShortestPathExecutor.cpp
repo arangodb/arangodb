@@ -34,7 +34,6 @@
 #include "Graph/ShortestPathResult.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <utility>
@@ -46,8 +45,7 @@ using namespace arangodb::graph;
 namespace {
 static bool isValidId(VPackSlice id) {
   TRI_ASSERT(id.isString());
-  arangodb::velocypack::StringRef tester(id);
-  return tester.find('/') != std::string::npos;
+  return id.stringView().find('/') != std::string_view::npos;
 }
 }  // namespace
 
