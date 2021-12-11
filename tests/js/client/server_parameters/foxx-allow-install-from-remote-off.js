@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, arango */
+/* global getOptions, assertEqual, assertTrue, assertFalse, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -38,15 +38,27 @@ function testSuite() {
   const mount = "/test123";
 
   return {
-    testInstallViaAardvark: function() {
+    testInstallViaAardvarkOk: function() {
       const urls = [
-        "http://github.com/arangodb-foxx/itzpapalotl",
-        "https://github.com/arangodb-foxx/itzpapalotl",
-        "http://www.github.com/arangodb-foxx/itzpapalotl",
-        "https://www.github.com/arangodb-foxx/itzpapalotl",
-        "http://foo:bar@github.com/arangodb-foxx/itzpapalotl",
-        "https://foo:bar@www.github.com/arangodb-foxx/itzpapalotl",
-        "https://foo:@github.com/arangodb-foxx/itzpapalotl",
+        "http://github.com/arangodb-foxx/demo-itzpapalotl/archive/refs/heads/master.zip",
+        "https://github.com/arangodb-foxx/demo-itzpapalotl/archive/refs/heads/master.zip",
+        "http://www.github.com/arangodb-foxx/demo-itzpapalotl/archive/refs/heads/master.zip",
+        "https://www.github.com/arangodb-foxx/demo-itzpapalotl/archive/refs/heads/master.zip",
+      ];
+      urls.forEach((url) => {
+        try {
+          let res = arango.PUT(`/_admin/aardvark/foxxes/url?mount=${mount}`, { url });
+          assertFalse(res.error, url);
+        } finally {
+          try {
+            FoxxManager.uninstall(mount);
+          } catch (err) {}
+        }
+      });
+    },
+
+    testInstallViaAardvarkFail: function() {
+      const urls = [
         "http://some.other.domain/foo/bar",
         "https://some.other.domain/foo/bar",
         "https://github.com.some.deceptive.site/foo/bar",
@@ -56,9 +68,8 @@ function testSuite() {
       urls.forEach((url) => {
         try {
           let res = arango.PUT(`/_admin/aardvark/foxxes/url?mount=${mount}`, { url });
-          assertTrue(res.error);
+          assertTrue(res.error, url);
           assertEqual(403, res.code);
-          assertEqual(11, res.errorNum);
         } finally {
           try {
             FoxxManager.uninstall(mount);
