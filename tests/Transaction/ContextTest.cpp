@@ -116,12 +116,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   ASSERT_TRUE(trxSlice.isArray());
   ASSERT_EQ(trxSlice.length(), 2);
 
-  aql::QueryString queryString{R"aql(
-    FOR doc IN @@collection
-      FILTER doc.hello != ''
-      SORT doc.hello
-      RETURN doc
-  )aql"};
+  aql::QueryString queryString{std::string_view("FOR doc IN @@collection FILTER doc.hello != '' SORT doc.hello RETURN doc")};
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->add(VPackValue(VPackValueType::Object));

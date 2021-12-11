@@ -45,7 +45,7 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   ASSERT_NE(0, docsSlice.length());
 
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({{"name", false}}, false);  // name DESC
+  sort.emplace_back({{std::string_view("name"), false}}, false);  // name DESC
 
   std::vector<irs::bytes_ref> expected_values;
   expected_values.reserve(docsSlice.length());
@@ -90,9 +90,9 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   ASSERT_NE(0, docsSlice.length());
 
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({{"same", false}}, true);  // same ASC
-  sort.emplace_back({{"seq", false}}, false);  // seq DESC
-  sort.emplace_back({{"name", false}}, true);  // name ASC
+  sort.emplace_back({{std::string_view("same"), false}}, true);  // same ASC
+  sort.emplace_back({{std::string_view("seq"), false}}, false);  // seq DESC
+  sort.emplace_back({{std::string_view("name"), false}}, true);  // name ASC
 
   std::vector<irs::bstring> expected_values;
   expected_values.reserve(docsSlice.length());

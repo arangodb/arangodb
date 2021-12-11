@@ -29,6 +29,8 @@
 #include "velocypack/velocypack-aliases.h"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
 irs::bytes_ref eval_term(irs::bstring& buf, const irs::bytes_ref& data) {
@@ -95,7 +97,7 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
-constexpr VPackStringRef DELIMITER_PARAM_NAME {"delimiter"};
+constexpr std::string_view DELIMITER_PARAM_NAME {"delimiter"};
 
 bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
 

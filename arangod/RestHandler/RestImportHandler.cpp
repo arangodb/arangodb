@@ -311,8 +311,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
     // auto detect import type by peeking at first non-whitespace character
 
-    VPackStringRef body = _request->rawPayload();
-
+    std::string_view body = _request->rawPayload();
     char const* ptr = body.data();
     char const* end = ptr + body.size();
 
@@ -367,7 +366,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   if (linewise) {
     // each line is a separate JSON document
-    VPackStringRef body = _request->rawPayload();
+    std::string_view body = _request->rawPayload();
     char const* ptr = body.data();
     char const* end = ptr + body.size();
     size_t i = 0;
@@ -654,7 +653,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // json required here
   // each line is a separate JSON document
-  VPackStringRef body = _request->rawPayload();
+  std::string_view body = _request->rawPayload();
   char const* current = body.data();
   char const* bodyEnd = current + body.size();
 

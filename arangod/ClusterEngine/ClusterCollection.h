@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <velocypack/StringRef.h>
-
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "ClusterEngine/ClusterSelectivityEstimates.h"
@@ -113,10 +111,10 @@ class ClusterCollection final : public PhysicalCollection {
   
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
-  Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
+  Result lookupKey(transaction::Methods* trx, std::string_view key,
                    std::pair<LocalDocumentId, RevisionId>& result, ReadOwnWrites) const override;
 
-  Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
+  Result read(transaction::Methods*, std::string_view key,
               IndexIterator::DocumentCallback const& cb, ReadOwnWrites) const override;
   
   Result read(transaction::Methods* trx, LocalDocumentId const& token,

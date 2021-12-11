@@ -218,7 +218,7 @@ TEST_P(IResearchQueryStringTermTest, test) {
         VPackSlice(insertedDocs.front().vpack()).get(arangodb::StaticStrings::KeyString));
 
     std::string const query =
-        "FOR d IN testView SEARCH d._key == '" + key.toString() + "' RETURN d";
+        "FOR d IN testView SEARCH d._key == '" + std::string(key) + "' RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));

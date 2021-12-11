@@ -1761,8 +1761,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
-      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(),
-                                      arangodb::velocypack::StringRef(coll.guid()));
+      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(), coll.guid());
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
@@ -1880,8 +1879,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
       LogicalDataSource::Serialization::PersistenceWithInProgress);
   Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
-                                        arangodb::velocypack::StringRef(oldName)));
+      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), oldName));
 
   return res;
 }
@@ -1931,8 +1929,8 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   builder.close();
 
   auto logValue =
-      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
-                                arangodb::velocypack::StringRef(view.guid()));
+      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), view.guid());
+  
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
@@ -2535,8 +2533,7 @@ bool RocksDBEngine::systemDatabaseExists() {
   for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
     TRI_ASSERT(item.isObject());
     TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
-    if (item.get(StaticStrings::DatabaseName)
-            .compareString(arangodb::velocypack::StringRef(StaticStrings::SystemDatabase)) == 0) {
+    if (item.get(StaticStrings::DatabaseName).stringView() == StaticStrings::SystemDatabase) {
       return true;
     }
   }

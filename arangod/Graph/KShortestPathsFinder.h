@@ -29,11 +29,10 @@
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
 
-#include <velocypack/StringRef.h>
-
 #include <list>
 #include <memory>
 #include <optional>
+#include <string_view>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -53,7 +52,7 @@ struct ShortestPathOptions;
 class KShortestPathsFinder : public ShortestPathFinder {
  private:
   // Mainly for readability
-  typedef arangodb::velocypack::StringRef VertexRef;
+  typedef std::string_view VertexRef;
   typedef arangodb::graph::EdgeDocumentToken Edge;
 
   typedef arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> VertexSet;
@@ -107,7 +106,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
       }
       // Only append paths where the first vertex of p
       // is the same as the last vertex of this.
-      TRI_ASSERT((_vertices.back().equals(p._vertices.front())));
+      TRI_ASSERT((_vertices.back() == p._vertices.front()));
       TRI_ASSERT(!_weights.empty());
 
       double ew = _weights.back();
@@ -128,7 +127,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
         return false;
       }
       for (size_t i = 0; i < _vertices.size(); ++i) {
-        if (!_vertices[i].equals(rhs._vertices[i])) {
+        if (_vertices[i] != rhs._vertices[i]) {
           return false;
         }
       }
@@ -242,8 +241,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
   // TODO: Remove
-  bool shortestPath(arangodb::velocypack::Slice const& start,
-                    arangodb::velocypack::Slice const& target,
+  bool shortestPath(arangodb::velocypack::Slice start,
+                    arangodb::velocypack::Slice target,
                     arangodb::graph::ShortestPathResult& result) override {
     TRI_ASSERT(false);
     return false;
