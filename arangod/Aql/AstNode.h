@@ -29,6 +29,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -36,7 +37,6 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-class StringRef;
 }  // namespace velocypack
 namespace basics {
 struct AttributeName;
@@ -240,8 +240,8 @@ struct AstNode {
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
 
-  /// @brief return the string value of a node, as a arangodb::velocypack::StringRef
-  arangodb::velocypack::StringRef getStringRef() const noexcept;
+  /// @brief return the string value of a node
+  std::string_view getStringView() const noexcept;
 
   /// @brief test if all members of a node are equality comparisons
   bool isOnlyEqualityMatch() const;

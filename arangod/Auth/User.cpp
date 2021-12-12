@@ -45,7 +45,6 @@
 #include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;

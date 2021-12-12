@@ -114,7 +114,7 @@ class VertexContext {
   inline uint64_t localSuperstep() const { return _lss; }
 
   PregelShard shard() const { return _vertexEntry->shard(); }
-  velocypack::StringRef key() const { return _vertexEntry->key(); }
+  std::string_view key() const { return _vertexEntry->key(); }
   PregelID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
@@ -133,7 +133,7 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
 
   void sendMessage(PregelID const& pid, M const& data) {
-    _cache->appendMessage(pid.shard, velocypack::StringRef(pid.key), data);
+    _cache->appendMessage(pid.shard, std::string_view(pid.key), data);
   }
 
   /// Send message along outgoing edges to all reachable neighbours

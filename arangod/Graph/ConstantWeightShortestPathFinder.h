@@ -28,7 +28,6 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 
-#include <velocypack/StringRef.h>
 #include <deque>
 #include <memory>
 
@@ -47,7 +46,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
  private:
   struct PathSnippet {
     PathSnippet() noexcept;
-    PathSnippet(arangodb::velocypack::StringRef pred, graph::EdgeDocumentToken&& path) noexcept;
+    PathSnippet(std::string_view pred, graph::EdgeDocumentToken&& path) noexcept;
     PathSnippet(PathSnippet&& other) noexcept = default;
     PathSnippet& operator=(PathSnippet&& other) ARANGODB_NOEXCEPT_ASSIGN_OP = default;
     
@@ -55,34 +54,34 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
       return _pred.empty();
     }
 
-    arangodb::velocypack::StringRef _pred;
+    std::string_view _pred;
     graph::EdgeDocumentToken _path;
   };
 
-  typedef std::vector<arangodb::velocypack::StringRef> Closure;
-  typedef containers::FlatHashMap<arangodb::velocypack::StringRef, PathSnippet> Snippets;
+  typedef std::vector<std::string_view> Closure;
+  typedef containers::FlatHashMap<std::string_view, PathSnippet> Snippets;
 
  public:
   explicit ConstantWeightShortestPathFinder(ShortestPathOptions& options);
 
   ~ConstantWeightShortestPathFinder();
 
-  bool shortestPath(arangodb::velocypack::Slice const& start,
-                    arangodb::velocypack::Slice const& end,
+  bool shortestPath(arangodb::velocypack::Slice start,
+                    arangodb::velocypack::Slice end,
                     arangodb::graph::ShortestPathResult& result) override;
 
   void clear() override;
 
  private:
   // side-effect: populates _neighbors
-  void expandVertex(bool backward, arangodb::velocypack::StringRef vertex);
+  void expandVertex(bool backward, std::string_view vertex);
 
   void clearVisited();
 
   bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets, Snippets const& targetSnippets,
-                     bool direction, arangodb::velocypack::StringRef& result);
+                     bool direction, std::string_view& result);
 
-  void fillResult(arangodb::velocypack::StringRef n,
+  void fillResult(std::string_view n,
                   arangodb::graph::ShortestPathResult& result);
 
   size_t pathSnippetMemoryUsage() const noexcept;
@@ -103,10 +102,10 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   Closure _nextClosure;
 
   struct Neighbor {
-    arangodb::velocypack::StringRef vertex;
+    std::string_view vertex;
     graph::EdgeDocumentToken edge;
 
-    Neighbor(arangodb::velocypack::StringRef v, graph::EdgeDocumentToken e) noexcept
+    Neighbor(std::string_view v, graph::EdgeDocumentToken e) noexcept
       : vertex(v), edge(e) {}
     
     static constexpr size_t itemMemoryUsage() {

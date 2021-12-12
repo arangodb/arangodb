@@ -282,7 +282,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   argsArray->addMember(accessNodeLon);
   argsArray->addMember(params.latitude);
   argsArray->addMember(params.longitude);
-  auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray, true);
+  auto* funDist = ast->createNodeFunctionCall("DISTANCE", argsArray, true);
 
   AstNode* expressionAst = funDist;
 
@@ -337,9 +337,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
       funDistMerge = funDist;
     }
     if (params.distanceName->isConstant()) {
-      elem = ast->createNodeObjectElement(params.distanceName->getStringValue(),
-                                          params.distanceName->getStringLength(),
-                                          funDistMerge);
+      elem = ast->createNodeObjectElement(params.distanceName->getStringView(), funDistMerge);
     } else {
       elem = ast->createNodeCalculatedObjectElement(params.distanceName, funDistMerge);
     }
@@ -351,7 +349,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
     argsArrayMerge->addMember(obj);
 
     auto* funMerge =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"), argsArrayMerge, true);
+        ast->createNodeFunctionCall("MERGE", argsArrayMerge, true);
 
     Variable* calcMergeOutVariable = ast->variables()->createTemporaryVariable();
     auto calcMergeExpr = std::make_unique<Expression>(ast, funMerge);
@@ -402,8 +400,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
 
   if (coll->type != NODE_TYPE_COLLECTION) {
     auto const& resolver = ast->query().resolver();
-    coll = ast->createNodeCollection(resolver, coll->getStringValue(),
-                                     coll->getStringLength(), AccessMode::Type::READ);
+    coll = ast->createNodeCollection(resolver, coll->getStringView(), AccessMode::Type::READ);
   }
   
   std::shared_ptr<arangodb::Index> index;
@@ -436,10 +433,10 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   fn(lat1, lng1);
   AstNode* polygon = ast->createNodeObject();
   polygon->addMember(
-      ast->createNodeObjectElement("type", 4, ast->createNodeValueString("Polygon", 7)));
+      ast->createNodeObjectElement("type", ast->createNodeValueString("Polygon", 7)));
   AstNode* coords = ast->createNodeArray(1);
   coords->addMember(loop);
-  polygon->addMember(ast->createNodeObjectElement("coordinates", 11, coords));
+  polygon->addMember(ast->createNodeObjectElement("coordinates", coords));
 
   fargs = ast->createNodeArray(2);
   fargs->addMember(polygon);

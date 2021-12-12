@@ -59,7 +59,7 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType const
   TRI_ASSERT(edge.isObject());
   auto from = edge.get(arangodb::StaticStrings::FromString);
   TRI_ASSERT(from.isString());
-  if (from.stringRef() == origin.stringRef()) {
+  if (from.stringView() == origin.stringView()) {
     auto to = edge.get(arangodb::StaticStrings::ToString);
     TRI_ASSERT(to.isString());
     return VertexType{to};

@@ -28,7 +28,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
 namespace pregel {

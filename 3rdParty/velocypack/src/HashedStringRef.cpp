@@ -147,8 +147,8 @@ bool HashedStringRef::equals(char const* data, std::size_t length) const noexcep
   return (static_cast<std::size_t>(size()) == length && std::memcmp(_data, data, length) == 0);
 }
 
-StringRef HashedStringRef::stringRef() const noexcept {
-  return StringRef(data(), size());
+std::string_view HashedStringRef::stringView() const noexcept {
+  return std::string_view(data(), size());
 }
 
 #ifdef VELOCYPACK_64BIT

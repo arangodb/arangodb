@@ -34,20 +34,18 @@
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
-AttributeWeightShortestPathFinder::Step::Step(arangodb::velocypack::StringRef const& vert,
-                                              arangodb::velocypack::StringRef const& pred,
+AttributeWeightShortestPathFinder::Step::Step(std::string_view vert, std::string_view pred,
                                               double weig, EdgeDocumentToken&& edge)
     : _weight(weig), _vertex(vert), _predecessor(pred), _edge(std::move(edge)), _done(false) {}
 
 AttributeWeightShortestPathFinder::Searcher::Searcher(
     AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-    ThreadInfo& peerInfo, arangodb::velocypack::StringRef const& start, bool backward)
+    ThreadInfo& peerInfo, std::string_view start, bool backward)
     : _pathFinder(pathFinder),
       _myInfo(myInfo),
       _peerInfo(peerInfo),
@@ -71,7 +69,7 @@ void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(std::unique_ptr
   }
 }
 
-void AttributeWeightShortestPathFinder::Searcher::lookupPeer(arangodb::velocypack::StringRef& vertex,
+void AttributeWeightShortestPathFinder::Searcher::lookupPeer(std::string_view vertex,
                                                              double weight) {
   Step* s = _peerInfo._pq.find(vertex);
 
@@ -120,7 +118,7 @@ void AttributeWeightShortestPathFinder::Searcher::lookupPeer(arangodb::velocypac
 }
 
 bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
-  arangodb::velocypack::StringRef v;
+  std::string_view v;
   // Do not steal responsibility.
   Step* s = nullptr;
   bool b = _myInfo._pq.popMinimal(v, s);
@@ -186,12 +184,12 @@ void AttributeWeightShortestPathFinder::clear() {
   _highscore = 0;
   _bingo = false;
   _intermediateSet = false;
-  _intermediate = arangodb::velocypack::StringRef{};
+  _intermediate = std::string_view{};
   clearCandidates();
 }
 
-bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice const& st,
-                                                     arangodb::velocypack::Slice const& ta,
+bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice st,
+                                                     arangodb::velocypack::Slice ta,
                                                      ShortestPathResult& result) {
   // For the result:
   result.clear();
@@ -200,13 +198,13 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
   _bingo = false;
   _intermediateSet = false;
 
-  arangodb::velocypack::StringRef start =
-      _options.cache()->persistString(arangodb::velocypack::StringRef(st));
-  arangodb::velocypack::StringRef target =
-      _options.cache()->persistString(arangodb::velocypack::StringRef(ta));
+  std::string_view start =
+      _options.cache()->persistString(st.stringView());
+  std::string_view target =
+      _options.cache()->persistString(ta.stringView());
 
   // Forward with initialization:
-  arangodb::velocypack::StringRef emptyVertex;
+  std::string_view emptyVertex;
   ThreadInfo forward;
   forward._pq.insert(start, std::make_unique<Step>(start, emptyVertex, 0,
                                                    EdgeDocumentToken()));
@@ -271,7 +269,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
     guard.increase(arangodb::graph::ShortestPathResult::resultItemMemoryUsage());
 
     result._edges.push_front(std::move(s->_edge));
-    result._vertices.push_front(arangodb::velocypack::StringRef(s->_predecessor));
+    result._vertices.push_front(s->_predecessor);
     s = forward._pq.find(s->_predecessor);
   }
 
@@ -293,7 +291,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
     guard.increase(arangodb::graph::ShortestPathResult::resultItemMemoryUsage());
 
     result._edges.emplace_back(std::move(s->_edge));
-    result._vertices.emplace_back(arangodb::velocypack::StringRef(s->_predecessor));
+    result._vertices.emplace_back(s->_predecessor);
     s = backward._pq.find(s->_predecessor);
   }
 
@@ -308,7 +306,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
 
 void AttributeWeightShortestPathFinder::inserter(
     std::vector<std::unique_ptr<Step>>& result,
-    arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
+    std::string_view s, std::string_view t,
     double currentWeight, EdgeDocumentToken&& edge) {
   
   ResourceUsageScope guard(_resourceMonitor, candidateMemoryUsage());
@@ -336,7 +334,7 @@ void AttributeWeightShortestPathFinder::inserter(
 }
 
 void AttributeWeightShortestPathFinder::expandVertex(
-    bool backward, arangodb::velocypack::StringRef const& vertex,
+    bool backward, std::string_view vertex,
     std::vector<std::unique_ptr<Step>>& result) {
   TRI_ASSERT(result.empty());
 
@@ -348,19 +346,19 @@ void AttributeWeightShortestPathFinder::expandVertex(
     if (edge.isString()) {
       VPackSlice doc = _options.cache()->lookupToken(eid);
       double currentWeight = _options.weightEdge(doc);
-      arangodb::velocypack::StringRef other =
-          _options.cache()->persistString(arangodb::velocypack::StringRef(edge));
+      std::string_view other =
+          _options.cache()->persistString(edge.stringView());
       if (other.compare(vertex) != 0) {
         inserter(result, vertex, other, currentWeight, std::move(eid));
       } else {
         inserter(result, other, vertex, currentWeight, std::move(eid));
       }
     } else {
-      arangodb::velocypack::StringRef fromTmp(
-          transaction::helpers::extractFromFromDocument(edge));
-      arangodb::velocypack::StringRef toTmp(transaction::helpers::extractToFromDocument(edge));
-      arangodb::velocypack::StringRef from = _options.cache()->persistString(fromTmp);
-      arangodb::velocypack::StringRef to = _options.cache()->persistString(toTmp);
+      std::string_view fromTmp(
+          transaction::helpers::extractFromFromDocument(edge).stringView());
+      std::string_view toTmp(transaction::helpers::extractToFromDocument(edge).stringView());
+      std::string_view from = _options.cache()->persistString(fromTmp);
+      std::string_view to = _options.cache()->persistString(toTmp);
       double currentWeight = _options.weightEdge(edge);
       if (from == vertex) {
         inserter(result, from, to, currentWeight, std::move(eid));

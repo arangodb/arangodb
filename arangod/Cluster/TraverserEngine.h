@@ -54,7 +54,6 @@ struct ShortestPathOptions;
 namespace velocypack {
 class Builder;
 class Slice;
-class StringRef;
 }  // namespace velocypack
 
 namespace traverser {
@@ -113,7 +112,7 @@ class BaseTraverserEngine : public BaseEngine {
 
   void getEdges(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
 
-  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
+  graph::EdgeCursor* getCursor(std::string_view nextVertex, uint64_t currentDepth);
 
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
@@ -151,7 +150,7 @@ class ShortestPathEngine : public BaseEngine {
   EngineType getType() const override { return SHORTESTPATH; }
 
  private:
-  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward, arangodb::velocypack::StringRef v);
+  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward, std::string_view v);
  
  protected:
   std::unique_ptr<graph::ShortestPathOptions> _opts;

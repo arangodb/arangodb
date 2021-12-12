@@ -144,16 +144,16 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not a valid document id");
   }
-  VPackStringRef docRef(documentID);
-  VPackStringRef collPart = docRef.substr(0, pos);
-  VPackStringRef keyPart = docRef.substr(pos + 1);
+  std::string_view docRef(documentID);
+  std::string_view collPart = docRef.substr(0, pos);
+  std::string_view keyPart = docRef.substr(pos + 1);
 
   ShardID responsibleShard;
 
   auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-  Utils::resolveShard(ci, this, collPart.toString(), StaticStrings::KeyString,
+  Utils::resolveShard(ci, this, std::string(collPart), StaticStrings::KeyString,
                       keyPart, responsibleShard);
 
   PregelShard source = this->shardId(responsibleShard);
-  return PregelID(source, keyPart.toString());
+  return PregelID(source, std::string(keyPart));
 }

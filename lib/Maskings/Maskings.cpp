@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <iostream>
+#include <string_view>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -31,7 +32,6 @@
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
@@ -320,15 +320,15 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
     slice = builder.slice().get("data");
   } else {
     // enveloped format -  the document is underneath the "data" attribute
-    velocypack::StringRef dataStrRef("data");
+    std::string_view dataStr("data");
 
     {
       VPackObjectBuilder ob(&builder);
 
       for (auto const& entry : VPackObjectIterator(slice, false)) {
-        velocypack::StringRef key = entry.key.stringRef();
+        auto key = entry.key.stringView();
 
-        if (key.equals(dataStrRef)) {
+        if (key == dataStr) {
           addMasked(collection, builder, entry.value);
         } else {
           builder.add(key, entry.value);

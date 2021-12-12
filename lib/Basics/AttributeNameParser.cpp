@@ -21,10 +21,11 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stddef.h>
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <ostream>
+#include <string_view>
 
 #include "AttributeNameParser.h"
 
@@ -33,15 +34,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/voc-errors.h"
 
-#include <velocypack/StringRef.h>
-
 using AttributeName = arangodb::basics::AttributeName;
-
-arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name)
-    : AttributeName(name, false) {}
-
-arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name, bool expand)
-    : name(name.toString()), shouldExpand(expand) {}
 
 uint64_t arangodb::basics::AttributeName::hash(uint64_t seed) const {
   return fasthash64(name.data(), name.size(), seed) ^ (shouldExpand ? 0xec59a4d : 0x4040ec59a4d40);
@@ -114,19 +107,7 @@ bool arangodb::basics::AttributeName::isIdentical(
   return true;
 }
 
-void arangodb::basics::TRI_ParseAttributeString(std::string const& input,
-                                                std::vector<AttributeName>& result,
-                                                bool allowExpansion) {
-  TRI_ParseAttributeString(arangodb::velocypack::StringRef(input), result, allowExpansion);
-}
-
 void arangodb::basics::TRI_ParseAttributeString(std::string_view input,
-                                                std::vector<AttributeName>& result,
-                                                bool allowExpansion) {
-  TRI_ParseAttributeString(arangodb::velocypack::StringRef(input.data(), input.size()), result, allowExpansion);
-}
-
-void arangodb::basics::TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,
                                                 std::vector<AttributeName>& result,
                                                 bool allowExpansion) {
   bool foundExpansion = false;

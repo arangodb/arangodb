@@ -24,6 +24,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
@@ -40,6 +41,15 @@ class Ast;
 struct AstNode;
 
 struct Variable {
+  /// @brief name of $OLD variable
+  static constexpr std::string_view NAME_OLD = "$OLD";
+
+  /// @brief name of $NEW variable
+  static constexpr std::string_view NAME_NEW = "$NEW";
+
+  /// @brief name of $CURRENT variable
+  static constexpr std::string_view NAME_CURRENT = "$CURRENT";
+
   /// @brief indicates the type of the variable
   enum class Type {
     /// @brief a regular variable with a value determined while executing the query
@@ -107,17 +117,8 @@ struct Variable {
   /// @brief whether or not the source data for this variable is from a collection 
   /// (i.e. is a document). this is only used for optimizations
   bool isDataFromCollection;
- 
-  /// @brief name of $OLD variable
-  static char const* const NAME_OLD;
 
-  /// @brief name of $NEW variable
-  static char const* const NAME_NEW;
-
-  /// @brief name of $CURRENT variable
-  static char const* const NAME_CURRENT;
-
-private:
+ private:
   /// @brief constant variable value (points to another AstNode)
   /// Used for constant propagation while creating the AST.
   AstNode* _constAstNode{nullptr};

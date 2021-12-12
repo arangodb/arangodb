@@ -465,7 +465,7 @@ bool FieldMeta::json(application_features::ApplicationServer& server,
       for (auto& entry : _fields) {
         fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
         fieldsBuilder.add( // add sub-object
-          VPackStringRef(entry.key().c_str(), entry.key().size()), // field name
+          std::string_view(entry.key().c_str(), entry.key().size()), // field name
           VPackValue(velocypack::ValueType::Object));
 
         if (!entry.value()->json(server, fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {

@@ -27,7 +27,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
@@ -42,7 +41,7 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
   mergeObjects = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::MergeObjectsString, true);
   ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IgnoreRevsString , true);
   isRestore = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IsRestoreString, false);
-  overwriteMode = OperationOptions::determineOverwriteMode(VPackStringRef(basics::VelocyPackHelper::getStringValue(obj, StaticStrings::OverwriteMode, "")));
+  overwriteMode = OperationOptions::determineOverwriteMode(basics::VelocyPackHelper::getStringView(obj, StaticStrings::OverwriteMode, ""));
 
   ignoreErrors = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false); 
   ignoreDocumentNotFound =

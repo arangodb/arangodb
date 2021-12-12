@@ -25,10 +25,10 @@
 #include "GeoJson.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <s2/s2loop.h>
@@ -63,7 +63,7 @@ inline bool sameCharIgnoringCase(char a, char b) noexcept {
 }  // namespace
 
 namespace {
-bool sameIgnoringCase(arangodb::velocypack::StringRef const& s1, std::string const& s2) {
+bool sameIgnoringCase(std::string_view s1, std::string const& s2) {
   return s1.size() == s2.size() &&
          std::equal(s1.begin(), s1.end(), s2.begin(), ::sameCharIgnoringCase);
 }
@@ -141,7 +141,7 @@ Type type(VPackSlice const& vpack) {
     return Type::UNKNOWN;
   }
 
-  arangodb::velocypack::StringRef typeStr = type.stringRef();
+  std::string_view typeStr = type.stringView();
   if (::sameIgnoringCase(typeStr, ::kTypeStringPoint)) {
     return Type::POINT;
   } else if (::sameIgnoringCase(typeStr, ::kTypeStringLineString)) {

@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <memory>
 #include <set>
+#include <string_view>
 
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/Collection.h>
@@ -35,7 +36,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
@@ -66,18 +66,18 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
-static arangodb::velocypack::StringRef const idRef("id");
-static arangodb::velocypack::StringRef const cidRef("cid");
+constexpr std::string_view idRef("id");
+constexpr std::string_view cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
 
 template<bool useUtf8, typename Comparator>
-int compareObjects(VPackSlice const& lhs, 
-                   VPackSlice const& rhs,
+int compareObjects(VPackSlice lhs, 
+                   VPackSlice rhs,
                    VPackOptions const* options) {
   // compare two velocypack objects
-  std::set<arangodb::velocypack::StringRef, Comparator> keys;
+  std::set<std::string_view, Comparator> keys;
   VPackCollection::unorderedKeys(lhs, keys);
   VPackCollection::unorderedKeys(rhs, keys);
   for (auto const& key : keys) {
@@ -273,34 +273,14 @@ arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
 }
 
-bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
-                                                       std::string const& r) const {
+bool VelocyPackHelper::AttributeSorterUTF8StringView::operator()(std::string_view l,
+                                                                 std::string_view r) const {
   // use UTF-8-based comparison of attribute names
   return TRI_compare_utf8(l.data(), l.size(), r.data(), r.size()) < 0;
 }
 
-bool VelocyPackHelper::AttributeSorterUTF8StringRef::operator()(VPackStringRef const& l,
-                                                                VPackStringRef const& r) const {
-  // use UTF-8-based comparison of attribute names
-  return TRI_compare_utf8(l.data(), l.size(), r.data(), r.size()) < 0;
-}
-
-bool VelocyPackHelper::AttributeSorterBinary::operator()(std::string const& l,
-                                                         std::string const& r) const noexcept {
-  // use binary comparison of attribute names
-  size_t cmpLength = (std::min)(l.size(), r.size());
-  int res = memcmp(l.data(), r.data(), cmpLength);
-  if (res < 0) {
-    return true;
-  }
-  if (res == 0) {
-    return l.size() < r.size();
-  }
-  return false;
-}
-
-bool VelocyPackHelper::AttributeSorterBinaryStringRef::operator()(VPackStringRef const& l,
-                                                                  VPackStringRef const& r) const noexcept {
+bool VelocyPackHelper::AttributeSorterBinaryStringView::operator()(std::string_view l,
+                                                                   std::string_view r) const noexcept {
   // use binary comparison of attribute names
   size_t cmpLength = (std::min)(l.size(), r.size());
   int res = memcmp(l.data(), r.data(), cmpLength);
@@ -754,9 +734,9 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     }
     case VPackValueType::Object: {
       if (useUTF8) {
-        return ::compareObjects<true, AttributeSorterUTF8StringRef>(lhs, rhs, options);
+        return ::compareObjects<true, AttributeSorterUTF8StringView>(lhs, rhs, options);
       } 
-      return ::compareObjects<false, AttributeSorterBinaryStringRef>(lhs, rhs, options);
+      return ::compareObjects<false, AttributeSorterBinaryStringView>(lhs, rhs, options);
     }
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:

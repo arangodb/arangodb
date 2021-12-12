@@ -202,10 +202,10 @@ class Node final {
   std::ostream& print(std::ostream&) const;
 
   /// @brief Apply single operation as defined by "op"
-  ResultT<std::shared_ptr<Node>> applyOp(arangodb::velocypack::Slice const&);
+  ResultT<std::shared_ptr<Node>> applyOp(arangodb::velocypack::Slice);
 
   /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice const&);
+  bool applies(arangodb::velocypack::Slice);
 
   /// @brief Return all keys of an object node. Result will be empty for non-objects.
   std::vector<std::string> keys() const;
@@ -360,8 +360,8 @@ class Node final {
 
   static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
 
-  bool isReadLockable(const VPackStringRef& by) const;
-  bool isWriteLockable(const VPackStringRef& by) const;
+  bool isReadLockable(std::string_view by) const;
+  bool isWriteLockable(std::string_view by) const;
 
   /// @brief Clear key value store
   void clear();
@@ -373,8 +373,8 @@ class Node final {
  
  private:
   
-  bool isReadUnlockable(const VPackStringRef& by) const;
-  bool isWriteUnlockable(const VPackStringRef& by) const;
+  bool isReadUnlockable(std::string_view by) const;
+  bool isWriteUnlockable(std::string_view by) const;
   
   /// @brief  Remove child by name
   /// @return shared pointer to removed child

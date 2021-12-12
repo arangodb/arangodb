@@ -190,7 +190,7 @@ class IResearchViewTest
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchViewTest, test_type) {
-  EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
+  EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(std::string_view("arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
 
 TEST_F(IResearchViewTest, test_defaults) {

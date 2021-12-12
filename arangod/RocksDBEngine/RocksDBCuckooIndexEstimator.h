@@ -37,7 +37,6 @@
 #include "Basics/fasthash.h"
 
 #include <rocksdb/types.h>
-#include <velocypack/StringRef.h>
 
 // In the following template:
 //   Key is the key type, it must be copyable and movable, furthermore, Key
@@ -142,7 +141,7 @@ class RocksDBCuckooIndexEstimator {
  public:
   explicit RocksDBCuckooIndexEstimator(uint64_t size);
 
-  explicit RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef serialized);
+  explicit RocksDBCuckooIndexEstimator(std::string_view serialized);
 
   ~RocksDBCuckooIndexEstimator();
 
@@ -182,7 +181,7 @@ class RocksDBCuckooIndexEstimator {
     COMPRESSED = '2',
   };
   
-  static bool isFormatSupported(arangodb::velocypack::StringRef serialized);
+  static bool isFormatSupported(std::string_view serialized);
 
   /**
    * @brief Serialize estimator for persistence, applying any buffered updates
@@ -470,9 +469,9 @@ class RocksDBCuckooIndexEstimator {
     return static_cast<uint8_t>((_randState >> 37) & 0xff);
   }
 
-  void deserialize(arangodb::velocypack::StringRef serialized);
+  void deserialize(std::string_view serialized);
 
-  void deserializeUncompressedBody(arangodb::velocypack::StringRef serialized);
+  void deserializeUncompressedBody(std::string_view serialized);
 
   void initializeDefault();
 
