@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 
@@ -58,7 +59,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   };
 
   typedef std::vector<std::string_view> Closure;
-  typedef std::unordered_map<std::string_view, PathSnippet> Snippets;
+  typedef containers::FlatHashMap<std::string_view, PathSnippet> Snippets;
 
  public:
   explicit ConstantWeightShortestPathFinder(ShortestPathOptions& options);
