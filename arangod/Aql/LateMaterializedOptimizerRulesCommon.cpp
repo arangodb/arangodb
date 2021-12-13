@@ -281,9 +281,7 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
   return true;
 }
 
-} // namespace latematerialized
-} // namespace aql
-} // namespace arangodb
+} // namespace arangodb::aql::latematerialized
 
 template bool latematerialized::getReferencedAttributes(
   AstNode* node,
