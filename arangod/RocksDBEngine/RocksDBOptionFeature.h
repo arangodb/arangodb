@@ -76,7 +76,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _maxBytesForLevelBase;
   double _maxBytesForLevelMultiplier;
   int32_t _maxBackgroundJobs;
-  uint64_t _maxSubcompactions;
+  uint32_t _maxSubcompactions;
   uint32_t _numThreadsHigh;
   uint32_t _numThreadsLow;
   uint64_t _targetFileSizeBase;
