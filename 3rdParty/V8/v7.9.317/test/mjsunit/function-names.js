@@ -80,7 +80,7 @@ TestFunctionNames(Function.prototype, functionPrototypeFunctions);
 // Math functions.
 var mathFunctions = [
     "random", "abs", "acos", "asin", "atan", "ceil", "cos", "exp", "floor",
-    "log", "round", "pround", "sin", "sqrt", "tan", "atan2", "pow", "max", "min"];
+    "log", "round", "sin", "sqrt", "tan", "atan2", "pow", "max", "min"];
 
 TestFunctionNames(Math, mathFunctions);
 

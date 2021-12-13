@@ -383,8 +383,6 @@ struct Functions {
                           AstNode const&, VPackFunctionParameters const&);
   static AqlValue Round(arangodb::aql::ExpressionContext*,
                         AstNode const&, VPackFunctionParameters const&);
-  static AqlValue PRound(arangodb::aql::ExpressionContext*,
-                        AstNode const&, VPackFunctionParameters const&);
   static AqlValue Abs(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParameters const&);
   static AqlValue Ceil(arangodb::aql::ExpressionContext*, AstNode const&,

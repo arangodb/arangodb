@@ -3950,36 +3950,18 @@ function ahuacatlNumericFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test pround function
+/// @brief test round function
 ////////////////////////////////////////////////////////////////////////////////
     
-testPRound : function () {
-  var expected = [ 1 ];
-  var actual = getQueryResults("FOR r IN [ 1.123456 ] return PROUND(r, 0)");
+testRoundWithPrecision : function () {
+  var expected = [ -100.1, -3.1, -2.1, 1.1, 2.1, 100.1 ];
+  var actual = getQueryResults("FOR r IN [ -100.123, -3.123, -2.123, 1.123, 2.123, 100.123 ] return ROUND(r, 1)");
   assertEqual(expected, actual);
 
-  actual = getQueryResults("FOR r IN [ 1.123456 ] return NOOPT(PROUND(r, 0))");
+  actual = getQueryResults("FOR r IN [ -100.123, -3.123, -2.123, 1.123, 2.123, 100.123 ] return ROUND(r, 1)");
   assertEqual(expected, actual);
-
-  expected = [ 1.1 ];
-  var actual = getQueryResults("FOR r IN [ 1.123456 ] return PROUND(r, 1)");
-  assertEqual(expected, actual);
-  actual = getQueryResults("FOR r IN [ 1.123456 ] return NOOPT(PROUND(r, 1))");
-  assertEqual(expected, actual);
-
-  expected = [ 1.12 ];
-  var actual = getQueryResults("FOR r IN [ 1.123456 ] return PROUND(r, 2)");
-  assertEqual(expected, actual);
-  actual = getQueryResults("FOR r IN [ 1.123456 ] return NOOPT(PROUND(r, 2))");
-  assertEqual(expected, actual);
-
-  expected = [ 1.1235 ];
-  var actual = getQueryResults("FOR r IN [ 1.123456 ] return PROUND(r, 4)");
-  assertEqual(expected, actual);
-  actual = getQueryResults("FOR r IN [ 1.123456 ] return NOOPT(PROUND(r, 4))");
-  assertEqual(expected, actual);
-
 },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test round function
