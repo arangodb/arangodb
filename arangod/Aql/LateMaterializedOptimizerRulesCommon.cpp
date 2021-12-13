@@ -63,9 +63,7 @@ struct TraversalState {
 
 }
 
-namespace arangodb {
-namespace aql {
-namespace latematerialized {
+namespace arangodb::aql::latematerialized {
 
 // determines attributes referenced in an expression for the specified out variable
 template<typename T>
