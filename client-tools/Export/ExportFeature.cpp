@@ -100,8 +100,7 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOldOption("--query", "custom-query");
   options
-      ->addOption("--custom-query", "AQL query to run", new StringParameter(&_customQuery))
-      .setIntroducedIn(30800);
+      ->addOption("--custom-query", "AQL query to run", new StringParameter(&_customQuery));
   options->addOldOption("--query-max-runtime", "custom-query-max-runtime");
   options
       ->addOption(
