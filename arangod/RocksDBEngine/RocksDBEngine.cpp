@@ -139,7 +139,7 @@ std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // global flag to cancel all compactions. will be flipped to true on shutdown
-std::atomic<bool> cancelCompactions{false};
+static std::atomic<bool> cancelCompactions{false};
 
 // minimum value for --rocksdb.sync-interval (in ms)
 // a value of 0 however means turning off the syncing altogether!
@@ -1023,8 +1023,10 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // from now on, all started compactions will be canceled
-  ::cancelCompactions.store(true, std::memory_order_relaxed);
+  // from now on, all started compactions can be canceled.
+  // note that this is only a best-effort hint to RocksDB and
+  // may not be followed immediately.
+  ::cancelCompactions.store(true, std::memory_order_release);
 }
 
 void RocksDBEngine::stop() {
