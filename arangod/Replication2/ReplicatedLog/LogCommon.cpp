@@ -286,7 +286,7 @@ auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
-  builder.add(VPackStringRef(StaticStrings::SoftWriteConcern), VPackValue(softWriteConcern));
+  builder.add(StaticStrings::SoftWriteConcern, VPackValue(softWriteConcern));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
 }
 
