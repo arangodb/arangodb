@@ -107,7 +107,7 @@ struct IResearchTrxState final : public TransactionState::Cookie {
       LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
           << "caught exception while applying accumulated removals: " << e.what();
     } catch (...) {
-      LOG_TOPIC("14917", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("14917", ERR, arangodb::iresearch::TOPIC)
           << "caught exception while applying accumulated removals";
     }
   }

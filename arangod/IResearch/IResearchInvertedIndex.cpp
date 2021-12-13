@@ -1052,7 +1052,6 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
                                                                    extraFieldName);
     }
   } else {
-    TRI_ASSERT(false);
     //sorting  case
     return std::make_unique<IResearchInvertedIndexMergeIterator>(collection, trx, node,
                                                                  this, reference, -1,
