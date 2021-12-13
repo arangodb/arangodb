@@ -2006,7 +2006,8 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
 }
 
 Result RocksDBEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
-  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel);
+  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel, 
+                                &::cancelCompactions);
 }
 
 /// @brief Add engine-specific optimizer rules
