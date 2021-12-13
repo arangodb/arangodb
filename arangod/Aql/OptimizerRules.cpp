@@ -3008,7 +3008,7 @@ struct SortToIndexNode final
             std::make_unique<IndexNode>(_plan, _plan->nextId(),
                                         enumerateCollectionNode->collection(), outVariable,
                                         usedIndexes,
-                                        false, // here we could always assume false as there is one index anyway
+                                        false, // here we could always assume false as there is no lookup condition here
                                         std::move(condition), opts);
 
         auto n = newNode.release();
