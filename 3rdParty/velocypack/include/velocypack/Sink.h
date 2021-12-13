@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_SINK_H
-#define VELOCYPACK_SINK_H 1
+#pragma once
 
 #include <string>
 #include <fstream>
@@ -32,8 +31,7 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Buffer.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 struct Sink {
   Sink() {}
@@ -141,6 +139,10 @@ typedef StreamSinkImpl<std::ostringstream> StringStreamSink;
 typedef StreamSinkImpl<std::ofstream> OutputFileStreamSink;
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackSink = arangodb::velocypack::Sink;
+using VPackCharBufferSink = arangodb::velocypack::CharBufferSink;
+using VPackStringSink = arangodb::velocypack::StringSink;
+using VPackStringLengthSink = arangodb::velocypack::StringLengthSink;
+using VPackStringStreamSink = arangodb::velocypack::StringStreamSink;
+using VPackOutputFileStreamSink = arangodb::velocypack::OutputFileStreamSink;

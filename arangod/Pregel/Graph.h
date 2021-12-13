@@ -25,7 +25,6 @@
 
 #include "Basics/debugging.h"
 
-#include <velocypack/StringRef.h>
 #include <velocypack/Slice.h>
 
 #include <cstdint>
@@ -80,7 +79,7 @@ class Edge {
 
  public:
 
-  velocypack::StringRef toKey() const { return velocypack::StringRef(_toKey, _toKeyLength); }
+  std::string_view toKey() const { return std::string_view(_toKey, _toKeyLength); }
   E& data() noexcept {
     return _data;
   }
@@ -185,7 +184,7 @@ class Vertex {
 
   uint16_t keyLength() const noexcept { return _keyLength; }
 
-  velocypack::StringRef key() const { return velocypack::StringRef(_key, keyLength()); }
+  std::string_view key() const { return std::string_view(_key, keyLength()); }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
 

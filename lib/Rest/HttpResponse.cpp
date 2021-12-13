@@ -40,6 +40,8 @@
 #include "Meta/conversion.h"
 #include "Rest/GeneralRequest.h"
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -99,27 +101,27 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
 
       timeinfo = gmtime(&rawtime);
       strftime(buffer2, 80, "%a, %d-%b-%Y %H:%M:%S %Z", timeinfo);
-      buffer.appendText(TRI_CHAR_LENGTH_PAIR("; expires="));
+      buffer.appendText(std::string_view("; expires="));
       buffer.appendText(buffer2);
     }
   }
 
   if (!path.empty()) {
-    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; path="));
+    buffer.appendText(std::string_view("; path="));
     buffer.appendText(path);
   }
 
   if (!domain.empty()) {
-    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; domain="));
+    buffer.appendText(std::string_view("; domain="));
     buffer.appendText(domain);
   }
 
   if (secure) {
-    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; secure"));
+    buffer.appendText(std::string_view("; secure"));
   }
 
   if (httpOnly) {
-    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
+    buffer.appendText(std::string_view("; HttpOnly"));
   }
   // copies buffer into a std::string
   _cookies.emplace_back(buffer.data(), buffer.length());
@@ -141,7 +143,7 @@ size_t HttpResponse::bodySize() const {
 }
 
 void HttpResponse::writeHeader(StringBuffer* output) {
-  output->appendText(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
+  output->appendText(std::string_view("HTTP/1.1 "));
   output->appendText(responseString(_responseCode));
   output->appendText("\r\n", 2);
 
@@ -213,33 +215,33 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 
   // add "Server" response header
   if (!seenServerHeader && !HIDE_PRODUCT_HEADER) {
-    output->appendText(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
+    output->appendText(std::string_view("Server: ArangoDB\r\n"));
   }
 
   // this is just used by the batch handler, close connection
-  output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close \r\n"));
+  output->appendText(std::string_view("Connection: Close \r\n"));
 
   // add "Content-Type" header
   switch (_contentType) {
     case ContentType::UNSET:
     case ContentType::JSON:
-      output->appendText(TRI_CHAR_LENGTH_PAIR(
+      output->appendText(std::string_view(
           "Content-Type: application/json; charset=utf-8\r\n"));
       break;
     case ContentType::VPACK:
       output->appendText(
-          TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-velocypack\r\n"));
+          std::string_view("Content-Type: application/x-velocypack\r\n"));
       break;
     case ContentType::TEXT:
       output->appendText(
-          TRI_CHAR_LENGTH_PAIR("Content-Type: text/plain; charset=utf-8\r\n"));
+          std::string_view("Content-Type: text/plain; charset=utf-8\r\n"));
       break;
     case ContentType::HTML:
       output->appendText(
-          TRI_CHAR_LENGTH_PAIR("Content-Type: text/html; charset=utf-8\r\n"));
+          std::string_view("Content-Type: text/html; charset=utf-8\r\n"));
       break;
     case ContentType::DUMP:
-      output->appendText(TRI_CHAR_LENGTH_PAIR(
+      output->appendText(std::string_view(
           "Content-Type: application/x-arango-dump; charset=utf-8\r\n"));
       break;
     case ContentType::CUSTOM: {
@@ -250,22 +252,22 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   }
 
   for (auto const& it : _cookies) {
-    output->appendText(TRI_CHAR_LENGTH_PAIR("Set-Cookie: "));
+    output->appendText(std::string_view("Set-Cookie: "));
     output->appendText(it);
     output->appendText("\r\n", 2);
   }
 
   if (seenTransferEncodingHeader && transferEncoding == "chunked") {
     output->appendText(
-        TRI_CHAR_LENGTH_PAIR("Transfer-Encoding: chunked\r\n\r\n"));
+        std::string_view("Transfer-Encoding: chunked\r\n\r\n"));
   } else {
     if (seenTransferEncodingHeader) {
-      output->appendText(TRI_CHAR_LENGTH_PAIR("Transfer-Encoding: "));
+      output->appendText(std::string_view("Transfer-Encoding: "));
       output->appendText(transferEncoding);
       output->appendText("\r\n", 2);
     }
 
-    output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
+    output->appendText(std::string_view("Content-Length: "));
 
     if (!_generateBody) {
       // From http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13
@@ -288,7 +290,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayload(VPackSlice const& slice, 
+void HttpResponse::addPayload(VPackSlice slice, 
                               velocypack::Options const* options,
                               bool resolveExternals) {
   if (_contentType == rest::ContentType::JSON &&
@@ -316,7 +318,7 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
 }
 
-void HttpResponse::addRawPayload(VPackStringRef payload) {
+void HttpResponse::addRawPayload(std::string_view payload) {
   _body->appendText(payload.data(), payload.length());
 }
 

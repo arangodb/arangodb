@@ -31,8 +31,6 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 
-#include <velocypack/StringRef.h>
-
 #include "icu-helper.h"
 
 class CNormalizeStringTest : public ::testing::Test {
@@ -147,7 +145,7 @@ TEST(CNormalizeStringTest, tst_4) {
   std::string testString   = "Der Müller geht in die Post.";
   
   std::set<std::string> words;
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, arangodb::velocypack::StringRef(testString), 3, UINT32_MAX, true);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, std::string_view(testString), 3, UINT32_MAX, true);
   EXPECT_TRUE(!words.empty());
   
   EXPECT_TRUE(5UL == words.size());
@@ -158,7 +156,7 @@ TEST(CNormalizeStringTest, tst_4) {
   EXPECT_TRUE(words.find(std::string("post")) != words.end());
   
   words.clear();
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, arangodb::velocypack::StringRef(testString), 4, UINT32_MAX, true);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, std::string_view(testString), 4, UINT32_MAX, true);
   EXPECT_TRUE(!words.empty());
   
   EXPECT_TRUE(3UL == words.size());
@@ -169,7 +167,7 @@ TEST(CNormalizeStringTest, tst_4) {
   EXPECT_TRUE(words.find(std::string("die")) == words.end());
   
   words.clear();
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, arangodb::velocypack::StringRef(""), 3, UINT32_MAX, true);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, std::string_view(""), 3, UINT32_MAX, true);
   EXPECT_TRUE(words.empty());
 }
 
@@ -177,7 +175,7 @@ TEST(CNormalizeStringTest, tst_5) {
   std::string testString   = "Der Müller geht in die Post.";
   
   std::set<std::string> words;
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, arangodb::velocypack::StringRef(testString), 3, UINT32_MAX, false);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, std::string_view(testString), 3, UINT32_MAX, false);
   EXPECT_TRUE(!words.empty());
   
   EXPECT_TRUE(5UL == words.size());
@@ -188,7 +186,7 @@ TEST(CNormalizeStringTest, tst_5) {
   EXPECT_TRUE(words.find(std::string("Post")) != words.end());
     
   words.clear();
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, arangodb::velocypack::StringRef(testString), 4, UINT32_MAX, false);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, std::string_view(testString), 4, UINT32_MAX, false);
   EXPECT_TRUE(!words.empty());
   
   EXPECT_TRUE(3UL == words.size());
@@ -199,6 +197,6 @@ TEST(CNormalizeStringTest, tst_5) {
   EXPECT_TRUE(words.find(std::string("die")) == words.end());
   
   words.clear();
-  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, arangodb::velocypack::StringRef(""), 4, UINT32_MAX, false);
+  arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, std::string_view(""), 4, UINT32_MAX, false);
   EXPECT_TRUE(words.empty());
 }

@@ -31,7 +31,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -66,7 +65,7 @@ AqlValue ShortestPathResult::vertexToAqlValue(TraverserCache* cache, size_t posi
   return result;
 }
 
-void ShortestPathResult::addVertex(arangodb::velocypack::StringRef v) {
+void ShortestPathResult::addVertex(std::string_view v) {
   TRI_ASSERT(_edges.size() == _vertices.size());
   _vertices.emplace_back(v);
 }

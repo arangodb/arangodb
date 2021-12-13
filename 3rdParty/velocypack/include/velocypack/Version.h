@@ -22,16 +22,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VERSION_H
-#define VELOCYPACK_VERSION_H 1
-
 #include <string>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-version-number.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 struct Version {
   Version() = delete;
@@ -57,6 +53,5 @@ struct Version {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackVersion = arangodb::velocypack::Version;

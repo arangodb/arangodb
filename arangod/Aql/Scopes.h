@@ -24,6 +24,8 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "Aql/Variable.h"
@@ -62,20 +64,14 @@ class Scope {
   void addVariable(Variable*);
 
   /// @brief checks if a variable exists in the scope
-  bool existsVariable(char const*, size_t) const;
-
-  /// @brief checks if a variable exists in the scope
-  bool existsVariable(std::string const&) const;
+  bool existsVariable(std::string_view name) const;
 
   /// @brief return a variable
-  Variable const* getVariable(char const*, size_t) const;
-
-  /// @brief return a variable
-  Variable const* getVariable(std::string const&) const;
+  Variable const* getVariable(std::string_view name) const;
 
   /// @brief return a variable, allowing usage of special pseudo vars such
   /// as OLD and NEW
-  Variable const* getVariable(char const*, size_t, bool) const;
+  Variable const* getVariable(std::string_view name, bool allowSpecial) const;
 
  private:
   /// @brief scope type
@@ -126,17 +122,14 @@ class Scopes {
   void replaceVariable(Variable*);
 
   /// @brief checks whether a variable exists in any scope
-  bool existsVariable(char const*, size_t) const;
+  bool existsVariable(std::string_view name) const;
 
   /// @brief return a variable by name - this respects the current scopes
-  Variable const* getVariable(char const*, size_t) const;
-
-  /// @brief return a variable by name - this respects the current scopes
-  Variable const* getVariable(std::string const&) const;
+  Variable const* getVariable(std::string_view name) const;
 
   /// @brief return a variable by name - this respects the current scopes
   /// this also allows using special pseudo vars such as OLD and NEW
-  Variable const* getVariable(char const*, size_t, bool) const;
+  Variable const* getVariable(std::string_view name, bool allowSpecial) const;
 
   /// @brief get the $CURRENT variable
   Variable const* getCurrentVariable() const;

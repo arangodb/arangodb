@@ -45,7 +45,6 @@
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 
 #include <initializer_list>
 

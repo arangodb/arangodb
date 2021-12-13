@@ -1136,8 +1136,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
         _vocbase.isOneShard()) {
       auto const isSatellite =
-          VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
-                                         velocypack::StringRef{""}) == StaticStrings::Satellite;
+          VelocyPackHelper::getStringView(parameters, StaticStrings::ReplicationFactor,
+                                          std::string_view()) == StaticStrings::Satellite;
 
       // force one shard, and force distributeShardsLike to be "_graphs"
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
@@ -1441,7 +1441,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
 
   bool const isUsersCollection = collectionName == StaticStrings::UsersCollection;
 
-  VPackStringRef bodyStr = _request->rawPayload();
+  std::string_view bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
   
@@ -1495,7 +1495,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
         for (auto it : VPackObjectIterator(doc, true)) {
           // only check for "_key" attribute here if we still have to.
           // once we have seen it, it will not show up again in the same document
-          bool const isKey = checkKey && (arangodb::velocypack::StringRef(it.key) == StaticStrings::KeyString);
+          bool const isKey = checkKey && (it.key.stringView() == StaticStrings::KeyString);
   
           if (isKey) {
             // _key attribute
@@ -1519,7 +1519,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
           
             documentsToInsert.add(it.key);
             documentsToInsert.add(it.value);
-          } else if (checkRev && arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
+          } else if (checkRev && (it.key.stringView() == StaticStrings::RevString)) {
             // _rev attribute
 
             // prevent checking for _rev twice in the same document

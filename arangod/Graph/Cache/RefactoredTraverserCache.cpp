@@ -45,7 +45,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -164,7 +163,7 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
                                                                _allowImplicitCollections);
 
       Result res = _trx->documentFastPathLocal(
-          collectionName, id.substr(collectionNameResult.get().second + 1).stringRef(),
+          collectionName, id.substr(collectionNameResult.get().second + 1).stringView(),
           [&](LocalDocumentId const&, VPackSlice doc) -> bool {
             stats.addScannedIndex(1);
             // copying...
