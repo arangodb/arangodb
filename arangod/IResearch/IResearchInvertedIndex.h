@@ -77,9 +77,9 @@ class lazy_filter_bitset_iterator final : public irs::doc_iterator,
     reset();
   }
 
-  bool next() override final;
-  irs::doc_id_t seek(irs::doc_id_t target) override final;
-  irs::doc_id_t value() const noexcept override final { return doc_.value; }
+  bool next() final;
+  irs::doc_id_t seek(irs::doc_id_t target) final;
+  irs::doc_id_t value() const noexcept final { return doc_.value; }
   irs::attribute* get_mutable(irs::type_info::type_id id) noexcept override;
   void reset() noexcept;
 
