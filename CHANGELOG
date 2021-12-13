@@ -1,6 +1,10 @@
 devel
 -----
 
+* Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
+  to 2. This allows compactions jobs to be broken up into disjoint ranges which
+  can be processed in parallel.
+
 * Improve some RocksDB-related error messages during server startup.
 
 * Added startup options to adjust previously hard-coded parameters for the 
