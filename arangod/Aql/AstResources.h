@@ -24,6 +24,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Aql/AstNode.h"
@@ -63,8 +64,8 @@ class AstResources {
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
-  char* registerString(std::string const& p) {
-    return registerString(p.data(), p.size());
+  char* registerString(std::string_view value) {
+    return registerString(value.data(), value.size());
   }
 
   /// @brief register a potentially UTF-8-escaped string

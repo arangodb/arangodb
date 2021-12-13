@@ -70,15 +70,15 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  if (!vertexMatchesConditions(s.stringRef(), 0)) {
+  if (!vertexMatchesConditions(s.stringView(), 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
  
   arangodb::velocypack::HashedStringRef persId = traverserCache()->persistString(s);
-  _vertexGetter->reset(persId.stringRef());
-  _enumerator->setStartVertex(persId.stringRef());
+  _vertexGetter->reset(persId.stringView());
+  _enumerator->setStartVertex(persId.stringView());
   _done = false;
 }
 
@@ -110,9 +110,9 @@ bool ClusterTraverser::getVertex(VPackSlice edge, arangodb::traverser::Enumerate
 }
 
 bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge,
-                                       arangodb::velocypack::StringRef sourceVertexId,
+                                       std::string_view sourceVertexId,
                                        uint64_t depth,
-                                       arangodb::velocypack::StringRef& targetVertexId) {
+                                       std::string_view& targetVertexId) {
   bool res = _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
   if (res) {
     // There will be no idString of length above uint32_t
@@ -142,7 +142,7 @@ void ClusterTraverser::fetchVertices() {
   _verticesToFetch.clear();
 }
 
-aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef idString) {
+aql::AqlValue ClusterTraverser::fetchVertexData(std::string_view idString) {
   // There will be no idString of length above uint32_t
   arangodb::velocypack::HashedStringRef hashedIdString(idString.data(),
                                                        static_cast<uint32_t>(
@@ -167,7 +167,7 @@ aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef 
 /// @brief Function to add the real data of a vertex into a velocypack builder
 //////////////////////////////////////////////////////////////////////////////
 
-void ClusterTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& result) {
+void ClusterTraverser::addVertexToVelocyPack(std::string_view vid, VPackBuilder& result) {
   // There will be no idString of length above uint32_t
   arangodb::velocypack::HashedStringRef hashedIdString(vid.data(),
                                                        static_cast<uint32_t>(vid.length()));
@@ -237,7 +237,7 @@ void ClusterTraverser::createEnumerator() {
   }
 }
 
-bool ClusterTraverser::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool ClusterTraverser::getVertex(std::string_view vertex, size_t depth) {
   bool res = _vertexGetter->getVertex(vertex, depth);
   if (res) {
     // There will be no idString of length above uint32_t

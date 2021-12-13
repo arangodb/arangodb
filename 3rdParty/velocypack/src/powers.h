@@ -1,5 +1,4 @@
-#ifndef VELOCYPACK_POWERS_H
-#define VELOCYPACK_POWERS_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -129,5 +128,3 @@ static Fp find_cachedpow10(int exp, int* k) {
     return powers_ten[idx];
   }
 }
-
-#endif

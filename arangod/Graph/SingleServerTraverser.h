@@ -66,23 +66,23 @@ class SingleServerTraverser final : public Traverser {
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   bool getSingleVertex(arangodb::velocypack::Slice edge,
-                       arangodb::velocypack::StringRef const sourceVertexId, uint64_t depth,
-                       arangodb::velocypack::StringRef& targetVertexId) override;
+                       std::string_view const sourceVertexId, uint64_t depth,
+                       std::string_view& targetVertexId) override;
 
 
-  bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
+  bool getVertex(std::string_view vertex, size_t depth) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef) override;
+  aql::AqlValue fetchVertexData(std::string_view) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(arangodb::velocypack::StringRef, arangodb::velocypack::Builder&) override;
+  void addVertexToVelocyPack(std::string_view, arangodb::velocypack::Builder&) override;
 
  private:
   /// @brief build the (single) path enumerator of this traverser

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <list>
+#include <string_view>
 
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
@@ -53,7 +54,7 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
         return EvalError("expected string, found: " + key.toJson());
       }
 
-      VPackSlice value = obj.get(key.stringRef());
+      VPackSlice value = obj.get(key.stringView());
       if (value.isNone()) {
         if constexpr (ignoreMissing) {
           continue;
@@ -62,7 +63,7 @@ EvalResult Prim_DictExtract(Machine& ctx, VPackSlice const paramsList, VPackBuil
         }
       }
 
-      result.add(key.stringRef(), value);
+      result.add(key.stringView(), value);
     }
   }
   return {};
@@ -101,7 +102,7 @@ EvalResult Prim_Dict(Machine& ctx, VPackSlice const params, VPackBuilder& result
   VPackObjectBuilder ob(&result);
   for (auto&& pair : VPackArrayIterator(params)) {
     if (pair.isArray() && pair.length() == 2 && pair.at(0).isString()) {
-      result.add(pair.at(0).stringRef(), pair.at(1));
+      result.add(pair.at(0).stringView(), pair.at(1));
     } else {
       return EvalError("expected pairs of string and slice");
     }
@@ -176,24 +177,24 @@ EvalResultT<VPackSlice> ReadAttribute(VPackSlice slice, VPackSlice key) {
   }
 
   if (key.isString()) {
-    return slice.get(key.stringRef());
+    return slice.get(key.stringView());
   } else if (key.isArray()) {
     struct Iter : VPackArrayIterator {
       using VPackArrayIterator::difference_type;
-      using value_type = VPackStringRef;
+      using value_type = std::string_view;
       using VPackArrayIterator::iterator_category;
       using VPackArrayIterator::pointer;
       using VPackArrayIterator::reference;
 
       value_type operator*() const {
-        return VPackArrayIterator::operator*().stringRef();
+        return VPackArrayIterator::operator*().stringView();
       }
       Iter begin() const { return Iter{VPackArrayIterator::begin()}; }
       Iter end() const { return Iter{VPackArrayIterator::end()}; }
     };
 
     Iter i{VPackArrayIterator(key)};
-    return slice.get(i);
+    return slice.get(i.begin(), i.end());
   } else {
     return EvalError("key is neither array nor string");
   }
@@ -285,7 +286,7 @@ EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& r
     VPackBuilder tmp;
     {
       VPackObjectBuilder ob(&tmp);
-      tmp.add(key.stringRef(), val);
+      tmp.add(key.stringView(), val);
     }
     MergeObjectSlice(result, obj, tmp.slice());
   } else if (key.isArray()) {
@@ -299,9 +300,9 @@ EvalResult Prim_AttribSet(Machine& ctx, VPackSlice const params, VPackBuilder& r
         return EvalError("expected string in key arrays");
       }
       if (iterationStep < (length - 1)) {
-        tmp.add(pathStep.stringRef(), VPackValue(VPackValueType::Object));
+        tmp.add(pathStep.stringView(), VPackValue(VPackValueType::Object));
       } else {
-        tmp.add(pathStep.stringRef(), val);
+        tmp.add(pathStep.stringView(), val);
       }
       iterationStep++;
     }

@@ -84,6 +84,11 @@ using namespace arangodb::basics;
         
 namespace {
 AqlCallStack const defaultStack{AqlCallList{AqlCall{}}};
+    
+constexpr std::string_view fullcountTrue("fullcount:true");
+constexpr std::string_view fullcountFalse("fullcount:false");
+constexpr std::string_view countTrue("count:true");
+constexpr std::string_view countFalse("count:false");
 }
 
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
@@ -1150,16 +1155,16 @@ uint64_t Query::calculateHash() const {
   // handle "fullCount" option. if this option is set, the query result will
   // be different to when it is not set!
   if (_queryOptions.fullCount) {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:true"), hashval);
+    hashval = fasthash64(::fullcountTrue.data(), ::fullcountTrue.size(), hashval);
   } else {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("fullcount:false"), hashval);
+    hashval = fasthash64(::fullcountFalse.data(), ::fullcountFalse.size(), hashval);
   }
 
   // handle "count" option
   if (_queryOptions.count) {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("count:true"), hashval);
+    hashval = fasthash64(::countTrue.data(), ::countTrue.size(), hashval);
   } else {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hashval);
+    hashval = fasthash64(::countFalse.data(), ::countFalse.size(), hashval);
   }
 
   // also hash "optimizer.rules" options

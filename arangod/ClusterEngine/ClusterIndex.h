@@ -24,7 +24,6 @@
 #pragma once
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
 
 #include "Basics/Common.h"
 #include "ClusterEngine/ClusterTransactionState.h"
@@ -68,7 +67,7 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
+  double selectivityEstimate(std::string_view = std::string_view()) const override;
 
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;

@@ -36,7 +36,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 #include "Basics/Common.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -69,11 +68,7 @@ class GeneralRequest {
   static std::string_view translateMethod(RequestType);
 
   // translate "HTTP method string" into RequestType enum value
-  static RequestType translateMethod(std::string const& method) {
-    return translateMethod(arangodb::velocypack::StringRef(method));
-  }
-  
-  static RequestType translateMethod(arangodb::velocypack::StringRef const&);
+  static RequestType translateMethod(std::string_view method);
 
   // append RequestType as string value to given String buffer
   static void appendMethod(RequestType, arangodb::basics::StringBuffer*);
@@ -207,7 +202,7 @@ class GeneralRequest {
   /// @brief the content length
   virtual size_t contentLength() const = 0;
   /// @brief unprocessed request payload
-  virtual velocypack::StringRef rawPayload() const = 0;
+  virtual std::string_view rawPayload() const = 0;
   /// @brief parsed request payload
   virtual velocypack::Slice payload(bool strictValidation = true) = 0;
   /// @brief overwrite payload

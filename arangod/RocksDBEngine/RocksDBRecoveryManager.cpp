@@ -260,7 +260,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex)
                    ->GetID()) {
       // document key
-      arangodb::velocypack::StringRef ref = RocksDBKey::primaryKey(key);
+      std::string_view ref = RocksDBKey::primaryKey(key);
       TRI_ASSERT(!ref.empty());
       // check if the key is numeric
       if (ref[0] >= '1' && ref[0] <= '9') {

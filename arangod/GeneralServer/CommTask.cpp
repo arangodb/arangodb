@@ -822,7 +822,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
 bool CommTask::handleContentEncoding(GeneralRequest& req) {
   // TODO consider doing the decoding on the fly
   auto encode = [&](std::string const& encoding) {
-    auto raw = req.rawPayload();
+    std::string_view raw = req.rawPayload();
     uint8_t* src = reinterpret_cast<uint8_t*>(const_cast<char*>(raw.data()));
     size_t len = raw.size();
     if (encoding == "gzip") {

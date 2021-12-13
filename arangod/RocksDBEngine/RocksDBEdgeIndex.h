@@ -25,7 +25,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 #include "Basics/Common.h"
 #include "Basics/LocalTaskQueue.h"
@@ -83,7 +82,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
+  double selectivityEstimate(std::string_view = std::string_view()) const override;
 
   RocksDBCuckooIndexEstimatorType* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;

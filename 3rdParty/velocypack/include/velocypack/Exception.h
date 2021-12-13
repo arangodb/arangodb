@@ -22,16 +22,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_EXCEPTION_H
-#define VELOCYPACK_EXCEPTION_H 1
+#pragma once
 
 #include <exception>
 #include <iosfwd>
 
 #include "velocypack/velocypack-common.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 // base exception class
 class Exception : public virtual std::exception {
@@ -99,10 +97,9 @@ class Exception : public virtual std::exception {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::velocypack::Exception const*);
 
 std::ostream& operator<<(std::ostream&, arangodb::velocypack::Exception const&);
 
-#endif
+using VPackException = arangodb::velocypack::Exception;

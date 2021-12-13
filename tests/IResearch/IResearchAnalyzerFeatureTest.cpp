@@ -195,7 +195,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
   explicit TestTokensTypedAnalyzer(irs::string_ref const& args) : irs::analysis::analyzer(irs::type<TestTokensTypedAnalyzer>::get()) {
     VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
     if (slice.hasKey("type")) {
-      auto type = slice.get("type").stringRef();
+      auto type = slice.get("type").stringView();
       if (type == "number") {
         _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
         _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(1));

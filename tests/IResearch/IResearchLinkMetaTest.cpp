@@ -207,7 +207,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   defaults._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
       analyzers.get("testVocbase::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST), "empty"));
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
-  defaults._sort.emplace_back(std::vector<arangodb::basics::AttributeName>{{"foo",false}}, true);
+  defaults._sort.emplace_back(std::vector<arangodb::basics::AttributeName>{{std::string_view("foo"), false}}, true);
 
   auto json = VPackParser::fromJson("{}");
   EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString, nullptr, defaults));
@@ -757,8 +757,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   meta._fields["c"]->_fields["some"] =
       meta._fields["c"];  // initialize with parent, override below
   meta._fields["c"]->_fields["none"] = meta._fields["c"];  // initialize with parent
-  meta._sort.emplace_back({arangodb::basics::AttributeName("_key", false)}, true);
-  meta._sort.emplace_back({arangodb::basics::AttributeName("_id", false)}, false);
+  meta._sort.emplace_back({arangodb::basics::AttributeName(std::string_view("_key"), false)}, true);
+  meta._sort.emplace_back({arangodb::basics::AttributeName(std::string_view("_id"), false)}, false);
 
   auto& overrideAll = *(meta._fields["c"]->_fields["all"]);
   auto& overrideSome = *(meta._fields["c"]->_fields["some"]);
@@ -1034,11 +1034,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     EXPECT_TRUE(sort.fromVelocyPack(tmpSlice, errorField));
     EXPECT_EQ(2, sort.size());
     EXPECT_TRUE(sort.direction(0));
-    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{{"_key", false}} ==
-                 sort.field(0)));
+    EXPECT_EQ((std::vector<arangodb::basics::AttributeName>{{std::string_view("_key"), false}}), sort.field(0));
     EXPECT_FALSE(sort.direction(1));
-    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{{"_id", false}} ==
-                 sort.field(1)));
+    EXPECT_EQ((std::vector<arangodb::basics::AttributeName>{{std::string_view("_id"), false}}), sort.field(1));
   }
 
   // with active vocbase (not fullAnalyzerDefinition)

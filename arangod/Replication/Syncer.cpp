@@ -59,15 +59,14 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
 
-arangodb::velocypack::StringRef const cuidRef("cuid");
-arangodb::velocypack::StringRef const dbRef("db");
-arangodb::velocypack::StringRef const databaseRef("database");
-arangodb::velocypack::StringRef const globallyUniqueIdRef("globallyUniqueId");
+constexpr std::string_view cuidRef("cuid");
+constexpr std::string_view dbRef("db");
+constexpr std::string_view databaseRef("database");
+constexpr std::string_view globallyUniqueIdRef("globallyUniqueId");
 
 /// @brief extract the collection id from VelocyPack
 arangodb::DataSourceId getCid(arangodb::velocypack::Slice const& slice) {
@@ -157,7 +156,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
       // We must see our own writes, because we may have to remove conflicting documents
       // (that we just inserted) as documents may be replicated in unexpected order.
-      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult, arangodb::ReadOwnWrites::yes).ok()) {
+      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringView(), lookupResult, arangodb::ReadOwnWrites::yes).ok()) {
         // determine if we already have this revision or need to replace the
         // one we have
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);

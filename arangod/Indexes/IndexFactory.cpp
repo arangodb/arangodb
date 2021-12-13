@@ -38,11 +38,11 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <limits.h>
 
 #include <regex>
+#include <string_view>
 
 namespace {
 
@@ -356,7 +356,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
     return Result(TRI_ERROR_BAD_PARAMETER);
   }
   
-  std::unordered_set<velocypack::StringRef> fields;
+  std::unordered_set<std::string_view> fields;
   auto fieldsSlice = definition.get(StaticStrings::IndexFields);
 
   if (fieldsSlice.isArray()) {
@@ -371,7 +371,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
                       "index field names must be non-empty strings");
       }
       
-      velocypack::StringRef f(fieldName);
+      std::string_view f = fieldName.stringView();
 
       if (f.empty()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
@@ -389,7 +389,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
                       "cannot index a sub-attribute in this type of index");
       }
 
-      if (std::regex_match(f.toString(), idRegex)) {
+      if (std::regex_match(f.begin(), f.end(), idRegex)) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "_id attribute cannot be indexed");
       }
@@ -429,7 +429,7 @@ Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& bui
   // "fields" is a list of fields when we have got here
   for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
     std::vector<basics::AttributeName> temp;
-    TRI_ParseAttributeString(it.stringRef(), temp, allowExpansion);
+    TRI_ParseAttributeString(it.stringView(), temp, allowExpansion);
 
     builder.add(it);
   }

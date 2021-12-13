@@ -38,6 +38,7 @@
 #include "Containers/FlatHashMap.h"
 
 #include <memory>
+#include <string>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -68,7 +69,7 @@ class HashedCollectExecutorInfos {
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
    */
   HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-                             RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
+                             RegisterId collectRegister, std::vector<std::string> aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                              velocypack::Options const* vpackOptions, 
                              arangodb::ResourceMonitor& resourceMonitor);

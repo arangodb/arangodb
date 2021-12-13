@@ -24,8 +24,6 @@
 
 #include "IResearchCommon.h"
 
-#include <velocypack/StringRef.h>
-
 namespace {
 static const char* TYPE = "arangosearch";
 }
@@ -37,7 +35,7 @@ LogTopic TOPIC(::TYPE, LogLevel::INFO);
 
 arangodb::LogicalDataSource::Type const& dataSourceType() {
   static auto& type =
-      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(TYPE));
+      arangodb::LogicalDataSource::Type::emplace(std::string_view(TYPE));
 
   return type;
 }

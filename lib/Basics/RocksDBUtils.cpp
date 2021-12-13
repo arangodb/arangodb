@@ -27,9 +27,10 @@
 
 #include <rocksdb/convenience.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 
 #include "Basics/voc-errors.h"
+
+#include <string_view>
 
 namespace arangodb {
 namespace rocksutils {
@@ -38,7 +39,7 @@ static bool hasObjectIds(VPackSlice const& inputSlice) {
   bool rv = false;
   if (inputSlice.isObject()) {
     for (auto objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
-      if (arangodb::velocypack::StringRef(objectPair.key) == "objectId") {
+      if (objectPair.key.stringView() == "objectId") {
         return true;
       }
       rv = hasObjectIds(objectPair.value);
@@ -61,7 +62,7 @@ static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const&
   if (inputSlice.isObject()) {
     builder.openObject();
     for (auto objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
-      if (arangodb::velocypack::StringRef(objectPair.key) == "objectId") {
+      if (objectPair.key.stringView() == "objectId") {
         continue;
       }
       builder.add(objectPair.key);

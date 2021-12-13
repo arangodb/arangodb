@@ -70,7 +70,7 @@ auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
 
 auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) const
     -> bool {
-  return _vertexData.find(vertexKey) != _vertexData.end();
+  return _vertexData.contains(vertexKey);
 }
 
 auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) const -> bool {
@@ -78,18 +78,20 @@ auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) cons
 }
 
 auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const -> VPackSlice {
-  if (!isVertexCached(vertex)) {
+  auto it = _vertexData.find(vertex);
+  if (it == _vertexData.end()) {
     return VPackSlice::nullSlice();
   }
-  return _vertexData.at(vertex);
+  return it->second;
 }
 
 auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const
     -> VPackSlice {
-  if (!isEdgeCached(edge)) {
+  auto it = _edgeData.find(edge);
+  if (it == _edgeData.end()) {
     return VPackSlice::nullSlice();
   }
-  return _edgeData.at(edge);
+  return it->second;
 }
 
 auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) -> arangodb::velocypack::HashedStringRef {

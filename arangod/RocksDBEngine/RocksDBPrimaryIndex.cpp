@@ -135,7 +135,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
 
     _done = true;
     LocalDocumentId documentId =
-        _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()), canReadOwnWrites());
+        _index->lookupKey(_trx, _key->slice().stringView(), canReadOwnWrites());
     if (documentId.isSet()) {
       cb(documentId);
     }
@@ -154,7 +154,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
 
     _done = true;
     LocalDocumentId documentId =
-        _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()), canReadOwnWrites());
+        _index->lookupKey(_trx, _key->slice().stringView(), canReadOwnWrites());
     if (documentId.isSet()) {
       auto data = SliceCoveringData(_key->slice());
       cb(documentId, &data);
@@ -231,7 +231,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     while (limit > 0) {
       // This is an in-iterator, and "in"-checks never need to observe own writes.
       LocalDocumentId documentId =
-          _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator), ReadOwnWrites::no);
+          _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
       if (documentId.isSet()) {
         cb(documentId);
         --limit;
@@ -257,7 +257,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     while (limit > 0) {
       // This is an in-iterator, and "in"-checks never need to observe own writes.
       LocalDocumentId documentId =
-          _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator), ReadOwnWrites::no);
+          _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
       if (documentId.isSet()) {
         auto data = SliceCoveringData(*_iterator);
         cb(documentId, &data);
@@ -376,7 +376,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     do {
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
-      arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(_iterator->key());
+      std::string_view key = RocksDBKey::primaryKey(_iterator->key());
 
       builder->clear();
       builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
@@ -553,7 +553,7 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                               arangodb::velocypack::StringRef keyRef,
+                                               std::string_view keyRef,
                                                ReadOwnWrites readOwnWrites) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(objectId(), keyRef);
@@ -607,7 +607,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 /// in this case the caller must fetch the revision id from the actual
 /// document
 bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
-                                         arangodb::velocypack::StringRef keyRef,
+                                         std::string_view keyRef,
                                          LocalDocumentId& documentId,
                                          RevisionId& revisionId,
                                          ReadOwnWrites readOwnWrites) const {
@@ -691,7 +691,7 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
   TRI_ASSERT(keySlice.isString());
 
   RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
   return probeKey(trx, mthd, key, keySlice, options, /*insert*/ true);
 }
@@ -707,7 +707,7 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
   TRI_ASSERT(keySlice.isString());
 
   RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
   return probeKey(trx, mthd, key, keySlice, options, /*insert*/ false);
 }
@@ -724,7 +724,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   TRI_ASSERT(keySlice.isString());
   
   RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
   
   Result res;
 
@@ -763,7 +763,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
   RocksDBKeyLeaser key(&trx);
 
-  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
   RevisionId revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
@@ -788,7 +788,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   TRI_ASSERT(keySlice.isString());
   RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
   invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
