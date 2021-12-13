@@ -1,6 +1,8 @@
 devel
 -----
 
+* Cancel ongoing RocksDB compactions on server shutdown.
+
 * Improve some RocksDB-related error messages during server startup.
 
 * Added startup options to adjust previously hard-coded parameters for the 

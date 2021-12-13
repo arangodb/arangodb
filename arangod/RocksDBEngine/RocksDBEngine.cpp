@@ -138,6 +138,9 @@ DECLARE_COUNTER(arangodb_revision_tree_resurrections_total, "Number of revision 
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
+// global flag to cancel all compactions. will be flipped to true on shutdown
+std::atomic<bool> cancelCompactions{false};
+
 // minimum value for --rocksdb.sync-interval (in ms)
 // a value of 0 however means turning off the syncing altogether!
 static constexpr uint64_t minSyncInterval = 5;
@@ -1020,6 +1023,8 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
+  // from now on, all started compactions will be canceled
+  ::cancelCompactions.store(true, std::memory_order_relaxed);
 }
 
 void RocksDBEngine::stop() {
@@ -1679,6 +1684,7 @@ void RocksDBEngine::processCompactions() {
         double start = TRI_microtime();
         try {
           rocksdb::CompactRangeOptions opts;
+          opts.canceled = &::cancelCompactions;
           rocksdb::Slice b = bounds.start(), e = bounds.end();
           _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
         } catch (std::exception const& ex) {
