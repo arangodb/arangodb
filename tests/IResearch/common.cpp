@@ -65,7 +65,7 @@
 #include "utils/string.hpp"
 #include "utils/utf8_path.hpp"
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "../3rdParty/iresearch/tests/tests_config.hpp"
 
 #include <libplatform/libplatform.h>
 #include <v8.h>
@@ -445,8 +445,8 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
 ) {
   std::unordered_set<std::string> expectedRules;
   for (auto ruleId : expectedRulesIds) {
-    arangodb::velocypack::StringRef translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
-    expectedRules.emplace(translated.toString());
+    std::string_view translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
+    expectedRules.emplace(std::string(translated));
   }
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), bindVars,
@@ -545,7 +545,7 @@ void setDatabasePath(arangodb::DatabasePathFeature& feature) {
 
   path /= TRI_GetTempPath();
   path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
-  const_cast<std::string&>(feature.directory()) = path.u8string();
+  const_cast<std::string&>(feature.directory()) = path.string();
 }
 
 void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs, const char* where) {

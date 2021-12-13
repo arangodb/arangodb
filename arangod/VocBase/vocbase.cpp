@@ -34,7 +34,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
@@ -63,12 +62,12 @@
 #include "Containers/Helpers.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogParticipant.h"
-#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -78,6 +77,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/Version.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -575,13 +576,17 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
   auto collection =
       std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
 
+  return persistCollection(collection);
+}
+
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::persistCollection(std::shared_ptr<arangodb::LogicalCollection>& collection){
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   // reserve room for the new collection
   arangodb::containers::Helpers::reserveSpace(_collections, 8);
   arangodb::containers::Helpers::reserveSpace(_deadCollections, 8);
 
-  auto it = _dataSourceByName.find(name);
+  auto it = _dataSourceByName.find(collection->name());
 
   if (it != _dataSourceByName.end()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
@@ -725,6 +730,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* colle
                                         false);  // always a full-update
 
       if (!res.ok()) {
+        // TODO: Here we're only returning the errorNumber. The errorMessage is being ignored here. Needs refactor.
         events::DropCollection(dbName, colName, res.errorNumber());
         return res.errorNumber();
       }
@@ -1695,9 +1701,15 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
 }
 
 void TRI_vocbase_t::processCollectionsOnShutdown(std::function<void(LogicalCollection*)> const& cb) {
-  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections; 
+  
+  // make a copy of _collections, so we can call the callback function without the lock
+  {
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+    collections = _collections;
+  }
 
-  for (auto const& it : _collections) {
+  for (auto const& it : collections) {
     cb(it.get());
   }
 }
@@ -1820,7 +1832,7 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    arangodb::velocypack::StringRef key(it.key());
+    std::string_view key(it.key().stringView());
     // _id, _key, _rev. minimum size here is 3
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
@@ -1837,7 +1849,7 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice, true);
   while (it.valid()) {
-    arangodb::velocypack::StringRef key(it.key());
+    std::string_view key(it.key().stringView());
     // _id, _key, _rev, _from, _to. minimum size here is 3
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&

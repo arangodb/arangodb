@@ -28,7 +28,6 @@
 #include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-
 using namespace arangodb;
 using namespace arangodb::httpclient;
 using namespace arangodb::velocypack;
@@ -47,7 +46,7 @@ TEST(HttpResponseCheckerTest, testEmptyWithClientErrorMsg) {
 TEST(HttpResponseCheckerTest, testErrorResponse) {
   std::unique_ptr<httpclient::SimpleHttpResult> response = std::make_unique<httpclient::SimpleHttpResult>();
   response->setResultType(httpclient::SimpleHttpResult::resultTypes{arangodb::httpclient::SimpleHttpResult::COULD_NOT_CONNECT});
-  auto check = HttpResponseChecker::check("", response.get(), "Http request");
+  auto check = HttpResponseChecker::check("", response.get(), "Http request",  "{\"abc123\":\"foo\"}", HttpResponseChecker::PayloadType::JSON);
   EXPECT_EQ(check.errorNumber(), TRI_ERROR_INTERNAL);
   EXPECT_NE(check.errorMessage().find("Http request"), std::string::npos);
 }
@@ -159,9 +158,10 @@ TEST(HttpResponseCheckerTest, testErrorResponseHtml) {
   response->setResultType(httpclient::SimpleHttpResult::resultTypes{arangodb::httpclient::SimpleHttpResult::COMPLETE});
   response->setHttpReturnMessage("NOT FOUND");
   response->setHttpReturnCode(404);
-  auto check = HttpResponseChecker::check("", response.get(), "foo bar", "abc123");
+  auto check = HttpResponseChecker::check("", response.get(), "foo bar", "{\"abc123\":\"foo\"}", HttpResponseChecker::PayloadType::JSON);
   EXPECT_EQ(check.errorNumber(), ErrorCode{response->getHttpReturnCode()});
   EXPECT_NE(check.errorMessage().find(response->getHttpReturnMessage()), std::string::npos);
+  EXPECT_NE(check.errorMessage().find("{\"abc123\":\"foo\"}"), std::string::npos);
   EXPECT_NE(check.errorMessage().find("foo bar"), std::string::npos);
   EXPECT_NE(check.errorMessage().find("abc123"), std::string::npos);
 }

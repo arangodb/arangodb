@@ -333,7 +333,7 @@ class bounded_object_pool {
       p = value.get();
 
       if (p) {
-        slot.value.store(p, std::memory_order::memory_order_release);
+        slot.value.store(p, std::memory_order_release);
         return ptr(*head, *p);
       }
 

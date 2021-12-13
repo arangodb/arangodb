@@ -22,10 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H
-#define ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H 1
-
-#include <velocypack/StringRef.h>
+#pragma once
 
 #include "Basics/Result.h"
 #include "IResearchLinkMock.h"
@@ -39,6 +36,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+
+#include <string_view>
 
 namespace arangodb {
 
@@ -92,7 +91,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                   arangodb::OperationOptions& options) override;
 
   virtual arangodb::Result lookupKey(
-      arangodb::transaction::Methods*, arangodb::velocypack::StringRef,
+      arangodb::transaction::Methods*, std::string_view,
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&,
       arangodb::ReadOwnWrites) const override;
   virtual size_t memory() const override;
@@ -104,7 +103,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                                               arangodb::TransactionId tid) override;
 
   virtual arangodb::Result read(arangodb::transaction::Methods*,
-                                arangodb::velocypack::StringRef const& key,
+                                std::string_view key,
                                 arangodb::IndexIterator::DocumentCallback const& cb,
                                 arangodb::ReadOwnWrites) const override;
   virtual arangodb::Result read(arangodb::transaction::Methods* trx,
@@ -149,7 +148,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   // keep old documents memory, unclear if needed.
   std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _graveyard;
   // map _key => data. Keyslice references memory in the value
-  std::unordered_map<arangodb::velocypack::StringRef, DocElement> _documents;
+  std::unordered_map<std::string_view, DocElement> _documents;
 };
 
 class TransactionCollectionMock : public arangodb::TransactionCollection {
@@ -177,6 +176,7 @@ class TransactionStateMock : public arangodb::TransactionState {
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
+  virtual arangodb::Result performIntermediateCommitIfRequired(arangodb::DataSourceId cid) override;
   virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
   TRI_voc_tick_t lastOperationTick() const noexcept override;
@@ -289,5 +289,3 @@ class StorageEngineMock : public arangodb::StorageEngine {
  private:
   TRI_voc_tick_t _releasedTick;
 };
-
-#endif

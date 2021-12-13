@@ -36,7 +36,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -81,8 +80,8 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start, arangodb::velocypack::Slice const& end) {
   TRI_ASSERT(start.isString());
   TRI_ASSERT(end.isString());
-  _start = arangodb::velocypack::StringRef(start);
-  _end = arangodb::velocypack::StringRef(end);
+  _start = start.stringView();
+  _end = end.stringView();
 
   clear();
   _traversalDone = false;
@@ -176,13 +175,13 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
         VPackSlice doc = _options.cache()->lookupToken(eid);
         double weight = _options.weightEdge(doc);
         if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-          VertexRef id = _options.cache()->persistString(VertexRef(edge));
+          VertexRef id = _options.cache()->persistString(edge.stringView());
           steps.emplace_back(std::move(eid), id, weight);
         }
       } else {
-        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
+        VertexRef other(transaction::helpers::extractFromFromDocument(edge).stringView());
         if (other == vertex) {
-          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+          other = transaction::helpers::extractToFromDocument(edge).stringView();
         }
         if (other != vertex) {
           VertexRef id = _options.cache()->persistString(other);
@@ -194,13 +193,13 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
     cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorIdx*/) -> void {
       if (edge.isString()) {
         if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-          VertexRef id = _options.cache()->persistString(VertexRef(edge));
+          VertexRef id = _options.cache()->persistString(edge.stringView());
           steps.emplace_back(std::move(eid), id, 1);
         }
       } else {
-        VertexRef other(transaction::helpers::extractFromFromDocument(edge));
+        VertexRef other(transaction::helpers::extractFromFromDocument(edge).stringView());
         if (other == vertex) {
-          other = VertexRef(transaction::helpers::extractToFromDocument(edge));
+          other = transaction::helpers::extractToFromDocument(edge).stringView();
         }
         if (other != vertex) {
           VertexRef id = _options.cache()->persistString(other);

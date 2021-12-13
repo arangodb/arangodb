@@ -1,0 +1,35 @@
+////
+Copyright 2019-2021 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#changelog]
+# Revision History
+:idprefix: changelog_
+
+## Changes in 1.76.0
+
+* Improved generated code for the double buffered case.
+
+## Changes in 1.74.0
+
+* Added support for derived types in `visit`
+* Improved compilation performance for many (hundreds of) alternatives.
+* Added support for `visit<R>`
+
+## Changes in 1.73.0
+
+* Added support for `std::hash`, `boost::hash`.
+* `variant<T...>` is now trivial when all types in `T...` are trivial.
+  This improves performance by enabling it to be passed to, and returned
+  from, functions in registers.
+
+## Changes in 1.71.0
+
+After the Boost formal review, the implementation has been
+changed to provide the strong exception safety guarantee,
+instead of basic. `expected` has been removed.

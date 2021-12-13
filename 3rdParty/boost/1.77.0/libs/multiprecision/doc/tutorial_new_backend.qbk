@@ -1,0 +1,84 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:new_backend Writing a New Backend]
+
+The formal requirements for a backend to class `number` are given in the reference, but to help
+speed and simplify the process there is a header [@../../test/skeleton_backend.hpp skeleton_backend.hpp]
+where all the methods needed to be written are declared but nothing is implemented.  The process of
+writing a new backend then simplifies to:
+
+* Save skeleton_backend.hpp under a new name and change its #include guards to match.
+* Search and replace `skeleton_backend` to the name of the new backend type.
+* Fill in the blanks in the class definition and for the compulsary non-members.
+* Don't forget to mark the functions as `inline`, `constexpr` and `noexcept` as required.
+* Optionally fill in some of the optional methods - the header declares these in rather
+  verbose form, for example with overloads for every single arithmetic type.  No sane backend
+  would ever implement all of these, just choose the ones that make sense and leave the others.
+* Add convenience typedefs for the actual instantiation(s) of class `number` that will use the new backend.
+
+To test the new backend, start with a basic arithmetic test, this is a test case under `libs/math/test`
+that looks something like:
+
+   #include <boost/multiprecision/my_new_number_type.hpp>
+   #include "test_arithmetic.hpp"
+
+   int main()
+   {
+      test<boost::multiprecision::my_new_number_type>();
+      return boost::report_errors();
+   }
+
+This will basically "instantiate everything", and perform a few runtime sanity checks; it is a very good test that you have written legal code!
+
+You should also create a "header include test" that verifies that the new header includes everything it should, see 
+[@../../test/include_test/mpfr_include_test.cpp mpfr_include_test.cpp] for an example.
+
+For integer types, you should add the new type to at least the following tests as well:
+
+* test_hash.cpp
+* test_int_io.cpp
+* test_move.cpp
+* test_numeric_limits.cpp
+
+For floating point types, you should add the new type to at least the following tests as well:
+
+* test_acos.cpp
+* test_asin.cpp
+* test_atan.cpp
+* test_constants.cpp
+* test_cos.cpp
+* test_cosh.cpp
+* test_exp.cpp
+* test_float_io.cpp
+* test_fpclassify.cpp
+* test_hash.cpp
+* test_log.cpp
+* test_move.cpp
+* test_numeric_limits.cpp
+* test_pow.cpp
+* test_round.cpp
+* test_sf_import_c99.cpp
+* test_sin.cpp
+* test_sinh.cpp
+* test_sqrt.cpp
+* test_tan.cpp
+* test_tanh.cpp
+* concepts/number_concept_check.cpp
+* concepts/sf_concept_check_basic.cpp
+* concepts/sf_concept_check_bessel.cpp
+* concepts/sf_concept_check_beta.cpp
+* concepts/sf_concept_check_beta_2.cpp
+* concepts/sf_concept_check_beta_3.cpp
+* concepts/sf_concept_check_elliptic.cpp
+* concepts/sf_concept_check_gamma.cpp
+* concepts/sf_concept_check_poly.cpp
+
+[endsect] [/section:new_backend Writing a New Backend]

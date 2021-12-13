@@ -1231,19 +1231,6 @@ std::vector<ExecutionNode*> ExecutionNode::getParents() const {
 
 bool ExecutionNode::hasParent() const { return (_parents.size() == 1); }
 
-/// @brief whether or not the node has any ancestor (parent at any distance)
-/// of this type
-bool ExecutionNode::hasParentOfType(ExecutionNode::NodeType type) const {
-  ExecutionNode* current = getFirstParent();
-  while (current != nullptr) {
-    if (current->getType() == type) {
-      return true;
-    }
-    current = current->getFirstParent();
-  }
-  return false;
-}
-
 ExecutionNode* ExecutionNode::getFirstParent() const {
   if (_parents.empty()) {
     return nullptr;
@@ -1590,7 +1577,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
 
 void EnumerateCollectionNode::setRandom() { _random = true; }
 
-bool EnumerateCollectionNode::isDeterministic() { return !_random; }
+bool EnumerateCollectionNode::isDeterministic() { return !_random && (canReadOwnWrites() == ReadOwnWrites::no); }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};

@@ -1,0 +1,41 @@
+# Convert Jamfile
+# Copyright (c) Vladimir Batov 2009-2014
+# Distributed under the Boost Software License, Version 1.0.
+# See copy at http://www.boost.org/LICENSE_1_0.txt.
+
+# bring in the rules for testing
+import testing ;
+
+project convert_test 
+    : requirements
+        <warnings>on
+        <toolset>icpc:<cxxflags>"-std=c++11"
+        <toolset>clang:<cxxflags>"-std=c++11"
+        <toolset>gcc:<warnings>all
+        <toolset>gcc:<cxxflags>"-O3 -std=c++0x -Wno-unused-variable -Wno-unused-local-typedefs -Wno-long-long"
+        <toolset>msvc:<warnings>all
+        <toolset>msvc:<cxxflags>"/wd4996 /wd4512 /wd4610 /wd4510 /wd4127 /wd4701 /wd4127 /wd4305 /wd4244 /wd4714 /wd4189"
+        <toolset>msvc:<asynch-exceptions>on
+        <toolset>msvc:<define>_CRT_SECURE_NO_DEPRECATE
+        <toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
+        <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+        <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
+        <include>../include
+    ;  
+
+exe convert_test_performance : performance.cpp /boost/timer//boost_timer /boost/chrono//boost_chrono ;
+exe convert_test_performance_spirit : performance_spirit.cpp ;
+
+run callable.cpp         :  :  :  : convert_test_callable ;
+run fallbacks.cpp        :  :  :  : convert_test_fallbacks ;
+run spirit_converter.cpp :  :  :  : convert_test_spirit_converter ;
+run stream_converter.cpp :  :  :  : convert_test_stream_converter ;
+run printf_converter.cpp :  :  :  : convert_test_printf_converter ;
+run strtol_converter.cpp :  :  :  : convert_test_strtol_converter ;
+run lcast_converter.cpp  :  :  :  : convert_test_lcast_converter ;
+run encryption.cpp       :  :  :  : convert_test_encryption ;
+run user_type.cpp        :  :  :  : convert_test_user_type ;
+run str_to_int.cpp       :  :  :  : convert_test_str_to_int ;
+run sfinae.cpp           :  :  :  : convert_test_sfinae ;
+run has_member.cpp       :  :  :  : convert_test_has_member ;
+

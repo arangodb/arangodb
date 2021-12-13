@@ -1,0 +1,84 @@
+[/
+ / Copyright (c) 2019 Raffi Enficiaud
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:master_test_suite Master test suite]
+
+As defined in introduction section the master test suite is the *root* node of the test tree. Each test module built
+with the __UTF__ always has the (unique) master test suite defined. The __UTF__ maintain the master test suite instance
+internally. All other test units are registered as direct or indirect children of the master test suite.
+
+``
+namespace boost {
+namespace unit_test {
+class master_test_suite_t : public test_suite
+{
+  /// implementation details
+public:
+  int argc;
+  char** argv;
+};
+
+} // namespace unit_test
+} // namespace boost
+``
+
+
+To access single instance of the master test suite use the following interface:
+
+``
+namespace boost {
+namespace unit_test {
+namespace framework {
+
+master_test_suite_t& master_test_suite();
+
+} // namespace framework
+} // namespace unit_test
+} // namespace boost
+``
+
+
+[h4 Command line arguments access interface]
+
+Master test suite implemented as an extension to the regular test suite, since it maintains references to the
+command line arguments passed to the test module. To access the command line arguments use
+
+``
+boost::unit_test::framework::master_test_suite().argc
+boost::unit_test::framework::master_test_suite().argv
+``
+
+In below example references to the command line arguments are accessible either as an initialization function
+parameters or as members of the master test suite. Both references point to the same values. A test module that
+uses the alternative initialization function specification can only access command line arguments through the
+master test suite.
+
+
+Returning to the free function example, let's modify initialization function to check for absence of any
+test module arguments.
+
+[bt_example example13..Command line access in initialization function..run]
+
+[#ref_BOOST_TEST_MODULE][h4 Naming the ['Master test suite]]
+
+The master test suite is created with default name ['Master Test Suite]. There are two methods two
+reset the name to a different value: using the macro __BOOST_TEST_MODULE__
+and from within the test module initialization function. Former is used for test modules that don't have the
+manually implemented initialization function. Following examples illustrate these methods.
+
+[bt_example example14..Naming master test suite using the macro __BOOST_TEST_MODULE__..run]
+
+If the macro __BOOST_TEST_MODULE__ is defined, the test module initialization
+function is [*automatically generated] and the
+macro value becomes the name of the master test suite. The name may include spaces.
+
+[bt_example example15..Naming master test suite explicitly in the test module initialization function..run]
+
+Without the __BOOST_TEST_MAIN__ and the __BOOST_TEST_MODULE__ flags defined, the test module initialization
+function has to be manually implemented. The master test suite name can be reset at any point within this function.
+
+[endsect] [/ master test suite]

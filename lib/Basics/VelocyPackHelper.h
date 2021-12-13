@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <type_traits>
 
@@ -36,7 +37,6 @@
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -167,20 +167,12 @@ class VelocyPackHelper {
     arangodb::velocypack::Slice const* rhsBase;
   };
 
-  struct AttributeSorterUTF8 {
-    bool operator()(std::string const& l, std::string const& r) const;
+  struct AttributeSorterUTF8StringView {
+    bool operator()(std::string_view l, std::string_view r) const;
   };
 
-  struct AttributeSorterUTF8StringRef {
-    bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const;
-  };
-
-  struct AttributeSorterBinary {
-    bool operator()(std::string const& l, std::string const& r) const noexcept;
-  };
-
-  struct AttributeSorterBinaryStringRef {
-    bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const noexcept;
+  struct AttributeSorterBinaryStringView {
+    bool operator()(std::string_view l, std::string_view r) const noexcept;
   };
 
 
@@ -228,7 +220,7 @@ class VelocyPackHelper {
   template <typename T, typename NumberType = T, typename NameType>
   static T getNumericValue(VPackSlice const& slice, NameType const& name, T defaultValue);
 
-  /// @brief returns a boolean sub-element, or a default if it does not exist
+  /// @brief returns a boolean sub-element, or a default if it does not exist or is not boolean
   template <typename NameType>
   static bool getBooleanValue(VPackSlice const& slice, NameType const& name, bool defaultValue) {
     if (slice.isObject()) {
@@ -267,32 +259,32 @@ class VelocyPackHelper {
     }
     return sub.getNumericValue<T>();
   }
-
-  /// @return string ref, or the defaultValue if slice is not a string
-  static arangodb::velocypack::StringRef getStringRef(
+  
+  /// @return string view, or the defaultValue if slice is not a string
+  static std::string_view getStringView(
       arangodb::velocypack::Slice slice,
-      arangodb::velocypack::StringRef const& defaultValue) noexcept {
+      std::string_view defaultValue) noexcept {
     if (slice.isExternal()) {
       slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
     }
 
     if (slice.isString()) {
-      return arangodb::velocypack::StringRef(slice);
+      return slice.stringView();
     }
     return defaultValue;
   }
 
-  /// @return string ref, or the defaultValue if slice[key] is not a string
+  /// @return string view, or the defaultValue if slice[key] is not a string
   template <typename T>
-  static arangodb::velocypack::StringRef getStringRef(
+  static std::string_view getStringView(
       arangodb::velocypack::Slice slice, T const& key,
-      arangodb::velocypack::StringRef const& defaultValue) noexcept {
+      std::string_view defaultValue) noexcept {
     if (slice.isExternal()) {
       slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
     }
 
     if (slice.isObject()) {
-      return getStringRef(slice.get(key), defaultValue);
+      return getStringView(slice.get(key), defaultValue);
     }
     return defaultValue;
   }
@@ -417,18 +409,6 @@ inline ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::st
 
 }  // namespace basics
 }  // namespace arangodb
-
-namespace std {
-
-template <>
-struct less<arangodb::velocypack::StringRef> {
-  bool operator()(arangodb::velocypack::StringRef const& lhs,
-                  arangodb::velocypack::StringRef const& rhs) const noexcept {
-    return lhs.compare(rhs) < 0;
-  }
-};
-
-}  // namespace std
 
 /// @brief Simple and limited logging of VelocyPack slices
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,

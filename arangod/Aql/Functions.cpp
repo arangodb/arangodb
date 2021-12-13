@@ -50,6 +50,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
@@ -86,6 +87,10 @@
 #include "utils/math_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/SmartVertexCollection.h"
+#endif
+
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -103,7 +108,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 
@@ -121,7 +125,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 using namespace std::chrono;
-using namespace date;
 
 /*
 - always specify your user facing function name MYFUNC in error generators
@@ -207,12 +210,12 @@ bool isValidDocument(VPackSlice slice) {
   slice = slice.resolveExternals();
 
   if (slice.isObject()) {
-    std::unordered_set<VPackStringRef> keys;
+    containers::FlatHashSet<std::string_view> keys;
 
     auto it = VPackObjectIterator(slice, true);
 
     while (it.valid()) {
-      if (!keys.emplace(it.key().stringRef()).second) {
+      if (!keys.emplace(it.key().stringView()).second) {
         // duplicate key
         return false;
       }
@@ -280,8 +283,8 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
                       tp_sys_clock_ms const& tp, bool utc = true, bool registerWarning = true) {
   char formatted[24];
 
-  year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
+  date::year_month_day ymd{floor<date::days>(tp)};
+  auto day_time = date::make_time(tp - date::sys_days(ymd));
 
   auto y = static_cast<int>(ymd.year());
   // quick basic check here for dates outside the allowed range
@@ -402,8 +405,8 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   bool isInteger = durationUnitsSlice.isInteger();
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
-  year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
+  date::year_month_day ymd{floor<date::days>(tp)};
+  auto day_time = date::make_time(tp - date::sys_days(ymd));
 
   DateSelectionModifier flag = ::parseDateModifierFlag(durationType);
   double intPart = 0.0;
@@ -420,9 +423,9 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     case YEAR:
       durationUnits = std::modf(durationUnits, &intPart);
       if (isSubtract) {
-        ymd -= years{static_cast<int64_t>(intPart)};
+        ymd -= date::years{static_cast<int64_t>(intPart)};
       } else {
-        ymd += years{static_cast<int64_t>(intPart)};
+        ymd += date::years{static_cast<int64_t>(intPart)};
       }
       if (isInteger || durationUnits == 0.0) {
         break;  // We are done
@@ -432,9 +435,9 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     case MONTH:
       durationUnits = std::modf(durationUnits, &intPart);
       if (isSubtract) {
-        ymd -= months{static_cast<int64_t>(intPart)};
+        ymd -= date::months{static_cast<int64_t>(intPart)};
       } else {
-        ymd += months{static_cast<int64_t>(intPart)};
+        ymd += date::months{static_cast<int64_t>(intPart)};
       }
       if (isInteger || durationUnits == 0.0) {
         break;  // We are done
@@ -444,11 +447,11 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
     // After this fall through the date may actually a bit off
     case DAY:
       // From here on we do not need leap-day handling
-      ms = days{1};
+      ms = date::days{1};
       ms *= durationUnits;
       break;
     case WEEK:
-      ms = weeks{1};
+      ms = date::weeks{1};
       ms *= durationUnits;
       break;
     case HOUR:
@@ -476,11 +479,11 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
   tp_sys_clock_ms resTime;
   if (isSubtract) {
     resTime =
-        tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() -
+        tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() -
                         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   } else {
     resTime =
-        tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() +
+        tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() +
                         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   }
   return ::timeAqlValue(expressionContext, AFN, resTime);
@@ -488,10 +491,10 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
 
 AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionContext,
                                                tp_sys_clock_ms const& tp,
-                                               arangodb::velocypack::StringRef duration,
+                                               std::string_view duration,
                                                char const* AFN, bool isSubtract) {
-  year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
+  date::year_month_day ymd{floor<date::days>(tp)};
+  auto day_time = date::make_time(tp - date::sys_days(ymd));
   
   arangodb::basics::ParsedDuration parsedDuration;
   if (!arangodb::basics::parseIsoDuration(duration, parsedDuration)) {
@@ -500,16 +503,16 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
   }
 
   if (isSubtract) {
-    ymd -= years{parsedDuration.years};
-    ymd -= months{parsedDuration.months};
+    ymd -= date::years{parsedDuration.years};
+    ymd -= date::months{parsedDuration.months};
   } else {
-    ymd += years{parsedDuration.years};
-    ymd += months{parsedDuration.months};
+    ymd += date::years{parsedDuration.years};
+    ymd += date::months{parsedDuration.months};
   }
 
   milliseconds ms{0};
-  ms += weeks{parsedDuration.weeks};
-  ms += days{parsedDuration.days};
+  ms += date::weeks{parsedDuration.weeks};
+  ms += date::days{parsedDuration.days};
   ms += hours{parsedDuration.hours};
   ms += minutes{parsedDuration.minutes};
   ms += seconds{parsedDuration.seconds};
@@ -517,9 +520,9 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionCont
 
   tp_sys_clock_ms resTime;
   if (isSubtract) {
-    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() - ms};
+    resTime = tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() - ms};
   } else {
-    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
+    resTime = tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() + ms};
   }
   return ::timeAqlValue(expressionContext, AFN, resTime);
 }
@@ -543,7 +546,7 @@ bool parameterToTimePoint(ExpressionContext* expressionContext,
   }
 
   if (value.isString()) {
-    if (!basics::parseDateTime(value.slice().stringRef(), tp)) {
+    if (!basics::parseDateTime(value.slice().stringView(), tp)) {
       aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
@@ -673,7 +676,7 @@ std::string extractCollectionName(transaction::Methods* trx,
 }
 
 /// @brief extract attribute names from the arguments
-void extractKeys(std::unordered_set<std::string>& names, ExpressionContext* expressionContext,
+void extractKeys(containers::FlatHashSet<std::string>& names, ExpressionContext* expressionContext,
                  VPackOptions const* vopts, VPackFunctionParameters const& parameters,
                  size_t startParameter, char const* functionName) {
   size_t const n = parameters.size();
@@ -818,7 +821,7 @@ bool sortNumberList(VPackOptions const* vopts, AqlValue const& values,
 ///        Recursively iterates over sub-object and unsets or keeps their values
 ///        as well
 void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
-                 std::unordered_set<std::string> const& names,
+                 containers::FlatHashSet<std::string> const& names,
                  bool unset,  // true means unset, false means keep
                  bool recursive, VPackBuilder& result) {
   TRI_ASSERT(value.isObject());
@@ -1018,15 +1021,15 @@ AqlValue dateFromParameters(ExpressionContext* expressionContext,
       }
     }
 
-    years y{extractFunctionParameterValue(parameters, 0).toInt64()};
-    months m{extractFunctionParameterValue(parameters, 1).toInt64()};
-    days d{extractFunctionParameterValue(parameters, 2).toInt64()};
+    date::years y{extractFunctionParameterValue(parameters, 0).toInt64()};
+    date::months m{extractFunctionParameterValue(parameters, 1).toInt64()};
+    date::days d{extractFunctionParameterValue(parameters, 2).toInt64()};
 
-    if ((y < years{0} || y > years{9999}) || (m < months{0}) || (d < days{0})) {
+    if ((y < date::years{0} || y > date::years{9999}) || (m < date::months{0}) || (d < date::days{0})) {
       registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
-    year_month_day ymd = year{y.count()} / m.count() / d.count();
+    date::year_month_day ymd = date::year{y.count()} / m.count() / d.count();
 
     // Parse the time
     hours h(0);
@@ -1057,7 +1060,7 @@ AqlValue dateFromParameters(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    time = sys_days(ymd).time_since_epoch();
+    time = date::sys_days(ymd).time_since_epoch();
     time += h;
     time += min;
     time += s;
@@ -1456,7 +1459,7 @@ AqlValue Functions::Typename(ExpressionContext*, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   char const* type = value.getTypeString();
 
-  return AqlValue(TRI_CHAR_LENGTH_PAIR(type));
+  return AqlValue(type, std::strlen(type));
 }
 
 /// @brief function TO_NUMBER
@@ -3531,7 +3534,7 @@ AqlValue Functions::IsDatestring(ExpressionContext*, AstNode const&,
 
   if (value.isString()) {
     tp_sys_clock_ms tp;  // unused
-    isValid = basics::parseDateTime(value.slice().stringRef(), tp);
+    isValid = basics::parseDateTime(value.slice().stringView(), tp);
   }
 
   return AqlValue(AqlValueHintBool(isValid));
@@ -3546,7 +3549,7 @@ AqlValue Functions::DateDayOfWeek(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  weekday wd{floor<days>(tp)};
+  date::weekday wd{floor<date::days>(tp)};
 
   return AqlValue(AqlValueHintUInt(wd.c_encoding()));
 }
@@ -3560,7 +3563,7 @@ AqlValue Functions::DateYear(ExpressionContext* expressionContext, AstNode const
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  auto ymd = year_month_day(floor<days>(tp));
+  auto ymd = date::year_month_day(floor<date::days>(tp));
   // Not the library has operator (int) implemented...
   int64_t year = static_cast<int64_t>((int)ymd.year());
   return AqlValue(AqlValueHintInt(year));
@@ -3576,7 +3579,7 @@ AqlValue Functions::DateMonth(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  auto ymd = year_month_day(floor<days>(tp));
+  auto ymd = date::year_month_day(floor<date::days>(tp));
   // The library has operator (unsigned) implemented
   uint64_t month = static_cast<uint64_t>((unsigned)ymd.month());
   return AqlValue(AqlValueHintUInt(month));
@@ -3592,7 +3595,7 @@ AqlValue Functions::DateDay(ExpressionContext* expressionContext, AstNode const&
     return AqlValue(AqlValueHintNull());
   }
 
-  auto ymd = year_month_day(floor<days>(tp));
+  auto ymd = date::year_month_day(floor<date::days>(tp));
   // The library has operator (unsigned) implemented
   uint64_t day = static_cast<uint64_t>((unsigned)ymd.day());
   return AqlValue(AqlValueHintUInt(day));
@@ -3608,7 +3611,7 @@ AqlValue Functions::DateHour(ExpressionContext* expressionContext, AstNode const
     return AqlValue(AqlValueHintNull());
   }
 
-  auto day_time = make_time(tp - floor<days>(tp));
+  auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t hours = day_time.hours().count();
   return AqlValue(AqlValueHintUInt(hours));
 }
@@ -3624,7 +3627,7 @@ AqlValue Functions::DateMinute(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto day_time = make_time(tp - floor<days>(tp));
+  auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t minutes = day_time.minutes().count();
   return AqlValue(AqlValueHintUInt(minutes));
 }
@@ -3640,7 +3643,7 @@ AqlValue Functions::DateSecond(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto day_time = make_time(tp - floor<days>(tp));
+  auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t seconds = day_time.seconds().count();
   return AqlValue(AqlValueHintUInt(seconds));
 }
@@ -3655,7 +3658,7 @@ AqlValue Functions::DateMillisecond(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
-  auto day_time = make_time(tp - floor<days>(tp));
+  auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t millis = day_time.subseconds().count();
   return AqlValue(AqlValueHintUInt(millis));
 }
@@ -3671,11 +3674,11 @@ AqlValue Functions::DateDayOfYear(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto ymd = year_month_day(floor<days>(tp));
-  auto yyyy = year{ymd.year()};
+  auto ymd = date::year_month_day(floor<date::days>(tp));
+  auto yyyy = date::year{ymd.year()};
   // we construct the date with the first day in the year:
-  auto firstDayInYear = yyyy / jan / day{0};
-  uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
+  auto firstDayInYear = yyyy / date::jan / date::day{0};
+  uint64_t daysSinceFirst = duration_cast<date::days>(tp - date::sys_days(firstDayInYear)).count();
 
   return AqlValue(AqlValueHintUInt(daysSinceFirst));
 }
@@ -3691,7 +3694,7 @@ AqlValue Functions::DateIsoWeek(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  iso_week::year_weeknum_weekday yww{floor<days>(tp)};
+  iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
   // The (unsigned) operator is overloaded...
   uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
   return AqlValue(AqlValueHintUInt(isoWeek));
@@ -3708,7 +3711,7 @@ AqlValue Functions::DateLeapYear(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  year_month_day ymd{floor<days>(tp)};
+  date::year_month_day ymd{floor<date::days>(tp)};
 
   return AqlValue(AqlValueHintBool(ymd.year().is_leap()));
 }
@@ -3724,8 +3727,8 @@ AqlValue Functions::DateQuarter(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  year_month_day ymd{floor<days>(tp)};
-  month m = ymd.month();
+  date::year_month_day ymd{floor<date::days>(tp)};
+  date::month m = ymd.month();
 
   // Library has unsigned operator implemented.
   uint64_t part = static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
@@ -3745,8 +3748,8 @@ AqlValue Functions::DateDaysInMonth(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto ymd = year_month_day{floor<days>(tp)};
-  auto lastMonthDay = ymd.year() / ymd.month() / last;
+  auto ymd = date::year_month_day{floor<date::days>(tp)};
+  auto lastMonthDay = ymd.year() / ymd.month() / date::last;
 
   // The Library has operator unsigned implemented
   return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(unsigned(lastMonthDay.day()))));
@@ -3757,8 +3760,6 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
                               AstNode const&,
                               VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_TRUNC";
-  using namespace std::chrono;
-  using namespace date;
 
   tp_sys_clock_ms tp;
 
@@ -3776,13 +3777,13 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   std::string duration = durationType.slice().copyString();
   basics::StringUtils::tolowerInPlace(duration);
 
-  year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
+  date::year_month_day ymd{floor<date::days>(tp)};
+  auto day_time = date::make_time(tp - date::sys_days(ymd));
   milliseconds ms{0};
   if (duration == "y" || duration == "year" || duration == "years") {
-    ymd = year{ymd.year()} / jan / day{1};
+    ymd = date::year{ymd.year()} / date::jan / date::day{1};
   } else if (duration == "m" || duration == "month" || duration == "months") {
-    ymd = year{ymd.year()} / ymd.month() / day{1};
+    ymd = date::year{ymd.year()} / ymd.month() / date::day{1};
   } else if (duration == "d" || duration == "day" || duration == "days") {
     // this would be: ymd = year{ymd.year()}/ymd.month()/ymd.day();
     // However, we already split ymd to the precision of days,
@@ -3800,7 +3801,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
-  tp = tp_sys_clock_ms{sys_days(ymd) + ms};
+  tp = tp_sys_clock_ms{date::sys_days(ymd) + ms};
 
   return ::timeAqlValue(expressionContext, AFN, tp);
 }
@@ -3809,8 +3810,6 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
 AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_UTCTOLOCAL";
-  using namespace std::chrono;
-  using namespace date;
 
   tp_sys_clock_ms tp_utc;
 
@@ -3839,7 +3838,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
 
   std::string const tz = timeZoneParam.slice().copyString();
   auto const utc = floor<milliseconds>(tp_utc);
-  auto const zoned = make_zoned(tz, utc);
+  auto const zoned = date::make_zoned(tz, utc);
   auto const info = zoned.get_info();
   auto const tp_local = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
   AqlValue aqlLocal =
@@ -3861,7 +3860,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
     transaction::BuilderLeaser builder(trx);
     builder->openObject();
     builder->add("local", aqlLocal.slice());
-    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("tzdb", VPackValue(date::get_tzdb().version));
     builder->add("zoneInfo", VPackValue(VPackValueType::Object));
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
@@ -3882,8 +3881,6 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
 AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& parameters) {
   static char const* AFN = "DATE_LOCALTOUTC";
-  using namespace std::chrono;
-  using namespace date;
 
   tp_sys_clock_ms tp_local;
 
@@ -3912,8 +3909,8 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
 
   std::string const tz = timeZoneParam.slice().copyString();
   auto const local =
-      local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
-  auto const zoned = make_zoned(tz, local);
+      date::local_time<milliseconds>{floor<milliseconds>(tp_local).time_since_epoch()};
+  auto const zoned = date::make_zoned(tz, local);
   auto const info = zoned.get_info();
   auto const tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
   AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_utc);
@@ -3933,7 +3930,7 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
     transaction::BuilderLeaser builder(trx);
     builder->openObject();
     builder->add("utc", aqlUtc.slice());
-    builder->add("tzdb", VPackValue(get_tzdb().version));
+    builder->add("tzdb", VPackValue(date::get_tzdb().version));
     builder->add("zoneInfo", VPackValue(VPackValueType::Object));
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
@@ -3954,9 +3951,7 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
 AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
                                  AstNode const&,
                                  VPackFunctionParameters const& parameters) {
-  using namespace date;
-
-  auto const* zone = current_zone();
+  auto const* zone = date::current_zone();
 
   if (zone != nullptr) {
     return AqlValue(zone->name());
@@ -3968,9 +3963,7 @@ AqlValue Functions::DateTimeZone(ExpressionContext* expressionContext,
 /// @brief function DATE_TIMEZONES
 AqlValue Functions::DateTimeZones(ExpressionContext* expressionContext, AstNode const&,
                                   VPackFunctionParameters const& parameters) {
-  using namespace date;
-
-  auto& list = get_tzdb_list();
+  auto& list = date::get_tzdb_list();
   auto& db = list.front();
 
   transaction::Methods* trx = &expressionContext->trx();
@@ -4026,7 +4019,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, AstNode const&
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp,
-                                                   isoDuration.slice().stringRef(),
+                                                   isoDuration.slice().stringView(),
                                                    AFN, false);
   }
 }
@@ -4069,7 +4062,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp,
-                                                   isoDuration.slice().stringRef(),
+                                                   isoDuration.slice().stringView(),
                                                    AFN, true);
   }
 }
@@ -4114,15 +4107,15 @@ AqlValue Functions::DateDiff(ExpressionContext* expressionContext, AstNode const
   switch (flag) {
     case YEAR:
       diff =
-          duration_cast<duration<double, std::ratio_multiply<std::ratio<146097, 400>, days::period>>>(diffDuration)
+          duration_cast<duration<double, std::ratio_multiply<std::ratio<146097, 400>, date::days::period>>>(diffDuration)
               .count();
       break;
     case MONTH:
-      diff = duration_cast<duration<double, std::ratio_divide<years::period, std::ratio<12>>>>(diffDuration)
+      diff = duration_cast<duration<double, std::ratio_divide<date::years::period, std::ratio<12>>>>(diffDuration)
                  .count();
       break;
     case WEEK:
-      diff = duration_cast<duration<double, std::ratio_multiply<std::ratio<7>, days::period>>>(diffDuration)
+      diff = duration_cast<duration<double, std::ratio_multiply<std::ratio<7>, date::days::period>>>(diffDuration)
                  .count();
       break;
     case DAY:
@@ -4187,10 +4180,10 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
   }
-  auto ymd1 = year_month_day{floor<days>(tp1)};
-  auto ymd2 = year_month_day{floor<days>(tp2)};
-  auto time1 = make_time(tp1 - floor<days>(tp1));
-  auto time2 = make_time(tp2 - floor<days>(tp2));
+  auto ymd1 = date::year_month_day{floor<date::days>(tp1)};
+  auto ymd2 = date::year_month_day{floor<date::days>(tp2)};
+  auto time1 = date::make_time(tp1 - floor<date::days>(tp1));
+  auto time2 = date::make_time(tp2 - floor<date::days>(tp2));
 
   // This switch has the following feature:
   // It is ordered by the Highest value of
@@ -4298,7 +4291,7 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  velocypack::StringRef s = durationType.slice().stringRef();
+  std::string_view s = durationType.slice().stringView();
 
   int64_t factor = 1;
   if (s == "milliseconds" || s == "millisecond" || s == "f") {
@@ -4350,7 +4343,7 @@ AqlValue Functions::Unset(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
 
-  std::unordered_set<std::string> names;
+  containers::FlatHashSet<std::string> names;
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
@@ -4376,7 +4369,7 @@ AqlValue Functions::UnsetRecursive(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
-  std::unordered_set<std::string> names;
+  containers::FlatHashSet<std::string> names;
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
@@ -4401,7 +4394,7 @@ AqlValue Functions::Keep(ExpressionContext* expressionContext, AstNode const&,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
 
-  std::unordered_set<std::string> names;
+  containers::FlatHashSet<std::string> names;
   ::extractKeys(names, expressionContext, vopts, parameters, 1, AFN);
 
   AqlValueMaterializer materializer(vopts);
@@ -4534,14 +4527,14 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   if (doSort) {
-    std::set<std::string, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8> keys;
+    std::set<std::string_view, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8StringView> keys;
 
     VPackCollection::keys(slice, keys);
     transaction::BuilderLeaser builder(trx);
     builder->openArray();
     for (auto const& it : keys) {
       TRI_ASSERT(!it.empty());
-      if (removeInternal && !it.empty() && it.at(0) == '_') {
+      if (removeInternal && !it.empty() && it.front() == '_') {
         continue;
       }
       builder->add(VPackValue(it));
@@ -4551,13 +4544,13 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
     return AqlValue(builder->slice(), builder->size());
   }
 
-  std::unordered_set<std::string> keys;
+  std::unordered_set<std::string_view> keys;
   VPackCollection::keys(slice, keys);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
   for (auto const& it : keys) {
-    if (removeInternal && !it.empty() && it.at(0) == '_') {
+    if (removeInternal && !it.empty() && it.front() == '_') {
       continue;
     }
     builder->add(VPackValue(it));
@@ -5197,7 +5190,7 @@ AqlValue Functions::CountDistinct(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
+  containers::FlatHashSet<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
@@ -5230,7 +5223,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, AstNode const&,
   VPackSlice slice = materializer.slice(value, false);
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
+  containers::FlatHashSet<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
 
@@ -5385,7 +5378,7 @@ AqlValue Functions::UnionDistinct(ExpressionContext* expressionContext,
   auto* vopts = &trx->vpackOptions();
 
   size_t const n = parameters.size();
-  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
+  containers::FlatHashSet<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(vopts));
 
@@ -6357,7 +6350,7 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, AstNode const&,
   builder->openObject();
 
   // Buffer will temporarily hold the keys
-  std::unordered_set<std::string> keysSeen;
+  containers::FlatHashSet<std::string> keysSeen;
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
@@ -6741,7 +6734,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, AstNode const&
     TRI_ASSERT(example.isObject());
     TRI_ASSERT(docSlice.isObject());
     for (auto it : VPackObjectIterator(example, true)) {
-      VPackSlice keySlice = docSlice.get(it.key.stringRef());
+      VPackSlice keySlice = docSlice.get(it.key.stringView());
 
       if (it.value.isNull() && keySlice.isNone()) {
         continue;
@@ -7288,7 +7281,7 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode 
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (value.isString()) {
-    VPackStringRef v = value.slice().stringRef();
+    std::string_view v = value.slice().stringView();
     char const* p = v.data();
     char const* e = p + v.size();
 
@@ -7471,7 +7464,7 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, AstNode const&,
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
       11, basics::VelocyPackHelper::VPackHash(),
       basics::VelocyPackHelper::VPackEqual(options));
 
@@ -8678,7 +8671,7 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
   }
 }
 
-static void buildKeyObject(VPackBuilder& builder, VPackStringRef key, bool closeObject = true) {
+static void buildKeyObject(VPackBuilder& builder, std::string_view key, bool closeObject = true) {
   builder.openObject(true);
   builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(), VPackValueType::String));
   if (closeObject) {
@@ -8709,7 +8702,7 @@ static AqlValue ConvertToObject(transaction::Methods& trx, VPackSlice input,
   // convert string key into object with { _key: "string" }
   TRI_ASSERT(allowKeyConversionToObject);
   transaction::BuilderLeaser builder(&trx);
-  buildKeyObject(*builder.get(), input.stringRef());
+  buildKeyObject(*builder.get(), input.stringView());
   return AqlValue{builder->slice()};
 }
 
@@ -8793,12 +8786,27 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
   }
 
+#ifdef USE_ENTERPRISE
+  // TODO: Remove me as soon SmartVertex Schema Validation is in place (!)
+  if (logicalCollection->isSmart() && logicalCollection->type() == TRI_COL_TYPE_DOCUMENT) {
+    transaction::BuilderLeaser sBuilder(&trx);
+    // smart vertex collection
+    auto svecol =
+        dynamic_cast<arangodb::SmartVertexCollection*>(logicalCollection.get());
+    auto sveRes = svecol->rewriteVertexOnInsert(input, *sBuilder.get(), false);
+    if (sveRes.fail()) {
+      THROW_ARANGO_EXCEPTION(sveRes.errorNumber());
+    }
+    return AqlValue{sBuilder->slice()};
+  }
+#endif
+
   if (buildNewObject) {
     transaction::BuilderLeaser builder(&trx);
     buildKeyObject(*builder.get(),
-                   VPackStringRef(logicalCollection->createKey(input)), false);
+                   std::string_view(logicalCollection->createKey(input)), false);
     for (auto cur : VPackObjectIterator(input)) {
-      builder->add(cur.key.stringRef(), cur.value);
+      builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
     return AqlValue{builder->slice()};
@@ -8817,9 +8825,9 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
     // Need to fix this document.
     // We need id and key as input.
 
-    VPackStringRef s(input);
+    std::string_view s(input.stringView());
     size_t pos = s.find('/');
-    if (pos == std::string::npos) {
+    if (pos == s.npos) {
       transaction::BuilderLeaser builder(&trx);
       buildKeyObject(*builder.get(), s);
       return AqlValue{builder->slice()};
@@ -8856,9 +8864,9 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
     // We can work with _id value only however so let us do this.
     auto keyPart = transaction::helpers::extractKeyPart(idSlice);
     transaction::BuilderLeaser builder(&trx);
-    buildKeyObject(*builder.get(), VPackStringRef(keyPart), false);
+    buildKeyObject(*builder.get(), std::string_view(keyPart), false);
     for (auto cur : VPackObjectIterator(input)) {
-      builder->add(cur.key.stringRef(), cur.value);
+      builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
     return AqlValue{builder->slice()};

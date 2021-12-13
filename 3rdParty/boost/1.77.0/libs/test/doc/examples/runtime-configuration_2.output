@@ -1,0 +1,28 @@
+//[example_output
+# Example run 1
+> runtime_configuration2 --log_level=all  -- --some-wrong-random-string mock_device
+Running 1 test case...
+Entering test module "runtime_configuration2"
+test.cpp:46: info: check framework::master_test_suite().argc == 3 has passed
+test.cpp:47: fatal error: in "runtime_configuration2": critical check framework::master_test_suite().argv[1] == "--device-name" has failed [--some-wrong-random-string != --device-name]
+Leaving test module "runtime_configuration2"
+
+*** The test module "runtime_configuration2" was aborted; see standard output for details
+*** 1 failure is detected in the test module "runtime_configuration2"
+
+# Example run 2
+> runtime_configuration2 --log_level=all -- --device-name mock_device
+Running 1 test case...
+Entering test module "runtime_configuration2"
+test.cpp:46: info: check framework::master_test_suite().argc == 3 has passed
+test.cpp:47: info: check framework::master_test_suite().argv[1] == "--device-name" has passed
+test.cpp:53: info: check 'Cannot create the device mock_device' has passed
+test.cpp:56: info: check 'Cannot initialize the device mock_device' has passed
+test.cpp:72: Entering test case "check_device_has_meaningful_name"
+test.cpp:74: info: check CommandLineDeviceInit::device->get_device_name() != "" has passed
+test.cpp:72: Leaving test case "check_device_has_meaningful_name"; testing time: 127us
+test.cpp:62: info: check 'Cannot tear-down the device mock_device' has passed
+Leaving test module "runtime_configuration2"; testing time: 177us
+
+*** No errors detected
+//]

@@ -231,7 +231,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                             config.leader.endpoint, url, ": ", r.errorMessage()));
     }
 
-    VPackSlice const docs = responseBuilder->slice();
+    VPackSlice docs = responseBuilder->slice();
     if (!docs.isArray()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     concatT("got invalid response from leader at ",
@@ -249,14 +249,14 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                           ": response document entry is not an object");
       }
 
-      VPackSlice const keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
+      VPackSlice keySlice = leaderDoc.get(arangodb::StaticStrings::KeyString);
       if (!keySlice.isString()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           state.leader.endpoint + ": document key is invalid");
       }
 
-      VPackSlice const revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
+      VPackSlice revSlice = leaderDoc.get(arangodb::StaticStrings::RevString);
       if (!revSlice.isString()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
@@ -279,7 +279,9 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
           options.indexOperationMode = arangodb::IndexOperationMode::normal;
         }
 
+        double tInsert = TRI_microtime();
         Result res = physical->insert(&trx, leaderDoc, mdr, options);
+        stats.waitedForInsertions += TRI_microtime() - tInsert;
 
         options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
@@ -489,6 +491,10 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
         << "initial synchronization with leader took: "
         << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: "
         << (r.errorMessage().empty() ? "all good" : r.errorMessage());
+
+    if (r.ok() && _onSuccess) {
+      r = _onSuccess(*this);
+    }
 
     return r;
   } catch (arangodb::basics::Exception const& ex) {
@@ -726,7 +732,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       url += "&flush=false";
     } else {
       // only flush WAL once
-      url += "&flush=true&flushWait=180";
+      url += "&flush=true";
       _config.flushed = true;
     }
 
@@ -940,9 +946,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     _config.progress.set(
         std::string("fetched leader collection dump for collection '") +
         coll->name() + "', type: " + typeString + ", id: " + leaderColl +
-        ", batch " + itoa(batch) + ", markers processed: " + itoa(cumulativeStats.numDumpDocuments) +
-        ", bytes received: " + itoa(cumulativeStats.numDumpBytesReceived) +
-        ", apply time: " + std::to_string(applyTime) + " s");
+        ", batch " + itoa(batch) + ", markers processed so far: " + itoa(cumulativeStats.numDumpDocuments) +
+        ", bytes received so far: " + itoa(cumulativeStats.numDumpBytesReceived) +
+        ", apply time for batch: " + std::to_string(applyTime) + " s");
 
     if (!res.ok()) {
       return res;
@@ -1643,8 +1649,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       }
       toRemove.clear();
 
-      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch,
-                             /*removed,*/ stats);
+      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch, stats);
       if (res.fail()) {
         return res;
       }
@@ -1780,11 +1785,11 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   // -------------------------------------------------------------------------------------
 
   if (phase == PHASE_DROP_CREATE) {
-    auto* col = resolveCollection(vocbase(), parameters).get();
+    auto col = resolveCollection(vocbase(), parameters);
 
     if (col == nullptr) {
       // not found...
-      col = vocbase().lookupCollection(leaderName).get();
+      col = vocbase().lookupCollection(leaderName);
 
       if (col != nullptr && (col->name() != leaderName ||
                              (!leaderUuid.empty() && col->guid() != leaderUuid))) {
@@ -1873,9 +1878,10 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
         // collection is already present
         _config.progress.set("checking/changing parameters of " + collectionMsg);
-        return changeCollection(col, parameters);
+        return changeCollection(col.get(), parameters);
       }
     }
+    // When we get here, col is a nullptr anyway!
 
     std::string msg = "creating " + collectionMsg;
     if (_config.applier._skipCreateDrop) {
@@ -1888,7 +1894,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     LOG_TOPIC("7093d", DEBUG, Logger::REPLICATION)
         << "Dump is creating collection " << parameters.toJson();
 
-    auto r = createCollection(vocbase(), parameters, &col);
+    LogicalCollection* col2 = nullptr;
+    auto r = createCollection(vocbase(), parameters, &col2);
 
     if (r.fail()) {
       return Result(r.errorNumber(), concatT("unable to create ", collectionMsg,
@@ -1905,7 +1912,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   else if (phase == PHASE_DUMP) {
     _config.progress.set("dumping data for " + collectionMsg);
 
-    auto* col = resolveCollection(vocbase(), parameters).get();
+    std::shared_ptr<LogicalCollection> col
+        = resolveCollection(vocbase(), parameters);
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -1916,8 +1924,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const& leaderColl =
         !leaderUuid.empty() ? leaderUuid : itoa(leaderCid.id());
     auto res = incremental && hasDocuments(*col)
-                   ? fetchCollectionSync(col, leaderColl, _config.leader.lastLogTick)
-                   : fetchCollectionDump(col, leaderColl, _config.leader.lastLogTick);
+                   ? fetchCollectionSync(col.get(), leaderColl, _config.leader.lastLogTick)
+                   : fetchCollectionDump(col.get(), leaderColl, _config.leader.lastLogTick);
 
     if (!res.ok()) {
       return res;

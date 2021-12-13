@@ -22,13 +22,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_BASICS_H
-#define VELOCYPACK_BASICS_H 1
+#pragma once
 
 #include <new>
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 // classes from Basics.h are for internal use only and are not exposed here
 
@@ -62,6 +60,3 @@ struct NonHeapAllocatable {
 #endif
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
-
-#endif

@@ -47,6 +47,7 @@
 #include "Cluster/RebootTracker.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
+#include "Metrics/Fwd.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -424,7 +425,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
-  
+
   /// @brief cancel all pending wait-for-syncer operations
   void drainSyncers();
 
@@ -601,18 +602,18 @@ class ClusterInfo final {
   QueryAnalyzerRevisions getQueryAnalyzersRevision(
       DatabaseID const& databaseID);
 
-  /// @brief return shard statistics for the specified database, 
+  /// @brief return shard statistics for the specified database,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsForDatabase(DatabaseID const& dbName,
                                        std::string const& restrictServer,
                                        arangodb::velocypack::Builder& builder) const;
-  
+
   /// @brief return shard statistics for all databases, totals,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsGlobal(std::string const& restrictServer,
                                   arangodb::velocypack::Builder& builder) const;
-  
-  /// @brief return shard statistics, separate for each database, 
+
+  /// @brief return shard statistics, separate for each database,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
                                           arangodb::velocypack::Builder& builder) const;
@@ -663,7 +664,7 @@ class ClusterInfo final {
       std::string const& name,     // database name
       double timeout               // request timeout
   );
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -677,11 +678,9 @@ class ClusterInfo final {
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief this method does an atomic check of the preconditions for the
-  /// collections to be created, using the currently loaded plan. it populates
-  /// the plan version used for the checks
+  /// collections to be created, using the currently loaded plan.
   Result checkCollectionPreconditions(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo> const& infos,
-                                      uint64_t& planVersion);
+                                      std::vector<ClusterCollectionCreationInfo> const& infos);
 
   /// @brief create multiple collections in coordinator
   ///        If any one of these collections fails, all creations will be
@@ -689,9 +688,9 @@ class ClusterInfo final {
   /// Note that in contrast to most other methods here, this method does not
   /// get a timeout parameter, but an endTime parameter!!!
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<ClusterCollectionCreationInfo>&,
+                                      std::vector<ClusterCollectionCreationInfo>& ,
                                       double endTime, bool isNewDatabase,
-                                      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
+                                      std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -708,14 +707,6 @@ class ClusterInfo final {
   Result setCollectionPropertiesCoordinator(std::string const& databaseName,
                                             std::string const& collectionID,
                                             LogicalCollection const*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief set collection status in coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  Result setCollectionStatusCoordinator(std::string const& databaseName,
-                                        std::string const& collectionID,
-                                        TRI_vocbase_col_status_e status);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create view in coordinator
@@ -885,18 +876,12 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   ServerID getCoordinatorByShortID(ServerShortID const& shortId);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate current coordinators
   //////////////////////////////////////////////////////////////////////////////
 
   void invalidateCurrentCoordinators();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate current id mappings
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidateCurrentMappings();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Plan" structure
@@ -918,23 +903,17 @@ class ClusterInfo final {
   void setServers(std::unordered_map<ServerID, std::string> servers);
 
   void setServerAliases(std::unordered_map<ServerID, std::string> aliases);
-  
+
   void setServerAdvertisedEndpoints(std::unordered_map<ServerID, std::string> advertisedEndpoints);
-  
-  void setServerTimestamps(std::unordered_map<ServerID, std::string> timestamps);
 #endif
-  
+
   bool serverExists(ServerID const& serverId) const noexcept;
-  
+
   bool serverAliasExists(std::string const& alias) const noexcept;
 
   std::unordered_map<ServerID, std::string> getServers();
 
   TEST_VIRTUAL std::unordered_map<ServerID, std::string> getServerAliases();
-
-  std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints() const;
-
-  std::unordered_map<ServerID, std::string> getServerTimestamps() const;
 
   std::unordered_map<ServerID, RebootId> rebootIds() const;
 
@@ -996,9 +975,9 @@ class ClusterInfo final {
  private:
   /// @brief worker function for dropIndexCoordinator
   Result dropIndexCoordinatorInner(
-      std::string const& databaseName, 
+      std::string const& databaseName,
       std::string const& collectionID,
-      IndexId iid,                   
+      IndexId iid,
       double endTime);
 
   /// @brief helper function to build a new LogicalCollection object from the velocypack
@@ -1106,7 +1085,7 @@ class ClusterInfo final {
 
   cluster::RebootTracker _rebootTracker;
 
-  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// @brief error code sent to all remaining promises of the syncers at shutdown.
   /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
   ErrorCode const _syncerShutdownCode;
 
@@ -1235,16 +1214,16 @@ class ClusterInfo final {
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrentVersion;
 
   /// @brief histogram for loadPlan runtime
-  Histogram<log_scale_t<float>>& _lpTimer;
+  metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
 
   /// @brief total time for loadPlan runtime
-  Counter& _lpTotal;
+  metrics::Counter& _lpTotal;
 
   /// @brief histogram for loadCurrent runtime
-  Histogram<log_scale_t<float>>& _lcTimer;
+  metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
 
   /// @brief total time for loadCurrent runtime
-  Counter& _lcTotal;
+  metrics::Counter& _lcTotal;
 
 };
 

@@ -19,8 +19,8 @@
 ///
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef TESTS_MOCK_GRAPH_PROVIDER_H
-#define TESTS_MOCK_GRAPH_PROVIDER_H
+
+#pragma once
 
 #include <numeric>
 #include <ostream>
@@ -222,6 +222,7 @@ class MockGraphProvider {
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
+  auto clear() -> void;
 
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
@@ -246,5 +247,3 @@ class MockGraphProvider {
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

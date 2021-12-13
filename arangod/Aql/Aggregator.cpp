@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Functions.h"
+#include "Containers/FlatHashSet.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -71,7 +72,7 @@ struct AggregatorInfo {
   /// be pushed executed on partial results on the DB server as SUM too however,
   /// the LENGTH aggregator needs to be pushed as LENGTH to the DB server, but
   /// the partial lengths need to be aggregated on the coordinator using SUM
-  std::string pushToDBServerAs;
+  std::string_view pushToDBServerAs;
 
   /// @brief under which name this aggregator is executed on a coordinator to
   /// aggregate partial results from the DB servers if parts of the aggregation
@@ -79,7 +80,7 @@ struct AggregatorInfo {
   /// pushed to the DB server as LENGTH, but on the coordinator the aggregator
   /// needs to be converted to SUM to sum up the partial lengths from the DB
   /// servers
-  std::string runOnCoordinatorAs;
+  std::string_view runOnCoordinatorAs;
 };
 
 /// @brief helper class for block-wise memory allocations
@@ -609,7 +610,7 @@ struct AggregatorUnique : public Aggregator {
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
-    if (seen.find(s) != seen.end()) {
+    if (seen.contains(s)) {
       // already saw the same value
       return;
     }
@@ -635,7 +636,7 @@ struct AggregatorUnique : public Aggregator {
   }
 
   MemoryBlockAllocator allocator;
-  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  containers::FlatHashSet<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
   mutable arangodb::velocypack::Builder builder;
 };
 
@@ -654,7 +655,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
     }
 
     for (VPackSlice it : VPackArrayIterator(s)) {
-      if (seen.find(it) != seen.end()) {
+      if (seen.contains(it)) {
         // already saw the same value
         return;
       }
@@ -762,7 +763,7 @@ struct AggregatorCountDistinct : public Aggregator {
 
     VPackSlice s = materializer.slice(cmpValue, true);
 
-    if (seen.find(s) != seen.end()) {
+    if (seen.contains(s)) {
       // already saw the same value
       return;
     }
@@ -777,7 +778,7 @@ struct AggregatorCountDistinct : public Aggregator {
   }
 
   MemoryBlockAllocator allocator;
-  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  containers::FlatHashSet<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
 };
 
 template <class T>
@@ -917,7 +918,7 @@ struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
 };
 
 /// @brief all available aggregators with their meta data
-std::unordered_map<std::string, AggregatorInfo> const aggregators = {
+std::unordered_map<std::string_view, AggregatorInfo> const aggregators = {
   {"LENGTH",
    {std::make_shared<GenericFactory<AggregatorLength>>(),
     doesNotRequireInput, official, "LENGTH", "SUM"}},  // we need to sum up the lengths from the DB servers
@@ -1008,7 +1009,7 @@ std::unordered_map<std::string, AggregatorInfo> const aggregators = {
 };
 
 /// @brief aliases (user-visible) for aggregation functions
-std::unordered_map<std::string, std::string> const aliases = {
+std::unordered_map<std::string_view, std::string_view> const aliases = {
     {"COUNT", "LENGTH"},                  // COUNT = LENGTH
     {"AVG", "AVERAGE"},                   // AVG = AVERAGE
     {"VARIANCE", "VARIANCE_POPULATION"},  // VARIANCE = VARIANCE_POPULATION
@@ -1019,7 +1020,7 @@ std::unordered_map<std::string, std::string> const aliases = {
 }  // namespace
 
 std::unique_ptr<Aggregator> Aggregator::fromTypeString(velocypack::Options const* opts,
-                                                       std::string const& type) {
+                                                       std::string_view type) {
   // will always return a valid factory or throw an exception
   auto& factory = Aggregator::factoryFromTypeString(type);
 
@@ -1027,27 +1028,28 @@ std::unique_ptr<Aggregator> Aggregator::fromTypeString(velocypack::Options const
 }
 
 std::unique_ptr<Aggregator> Aggregator::fromVPack(velocypack::Options const* opts,
-                                                  arangodb::velocypack::Slice const& slice,
-                                                  char const* nameAttribute) {
+                                                  arangodb::velocypack::Slice slice,
+                                                  std::string_view nameAttribute) {
   VPackSlice variable = slice.get(nameAttribute);
 
   if (variable.isString()) {
-    return fromTypeString(opts, variable.copyString());
+    return fromTypeString(opts, variable.stringView());
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-Aggregator::Factory const& Aggregator::factoryFromTypeString(std::string const& type) {
+Aggregator::Factory const& Aggregator::factoryFromTypeString(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {
     return *(it->second.factory);
   }
+
   // aggregator function name should have been validated before
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-std::string const& Aggregator::translateAlias(std::string const& name) {
+std::string_view Aggregator::translateAlias(std::string_view name) {
   auto it = ::aliases.find(name);
 
   if (it != ::aliases.end()) {
@@ -1057,7 +1059,7 @@ std::string const& Aggregator::translateAlias(std::string const& name) {
   return name;
 }
 
-std::string Aggregator::pushToDBServerAs(std::string const& type) {
+std::string_view Aggregator::pushToDBServerAs(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {
@@ -1066,7 +1068,7 @@ std::string Aggregator::pushToDBServerAs(std::string const& type) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-std::string Aggregator::runOnCoordinatorAs(std::string const& type) {
+std::string_view Aggregator::runOnCoordinatorAs(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {
@@ -1075,7 +1077,7 @@ std::string Aggregator::runOnCoordinatorAs(std::string const& type) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-bool Aggregator::isValid(std::string const& type) {
+bool Aggregator::isValid(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it == ::aggregators.end()) {
@@ -1085,7 +1087,7 @@ bool Aggregator::isValid(std::string const& type) {
   return (*it).second.isOfficialAggregator;
 }
 
-bool Aggregator::requiresInput(std::string const& type) {
+bool Aggregator::requiresInput(std::string_view type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {

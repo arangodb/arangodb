@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__REST_HANDLER_MOCK_H
-#define ARANGODB_IRESEARCH__REST_HANDLER_MOCK_H 1
+#pragma once
 
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
@@ -46,7 +45,7 @@ struct GeneralRequestMock: public arangodb::GeneralRequest {
   virtual void setDefaultContentType() override {
     _contentType = arangodb::rest::ContentType::VPACK;
   }
-  virtual arangodb::velocypack::StringRef rawPayload() const override;
+  virtual std::string_view rawPayload() const override;
   virtual arangodb::velocypack::Slice payload(bool strictValidation = true) override;
   virtual void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
   virtual void setData(arangodb::velocypack::Slice slice);
@@ -62,12 +61,10 @@ struct GeneralResponseMock: public arangodb::GeneralResponse {
 
   GeneralResponseMock(arangodb::ResponseCode code = arangodb::ResponseCode::OK);
   virtual void addPayload(arangodb::velocypack::Buffer<uint8_t>&& buffer, arangodb::velocypack::Options const* options = nullptr, bool resolveExternals = true) override;
-  virtual void addPayload(arangodb::velocypack::Slice const& slice, arangodb::velocypack::Options const* options = nullptr, bool resolveExternals = true) override;
-  virtual void addRawPayload(arangodb::velocypack::StringRef payload) override;
+  virtual void addPayload(arangodb::velocypack::Slice slice, arangodb::velocypack::Options const* options = nullptr, bool resolveExternals = true) override;
+  virtual void addRawPayload(std::string_view payload) override;
   virtual void reset(arangodb::ResponseCode code) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
-  ErrorCode deflate(size_t size = 16384) override { return TRI_ERROR_NO_ERROR; }
+  ErrorCode deflate() override;
   bool isCompressionAllowed() override { return false; }
 };
-
-#endif

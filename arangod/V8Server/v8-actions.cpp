@@ -66,6 +66,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -374,7 +376,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     }
   } else {
     req->Set(context, IsAdminUser, ExecContext::isAuthEnabled() ? v8::False(isolate)
-                                                       : v8::True(isolate)).FromMaybe(false);;
+                                                       : v8::True(isolate)).FromMaybe(false);
   }
 
   // create database attribute
@@ -504,7 +506,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         }
       } catch ( ... ) {}
       // ok, no json/vpack after all ;-)
-      auto raw = request->rawPayload();
+      std::string_view raw = request->rawPayload();
       headers[StaticStrings::ContentLength] =
         StringUtils::itoa(raw.size());
       V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
@@ -518,7 +520,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     }
 
     if (rest::ContentType::JSON == request->contentType()) {
-      VPackStringRef body = request->rawPayload();
+      std::string_view body = request->rawPayload();
       req->Set(context, RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size())).FromMaybe(false);
       headers[StaticStrings::ContentLength] =
           StringUtils::itoa(request->contentLength());
@@ -742,6 +744,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
   bool bodySet = false;
   TRI_GET_GLOBAL_STRING(BodyKey);
+
   if (TRI_HasProperty(context, isolate, res, BodyKey)) {
     // check if we should apply result transformations
     // transformations turn the result from one type into another
@@ -750,17 +753,17 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     // array, e.g. res.transformations = [ "base64encode" ]
     TRI_GET_GLOBAL_STRING(TransformationsKey);
     v8::Handle<v8::Value> transformArray = res->Get(context, TransformationsKey).FromMaybe(v8::Local<v8::Value>());
-
+    v8::Handle<v8::Value> bodyVal = res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
         //  OBI FIXME - vpack
         //  HTTP SHOULD USE vpack interface
 
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
-        if (transformArray->IsArray()) {
-          TRI_GET_GLOBAL_STRING(BodyKey);
-          std::string out(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
-          v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
+        v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
+        bool setRegularBody = !transformArray->IsArray();
+        if (!setRegularBody) {
+          std::string out(TRI_ObjectToString(isolate, bodyVal));
 
           for (uint32_t i = 0; i < transformations->Length(); i++) {
             v8::Handle<v8::Value> transformator =
@@ -778,25 +781,31 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               out = StringUtils::decodeBase64(out);
               // set the correct content-encoding header
               response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::Binary);
+            } else if (name == "gzip") {
+              response->setAllowCompression(true);
+              setRegularBody = true;
+            } else if (name == "deflate") {
+              response->setAllowCompression(true);
+              setRegularBody = true;
             }
           }
-
-          // what type is out? always json?
-          httpResponse->body().appendText(out);
-          httpResponse->sealBody();
-        } else {
-          TRI_GET_GLOBAL_STRING(BodyKey);
-          v8::Handle<v8::Value> b = res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
-          if (V8Buffer::hasInstance(isolate, b)) {
+          if (!setRegularBody) {
+            // what type is out? always json?
+            httpResponse->body().appendText(out);
+            httpResponse->sealBody();
+          }
+        }
+        if (setRegularBody) {
+          if (V8Buffer::hasInstance(isolate, bodyVal)) {
             // body is a Buffer
-            auto obj = b.As<v8::Object>();
+            auto obj = bodyVal.As<v8::Object>();
             httpResponse->body().appendText(V8Buffer::data(isolate, obj),
                                             V8Buffer::length(isolate, obj));
             httpResponse->sealBody();
           } else if (autoContent && request->contentTypeResponse() == rest::ContentType::VPACK) {
             // use velocypack
             try {
-              std::string json = TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>()));
+              std::string json = TRI_ObjectToString(isolate, bodyVal);
               VPackBuffer<uint8_t> buffer;
               VPackBuilder builder(buffer);
               VPackParser parser(builder);
@@ -804,12 +813,12 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               httpResponse->setContentType(rest::ContentType::VPACK);
               httpResponse->setPayload(std::move(buffer));
             } catch (...) {
-              httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
+              httpResponse->body().appendText(TRI_ObjectToString(isolate, bodyVal));
               httpResponse->sealBody();
             }
           } else {
             // treat body as a string
-            httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
+            httpResponse->body().appendText(TRI_ObjectToString(isolate, bodyVal));
             httpResponse->sealBody();
           }
         }
@@ -818,14 +827,11 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       case Endpoint::TransportType::VST: {
         VPackBuffer<uint8_t> buffer;
         VPackBuilder builder(buffer);
-
-        v8::Handle<v8::Value> v8Body = res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
         std::string out;
 
         // decode and set out
         if (transformArray->IsArray()) {
-          TRI_GET_GLOBAL_STRING(BodyKey);
-          out = TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>()));  // there is one case where
+          out = TRI_ObjectToString(isolate, bodyVal);  // there is one case where
                                                                  // we do not need a string
           v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
 
@@ -838,27 +844,31 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             // check available transformations
             if (name == "base64decode") {
               out = StringUtils::decodeBase64(out);
+            } else if (name == "gzip") {
+              response->setAllowCompression(true);
+            } else if (name == "deflate") {
+              response->setAllowCompression(true);
             }
           }
         }
 
         // out is not set
         if (out.empty()) {
-          if (autoContent && !V8Buffer::hasInstance(isolate, v8Body)) {
-            if (v8Body->IsString()) {
-              out = TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>()));  // should get moved
+          if (autoContent && !V8Buffer::hasInstance(isolate, bodyVal)) {
+            if (bodyVal->IsString()) {
+              out = TRI_ObjectToString(isolate, bodyVal);  // should get moved
             } else {
-              TRI_V8ToVPack(isolate, builder, v8Body, false);
+              TRI_V8ToVPack(isolate, builder, bodyVal, false);
               response->setContentType(rest::ContentType::VPACK);
             }
           } else if (V8Buffer::hasInstance(isolate,
-                                           v8Body)) {  // body form buffer - could
-                                                       // contain json or not
+                                           bodyVal)) {  // body form buffer - could
+            // contain json or not
             // REVIEW (fc) - is this correct?
-            auto obj = v8Body.As<v8::Object>();
+            auto obj = bodyVal.As<v8::Object>();
             out = std::string(V8Buffer::data(isolate, obj), V8Buffer::length(isolate, obj));
           } else {  // body is text - does not contain json
-            out = TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>()));  // should get moved
+            out = TRI_ObjectToString(isolate, bodyVal);  // should get moved
           }
         }
 
@@ -921,7 +931,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       break;
 
       case Endpoint::TransportType::VST: {
-        response->addRawPayload(velocypack::StringRef(content, length));
+        response->addRawPayload(std::string_view(content, length));
         TRI_FreeString(content);
       }
       break;
@@ -1024,7 +1034,7 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
   std::string errorMessage;
 
   try {
-    callback->Call(TRI_IGETC, callback, 2, args).FromMaybe(v8::Local<v8::Value>());;
+    callback->Call(TRI_IGETC, callback, 2, args).FromMaybe(v8::Local<v8::Value>());
     errorCode = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
     errorCode = ex.code();
@@ -1247,7 +1257,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
               std::string bodyStr = slice.toJson();
               buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
             } else {
-              auto raw = httpRequest->rawPayload();
+              std::string_view raw = httpRequest->rawPayload();
               buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             }
 
@@ -1259,7 +1269,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         case Endpoint::TransportType::VST: {
           if (request != nullptr) {
-            auto raw = request->rawPayload();
+            std::string_view raw = request->rawPayload();
             V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             v8::Local<v8::Object> bufferObject =
               v8::Local<v8::Object>::New(isolate, buffer->_handle);
@@ -1300,7 +1310,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
       auto request = static_cast<arangodb::HttpRequest*>(e->Value());
 
-      VPackStringRef bodyStr = request->rawPayload();
+      std::string_view bodyStr = request->rawPayload();
       char const* beg = bodyStr.data();
       char const* end = beg + bodyStr.size();
 

@@ -1,0 +1,92 @@
+[section boost/python/instance_holder.hpp]
+[section Introduction]
+<boost/python/instance_holder.hpp> provides class `instance_holder`, the base class for types which hold C++ instances of wrapped classes. 
+[endsect]
+[section Class template `instance_holder`]
+`instance_holder` is an abstract base class whose concrete derived classes hold C++ class instances within their Python object wrappers. To allow multiple inheritance in Python from C++ class wrappers, each such Python object contains a chain of instance_holders. When an `__init__` function for a wrapped C++ class is invoked, a new `instance_holder` instance is created and installed in the Python object using its `install()` function. Each concrete class derived from `instance_holder` must provide a `holds()` implementation which allows Boost.Python to query it for the type(s) it is holding. In order to support the held type's wrapped constructor(s), the class must also provide constructors that can accept an initial `PyObject*` argument referring to the owning Python object, and which forward the rest of their arguments to the constructor of the held type. The initial argument is needed to enable virtual function overriding in Python, and may be ignored, depending on the specific `instance_holder` subclass. 
+``
+namespace boost { namespace python
+{
+  class instance_holder : noncopyable
+  {
+   public:
+      // destructor
+      virtual ~instance_holder();
+
+      // instance_holder modifiers
+      void install(PyObject* inst) throw();
+
+      // instance_holder observers
+      virtual void* holds(type_info) = 0;
+  };
+}}
+``
+[section Class `intance_holder` destructor]
+``virtual ~instance_holder();``
+[variablelist
+[[Effects][destroys the object]]
+]
+[endsect]
+[section Class `intance_holder` modifiers]
+``void install(PyObject* inst) throw();``
+[variablelist
+[[Requires][`inst` is a Python instance of a wrapped C++ class type, or is a type derived from a wrapped C++ class type. ]]
+[[Effects][installs the new instance at the head of the Python object's chain of held instances. ]]
+[[Throws][nothing]]
+]
+[endsect]
+[section Class `intance_holder` observers]
+``virtual void *holds(type_info x) = 0;``
+[variablelist
+[[Returns][A pointer to an object of the type described by `x` if `*this` contains such an object, 0 otherwise. ]]
+]
+[endsect]
+[endsect]
+[section Examples]
+The following is a simplified version of the instance holder template used by Boost.Python to wrap classes held by smart pointers:
+
+``
+template <class SmartPtr, class Value>
+struct pointer_holder : instance_holder
+{
+   // construct from the SmartPtr type
+   pointer_holder(SmartPtr p)
+       :m_p(p)
+
+   // Forwarding constructors for the held type
+   pointer_holder(PyObject*)
+       :m_p(new Value())
+   {
+   }
+
+   template<class A0>
+   pointer_holder(PyObject*,A0 a0)
+       :m_p(new Value(a0))
+   {
+   }
+
+   template<class A0,class A1>
+   pointer_holder(PyObject*,A0 a0,A1 a1)
+       :m_p(new Value(a0,a1))
+   {
+   }
+   ...
+
+ private: // required holder implementation
+   void* holds(type_info dst_t)
+   {
+       // holds an instance of the SmartPtr type...
+       if (dst_t == python::type_id<SmartPtr>())
+           return &this->m_p;
+
+       // ...and an instance of the SmartPtr's element_type, if the
+       // pointer is non-null
+       return python::type_id<Value>() == dst_t ? &*this->m_p : 0;
+   }
+
+ private: // data members
+   SmartPtr m_p;
+}; 
+ ``
+[endsect]
+[endsect]

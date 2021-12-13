@@ -66,7 +66,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -109,7 +109,7 @@ using namespace arangodb::tests::mocks;
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false, false);
-  server.addFeature<arangodb::MetricsFeature>(false);
+  server.addFeature<arangodb::metrics::MetricsFeature>(false);
   server.addFeature<arangodb::SharedPRNGFeature>(false);
   server.addFeature<arangodb::SoftShutdownFeature>(false);
   // We do not need any further features from this phase
@@ -429,7 +429,7 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
 }
 
 std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::applyTestTransaction(
-    consensus::query_t const& trxs) {
+    arangodb::velocypack::Slice trxs) {
   std::unordered_set<uint64_t> uniq;
   std::vector<uint64_t> toCall;
   std::unordered_set<std::string> pc, cc;
@@ -439,11 +439,11 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
     std::lock_guard g(_storeLock);
     ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
-      _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true,true}), _commitIndex}; // apply logs
+      _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}), _commitIndex}; // apply logs
   }
   {
     std::lock_guard g(_callbacksLock);
-    for (auto const& trx : VPackArrayIterator(trxs->slice())) {
+    for (auto const& trx : VPackArrayIterator(trxs)) {
       handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
     }
     {
@@ -474,7 +474,7 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
   addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
 
-  arangodb::network::ConnectionPool::Config config(_server.getFeature<MetricsFeature>());
+  arangodb::network::ConnectionPool::Config config(_server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
@@ -491,7 +491,7 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  arangodb::network::ConnectionPool::Config poolConfig(_server.getFeature<MetricsFeature>());
+  arangodb::network::ConnectionPool::Config poolConfig(_server.getFeature<metrics::MetricsFeature>());
   poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;
@@ -550,20 +550,20 @@ std::shared_ptr<arangodb::aql::Query> MockClusterServer::createFakeQuery(
 consensus::index_t MockClusterServer::agencyTrx(std::string const& key,
                                                 std::string const& value) {
   // Build an agency transaction:
-  auto b = std::make_shared<VPackBuilder>();
+  VPackBuilder b;
   {
-    VPackArrayBuilder trxs(b.get());
+    VPackArrayBuilder trxs(&b);
     {
-      VPackArrayBuilder trx(b.get());
+      VPackArrayBuilder trx(&b);
       {
-        VPackObjectBuilder op(b.get());
+        VPackObjectBuilder op(&b);
         auto b2 = VPackParser::fromJson(value);
-        b->add(key, b2->slice());
+        b.add(key, b2->slice());
       }
     }
   }
   return std::get<1>(
-      _server.getFeature<ClusterFeature>().agencyCache().applyTestTransaction(b));
+      _server.getFeature<ClusterFeature>().agencyCache().applyTestTransaction(b.slice()));
 }
 
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {

@@ -20,8 +20,8 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef TESTS_GRAPH_TOOLS_H
-#define TESTS_GRAPH_TOOLS_H
+
+#pragma once
 
 #include "gtest/gtest.h"
 
@@ -48,7 +48,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -81,7 +81,7 @@ struct GraphTestSetup
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 
     // setup required application features
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::transaction::ManagerFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
@@ -295,8 +295,7 @@ struct MockGraphDatabase {
 
     {
       auto const* access =
-          ast->createNodeAttributeAccess(tmpId1, StaticStrings::ToString.c_str(),
-                                         StaticStrings::ToString.length());
+          ast->createNodeAttributeAccess(tmpId1, StaticStrings::ToString);
       auto const* cond =
           ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
       _toCondition->addMember(cond);
@@ -319,8 +318,7 @@ struct MockGraphDatabase {
     AstNode* tmpId2 = plan->getAst()->createNodeValueMutableString("", 0);
 
     auto const* access =
-        ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString.c_str(),
-                                       StaticStrings::FromString.length());
+        ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString);
     auto const* cond =
         ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
     fromCondition->addMember(cond);
@@ -341,4 +339,3 @@ bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb
-#endif

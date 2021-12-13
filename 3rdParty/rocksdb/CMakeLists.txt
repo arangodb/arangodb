@@ -9,12 +9,17 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-suggest-override")
 endif()
 
-set(ARANGO_ROCKSDB_VERSION "6.26")
+set(ARANGO_ROCKSDB_VERSION "6.27")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 # we want the following definitions to be in effect for both rocksdb and arangodb
 add_definitions("-DNROCKSDB_THREAD_STATUS")
 add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
+
+# IPO_ENABLED is set by the top-level CMakeLists.txt file
+if (IPO_ENABLED)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
+endif()
 
 # jemalloc settings
 if (USE_JEMALLOC)

@@ -151,8 +151,7 @@ class PathValidatorTest : public ::testing::Test {
   std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
     auto expectedKey = _ast->createNodeValueString(toMatch.c_str(), toMatch.length());
     auto keyAccess =
-        _ast->createNodeAttributeAccess(_varNode, StaticStrings::KeyString.c_str(),
-                                        StaticStrings::KeyString.length());
+        _ast->createNodeAttributeAccess(_varNode, StaticStrings::KeyString);
     // This condition cannot be fulfilled
     auto condition = _ast->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
                                                     keyAccess, expectedKey);

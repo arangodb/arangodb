@@ -27,7 +27,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Containers/SmallVector.h"
 #include "Network/types.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 #include "VocBase/voc-types.h"
 
 #include <fuerte/loop.h>
@@ -62,14 +62,14 @@ class ConnectionPool final {
  public:
   struct Config {
     ClusterInfo* clusterInfo;
-    MetricsFeature& metricsFeature;
+    metrics::MetricsFeature& metricsFeature;
     uint64_t maxOpenConnections = 1024;     /// max number of connections
     uint64_t idleConnectionMilli = 120000;  /// unused connection lifetime
     unsigned int numIOThreads = 1;          /// number of IO threads
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
     char const* name = "";
-    Config(MetricsFeature& metricsFeature) : metricsFeature(metricsFeature) {}
+    Config(metrics::MetricsFeature& metricsFeature) : metricsFeature(metricsFeature) {}
   };
 
  public:
@@ -137,12 +137,12 @@ class ConnectionPool final {
   /// @brief contains fuerte asio::io_context
   fuerte::EventLoopService _loop;
 
-  Gauge<uint64_t>& _totalConnectionsInPool;
-  Counter& _successSelect;
-  Counter& _noSuccessSelect;
-  Counter& _connectionsCreated;
+  metrics::Gauge<uint64_t>& _totalConnectionsInPool;
+  metrics::Counter& _successSelect;
+  metrics::Counter& _noSuccessSelect;
+  metrics::Counter& _connectionsCreated;
 
-  Histogram<log_scale_t<float>>& _leaseHistMSec;
+  metrics::Histogram<metrics::LogScale<float>>& _leaseHistMSec;
 
 };
 

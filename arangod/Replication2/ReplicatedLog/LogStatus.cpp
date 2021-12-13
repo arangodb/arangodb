@@ -29,6 +29,7 @@
 
 #include "LogStatus.h"
 
+using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
 
@@ -72,10 +73,15 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(StaticStrings::Term, VPackValue(term.value));
   builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
   builder.add("commitLagMS", VPackValue(commitLagMS.count()));
+  builder.add("leadershipEstablished", VPackValue(leadershipEstablished));
   builder.add(VPackValue("local"));
   local.toVelocyPack(builder);
   builder.add(VPackValue("lastCommitStatus"));
   lastCommitStatus.toVelocyPack(builder);
+  builder.add(VPackValue("activeParticipantConfig"));
+  activeParticipantConfig.toVelocyPack(builder);
+  builder.add(VPackValue("committedParticipantConfig"));
+  committedParticipantConfig.toVelocyPack(builder);
   {
     VPackObjectBuilder ob2(&builder, StaticStrings::Follower);
     for (auto const& [id, stat] : follower) {
@@ -91,10 +97,15 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
   status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
+  status.leadershipEstablished = slice.get("leadershipEstablished").isTrue();
   status.commitLagMS = std::chrono::duration<double, std::milli>{
       slice.get("commitLagMS").extract<double>()};
   status.lastCommitStatus =
       CommitFailReason::fromVelocyPack(slice.get("lastCommitStatus"));
+  status.activeParticipantConfig = ParticipantsConfig::fromVelocyPack(
+      slice.get("activeParticipantConfig"));
+  status.committedParticipantConfig = ParticipantsConfig::fromVelocyPack(
+      slice.get("committedParticipantConfig"));
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
@@ -108,8 +119,8 @@ void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
   builder.add(VPackValue(StaticStrings::Spearhead));
   spearHead.toVelocyPack(builder);
-  builder.add("lastErrorReason", VPackValue(int(lastErrorReason)));
-  builder.add("lastErrorReasonMessage", VPackValue(to_string(lastErrorReason)));
+  builder.add(VPackValue("lastErrorReason"));
+  lastErrorReason.toVelocyPack(builder);
   builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS.count()));
   builder.add(VPackValue("state"));
   internalState.toVelocyPack(builder);
@@ -119,11 +130,23 @@ auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStat
   FollowerStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
-  stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
+  stats.lastErrorReason = AppendEntriesErrorReason::fromVelocyPack(slice.get("lastErrorReason"));
   stats.lastRequestLatencyMS = std::chrono::duration<double, std::milli>{
       slice.get("lastRequestLatencyMS").getDouble()};
   stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));
   return stats;
+}
+
+auto replicated_log::operator==(FollowerStatistics const& left,
+                FollowerStatistics const& right) noexcept -> bool {
+  return left.lastErrorReason == right.lastErrorReason &&
+      left.lastRequestLatencyMS == right.lastRequestLatencyMS &&
+      left.internalState.value.index() == right.internalState.value.index();
+}
+
+auto replicated_log::operator!=(FollowerStatistics const& left,
+                FollowerStatistics const& right) noexcept -> bool {
+  return !(left == right);
 }
 
 auto LogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
@@ -177,4 +200,8 @@ auto LogStatus::getVariant() const noexcept -> VariantType const& {
 
 auto LogStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
   std::visit([&](auto const& s) { s.toVelocyPack(builder); }, _variant);
+}
+
+auto LogStatus::asLeaderStatus() const noexcept -> LeaderStatus const* {
+  return std::get_if<LeaderStatus>(&_variant);
 }

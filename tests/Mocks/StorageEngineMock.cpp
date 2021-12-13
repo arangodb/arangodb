@@ -77,8 +77,8 @@ arangodb::LocalDocumentId generateDocumentId(arangodb::LogicalCollection const& 
 /// note that the attribute names must be hard-coded here to avoid an init-order
 /// fiasco with StaticStrings::FromString etc.
 std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttributes{
-    {arangodb::basics::AttributeName("_from", false)},
-    {arangodb::basics::AttributeName("_to", false)}};
+    {arangodb::basics::AttributeName(std::string_view("_from"), false)},
+    {arangodb::basics::AttributeName(std::string_view("_to"), false)}};
 
 /// @brief add a single value node to the iterator's keys
 void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) {
@@ -208,8 +208,8 @@ class EdgeIndexMock final : public arangodb::Index {
     }
 
     auto const type =
-        arangodb::basics::VelocyPackHelper::getStringRef(typeSlice,
-                                                         arangodb::velocypack::StringRef());
+        arangodb::basics::VelocyPackHelper::getStringView(typeSlice,
+                                                          std::string_view());
 
     if (type.compare("edge") != 0) {
       return nullptr;
@@ -459,7 +459,7 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
 
 class AllIteratorMock final : public arangodb::IndexIterator {
  public:
-  AllIteratorMock(std::unordered_map<arangodb::velocypack::StringRef, PhysicalCollectionMock::DocElement> const& data,
+  AllIteratorMock(std::unordered_map<std::string_view, PhysicalCollectionMock::DocElement> const& data,
                   arangodb::LogicalCollection& coll, arangodb::transaction::Methods* trx)
       : arangodb::IndexIterator(&coll, trx, arangodb::ReadOwnWrites::no), _data(data), _it{_data.begin()} {}
 
@@ -477,8 +477,8 @@ class AllIteratorMock final : public arangodb::IndexIterator {
   }
 
  private:
-  std::unordered_map<arangodb::velocypack::StringRef, PhysicalCollectionMock::DocElement> const& _data;
-  std::unordered_map<arangodb::velocypack::StringRef, PhysicalCollectionMock::DocElement>::const_iterator _it;
+  std::unordered_map<std::string_view, PhysicalCollectionMock::DocElement> const& _data;
+  std::unordered_map<std::string_view, PhysicalCollectionMock::DocElement>::const_iterator _it;
 };  // AllIteratorMock
 
 struct IndexFactoryMock : arangodb::IndexFactory {
@@ -717,7 +717,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
   HashIndexIteratorMock(arangodb::LogicalCollection* collection,
                         arangodb::transaction::Methods* trx, arangodb::Index const* index,
                         HashIndexMap const& map, std::unique_ptr<VPackBuilder>&& keys)
-    : IndexIterator(collection, trx, arangodb::ReadOwnWrites::no), _map(map) {
+      : IndexIterator(collection, trx, arangodb::ReadOwnWrites::no), _map(map) {
     _documents = _map.find(std::move(keys));
     _begin = _documents.begin();
     _end = _documents.end();
@@ -772,8 +772,8 @@ class HashIndexMock final : public arangodb::Index {
     }
 
     auto const type =
-        arangodb::basics::VelocyPackHelper::getStringRef(typeSlice,
-                                                         arangodb::velocypack::StringRef());
+        arangodb::basics::VelocyPackHelper::getStringView(typeSlice,
+                                                          std::string_view());
 
     if (type.compare("hash") != 0) {
       return nullptr;
@@ -1032,8 +1032,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   auto id = IndexFactory::validateSlice(info, true, false);  // true+false to ensure id generation if missing
 
   auto const type =
-      arangodb::basics::VelocyPackHelper::getStringRef(info.get("type"),
-                                                       arangodb::velocypack::StringRef());
+      arangodb::basics::VelocyPackHelper::getStringView(info.get("type"),
+                                                        std::string_view());
 
   std::shared_ptr<arangodb::Index> index;
 
@@ -1157,10 +1157,8 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
 
   TRI_ASSERT(newSlice.isObject());
   VPackSlice newKey = newSlice.get(arangodb::StaticStrings::KeyString);
-  if (newKey.isString()) {
-    if (_documents.find(arangodb::velocypack::StringRef{newKey}) != _documents.end()) {
-      return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-    }
+  if (newKey.isString() && _documents.contains(newKey.stringView())) {
+    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   arangodb::velocypack::Builder builder;
@@ -1175,7 +1173,7 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   }
   TRI_ASSERT(builder.slice().get(arangodb::StaticStrings::KeyString).isString());
 
-  arangodb::velocypack::StringRef key{builder.slice().get(arangodb::StaticStrings::KeyString)};
+  std::string_view key{builder.slice().get(arangodb::StaticStrings::KeyString).stringView()};
   arangodb::LocalDocumentId id =
       ::generateDocumentId(_logicalCollection, revisionId, _lastDocumentId);
   auto const& [ref, didInsert] =
@@ -1228,18 +1226,16 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
 }
 
 arangodb::Result PhysicalCollectionMock::lookupKey(
-    arangodb::transaction::Methods*, arangodb::velocypack::StringRef key,
+    arangodb::transaction::Methods*, std::string_view key,
     std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>& result,
     arangodb::ReadOwnWrites) const {
   before();
 
-  auto it = _documents.find(arangodb::velocypack::StringRef{key});
+  auto it = _documents.find(std::string_view{key});
   if (it != _documents.end()) {
-    if (_documents.find(arangodb::velocypack::StringRef{key}) != _documents.end()) {
-      result.first = it->second.docId();
-      result.second = arangodb::RevisionId::fromSlice(it->second.data());
-      return arangodb::Result();
-    }
+    result.first = it->second.docId();
+    result.second = arangodb::RevisionId::fromSlice(it->second.data());
+    return arangodb::Result();
   }
 
   result.first = arangodb::LocalDocumentId::none();
@@ -1329,9 +1325,9 @@ arangodb::IndexEstMap PhysicalCollectionMock::clusterIndexEstimates(bool allowUp
   return estimates;
 }
 
-arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
-                                              arangodb::velocypack::StringRef const& key,
-                                              arangodb::IndexIterator::DocumentCallback const& cb,
+arangodb::Result PhysicalCollectionMock::read(
+    arangodb::transaction::Methods*, std::string_view key,
+    arangodb::IndexIterator::DocumentCallback const& cb,
                                               arangodb::ReadOwnWrites) const {
   before();
   auto it = _documents.find(key);
@@ -1380,7 +1376,7 @@ arangodb::Result PhysicalCollectionMock::remove(arangodb::transaction::Methods& 
 
   auto key = slice.get(arangodb::StaticStrings::KeyString);
   TRI_ASSERT(key.isString());
-  arangodb::velocypack::StringRef keyRef{key};
+  std::string_view keyRef{key.stringView()};
   auto old = _documents.find(keyRef);
   if (old != _documents.end()) {
     previous.setManaged(old->second.vptr());
@@ -1431,7 +1427,7 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
   }
 
   before();
-  arangodb::velocypack::StringRef keyRef{key};
+  std::string_view keyRef{key.stringView()};
   auto it = _documents.find(keyRef);
   if (it != _documents.end()) {
     auto doc = it->second.data();
@@ -1499,7 +1495,7 @@ std::shared_ptr<arangodb::iresearch::IResearchLinkMock> StorageEngineMock::build
                    if (arangodb::iresearch::IResearchLinkMock::InitCallback != nullptr) {
                      return arangodb::iresearch::IResearchLinkMock::InitCallback();
                    }
-                   return irs::directory_attributes{};
+                 return irs::directory_attributes{};
                  });
 
   if (!res.ok()) {
@@ -1959,6 +1955,10 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   resetTransactionId();
   //  releaseUsage();
 
+  return arangodb::Result();
+}
+
+arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(arangodb::DataSourceId cid) {
   return arangodb::Result();
 }
 

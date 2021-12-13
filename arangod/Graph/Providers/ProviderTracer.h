@@ -30,7 +30,8 @@
 
 #include "Basics/ResourceUsage.h"
 
-#include <unordered_map>
+#include "Containers/FlatHashMap.h"
+
 #include <vector>
 
 namespace arangodb {
@@ -65,6 +66,8 @@ class ProviderTracer {
   auto expand(Step const& from, size_t previous, std::function<void(Step)> callback)
       -> void;
 
+  auto clear() -> void;
+
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
@@ -84,7 +87,7 @@ class ProviderTracer {
 
   // Mapping MethodName => Statistics
   // We make this mutable to not violate the captured API
-  mutable std::unordered_map<std::string, TraceEntry> _stats;
+  mutable containers::FlatHashMap<std::string, TraceEntry> _stats;
 };
 
 }  // namespace graph

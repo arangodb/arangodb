@@ -485,10 +485,8 @@ void Parser::parseObject() {
       Slice key(_builderPtr->_start + lastPos);
 
       if (key.isString()) {
-        ValueLength keyLength;
-        char const* p = key.getString(keyLength);
         uint8_t const* translated =
-            options->attributeTranslator->translate(p, keyLength);
+            options->attributeTranslator->translate(key.stringView());
 
         if (translated != nullptr) {
           // found translation... now reset position to old key position

@@ -33,9 +33,12 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "Aql/AqlValueGroup.h"
+
+#include "Containers/FlatHashMap.h"
 
 #include <memory>
-#include <unordered_map>
+#include <string>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -66,7 +69,7 @@ class HashedCollectExecutorInfos {
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
    */
   HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-                             RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
+                             RegisterId collectRegister, std::vector<std::string> aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                              velocypack::Options const* vpackOptions, 
                              arangodb::ResourceMonitor& resourceMonitor);
@@ -166,7 +169,7 @@ class HashedCollectExecutor {
   using GroupKeyType = HashedAqlValueGroup;
   using GroupValueType = std::unique_ptr<ValueAggregators>;
   using GroupMapType =
-      std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
+      containers::FlatHashMap<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
   Infos const& infos() const noexcept;
 

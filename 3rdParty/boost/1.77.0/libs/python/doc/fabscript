@@ -1,0 +1,83 @@
+# -*- python -*-
+#
+# Copyright (c) 2016 Stefan Seefeld
+# All rights reserved.
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+from faber.tools.xslt import xsltflags
+from faber.tools.boost import quickbook, boostbook
+from faber.artefacts import html
+from glob import glob as G
+from os import makedirs
+from os.path import relpath, dirname, exists
+from shutil import copyfile
+
+
+def glob(pattern):
+    prefix = srcdir + '/'
+    p = len(prefix)+1
+    return [f[p:] for f in G(prefix + pattern)]
+
+
+class make_html(action):
+
+    def __init__(self):
+        action.__init__(self, 'make_html', self.process)
+
+    def map(self, fs):
+        return boostbook.html.map(fs)
+
+    def process(self, target, source):
+        boostbook.html(target, source[0:1])
+        for s in source[1:]:
+            t = target[0]._filename + relpath(s._filename, srcdir)
+            d = dirname(t)
+            if not exists(d):
+                makedirs(d)
+            copyfile(s._filename, t)
+
+
+sphinx_build  = action('sphinx-build', 'sphinx-build -b html $(>) $(<)')
+rst2html  = action('rst2html', 'rst2html --trim-footnote-reference-space --footnote-references=superscript --stylesheet=$(>:D)/rst.css $(>) $(<)')
+
+python_bbk = rule(quickbook.process, 'python.bbk', 'python.qbk',
+                  dependencies=['release_notes.qbk',
+                                'building.qbk',
+                                'configuration.qbk',
+                                'suport.qbk',
+                                'faq.qbk',
+                                'glossary.qbk'])
+tutorial_bbk = rule(quickbook.process, 'tutorial.bbk', 'tutorial.qbk')
+reference_bbk = rule(quickbook.process, 'reference.bbk', 'reference.qbk')
+
+python_db = rule(boostbook.db, 'python.db', python_bbk)
+tutorial_db = rule(boostbook.db, 'tutorial.db', tutorial_bbk)
+reference_db = rule(boostbook.db, 'reference.db', reference_bbk)
+
+python = html.dir(make_html(), 'html', [python_db, 'boostbook.css'] + glob('/images/*.*') + glob('/images/callouts/*.*'),
+                  features=xsltflags('--stringparam generate.toc "library nop; chaper toc; section toc;"',
+                                     '--stringparam html.stylesheet boostbook.css',
+                                     '--stringparam boost.image.src images/bpl.png',
+                                     '--stringparam boost.graphics.root images/',
+                                     '--stringparam boost.defaults none',
+                                     '--param toc.max.depth 3',
+                                     '--param toc.section.depth 2',
+                                     '--param chunk.section.depth 1'))
+tutorial = html.dir(boostbook.html, 'html/tutorial', tutorial_db, dependencies=[python],
+                    features=xsltflags('--stringparam html.stylesheet ../boostbook.css',
+                                       '--stringparam boost.image.src ../images/bpl.png',
+                                       '--stringparam boost.graphics.root ../images/'))
+reference = html.dir(boostbook.html, 'html/reference', reference_db, dependencies=[python],
+                     features=xsltflags('--stringparam html.stylesheet ../boostbook.css',
+                                        '--stringparam boost.image.src ../images/bpl.png',
+                                        '--stringparam boost.graphics.root ../images/'))
+numpy = rule(sphinx_build, 'html/numpy', 'numpy', attrs=always, dependencies=[python])
+
+article = rule(rst2html, 'html/article.html', 'article.rst')
+
+html = alias('html', [python, tutorial, reference, numpy, article])
+
+default = html

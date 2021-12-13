@@ -31,6 +31,7 @@
 
 #include <type_traits>
 #include <random>
+#include <tuple>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -287,8 +288,8 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
   }
 }
 
-auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
-                                     RebootId rebootId, LogId logId,
+auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
+                                     RebootId myRebootId, LogId logId,
                                      agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result {
   return basics::catchToResult([&]() -> Result {
@@ -298,19 +299,28 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
 
     TRI_ASSERT(logId == spec->id);
     TRI_ASSERT(spec->currentTerm.has_value());
-    auto& leader = spec->currentTerm->leader;
+    auto& plannedLeader = spec->currentTerm->leader;
     auto log = ctx.ensureReplicatedLog(logId);
 
-    if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
+    auto status = log->getParticipant()->getStatus();
+
+    if (status.getCurrentTerm() == spec->currentTerm->term) {
+      // something has changed in the term volatile configuration
+      auto leader = log->getLeader();
+      TRI_ASSERT(leader != nullptr);
+      leader->updateParticipantsConfig(
+          std::make_shared<ParticipantsConfig const>(spec->participantsConfig));
+    } else if (plannedLeader.has_value() && plannedLeader->serverId == myServerId &&
+               plannedLeader->rebootId == myRebootId) {
       auto followers =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
-        if (participant != serverId) {
+        if (participant != myServerId) {
           followers.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
         }
       }
 
-      auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
+      auto newLeader = log->becomeLeader(spec->currentTerm->config, myServerId,
                                          spec->currentTerm->term, followers);
       newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
     } else {
@@ -319,96 +329,39 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
         leaderString = spec->currentTerm->leader->serverId;
       }
 
-      std::ignore = log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
+      std::ignore = log->becomeFollower(myServerId, spec->currentTerm->term, leaderString);
     }
 
     return {};
   });
 }
 
-auto algorithms::operator<<(std::ostream& os, ParticipantFlag const& p) noexcept
-    -> std::ostream& {
-  switch(p) {
-    case ParticipantFlag::Excluded: {
-      return os << "excluded";
-    } break;
-    case ParticipantFlag::Failed: {
-      return os << "failed";
-    } break;
-    case ParticipantFlag::Forced: {
-      return os << "forced";
-    } break;
-  }
-  return os;
-}
-
-// TODO: Make prettier
 auto algorithms::operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
     -> std::ostream& {
-  os << '{' << p.id << ':' << p.index <<
-    ", ";
-
-  auto of = std::ostream_iterator<ParticipantFlag>{os, ", "};
-  std::copy(std::begin(p.flags), std::end(p.flags), of);
-
-  os<< '}';
+  os << '{' << p.id << ':' << p.index << ", ";
+  os << "failed = " << std::boolalpha << p.failed;
+  os << ", flags = " << p.flags;
+  os << '}';
   return os;
 }
 
-ParticipantStateTuple::ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags)
-  : index(index), id(std::move(id)), flags(std::move(flags))
-{}
-
 auto ParticipantStateTuple::isExcluded() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Excluded) != std::end(flags);
+  return flags.excluded;
 };
 
 auto ParticipantStateTuple::isForced() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Forced) != std::end(flags);
+  return flags.forced;
 };
 
 auto ParticipantStateTuple::isFailed() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Failed) != std::end(flags);
+  return failed;
 };
 
-auto operator<=(ParticipantStateTuple left, ParticipantStateTuple right) noexcept -> bool {
-  if (left.index < right.index) {
-    return true;
-  } else if (left.index==right.index) {
-    return left.id <= right.id;
-  } else {
-    return false;
-  }
+auto operator<=>(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept {
+  // return std::tie(left.index, left.id) <=> std::tie(right.index, right.id); -- not supported by apple clang
+  if (auto c = left.index <=> right.index; c != 0) { return c; }
+  return left.id.compare(right.id) <=> 0;
 }
-
-
-/* Add flag for failed server to IndexParticipant struct
- *
- *  add struct for parameters:
- *   replicationFactor
- *   - writeConcern (==quorumSize)
- *   - softWriteConcern (better name?)
- *   -
- *  TRI_ASSERT(indexes.size() == replicationFactor)
- *  TRI_ASSERT(writeConcern <= softWriteConcern <= replicationFactor)
- *
- *   actualWriteConcern = max(writeConcern, x)
- *     where x = min(replicationFactor - number of failedServers,
- *                   softWriteConcern);
- *
- *  for purposes of computing actualwriteConcern, excluded and failed
- *  servers are treated the same.
- *
- * writeConcern is the *minimum* number of confirmed copies necessary to
- * proceed with a commit for any given LogIndex
- *
- * softWriteConcern allows for a number of failed servers to be tolerated
- * for the purposes of commit
- *
- * replicationFactor is the (expected) number of participants in the
- * replicated log
- *
- * */
 
 algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
     std::size_t writeConcern, std::size_t softWriteConcern, std::size_t replicationFactor)
@@ -447,10 +400,12 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
   // if there are no forced participants, this component is just
   // the spearhead (the furthest we could commit to)
   auto minForcedCommitIndex = spearhead;
+  auto minForcedParticipantId = std::optional<ParticipantId>{};
   for (auto const& pt : indexes) {
     if (pt.isForced()) {
       if (pt.index < minForcedCommitIndex) {
         minForcedCommitIndex = pt.index;
+        minForcedParticipantId = pt.id;
       }
     }
   }
@@ -484,13 +439,22 @@ auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& 
     if (spearhead == commitIndex) {
       return {commitIndex, CommitFailReason::withNothingToCommit(), quorum};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
-      return {commitIndex, CommitFailReason::withForcedParticipantNotInQuorum(), {}};
+      TRI_ASSERT(minForcedParticipantId.has_value());
+      return {commitIndex,
+              CommitFailReason::withForcedParticipantNotInQuorum(minForcedParticipantId.value()),
+              {}};
     } else {
-      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(), quorum};
+      // Report the participant whose id is the furthest away from the spearhead
+      auto const& who = nth->id;
+      return {commitIndex, CommitFailReason::withQuorumSizeNotReached(who), quorum};
     }
   }
 
-  // This case happens when all servers are either excluded or failed;
-  // this certainly means we could not reach a quorum
-  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(), {}};
+  // This happens when all servers are either excluded or failed;
+  // this certainly means we could not reach a quorum;
+  // indexes cannot be empty because this particular case would've been handled
+  // above by comparing actualWriteConcern to 0;
+  TRI_ASSERT(!indexes.empty());
+  auto const& who = indexes.front().id;
+  return {currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(who), {}};
 }

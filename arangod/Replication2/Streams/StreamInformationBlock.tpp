@@ -76,7 +76,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
     ContainerType log;
     typename ContainerType::iterator current;
 
-    auto next() -> std::optional<StreamEntryView<Type>> override {
+    std::optional<StreamEntryView<Type>> next() override {
       if (current != std::end(log)) {
         auto view = std::make_pair(current->first, std::cref(current->second));
         ++current;
@@ -85,7 +85,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIterator()
       return std::nullopt;
     }
 
-    [[nodiscard]] auto range() const noexcept -> LogRange override {
+    [[nodiscard]] LogRange range() const noexcept override {
       abort(); // TODO
     }
 
@@ -110,7 +110,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
     ContainerIterator _current;
     LogIndex _start, _stop;
 
-    auto next() -> std::optional<StreamEntryView<Type>> override {
+    std::optional<StreamEntryView<Type>> next() override {
       if (_current != std::end(_log) && _current->first < _stop) {
         auto view = std::make_pair(_current->first, std::cref(_current->second));
         ++_current;
@@ -118,7 +118,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::getIteratorRange
       }
       return std::nullopt;
     }
-    [[nodiscard]] auto range() const noexcept -> LogRange override {
+    [[nodiscard]] LogRange range() const noexcept override {
       return {_start, _stop};
     }
 

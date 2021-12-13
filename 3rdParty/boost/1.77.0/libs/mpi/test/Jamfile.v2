@@ -1,0 +1,56 @@
+# Support for the Message Passing Interface (MPI)
+#
+# (C) Copyright 2005, 2006 Trustees of Indiana University
+# (C) Copyright 2005 Douglas Gregor
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying 
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt.)
+#
+# Authors: Douglas Gregor
+#          Andrew Lumsdaine
+
+project : requirements <library>/boost//mpi ;
+import mpi : mpi-test ;
+
+if [ mpi.configured ]
+{
+test-suite mpi
+  :
+  [ mpi-test version_test : : :  1 ]
+  [ mpi-test block_nonblock_test-b2nb : block_nonblock_test.cpp : : 2 ]
+  [ mpi-test block_nonblock_test-nb2b : block_nonblock_test.cpp : : 2 ]
+  [ mpi-test random_gather : ../example/random_gather.cpp : : 2 ]
+  [ mpi-test random_scatter : ../example/random_scatter.cpp : : 2 ]
+  [ mpi-test cartesian_communicator : ../example/cartesian_communicator.cpp : : 24 ]
+  [ mpi-test cartesian_topology_init_test : : : 1 ]
+  [ mpi-test broadcast_stl_test  : : : 2 ]
+  [ mpi-test all_gather_test : : : 1 2 11  ]
+  [ mpi-test all_reduce_test : : : 1 2 11  ]
+  [ mpi-test all_to_all_test : : : 1 2 11  ]
+  [ mpi-test broadcast_test  : : : 2 17 ]
+  [ mpi-test gather_test  : : : 1 2 11  ]
+  [ mpi-test is_mpi_op_test : : : 1 ]
+  [ mpi-test mt_level_test : : : 1 ]
+  [ mpi-test mt_init_test  : : : 1 4 ]
+  # Note: Microsoft MPI fails nonblocking_test on 1 processor
+  [ mpi-test nonblocking_test : : : 2 11 24 ]
+  [ mpi-test reduce_test  ]
+  [ mpi-test ring_test : : : 2 3 4 7 8 13 17 ]
+  [ mpi-test sendrecv_test : : : 1 4 7 48 ]
+  [ mpi-test wait_any_test : : : 1 4 7 20 ]
+  [ mpi-test wait_all_vector_test : : : 2 ]
+  [ mpi-test wait_all_on_null : : : 1 2 ]
+  [ mpi-test scan_test  ]
+  [ mpi-test scatter_test  ]
+  # Note: Microsoft MPI fails all skeleton-content tests
+  [ mpi-test skeleton_content_test : : : 2 3 4 7 8 13 17 ]
+  [ mpi-test graph_topology_test : : : 2 7 13 ]
+  [ mpi-test cartesian_topology_test : : : 24 ]
+  [ mpi-test pointer_test : : : 2 ]
+  [ mpi-test groups_test  ]
+  # tests that require -std=c++11
+  [ mpi-test sendrecv_vector : : : 2 ]
+  # Intel MPI 2018 and older are axtected to fail:
+  [ mpi-test non_blocking_any_source : : : 2 17 ]
+  ;
+}

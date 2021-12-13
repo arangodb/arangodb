@@ -53,7 +53,7 @@ void VstResponse::reset(ResponseCode code) {
   _payload.clear();
 }
 
-void VstResponse::addPayload(VPackSlice const& slice,
+void VstResponse::addPayload(VPackSlice slice,
                              VPackOptions const* options,
                              bool resolveExternals) {
   if (_contentType == rest::ContentType::VPACK &&
@@ -156,8 +156,14 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   handleBuffer(std::move(buffer));
 }
 
-void VstResponse::addRawPayload(VPackStringRef payload) {
+void VstResponse::addRawPayload(std::string_view payload) {
   _payload.append(payload.data(), payload.length());
+}
+  
+ErrorCode VstResponse::deflate() {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
 }
 
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {

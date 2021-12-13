@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
-#define ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
+#pragma once
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/DependencyProxy.h"
@@ -115,5 +114,3 @@ class MultiDependencyProxyMock
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-
-#endif  // ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H

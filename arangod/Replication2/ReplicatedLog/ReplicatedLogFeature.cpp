@@ -29,7 +29,9 @@
 #include "ProgramOptions/Parameters.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
+#include "Logger/LogMacros.h"
+#include "Cluster/ServerState.h"
 
 #include <memory>
 
@@ -42,7 +44,7 @@ using namespace arangodb::replication2::replicated_log;
 ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
     : ApplicationFeature(server, "ReplicatedLog"),
       _replicatedLogMetrics(std::make_shared<ReplicatedLogMetrics>(
-          server.getFeature<MetricsFeature>())),
+          server.getFeature<metrics::MetricsFeature>())),
       _options(std::make_shared<ReplicatedLogGlobalSettings>()) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
@@ -67,27 +69,33 @@ void ReplicatedLogFeature::prepare() {
 }
 
 void ReplicatedLogFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   options->addSection("replicatedlog", "Options for replicated logs");
 
-  options->addOption("--replicatedlog.max-network-batch-size", "",
-                     new SizeTParameter(&_options->_maxNetworkBatchSize));
-  options->addOption("--replicatedlog.max-rocksdb-write-batch-size", "",
-                     new SizeTParameter(&_options->_maxRocksDBWriteBatchSize));
+  options->addOption("--replicatedlog.threshold-network-batch-size",
+                     "send a batch of log updates early when threshold "
+                     "(in bytes) is exceeded",
+                     new SizeTParameter(&_options->_thresholdNetworkBatchSize));
+  options->addOption("--replicatedlog.threshold-rocksdb-write-batch-size",
+                     "write a batch of log updates to RocksDB early "
+                     "when threshold (in bytes) is exceeded",
+                     new SizeTParameter(&_options->_thresholdRocksDBWriteBatchSize));
+#endif
 }
 
 void ReplicatedLogFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_options->_maxNetworkBatchSize < ReplicatedLogGlobalSettings::minNetworkBatchSize) {
+  if (_options->_thresholdNetworkBatchSize < ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize) {
     LOG_TOPIC("e83c3", FATAL, arangodb::Logger::REPLICATION2)
-        << "Invalid value for `--max-network-batch-size`. The value must be at "
+        << "Invalid value for `--threshold-network-batch-size`. The value must be at "
            "least "
-        << ReplicatedLogGlobalSettings::minNetworkBatchSize;
+        << ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize;
     FATAL_ERROR_EXIT();
   }
-  if (_options->_maxRocksDBWriteBatchSize < ReplicatedLogGlobalSettings::minRocksDBWriteBatchSize) {
+  if (_options->_thresholdRocksDBWriteBatchSize < ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize) {
     LOG_TOPIC("e83c4", FATAL, arangodb::Logger::REPLICATION2)
-        << "Invalid value for `--max-rocksdb-write-batch-size`. The value must be at "
+        << "Invalid value for `--threshold-rocksdb-write-batch-size`. The value must be at "
            "least "
-        << ReplicatedLogGlobalSettings::minRocksDBWriteBatchSize;
+        << ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize;
     FATAL_ERROR_EXIT();
   }
 }

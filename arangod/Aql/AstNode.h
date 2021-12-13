@@ -29,6 +29,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -36,7 +37,6 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-class StringRef;
 }  // namespace velocypack
 namespace basics {
 struct AttributeName;
@@ -79,6 +79,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
   
   FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
+  FLAG_READ_OWN_WRITES = 0x0200000,  // reads own writes (only needed for UPSERT FOR nodes)
 };
 
 /// @brief enumeration of AST node value types
@@ -228,13 +229,8 @@ struct AstNode {
   explicit AstNode(AstNodeValue const& value);
 
   /// @brief create the node from VPack
-  explicit AstNode(Ast*, arangodb::velocypack::Slice const& slice);
-
-  /// @brief create the node from VPack
-  explicit AstNode(std::function<void(AstNode*)> const& registerNode,
-                   std::function<char const*(std::string const&)> registerString,
-                   arangodb::velocypack::Slice const& slice);
-
+  explicit AstNode(Ast*, arangodb::velocypack::Slice slice);
+  
   /// @brief destroy the node
   ~AstNode();
 
@@ -244,8 +240,8 @@ struct AstNode {
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
 
-  /// @brief return the string value of a node, as a arangodb::velocypack::StringRef
-  arangodb::velocypack::StringRef getStringRef() const noexcept;
+  /// @brief return the string value of a node
+  std::string_view getStringView() const noexcept;
 
   /// @brief test if all members of a node are equality comparisons
   bool isOnlyEqualityMatch() const;
@@ -385,16 +381,6 @@ struct AstNode {
       std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&,
       bool allowIndexedAccess = false) const;
 
-  /// @brief locate a variable including the direct path vector leading to it.
-  void findVariableAccess(std::vector<AstNode const*>& currentPath,
-                          std::vector<std::vector<AstNode const*>>& paths,
-                          Variable const* findme) const;
-
-  /// @brief dig through the tree and return a reference to the astnode
-  /// referencing
-  /// findme, nullptr otherwise.
-  AstNode const* findReference(AstNode const* findme) const;
-
   /// @brief whether or not a node is simple enough to be used in a simple
   /// expression
   /// this may also set the FLAG_SIMPLE flag for the node
@@ -437,11 +423,6 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) may contain a call to a
   /// a function or a user-defined function
   bool callsFunction() const;
-
-  /// @brief whether or not the object node contains dynamically named
-  /// attributes
-  /// on its first level
-  bool containsDynamicAttributeName() const;
 
   /// @brief iterates whether a node of type "searchType" can be found
   bool containsNodeType(AstNodeType searchType) const;
@@ -545,9 +526,6 @@ struct AstNode {
 
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
-
-  /// @brief validate that given node is an object with const-only values
-  bool isConstObject() const;
 
   /// @brief append a string representation of the node into a string buffer
   /// the string representation does not need to be JavaScript-compatible

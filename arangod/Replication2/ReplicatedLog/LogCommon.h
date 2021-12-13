@@ -21,12 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <chrono>
+#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <variant>
 
 #if (_MSC_VER >= 1)
@@ -56,39 +58,14 @@ class Slice;
 
 namespace arangodb::replication2 {
 
-/**
- * This implements all comparsion operators for a type `T` with another type
- * `S`, given that `operator<=(T const&, S const&)` is available.
- * @tparam T
- * @tparam S defaults to T
- */
-template <typename T, typename S = T>
-struct implement_compare {
-  [[nodiscard]] friend auto operator==(T const& left, S const& right) -> bool {
-    return left <= right && right <= left;
-  }
-  [[nodiscard]] friend auto operator!=(T const& left, S const& right) -> bool {
-    return !(left == right);
-  }
-  [[nodiscard]] friend auto operator<(T const& left, S const& right) -> bool {
-    return !(right <= left);
-  }
-  [[nodiscard]] friend auto operator>=(T const& left, S const& right) -> bool {
-    return right <= left;
-  }
-  [[nodiscard]] friend auto operator>(T const& left, S const& right) -> bool {
-    return right < left;
-  }
-};
-
-struct LogIndex : implement_compare<LogIndex> {
+struct LogIndex {
   constexpr LogIndex() noexcept : value{0} {}
   constexpr explicit LogIndex(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
 
   [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept -> LogIndex;
 
-  [[nodiscard]] auto operator<=(LogIndex) const -> bool;
+  friend auto operator<=>(LogIndex const&, LogIndex const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> LogIndex;
 
@@ -99,12 +76,11 @@ struct LogIndex : implement_compare<LogIndex> {
 
 auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
 
-struct LogTerm : implement_compare<LogTerm> {
+struct LogTerm {
   constexpr LogTerm() noexcept : value{0} {}
   constexpr explicit LogTerm(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
-  [[nodiscard]] auto operator<=(LogTerm) const -> bool;
-
+  friend auto operator<=>(LogTerm const&, LogTerm const&) = default;
   friend auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
@@ -115,11 +91,9 @@ auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 [[nodiscard]] auto to_string(LogTerm term) -> std::string;
 [[nodiscard]] auto to_string(LogIndex index) -> std::string;
 
-struct TermIndexPair : implement_compare<TermIndexPair> {
+struct TermIndexPair {
   LogTerm term{};
   LogIndex index{};
-
-  friend auto operator<=(TermIndexPair, TermIndexPair) noexcept -> bool;
 
   TermIndexPair(LogTerm term, LogIndex index) noexcept;
   TermIndexPair() = default;
@@ -127,6 +101,7 @@ struct TermIndexPair : implement_compare<TermIndexPair> {
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> TermIndexPair;
 
+  friend auto operator<=>(TermIndexPair const&, TermIndexPair const&) = default;
   friend auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 };
 
@@ -215,7 +190,8 @@ class PersistingLogEntry {
   void toVelocyPack(velocypack::Builder& builder, OmitLogIndex) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> PersistingLogEntry;
 
-  [[nodiscard]] auto operator==(PersistingLogEntry const&) const noexcept -> bool;
+  friend auto operator==(PersistingLogEntry const&, PersistingLogEntry const&) noexcept
+      -> bool = default;
 
  private:
   void entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const;
@@ -303,7 +279,7 @@ struct TypedLogRangeIterator : TypedLogIterator<T> {
   // Note that this does not imply that all indexes in the range [from, to)
   // are returned. Hence (to - from) is only an upper bound on the number of
   // entries returned.
-  virtual auto range() const noexcept -> LogRange = 0;
+  [[nodiscard]] virtual auto range() const noexcept -> LogRange = 0;
 };
 
 using LogIterator = TypedLogIterator<LogEntryView>;
@@ -314,34 +290,59 @@ struct PersistedLogIterator : TypedLogIterator<PersistingLogEntry> {};
 
 struct LogConfig {
   std::size_t writeConcern = 1;
+  std::size_t softWriteConcern = 1;
   std::size_t replicationFactor = 1;
   bool waitForSync = false;
 
   auto toVelocyPack(velocypack::Builder&) const -> void;
   explicit LogConfig(velocypack::Slice);
   LogConfig() noexcept = default;
-  LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept;
+  LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
+            std::size_t replicationFactor, bool waitForSync) noexcept;
 
-  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
-  friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept
+      -> bool = default;
 };
 
-[[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+struct ParticipantFlags {
+  bool forced = false;
+  bool excluded = false;
+
+  friend auto operator==(ParticipantFlags const& left,
+                         ParticipantFlags const& right) noexcept -> bool = default;
+
+  friend auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
+
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
+};
+
+auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
+
+struct ParticipantsConfig {
+  std::size_t generation = 0;
+  std::unordered_map<ParticipantId, ParticipantFlags> participants;
+
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> ParticipantsConfig;
+
+  // to be defaulted soon
+  friend auto operator==(ParticipantsConfig const& left,
+                         ParticipantsConfig const& right) noexcept -> bool = default;
+};
 
 // These settings are initialised by the ReplicatedLogFeature based on command line arguments
 struct ReplicatedLogGlobalSettings {
  public:
-  static inline constexpr std::size_t defaultMaxNetworkBatchSize{1024 * 1024};
-  static inline constexpr std::size_t minNetworkBatchSize{1024 * 1024};
+  static inline constexpr std::size_t defaultThresholdNetworkBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minThresholdNetworkBatchSize{1024 * 1024};
 
-  static inline constexpr std::size_t defaultMaxRocksDBWriteBatchSize{1024 * 1024};
-  static inline constexpr std::size_t minRocksDBWriteBatchSize{1024 * 1024};
+  static inline constexpr std::size_t defaultThresholdRocksDBWriteBatchSize{1024 * 1024};
+  static inline constexpr std::size_t minThresholdRocksDBWriteBatchSize{1024 * 1024};
 
-  std::size_t _maxNetworkBatchSize{defaultMaxNetworkBatchSize};
-  std::size_t _maxRocksDBWriteBatchSize{defaultMaxRocksDBWriteBatchSize};
+  std::size_t _thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
+  std::size_t _thresholdRocksDBWriteBatchSize{defaultThresholdRocksDBWriteBatchSize};
 };
-
 
 namespace replicated_log {
 struct CommitFailReason {
@@ -350,23 +351,34 @@ struct CommitFailReason {
   struct NothingToCommit {
     static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
     void toVelocyPack(velocypack::Builder& builder) const;
+    friend auto operator==(NothingToCommit const& left, NothingToCommit const& right)
+        -> bool = default;
   };
   struct QuorumSizeNotReached {
     static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
     void toVelocyPack(velocypack::Builder& builder) const;
+    ParticipantId who;
+    friend auto operator==(QuorumSizeNotReached const& left,
+                           QuorumSizeNotReached const& right) -> bool = default;
   };
   struct ForcedParticipantNotInQuorum {
     static auto fromVelocyPack(velocypack::Slice) -> ForcedParticipantNotInQuorum;
     void toVelocyPack(velocypack::Builder& builder) const;
+    ParticipantId who;
+    friend auto operator==(ForcedParticipantNotInQuorum const& left,
+                           ForcedParticipantNotInQuorum const& right) -> bool = default;
   };
   std::variant<NothingToCommit, QuorumSizeNotReached, ForcedParticipantNotInQuorum> value;
 
   static auto withNothingToCommit() noexcept -> CommitFailReason;
-  static auto withQuorumSizeNotReached() noexcept -> CommitFailReason;
-  static auto withForcedParticipantNotInQuorum() noexcept -> CommitFailReason;
+  static auto withQuorumSizeNotReached(ParticipantId who) noexcept -> CommitFailReason;
+  static auto withForcedParticipantNotInQuorum(ParticipantId who) noexcept -> CommitFailReason;
 
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
   void toVelocyPack(velocypack::Builder& builder) const;
+
+  friend auto operator==(CommitFailReason const& left, CommitFailReason const& right)
+      -> bool = default;
 
  private:
   template <typename... Args>
@@ -375,7 +387,6 @@ struct CommitFailReason {
 
 auto to_string(CommitFailReason const&) -> std::string;
 }  // namespace replicated_log
-
 
 }  // namespace arangodb::replication2
 

@@ -28,7 +28,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "GeneralServer/RestHandler.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -47,7 +48,7 @@ AgencyCache::AgencyCache(application_features::ApplicationServer& server,
     _callbackRegistry(callbackRegistry), 
     _lastSnapshot(0),
     _callbacksCount(
-      _server.getFeature<MetricsFeature>().add(arangodb_agency_cache_callback_number{})) {
+      _server.getFeature<metrics::MetricsFeature>().add(arangodb_agency_cache_callback_number{})) {
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR || _shutdownCode == TRI_ERROR_SHUTTING_DOWN);
@@ -93,31 +94,32 @@ std::tuple<query_t, index_t> AgencyCache::get(std::string const& path) const {
 
 // Get Builder from readDB mainly /Plan /Current
 query_t AgencyCache::dump() const {
-  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  arangodb::velocypack::Builder query;
   {
-    VPackArrayBuilder outer(query.get());
-    VPackArrayBuilder inner(query.get());
-    query->add(VPackValue("/"));
+    VPackArrayBuilder outer(&query);
+    VPackArrayBuilder inner(&query);
+    query.add(VPackValue("/"));
   }
 
   auto ret = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder o(ret.get());
+  { 
+    VPackObjectBuilder o(ret.get());
     std::shared_lock g(_storeLock);
     ret->add("index", VPackValue(_commitIndex));
     ret->add(VPackValue("cache"));
-    _readDB.read(query, ret);
+    _readDB.readMultiple(query.slice(), *ret);
   }
   return ret;
 }
 
 // Get Builder from readDB, mainly /Plan /Current
 std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& paths) const {
-  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  arangodb::velocypack::Builder query;
   {
-    VPackArrayBuilder outer(query.get());
-    VPackArrayBuilder inner(query.get());
+    VPackArrayBuilder outer(&query);
+    VPackArrayBuilder inner(&query);
     for (auto const& i : paths) {
-      query->add(VPackValue(i));
+      query.add(VPackValue(i));
     }
   }
 
@@ -125,7 +127,7 @@ std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& p
   std::shared_lock g(_storeLock);
 
   if (_commitIndex > 0) {
-    _readDB.read(query, result);
+    _readDB.readMultiple(query.slice(), *result);
   }
   return std::tuple(std::move(result), _commitIndex);
 }
@@ -723,19 +725,22 @@ AgencyCache::change_set_t AgencyCache::changedSince(
     return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
   }
 
-  auto query = std::make_shared<arangodb::velocypack::Builder>();
+  arangodb::velocypack::Builder query;
   {
     for (auto const& i : databases) {
       if (!i.empty()) { // actual database
-        { VPackArrayBuilder outer(query.get());
-          { VPackArrayBuilder inner(query.get());
+        { 
+          VPackArrayBuilder outer(&query);
+          { 
+            VPackArrayBuilder inner(&query);
             for (auto const& g : goodies) { // Get goodies for database
-              query->add(VPackValue(g + i));
+              query.add(VPackValue(g + i));
             }
-          }}
-        auto [entry,created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
+          }
+        }
+        auto [entry, created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
         if (created) {
-          _readDB.read(query, entry->second);
+          _readDB.readMultiple(query.slice(), *entry->second);
         } else {
           LOG_TOPIC("31ae3", ERR, Logger::CLUSTER)
             << "Failed to communicate updated database " << i
@@ -743,7 +748,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
           FATAL_ERROR_EXIT();
         }
       }
-      query->clear();
+      query.clear();
     }
   }
 
@@ -758,15 +763,15 @@ AgencyCache::change_set_t AgencyCache::changedSince(
           return std::find(std::begin(exc), std::end(exc), x) != std::end(exc);}),
       std::end(keys));
     {
-      VPackArrayBuilder outer(query.get());
+      VPackArrayBuilder outer(&query);
       for (auto const& i : keys) {
-        VPackArrayBuilder inner(query.get());
-        query->add(VPackValue(AgencyCommHelper::path(what) + "/" + i));
+        VPackArrayBuilder inner(&query);
+        query.add(VPackValue(AgencyCommHelper::path(what) + "/" + i));
       }
     }
     if (_commitIndex > 0) { // Databases
       rest_res = std::make_shared<VPackBuilder>();
-      _readDB.read(query, rest_res);
+      _readDB.readMultiple(query.slice(), *rest_res);
     }
   }
 

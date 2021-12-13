@@ -45,7 +45,7 @@ constexpr static arangodb::RevisionId::BaseType TickLimit =
 
 namespace arangodb {
 
-RevisionId::RevisionId(LocalDocumentId const& id) : Identifier(id.id()) {}
+RevisionId::RevisionId(LocalDocumentId id) : Identifier(id.id()) {}
 
 bool RevisionId::isSet() const noexcept { return id() != 0; }
 

@@ -457,7 +457,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   if (failOnMissing) {
     apply(
         [this](ApplicationFeature& feature) {
-          for (auto& other : feature.requires()) {
+          for (auto& other : feature.dependsOn()) {
             if (!hasFeature(other)) {
               fail("feature '" + feature.name() +
                    "' depends on unknown feature '" + other.name() + "'");

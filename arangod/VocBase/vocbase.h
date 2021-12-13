@@ -71,7 +71,6 @@ struct ReplicatedLog;
 namespace velocypack {
 class Builder;
 class Slice;
-class StringRef;
 }  // namespace velocypack
 
 class CursorRepository;
@@ -341,6 +340,8 @@ struct TRI_vocbase_t {
   /// @return visitation compleated successfully
   typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
   bool visitDataSources(dataSourceVisitor const& visitor);
+
+  std::shared_ptr<arangodb::LogicalCollection> persistCollection(std::shared_ptr<arangodb::LogicalCollection>& collection);
 
  private:
   /// @brief callback for collection dropping

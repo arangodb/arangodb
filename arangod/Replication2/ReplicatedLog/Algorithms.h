@@ -70,40 +70,28 @@ struct LogActionContext {
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };
 
-auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, RebootId rebootId,
+auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
                          LogId logId, agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result;
 
-enum class ParticipantFlag {
-  Excluded,
-  Forced,
-  Failed
-};
-using ParticipantFlags = std::set<ParticipantFlag>;
-
-struct ParticipantStateTuple : implement_compare<ParticipantStateTuple> {
+struct ParticipantStateTuple {
   LogIndex index;
   ParticipantId id;
-  ParticipantFlags flags;
-
-  ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags);
+  bool failed = false;
+  ParticipantFlags flags{};
 
   [[nodiscard]] auto isExcluded() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
   [[nodiscard]] auto isFailed() const noexcept -> bool;
 
-  friend auto operator<=(ParticipantStateTuple, ParticipantStateTuple) noexcept -> bool;
+  friend auto operator<=>(ParticipantStateTuple const&, ParticipantStateTuple const&) noexcept;
   friend auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
 };
 
-auto operator<=(ParticipantStateTuple left, ParticipantStateTuple right) noexcept -> bool;
+auto operator<=>(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept;
 auto operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept -> std::ostream&;
-auto operator<<(std::ostream& os, ParticipantFlag const& f) noexcept
- -> std::ostream&;
 
 struct CalculateCommitIndexOptions {
-  // Requirement (asserted by constructor in maintainer mode):
-  // _writeConcern <= _softWriteConcern <= _replicationFactor
   std::size_t const _writeConcern{0};       // might be called quorumSize in other places
   std::size_t const _softWriteConcern{0};
   std::size_t const _replicationFactor{0};
@@ -113,7 +101,7 @@ struct CalculateCommitIndexOptions {
 
 auto calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,
                           CalculateCommitIndexOptions const opt,
-                          LogIndex commitIndex, LogIndex spearhead)
+                          LogIndex currentCommitIndex, LogIndex spearhead)
     -> std::tuple<LogIndex, replicated_log::CommitFailReason, std::vector<ParticipantId>>;
 
 }  // namespace arangodb::replication2::algorithms

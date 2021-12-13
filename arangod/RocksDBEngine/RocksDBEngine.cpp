@@ -56,11 +56,12 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
-#include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
@@ -81,6 +82,7 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBSha256Checksum.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -122,13 +124,17 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
 DECLARE_GAUGE(rocksdb_wal_sequence_lower_bound, uint64_t, "RocksDB WAL sequence number until which background thread has caught up");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t, "Number of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t, "Number of prunable RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t, "Whether or not RocksDB WAL file pruning is active");
+DECLARE_GAUGE(arangodb_revision_tree_memory_usage, uint64_t, "Total memory consumed by all revision trees");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_success_total, "Number of successful revision tree rebuilds");
 DECLARE_COUNTER(arangodb_revision_tree_rebuilds_failure_total, "Number of failed revision tree rebuilds");
-          
+DECLARE_COUNTER(arangodb_revision_tree_hibernations_total, "Number of revision tree hibernations");
+DECLARE_COUNTER(arangodb_revision_tree_resurrections_total, "Number of revision tree resurrections");
+
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
@@ -212,18 +218,24 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
-      _metricsWalSequenceLowerBound(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsWalSequenceLowerBound(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_wal_sequence_lower_bound{})),
-      _metricsArchivedWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
-      _metricsPrunableWalFiles(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_prunable_wal_files{})),
-      _metricsWalPruningActive(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsWalPruningActive(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_wal_pruning_active{})),
-      _metricsTreeRebuildsSuccess(server.getFeature<arangodb::MetricsFeature>().add(
+      _metricsTreeMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_revision_tree_memory_usage{})),
+      _metricsTreeRebuildsSuccess(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_revision_tree_rebuilds_success_total{})),
-      _metricsTreeRebuildsFailure(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_revision_tree_rebuilds_failure_total{})) {
+      _metricsTreeRebuildsFailure(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_revision_tree_rebuilds_failure_total{})),
+      _metricsTreeHibernations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_revision_tree_hibernations_total{})),
+      _metricsTreeResurrections(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_revision_tree_resurrections_total{})) {
 
   server.addFeature<RocksDBOptionFeature>();
 
@@ -666,6 +678,15 @@ void RocksDBEngine::start() {
     _options.max_open_files = -1;
   }
 
+  if (_createShaFiles) {
+    auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
+    // Register checksum factory
+    _options.file_checksum_gen_factory = std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
+    // Do an initial check in the database directory for missing SHA checksum files
+    shaFileManager->checkMissingShaFiles();
+    _options.listeners.push_back(std::move(shaFileManager));
+  }
+
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
@@ -681,11 +702,6 @@ void RocksDBEngine::start() {
     _options.listeners.push_back(_throttleListener);
   }
 
-  _shaListener = std::make_shared<RocksDBShaCalculator>(server(), _createShaFiles);
-  if (_createShaFiles) {
-    _options.listeners.push_back(_shaListener);
-  } 
-  
   _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
 
   _options.listeners.push_back(_errorListener);
@@ -962,10 +978,6 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // signal the event listener that we are going to shut down soon
-  if (_createShaFiles && _shaListener != nullptr) {
-    _shaListener->beginShutdown();
-  } 
 }
 
 void RocksDBEngine::stop() {
@@ -974,10 +986,6 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
-  
-  if (_createShaFiles && _shaListener != nullptr) {
-    _shaListener->waitForShutdown();
-  }
 
   if (_backgroundThread) {
     // stop the press
@@ -1018,7 +1026,28 @@ void RocksDBEngine::unprepare() {
   waitForCompactionJobsToFinish();
   shutdownRocksDBInstance();
 }
-  
+
+void RocksDBEngine::trackRevisionTreeHibernation() noexcept {
+  ++_metricsTreeHibernations;
+}
+
+void RocksDBEngine::trackRevisionTreeResurrection() noexcept {
+  ++_metricsTreeResurrections;
+}
+
+void RocksDBEngine::trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept {
+  if (value != 0) {
+    _metricsTreeMemoryUsage += value;
+  }
+}
+
+void RocksDBEngine::trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept {
+  if (value != 0) {
+    [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
+    TRI_ASSERT(old >= value);
+  }
+}
+
 bool RocksDBEngine::hasBackgroundError() const {
   return _errorListener != nullptr && _errorListener->called();
 }
@@ -1583,6 +1612,12 @@ void RocksDBEngine::processCompactions() {
       // found something to do, now steal the item from the queue
       bounds = std::move(_pendingCompactions.front());
       _pendingCompactions.pop_front();
+      
+      if (server().isStopping()) {
+        // if we are stopping, it is ok to not process but lose any pending
+        // compactions
+        return;
+      }
       // set it to running already, so that concurrent callers of this method
       // will not kick off additional jobs
       ++_runningCompactions;
@@ -1685,8 +1720,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
-      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(),
-                                      arangodb::velocypack::StringRef(coll.guid()));
+      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(), coll.guid());
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
@@ -1765,7 +1799,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  size_t numDocs = rocksutils::countKeyRange(_db, bounds, true);
+  size_t numDocs = rocksutils::countKeyRange(_db, bounds, nullptr, true);
 
   if (numDocs > 0) {
     std::string errorMsg(
@@ -1804,8 +1838,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
       LogicalDataSource::Serialization::PersistenceWithInProgress);
   Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
-                                        arangodb::velocypack::StringRef(oldName)));
+      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), oldName));
 
   return res;
 }
@@ -1855,8 +1888,8 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   builder.close();
 
   auto logValue =
-      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
-                                arangodb::velocypack::StringRef(view.guid()));
+      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), view.guid());
+  
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
@@ -2384,7 +2417,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // check if documents have been deleted
-        numDocsLeft += rocksutils::countKeyRange(db, bounds, prefixSameAsStart);
+        numDocsLeft += rocksutils::countKeyRange(db, bounds, /*snapshot*/ nullptr, prefixSameAsStart);
 #endif
       }
     }
@@ -2416,7 +2449,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // check if documents have been deleted
-    numDocsLeft += rocksutils::countKeyRange(db, bounds, true);
+    numDocsLeft += rocksutils::countKeyRange(db, bounds, /*snapshot*/ nullptr, true);
 #endif
   });
 
@@ -2459,8 +2492,7 @@ bool RocksDBEngine::systemDatabaseExists() {
   for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
     TRI_ASSERT(item.isObject());
     TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
-    if (item.get(StaticStrings::DatabaseName)
-            .compareString(arangodb::velocypack::StringRef(StaticStrings::SystemDatabase)) == 0) {
+    if (item.get(StaticStrings::DatabaseName).stringView() == StaticStrings::SystemDatabase) {
       return true;
     }
   }
@@ -2884,6 +2916,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder, bool v2) const {
     builder.add("rocksdb.read-only", VPackValue(_errorListener->called() ? 1 : 0));
   }
 
+  auto sequenceNumber = _db->GetLatestSequenceNumber();
+  builder.add("rocksdb.wal-sequence", VPackValue(sequenceNumber));
+
   builder.close();
 }
 
@@ -3135,27 +3170,24 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
   int iterations = 0;
 
   do {
+    size_t numRunning;
     {
       READ_LOCKER(locker, _pendingCompactionsLock);
-      if (_runningCompactions == 0) {
-        return;
-      }
+      numRunning =  _runningCompactions;
+    }
+    if (numRunning == 0) {
+      return;
     }
       
     // print this only every few seconds
     if (iterations++ % 200 == 0) {
-      LOG_TOPIC("9cbfd", INFO, Logger::ENGINES) << "waiting for compaction jobs to finish...";
+      LOG_TOPIC("9cbfd", INFO, Logger::ENGINES) 
+          << "waiting for " << numRunning << " compaction job(s) to finish...";
     }
     // unfortunately there is not much we can do except waiting for
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   } while (true);
-}
-      
-void RocksDBEngine::checkMissingShaFiles(std::string const& pathname, int64_t requireAge) {
-  if (_shaListener != nullptr) {
-    _shaListener->checkMissingShaFiles(pathname, requireAge);
-  }
 }
 
 auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,

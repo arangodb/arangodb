@@ -1,0 +1,33 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section:establishing_connections Connecting]
+
+Before messages can be exchanged, a websocket stream first needs to be
+connected, and then to have the websocket handshake performed. The stream
+delegates the task of establishing the connection to the next layers.
+For example, if the next layer is a connectible stream or socket object,
+it can be accessed to call the necessary function for connecting.
+Here we make an outbound connection as a client would do.
+
+[code_websocket_1_1]
+
+To accept incoming connections, an acceptor is used. The websocket stream
+may be constructed from the socket returned by the acceptor when an
+incoming connection is established.
+
+[code_websocket_1_2]
+
+Alternatively, the incoming connection may be accepted directly into
+the socket owned by the websocket stream, using this overload of the
+acceptor member function.
+
+[code_websocket_1_3]
+
+[endsect]

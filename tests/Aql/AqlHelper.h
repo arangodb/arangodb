@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_AQL_AQLHELPER_H
-#define TESTS_AQL_AQLHELPER_H
+#pragma once
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionState.h"
@@ -39,5 +38,3 @@ bool operator==(arangodb::aql::AqlItemBlock const&, arangodb::aql::AqlItemBlock 
 
 }
 }
-
-#endif  // TESTS_AQL_AQLHELPER_H

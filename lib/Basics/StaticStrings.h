@@ -117,6 +117,7 @@ class StaticStrings {
   static std::string const DataSourceDeleted;  // data-source deletion marker
   static std::string const DataSourceGuid;     // data-source globaly-unique id
   static std::string const DataSourceId;       // data-source id
+  static std::string const DataSourceCid;      // data-source collection id
   static std::string const DataSourceName;     // data-source name
   static std::string const DataSourcePlanId;   // data-source plan id
   static std::string const DataSourceSystem;   // data-source system marker
@@ -193,6 +194,7 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
+  static std::string const LockLocation;
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
@@ -248,14 +250,10 @@ class StaticStrings {
   static std::string const ShardingSingle;
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
+  static std::string_view const SoftWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
-  static std::string const IsDisjoint;
-  static std::string const IsHybrid;
-  static std::string const GraphIsSatellite;
-  static std::string const GraphSatellites;
-  static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
@@ -266,10 +264,21 @@ class StaticStrings {
   static std::string const GraphEdgeDefinitions;
   static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
-  static std::string const GraphInitial;
-  static std::string const GraphInitialCid;
   static std::string const GraphName;
   static std::string const GraphTraversalProfileLevel;
+
+  // smart graph relevant attributes
+  static std::string const IsDisjoint;
+  static std::string const IsHybrid;
+  static std::string const GraphIsSatellite;
+  static std::string const GraphSatellites;
+  static std::string const GraphIsSmart;
+  static std::string const GraphInitial;
+  static std::string const GraphInitialCid;
+  static std::string const ShadowCollections;
+  static std::string const FullLocalPrefix;
+  static std::string const FullFromPrefix;
+  static std::string const FullToPrefix;
 
   // Pregel Section Start
 

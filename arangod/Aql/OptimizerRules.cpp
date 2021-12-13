@@ -1,4 +1,4 @@
-#////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
@@ -1004,7 +1004,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       auto args = ast->createNodeArray();
       args->addMember(rhs);
       auto sorted =
-          ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
+          ast->createNodeFunctionCall("SORTED_UNIQUE", args, true);
       inNode->changeMember(1, sorted);
       modified = true;
       continue;
@@ -1100,7 +1100,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     auto args = ast->createNodeArray();
     args->addMember(originalArg);
     auto sorted =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
+        ast->createNodeFunctionCall("SORTED_UNIQUE", args, true);
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(ast, sorted);
@@ -1693,6 +1693,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   ::arangodb::containers::SmallVectorWithArena<ExecutionNode*> nodesStorage;
   auto& nodes = nodesStorage.vector();
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
+  plan->findNodesOfType(nodes, EN::SUBQUERY, true);
 
   SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
   SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
@@ -1716,13 +1717,22 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   VarSet vars;
 
   for (auto const& n : nodes) {
-    auto nn = ExecutionNode::castTo<CalculationNode*>(n);
-
-    if (!nn->expression()->isDeterministic()) {
+    bool isAccessCollection = false;
+    if (!n->isDeterministic()) {
       // we will only move expressions up that cannot throw and that are
       // deterministic
       continue;
     }
+    if (n->getType() == EN::CALCULATION) {
+      auto nn = ExecutionNode::castTo<CalculationNode*>(n);
+      if (::accessesCollectionVariable(plan.get(), nn, vars)) {
+        isAccessCollection = true;
+      }
+    } 
+    // note: if it's a subquery node, it cannot move upwards if there's a
+    // modification keyword in the subquery e.g.
+    // INSERT would not be scope-limited by the outermost subqueries, so we could end up
+    // inserting a smaller amount of documents than what's actually proposed in the query.
 
     neededVars.clear();
     n->getVariablesUsedHere(neededVars);
@@ -1777,7 +1787,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
         // transfer the calculation result to the coordinator instead of the
         // full documents
 
-        if (!::accessesCollectionVariable(plan.get(), nn, vars)) {
+        if (!isAccessCollection) {
           // not accessing any collection data
           break;
         }
@@ -2202,16 +2212,14 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       TRI_ASSERT(accessed != nullptr);
 
       if (accessed->type == NODE_TYPE_OBJECT) {
-        arangodb::velocypack::StringRef const attributeName(node->getStringValue(),
-                                                            node->getStringLength());
+        std::string_view attributeName(node->getStringView());
         bool isDynamic = false;
         size_t const n = accessed->numMembers();
         for (size_t i = 0; i < n; ++i) {
           auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              arangodb::velocypack::StringRef(member->getStringValue(),
-                                              member->getStringLength()) == attributeName) {
+              member->getStringView() == attributeName) {
             // found the attribute!
             AstNode* next = member->getMember(0);
             if (!next->isDeterministic()) {
@@ -2263,20 +2271,18 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       }
 
       if (accessed->type == NODE_TYPE_OBJECT) {
-        arangodb::velocypack::StringRef attributeName;
+        std::string_view attributeName;
         std::string indexString;
 
         if (indexValue->isStringValue()) {
           // string index, e.g. ['123']
-          attributeName =
-              arangodb::velocypack::StringRef(indexValue->getStringValue(),
-                                              indexValue->getStringLength());
+          attributeName = indexValue->getStringView();
         } else {
           // numeric index, e.g. [123]
           TRI_ASSERT(indexValue->isNumericValue());
           // convert the numeric index into a string
           indexString = std::to_string(indexValue->getIntValue());
-          attributeName = arangodb::velocypack::StringRef(indexString);
+          attributeName = std::string_view(indexString);
         }
 
         bool isDynamic = false;
@@ -2285,8 +2291,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              arangodb::velocypack::StringRef(member->getStringValue(),
-                                              member->getStringLength()) == attributeName) {
+              member->getStringView() == attributeName) {
             // found the attribute!
             AstNode* next = member->getMember(0);
             if (!next->isDeterministic()) {
@@ -4382,14 +4387,14 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
             std::vector<AggregateVarInfo> dbServerAggVars;
             for (auto const& it : collectNode->aggregateVariables()) {
-              std::string func = Aggregator::pushToDBServerAs(it.type);
+              std::string_view func = Aggregator::pushToDBServerAs(it.type);
               if (func.empty()) {
                 eligible = false;
                 break;
               }
               // eligible!
               auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
-              dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, func});
+              dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, std::string(func)});
             }
 
             if (!eligible) {
@@ -4566,20 +4571,6 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
             }
             // intentionally falls through
           }
-#if 0
-          // TODO: this is already prepared to push subqueries on the DB servers.
-          // However, the ExecutionEngine's instanciator cannot yet handle subqueries
-          // on DB servers. Once it can do this, this part can be finished
-          else if (inspectNode->getType() == EN::SUBQUERY) {
-            // check if the subquery can be executed on a DB server safely
-            SubqueryNode* s = ExecutionNode::castTo<SubqueryNode*>(inspectNode);
-            if (!s->isDeterministic() || s->mayAccessCollections()) {
-              stopSearching = true;
-              break;
-            }
-            // intentionally falls through
-          }
-#endif
           // no special handling for filters here
 
           TRI_ASSERT(inspectNode->getType() == EN::SUBQUERY ||
@@ -6779,7 +6770,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 
     addLocationArg(args);
     AstNode* func =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args, true);
+        ast->createNodeFunctionCall("GEO_DISTANCE", args, true);
 
     TRI_ASSERT(info.maxDistanceExpr || info.minDistanceExpr || info.sorted);
     if (info.minDistanceExpr != nullptr) {
@@ -7829,57 +7820,6 @@ void arangodb::aql::enableAsyncPrefetching(ExecutionPlan& plan) {
   plan.root()->walk(walker);
 }
 
-void arangodb::aql::enableReadOwnWritesForUpsertSubquery(ExecutionPlan& plan) {
-  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*> nodesStorage;
-  auto& nodes = nodesStorage.vector();
-  plan.findNodesOfType(nodes, EN::UPSERT, true);
-
-  // An upsert is roughly translated to the following:
-  //   LET #x = ( <subquery> )
-  //   LET $OLD = #x[0]
-  //   UPSERT $OLD INSERT ... UPDATE ... IN col
-  //
-  // The subquery is always of the form
-  //   FOR #y IN col FILTER <#y matches sample> LIMIT 0, 1 RETURN #y.
-  // This subquery is optimized like every other; whether it can use any
-  // indexes depends on the FILTER condition.
-  // So what we do here is for each UPSERT get the input variable's setter
-  // (CalculationNode). The calculation expression is always an indexed access
-  // with a reference to the subquery. From the subquery end we simply search
-  // upwards until we find the subquery's FOR node (which must be either an
-  // IndexNode or EnumerateCollectionNode), so we can set the read-own-writes
-  // flag.
-
-  for (auto n : nodes) {
-    auto node = ExecutionNode::castTo<UpsertNode const*>(n);
-    auto inputVar = node->inDocVariable();
-    auto setter = plan.getVarSetBy(inputVar->id);
-    if (setter == nullptr) {
-      continue;
-    }
-    TRI_ASSERT(setter->getType() == EN::CALCULATION);
-    auto* exprNode = ExecutionNode::castTo<CalculationNode const*>(setter)->expression()->node();
-    TRI_ASSERT(exprNode->type == NODE_TYPE_INDEXED_ACCESS);
-    TRI_ASSERT(exprNode->getMember(0)->type == NODE_TYPE_REFERENCE);
-    Variable const* v = static_cast<Variable const*>(exprNode->getMember(0)->getData());
-    auto current = plan.getVarSetBy(v->id);
-    TRI_ASSERT(current->getType() == EN::SUBQUERY_END);
-    while (current != nullptr) {
-      if (current->getType() == EN::SUBQUERY_START) {
-        // we reached the subquery start without finding an Index or Enumerate node
-        // that should never happen!
-        TRI_ASSERT(false);
-        break;
-      }
-      if (current->getType() == EN::INDEX || current->getType() == EN::ENUMERATE_COLLECTION) {
-        ExecutionNode::castTo<DocumentProducingNode*>(current)->setCanReadOwnWrites(ReadOwnWrites::yes);
-        break;
-      }
-      current = current->getFirstDependency();
-    }
-  }
-}
-
 void arangodb::aql::activateCallstackSplit(ExecutionPlan& plan) {
   if (willUseV8(plan)) {
     // V8 requires thread local context configuration, so we cannot
@@ -8364,31 +8304,30 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         }
         auto flags = ast->createNodeObject();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("allowSpecifiedKeys"),
+            "allowSpecifiedKeys",
             ast->createNodeValueBool(allowSpecifiedKeys)));
         flags->addMember(
-            ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+            ast->createNodeObjectElement("ignoreErrors",
                                          ast->createNodeValueBool(ignoreErrors)));
         auto const& collectionName = collection->name();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("collection"),
+            "collection",
             ast->createNodeValueString(collectionName.c_str(), collectionName.length())));
-        // args->addMember(ast->createNodeValueString(collectionName.c_str(), collectionName.length()));
 
         args->addMember(flags);
       } else {
         function = "MAKE_DISTRIBUTE_INPUT";
         auto flags = ast->createNodeObject();
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("allowKeyConversionToObject"),
+            "allowKeyConversionToObject",
             ast->createNodeValueBool(allowKeyConversionToObject)));
         flags->addMember(
-            ast->createNodeObjectElement(TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+            ast->createNodeObjectElement("ignoreErrors",
                                          ast->createNodeValueBool(ignoreErrors)));
         bool canUseCustomKey = collection->getCollection()->usesDefaultShardKeys() ||
                                allowSpecifiedKeys;
         flags->addMember(ast->createNodeObjectElement(
-            TRI_CHAR_LENGTH_PAIR("canUseCustomKey"), ast->createNodeValueBool(canUseCustomKey)));
+            "canUseCustomKey", ast->createNodeValueBool(canUseCustomKey)));
 
         args->addMember(flags);
       }

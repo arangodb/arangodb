@@ -29,7 +29,6 @@
 
 #if defined(USE_MEMORY_PROFILE)
 #include <jemalloc/jemalloc.h>
-#include <velocypack/StringRef.h>
 #endif
 
 #include <velocypack/Builder.h>
@@ -272,7 +271,7 @@ RestStatus RestStatusHandler::executeOverview() {
     }
   }
 
-  auto const res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
+  auto const res = buffer.deflate();
 
   if (res != TRI_ERROR_NO_ERROR) {
     result.add("hash", VPackValue(buffer.c_str()));
@@ -306,7 +305,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
       resetResponse(rest::ResponseCode::OK);
 
       _response->setContentType(rest::ContentType::TEXT);
-      _response->addRawPayload(velocypack::StringRef(content));
+      _response->addRawPayload(content);
     } catch (...) {
       TRI_UnlinkFile(f);
       throw;
@@ -314,7 +313,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   }
 #else
   generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-		"memory profiles not enabled at compile time");
+      "memory profiles not enabled at compile time");
 #endif
 
   return RestStatus::DONE;

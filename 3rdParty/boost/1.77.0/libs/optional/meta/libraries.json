@@ -1,0 +1,17 @@
+{
+    "key": "optional",
+    "boost-version": "1.30.0",
+    "name": "Optional",
+    "authors": [
+        "Fernando Cacciola"
+    ],
+    "description": "A value-semantic, type-safe wrapper for representing 'optional' (or 'nullable') objects of a given type. An optional object may or may not contain a value of the underlying type.",
+    "category": [
+        "Data"
+    ],
+    "maintainers": [
+        "Fernando Cacciola <fernando_cacciola -at- ciudad.com.ar>",
+        "Andrzej Krzemienski <akrzemi1 -at- gmail.com>"
+    ],
+    "cxxstd": "03"
+}

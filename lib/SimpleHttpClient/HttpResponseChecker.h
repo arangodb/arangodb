@@ -24,14 +24,19 @@
 #pragma once
 #include "Basics/Result.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include <string_view>
 
 
 namespace arangodb {
 class HttpResponseChecker {
  public:
   HttpResponseChecker() = delete;
+  enum class PayloadType {JSON, VPACK, JSONL};
+  static arangodb::Result check(std::string const& clientErrorMsg, arangodb::httpclient::SimpleHttpResult const* const response);
   static arangodb::Result check(std::string const& clientErrorMsg, arangodb::httpclient::SimpleHttpResult const* const response,
-                                std::string const& actionMsg = "", std::string const& requestPayload = "");
+                                std::string const& actionMsg, std::string_view requestPayload, PayloadType type);
+ private:
+  static void trimPayload(VPackSlice input, VPackBuilder& output);
 };
 
 }

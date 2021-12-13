@@ -40,7 +40,6 @@
 #include <s2/s2cell_id.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -282,8 +281,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  arangodb::velocypack::StringRef typeStr(typeSlice);
-  TRI_ASSERT(typeStr == oldtypeName());
+  TRI_ASSERT(typeSlice.stringView() == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
 
@@ -295,8 +293,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
     }
 
     // Short circuit. If id is correct the index is identical.
-    arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid.id());
+    return value.stringView() == std::to_string(_iid.id());
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IndexUnique,
@@ -337,8 +334,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::velocypack::StringRef in(f);
-    TRI_ParseAttributeString(in, translate, true);
+    TRI_ParseAttributeString(f.stringView(), translate, true);
     if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
     }

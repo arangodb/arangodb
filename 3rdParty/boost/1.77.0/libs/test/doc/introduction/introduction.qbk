@@ -1,0 +1,68 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:intro Introduction]
+
+[role epigraph Test everything that could possibly break]
+[role epigraph --XP maxim]
+
+[role epigraph
+   The acceptance test makes the customer satisfied
+   that the software provides the business value that
+   makes them willing to pay for it. The unit test makes
+   the programmer satisfied that the software does what
+   the programmer thinks it does
+]
+[role epigraph --XP maxim]
+
+What is the first thing you need to do when you start working on new library/class/program? That's right -
+you need to start with the unit test module (hopefully you all gave this answer!). Occasionally, you may get
+away with simple test implemented using `assert`s, but any professional developer soon finds this approach
+lacking. It becomes clear that it's too time-consuming and tedious for simple, but repetitive unit testing
+tasks and it's too inflexible for most non-trivial ones.
+
+The Boost.Test library provides both an easy to use and flexible set of interfaces for writing test
+programs, organizing tests into simple test cases and test suites, and controlling their runtime execution.
+Some of Boost.Test's interfaces are also useful in production (non-test) environments.
+
+[/ ##################################################################### ]
+
+[h4 Starter example]
+
+This is how a minimal single-file test program looks like:
+
+``
+#define __BOOST_TEST_MODULE__ My Test /*< Macro __BOOST_TEST_MODULE__ defines the name of our program, which will be used in messages. >*/
+#include <boost/test/included/unit_test.hpp> /*< This includes all the __UTF__ in a "header-only" mode; it even defines function `main`, which will call the subsequently defined test cases. >*/
+
+__BOOST_AUTO_TEST_CASE__(first_test) /*< Macro __BOOST_AUTO_TEST_CASE__ declares a ['test case] named `first_test`, which in turn will run the content of `first_test` inside the
+controlled testing environment.>*/
+{
+  int i = 1;
+  __BOOST_TEST__(i); /*< This test checks if `i` is non-zero. >*/
+  __BOOST_TEST__(i == 2); /*< This test checks if `i` has value `2` (something more than just evaluating the equality operator). >*/
+}
+``
+
+When run, it produces the following output:
+
+[pre
+Running 1 test case...
+test_file.cpp(8): error: in "first_test": check i == 2 has failed [1 != 2]
+
+*** 1 failure is detected in the test module "My Test"
+]
+
+[/ ##################################################################### ]
+
+[include overview.qbk]
+
+
+[endsect]
+
+[/ EOF]

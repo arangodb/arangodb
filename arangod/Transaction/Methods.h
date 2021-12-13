@@ -44,7 +44,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 #ifdef USE_ENTERPRISE
 #define ENTERPRISE_VIRT virtual
@@ -239,7 +238,6 @@ class Methods {
 
   /// @brief return the type of a collection
   bool isEdgeCollection(std::string const& collectionName) const;
-  bool isDocumentCollection(std::string const& collectionName) const;
   TRI_col_type_e getCollectionType(std::string const& collectionName) const;
 
   /// @brief return one  document from a collection, fast path
@@ -262,7 +260,7 @@ class Methods {
   ///        not care for revision handling! Must only be called on a local
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
-                                               arangodb::velocypack::StringRef const& key,
+                                               std::string_view key,
                                                IndexIterator::DocumentCallback const& cb);
 
   /// @brief return one or multiple documents from a collection
@@ -353,9 +351,6 @@ class Methods {
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
   
-  /// @brief fetch the LogicalCollection by CID
-  arangodb::LogicalCollection* documentCollection(DataSourceId cid) const;
-
   /// @brief fetch the LogicalCollection by name
   arangodb::LogicalCollection* documentCollection(std::string const& name) const;
   
@@ -380,18 +375,20 @@ class Methods {
                                               arangodb::velocypack::Slice value);
 
  private:
+  // perform a (deferred) intermediate commit if required
+  Result performIntermediateCommitIfRequired(DataSourceId collectionId);
+
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
-
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              velocypack::Builder& builder, DataSourceId cid,
-                             arangodb::velocypack::StringRef const& key, RevisionId rid,
+                             std::string_view key, RevisionId rid,
                              RevisionId oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 
   futures::Future<OperationResult> documentCoordinator(std::string const& collectionName,
-                                                       VPackSlice const value,
+                                                       VPackSlice value,
                                                        OperationOptions const& options,
                                                        MethodsApi api);
 
@@ -503,12 +500,11 @@ class Methods {
   bool _mainTransaction;
 
   Future<Result> replicateOperations(
-      LogicalCollection* collection,
+      std::shared_ptr<LogicalCollection> collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options, VPackSlice value, TRI_voc_document_operation_e operation,
       std::shared_ptr<velocypack::Buffer<uint8_t>> const& ops,
-      std::unordered_set<size_t> const& excludePositions,
-      FollowerInfo& followerInfo);
+      std::unordered_set<size_t> excludePositions);
 
   /// @brief transaction hints
   transaction::Hints _localHints;
