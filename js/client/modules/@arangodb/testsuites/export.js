@@ -130,7 +130,6 @@ function exportTest (options) {
       'server.password': options.password,
       'server.endpoint': instanceInfo.endpoint,
       'server.database': name,
-      'type': 'json',
       'overwrite': true,
       'output-directory': tmpPath
     };
@@ -142,6 +141,7 @@ function exportTest (options) {
       print(CYAN + Date() + ': Export data (json)' + RESET);
       let args = Object.assign({}, commonArgValues);
       args['collection'] = 'UnitTestsExport';
+      args['type'] = 'json';
       testName = "exportJson" + idx;
       results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
       results[testName].failed = results[testName].status ? 0 : 1;
@@ -169,7 +169,8 @@ function exportTest (options) {
       let args = Object.assign({}, commonArgValues);
       args['compress-output'] = 'true';
       args['collection'] = 'UnitTestsExport';
-        testName = "exportJsonGz" + idx;
+      args['type'] = 'json';
+      testName = "exportJsonGz" + idx;
       results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
       results[testName].failed = results[testName].status ? 0 : 1;
 
@@ -199,6 +200,7 @@ function exportTest (options) {
           let args = Object.assign({}, commonArgValues);
           args['encryption.keyfile'] = keyfile;
           args['collection'] = 'UnitTestsExport';
+          args['type'] = 'json';
           if (fs.exists(fs.join(tmpPath, 'ENCRYPTION'))) {
             fs.remove(fs.join(tmpPath, 'ENCRYPTION'));
           }
@@ -267,6 +269,7 @@ function exportTest (options) {
       let args = Object.assign({}, commonArgValues);
       args['compress-output'] = 'true';
       args['collection'] = 'UnitTestsExport';
+      args['type'] = 'jsonl';
       testName = "exportJsonlGz" + idx;
       results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
       results[testName].failed = results[testName].status ? 0 : 1;
@@ -332,7 +335,9 @@ function exportTest (options) {
     {
       let args = Object.assign({}, commonArgValues);
       args['compress-output'] = 'true';
+      args['graph-name'] = 'UnitTestsExport';
       args['collection'] = 'UnitTestsExport';
+      args['type'] = 'xgmml';
       testName = "exportXgmmlGz" + idx;
       results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
       results[testName].failed = results[testName].status ? 0 : 1;
