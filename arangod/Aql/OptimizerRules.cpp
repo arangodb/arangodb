@@ -3101,36 +3101,28 @@ struct SortToIndexNode final
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
     // FIXME: why not just call index->supportsSortCondition here always?
+    bool indexCoversSortCondition = false;
     if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
-      auto support = index->supportsSortCondition(&sortCondition, outVariable, 1);
-      if (support.supportsCondition) {
-        // sort condition is fully covered by index... now we can remove the
-        // sort node from the plan
-        _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-        // we need to have a sorted result later on, so we will need a sorted
-        // GatherNode in the cluster
-        indexNode->needsGatherNodeSort(true);
-        _modified = true;
-        handled = true;
-      }
-    } else if (isOnlyAttributeAccess && isSorted && !isSparse && sortCondition.isUnidirectional() &&
-        sortCondition.isAscending() == indexNode->options().ascending) {
-      // we have found a sort condition, which is unidirectional and in the same
-      // order as the IndexNode...
-      // now check if the sort attributes match the ones of the index
-      size_t const numCovered = sortCondition.coveredAttributes(outVariable, fields);
-
-      if (numCovered >= sortCondition.numAttributes()) {
-        // sort condition is fully covered by index... now we can remove the
-        // sort node from the plan
-        _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-        // we need to have a sorted result later on, so we will need a sorted
-        // GatherNode in the cluster
-        indexNode->needsGatherNodeSort(true);
-        _modified = true;
-        handled = true;
-      }
+      indexCoversSortCondition =
+          index->supportsSortCondition(&sortCondition, outVariable, 1).supportsCondition;
+    } else {
+      indexCoversSortCondition =
+          isOnlyAttributeAccess && isSorted && !isSparse &&
+          sortCondition.isUnidirectional() &&
+          sortCondition.isAscending() == indexNode->options().ascending && 
+          sortCondition.coveredAttributes(outVariable, fields) >= sortCondition.numAttributes();
     }
+
+    if (indexCoversSortCondition) {
+      // sort condition is fully covered by index... now we can remove the
+      // sort node from the plan
+      _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+      // we need to have a sorted result later on, so we will need a sorted
+      // GatherNode in the cluster
+      indexNode->needsGatherNodeSort(true);
+      _modified = true;
+      handled = true;
+    } 
 
     if (!handled && isOnlyAttributeAccess && indexes.size() == 1) {
       // special case... the index cannot be used for sorting, but we only
