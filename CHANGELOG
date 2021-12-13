@@ -5,6 +5,13 @@ devel
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
 
+* Added new option `--custom-query-bindvars` to arangoexport, so queries given 
+  via option `--custom-query` can have bind variables in them. Also changed the 
+  flag names `--query` to `--custom-query` and `--query-max-runtime` to 
+  `--custom-query-max-runtime` to be like in the other client-tools.
+
+* Improve some RocksDB-related error messages during server startup.
+
 * Added startup options to adjust previously hard-coded parameters for the 
   RocksDB throttle:
   - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
