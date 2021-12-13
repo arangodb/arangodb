@@ -1081,6 +1081,11 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
 
+    // Count that we have now produced a row in the new depth.
+    // Note: We need to increment the depth by one, as the we have increased
+    // it while writing into the output by one as well.
+    countShadowRowProduced(stack, shadowRow.getDepth() + 1);
+
     if (_lastRange.hasShadowRow()) {
       return ExecState::SHADOWROWS;
     }
@@ -1132,6 +1137,8 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
   _outputItemRow->advanceRow();
   // The stack in used here contains all calls for within the subquery.
   // Hence any inbound subquery needs to be counted on its level
+
+  // NOTE MCHACKI: I think this call is also off by one and needs to be getDepth() - 1
   countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (state == ExecutorState::DONE) {
