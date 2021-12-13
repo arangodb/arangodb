@@ -375,6 +375,32 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
+  
+  options->addOption("--rocksdb.throttle-slots", "number of historic metrics to use for throttle value calculation",
+                     new UInt64Parameter(&_throttleSlots),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-frequency", "frequency for write-throttle calculations (in milliseconds)",
+                     new UInt64Parameter(&_throttleFrequency),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-scaling-factor", "adaptiveness scaling factor for write-throttle calculations",
+                     new UInt64Parameter(&_throttleScalingFactor),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-max-write-rate", "maximum write rate enforced by throttle (in bytes per second, 0 = unlimited)",
+                     new UInt64Parameter(&_throttleMaxWriteRate),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-slow-down-writes-trigger", "number of level 0 files whose payload "
+                     "is not considered in throttle calculations when penalizing the presence of L0 files",
+                     new UInt64Parameter(&_throttleSlowdownWritesTrigger),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
@@ -411,6 +437,20 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+
+  if (_throttleSlots == 0) {
+    LOG_TOPIC("76e1b", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --rocksdb.throttle-slots";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_throttleScalingFactor == 0) {
+    _throttleScalingFactor = 1;
+  }
+
+  if (_throttleSlots < 8) {
+    _throttleSlots = 8;
+  }
 
   if (_requiredDiskFreePercentage < 0.0 || _requiredDiskFreePercentage > 1.0) {
     LOG_TOPIC("e4697", FATAL, arangodb::Logger::CONFIG)
@@ -698,7 +738,8 @@ void RocksDBEngine::start() {
   _options.bloom_locality = 1;
 
   if (_useThrottle) {
-    _throttleListener = std::make_shared<RocksDBThrottle>();
+    _throttleListener = std::make_shared<RocksDBThrottle>(_throttleSlots, _throttleFrequency, _throttleScalingFactor,
+                                                          _throttleMaxWriteRate, _throttleSlowdownWritesTrigger);
     _options.listeners.push_back(_throttleListener);
   }
 
