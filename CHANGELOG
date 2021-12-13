@@ -1,12 +1,18 @@
 devel
 -----
 
+* Change default value for `--rocksdb.throttle-frequency` to 5000 (i.e. 5 
+  seconds) from previous default value 60000 (60 seconds). This makes the
+  throttling kick in sooner than before, which can help evening out load peaks
+  and prevent server overwhelm.
+
 * Improve some RocksDB-related error messages during server startup.
 
 * Added startup options to adjust previously hard-coded parameters for the 
   RocksDB throttle:
   - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
-    (in milliseconds, default value is 60000, i.e. 60 seconds).
+    (in milliseconds, default value is 60000, i.e. 60 seconds). Note: this
+    default value was changed by a later commit.
   - `--rocksdb.throttle-slots`: number of historic measures to use for throttle
     value calculation (default value is 63).
   - `--rocksdb.throttle-scaling-factor`: adaptiveness scaling factor for write-
@@ -22,7 +28,8 @@ devel
   All these options will only have an effect if `--rocksdb.throttle` is enabled
   (which is the default). The configuration options introduced here use the
   previously hard-coded settings as their default values, so there should not be
-  a change in behavior if the options are not adjusted.
+  a change in behavior if the options are not adjusted. (Note: a later commit
+  changed the default value for `--rocksdb.throttle-frequency`).
 
 * Raised minimal macOS supported version to 10.15 (Catalina).
 

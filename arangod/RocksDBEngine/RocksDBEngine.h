@@ -580,7 +580,7 @@ class RocksDBEngine final : public StorageEngine {
   size_t _runningCompactions;
 
   // frequency for throttle in milliseconds
-  uint64_t _throttleFrequency = 60 * 1000; 
+  uint64_t _throttleFrequency = 5 * 1000; 
 
   // number of historic data slots to keep around for throttle
   uint64_t _throttleSlots = 63;
