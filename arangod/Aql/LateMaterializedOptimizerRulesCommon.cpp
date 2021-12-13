@@ -63,9 +63,7 @@ struct TraversalState {
 
 }
 
-namespace arangodb {
-namespace aql {
-namespace latematerialized {
+namespace arangodb::aql::latematerialized {
 
 // determines attributes referenced in an expression for the specified out variable
 template<typename T>
@@ -281,9 +279,7 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
   return true;
 }
 
-} // namespace latematerialized
-} // namespace aql
-} // namespace arangodb
+} // namespace arangodb::aql::latematerialized
 
 template bool latematerialized::getReferencedAttributes(
   AstNode* node,
