@@ -17,6 +17,7 @@ v3.9.0 (XXXX-XX-XX)
   - `--rocksdb.throttle-slow-down-writes-trigger`: number of level 0 files whose
     payload is not considered in throttle calculations when penalizing the 
     presence of L0 files. There is normally no need to change this value.
+
   All these options will only have an effect if `--rocksdb.throttle` is enabled
   (which is the default). The configuration options introduced here use the
   previously hard-coded settings as their default values, so there should not be
