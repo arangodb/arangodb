@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Updated Enterprise license behaviour: now there will be a one hour period for
+  a new deployment to provide the license. After that period, the read-only mode
+  will be enforced.
+
 * Added startup options to adjust previously hard-coded parameters for the 
   RocksDB throttle:
   - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
