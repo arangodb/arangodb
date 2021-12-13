@@ -1399,7 +1399,7 @@ TEST(SliceTest, StringNoString) {
   ASSERT_VELOCYPACK_EXCEPTION(slice.getStringLength(),
                               Exception::InvalidValueType);
   ASSERT_VELOCYPACK_EXCEPTION(slice.copyString(), Exception::InvalidValueType);
-  ASSERT_VELOCYPACK_EXCEPTION(slice.stringRef(), Exception::InvalidValueType);
+  ASSERT_VELOCYPACK_EXCEPTION(slice.stringView(), Exception::InvalidValueType);
 }
 
 TEST(SliceTest, StringEmpty) {
@@ -1417,7 +1417,7 @@ TEST(SliceTest, StringEmpty) {
 
   ASSERT_EQ(0U, slice.getStringLength());
   ASSERT_EQ("", slice.copyString());
-  ASSERT_TRUE(StringRef().equals(slice.stringRef()));
+  ASSERT_EQ(std::string_view(), slice.stringView());
 }
 
 TEST(SliceTest, StringLengths) {
@@ -1470,7 +1470,7 @@ TEST(SliceTest, String1) {
 
   ASSERT_EQ(strlen("foobar"), slice.getStringLength());
   ASSERT_EQ("foobar", slice.copyString());
-  ASSERT_TRUE(StringRef("foobar").equals(slice.stringRef()));
+  ASSERT_EQ(std::string_view("foobar"), slice.stringView());
 }
 
 TEST(SliceTest, String2) {
@@ -1497,7 +1497,7 @@ TEST(SliceTest, String2) {
   ASSERT_EQ(8U, slice.getStringLength());
 
   ASSERT_EQ("123f\r\t\nx", slice.copyString());
-  ASSERT_TRUE(StringRef("123f\r\t\nx").equals(slice.stringRef()));
+  ASSERT_EQ(std::string_view("123f\r\t\nx"), slice.stringView());
 }
 
 TEST(SliceTest, StringNullBytes) {
@@ -1524,6 +1524,19 @@ TEST(SliceTest, StringNullBytes) {
 
   {
     std::string s(slice.copyString());
+    ASSERT_EQ(8ULL, s.size());
+    ASSERT_EQ('\0', s[0]);
+    ASSERT_EQ('1', s[1]);
+    ASSERT_EQ('2', s[2]);
+    ASSERT_EQ('\0', s[3]);
+    ASSERT_EQ('3', s[4]);
+    ASSERT_EQ('4', s[5]);
+    ASSERT_EQ('\0', s[6]);
+    ASSERT_EQ('x', s[7]);
+  }
+  
+  {
+    StringRef s(slice.stringView());
     ASSERT_EQ(8ULL, s.size());
     ASSERT_EQ('\0', s[0]);
     ASSERT_EQ('1', s[1]);
@@ -1581,7 +1594,7 @@ TEST(SliceTest, StringLong) {
   ASSERT_EQ(6U, slice.getStringLength());
 
   ASSERT_EQ("foobar", slice.copyString());
-  ASSERT_TRUE(StringRef("foobar").equals(slice.stringRef()));
+  ASSERT_EQ(std::string_view("foobar"), slice.stringView());
 }
 
 TEST(SliceTest, BinaryEmpty) {

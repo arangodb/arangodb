@@ -456,9 +456,9 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
       VPackSlice errSlice = slice.get(StaticStrings::Error);
       if (errSlice.isBool() && errSlice.getBool()) {
         res = VelocyPackHelper::getNumericValue<ErrorCode>(slice, StaticStrings::ErrorNum, res);
-        VPackStringRef ref =
-            VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
-                                           VPackStringRef(
+        std::string_view ref =
+            VelocyPackHelper::getStringView(slice, StaticStrings::ErrorMessage,
+                                            std::string_view(
                                                "(no valid error in response)"));
         msg.append(ref.data(), ref.size());
       }

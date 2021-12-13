@@ -29,8 +29,6 @@
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
-#include <velocypack/StringRef.h>
-
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
@@ -108,7 +106,7 @@ TEST_F(IndexEstimatorTest, test_serialize_deserialize) {
 
   // We first have an uint64_t representing the length.
   // This has to be extracted BEFORE initialization.
-  arangodb::velocypack::StringRef ref(serialization.data(), persLength + 8);
+  std::string_view ref(serialization.data(), persLength + 8);
   RocksDBCuckooIndexEstimatorType copy(ref);
 
   // After serialization => deserialization
@@ -368,7 +366,7 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
   };
   
   auto validateSerializedValue = [&](auto& est, std::string const& serialization) {
-    arangodb::velocypack::StringRef ref(serialization);
+    std::string_view ref(serialization);
     RocksDBCuckooIndexEstimatorType copy(ref);
 
     // After serialization => deserialization

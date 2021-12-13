@@ -44,7 +44,6 @@
 #include <v8.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <regex>
 
@@ -389,10 +388,10 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     }
     // We simply ignore invalid entries in the _functions collection:
     if (name.isString() && fn.isString() && (fn.getStringLength() > 2)) {
-      auto ref = arangodb::velocypack::StringRef(fn);
+      std::string_view ref = fn.stringView();
 
       ref = ref.substr(1, ref.length() - 2);
-      tmp = basics::StringUtils::trim(ref.toString());
+      tmp = basics::StringUtils::trim(std::string(ref));
 
       VPackBuilder oneFunction;
       oneFunction.openObject();

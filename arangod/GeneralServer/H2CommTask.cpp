@@ -43,7 +43,7 @@
 #include <cstring>
 
 using namespace arangodb::basics;
-using arangodb::velocypack::StringRef;
+using std::string_view;
 
 namespace arangodb {
 namespace rest {
@@ -99,20 +99,19 @@ template <SocketType T>
   }
 
   // handle pseudo headers https://http2.github.io/http2-spec/#rfc.section.8.1.2.3
-  StringRef field(reinterpret_cast<const char*>(name), namelen);
-  StringRef val(reinterpret_cast<const char*>(value), valuelen);
+  std::string_view field(reinterpret_cast<const char*>(name), namelen);
+  std::string_view val(reinterpret_cast<const char*>(value), valuelen);
 
-  if (StringRef(":method") == field) {
+  if (std::string_view(":method") == field) {
     strm->request->setRequestType(GeneralRequest::translateMethod(val));
-  } else if (StringRef(":scheme") == field) {
+  } else if (std::string_view(":scheme") == field) {
     // simon: ignore, should contain 'http' or 'https'
-  } else if (StringRef(":path") == field) {
+  } else if (std::string_view(":path") == field) {
     strm->request->parseUrl(reinterpret_cast<const char*>(value), valuelen);
-  } else if (StringRef(":authority") == field) {
+  } else if (std::string_view(":authority") == field) {
     // simon: ignore, could treat like "Host" header
   } else {  // fall through
-    strm->request->setHeaderV2(field.toString(),
-                               std::string(reinterpret_cast<const char*>(value), valuelen));
+    strm->request->setHeaderV2(std::string(field), std::string(val));
   }
 
   return 0;
@@ -515,13 +514,13 @@ void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> 
         << this->_connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
 
-    VPackStringRef body = req->rawPayload();
+    std::string_view body = req->rawPayload();
     this->_generalServerFeature.countHttp2Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)
           << "\"h2-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(body.toString()) << "\"";
+          << StringUtils::escapeUnicode(std::string(body)) << "\"";
     }
   }
 

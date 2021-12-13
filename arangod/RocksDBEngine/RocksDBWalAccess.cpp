@@ -180,7 +180,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             {  // tick number
-              arangodb::velocypack::StringRef uuid = RocksDBLogValue::viewUUID(blob);
+              std::string_view uuid = RocksDBLogValue::viewUUID(blob);
               TRI_ASSERT(!uuid.empty());
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
@@ -296,7 +296,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             {  // tick number
-              arangodb::velocypack::StringRef uuid = RocksDBLogValue::collectionUUID(blob);
+              std::string_view uuid = RocksDBLogValue::collectionUUID(blob);
               TRI_ASSERT(!uuid.empty());
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
@@ -595,7 +595,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       return;              // no reset here
     }
 
-    arangodb::velocypack::StringRef docKey = RocksDBKey::primaryKey(key);
+    std::string_view docKey = RocksDBKey::primaryKey(key);
     TRI_ASSERT(_state != TRANSACTION || _trxDbId == dbid);
 
     TRI_vocbase_t* vocbase = loadVocbase(dbid);

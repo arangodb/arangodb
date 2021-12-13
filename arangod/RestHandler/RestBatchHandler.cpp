@@ -100,7 +100,7 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
         "\r\nContent-Id: " + std::string(_helper.contentId, _helper.contentIdLength));
   }
 
-  httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
+  httpResponse->body().appendText(std::string_view("\r\n\r\n"));
 
   // remove some headers we don't need
   partResponse->setHeaderNC(StaticStrings::Server, "");
@@ -110,7 +110,7 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
 
   // append the part response body
   httpResponse->body().appendText(partResponse->body());
-  httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+  httpResponse->body().appendText(std::string_view("\r\n"));
 
   // we've read the last part
   if (!_helper.containsMore) {
@@ -282,7 +282,7 @@ RestStatus RestBatchHandler::executeHttp() {
   _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
 
   // http required here
-  VPackStringRef bodyStr = _request->rawPayload();
+  std::string_view bodyStr = _request->rawPayload();
 
   // setup some auxiliary structures to parse the multipart message
   _multipartMessage =
@@ -303,7 +303,7 @@ RestStatus RestBatchHandler::executeHttp() {
 bool RestBatchHandler::getBoundaryBody(std::string& result) {
   TRI_ASSERT(_response->transportType() == Endpoint::TransportType::HTTP);
 
-  VPackStringRef bodyStr = _request->rawPayload();
+  std::string_view bodyStr = _request->rawPayload();
   char const* p = bodyStr.data();
   char const* e = p + bodyStr.size();
 

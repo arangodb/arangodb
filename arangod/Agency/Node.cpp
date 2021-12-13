@@ -702,7 +702,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_LOCK>(VPackSlice const& slice) 
       TRI_ERROR_FAILED, std::string("Invalid read lock: ") + slice.toJson());
   }
 
-  if (isReadLockable(user.stringRef())) {
+  if (isReadLockable(user.stringView())) {
     Builder newValue;
     {
       VPackArrayBuilder arr(&newValue);
@@ -726,13 +726,13 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_UNLOCK>(VPackSlice const& slice
       TRI_ERROR_FAILED, std::string("Invalid read unlock: ") + slice.toJson());
   }
 
-  if (isReadUnlockable(user.stringRef())) {
+  if (isReadUnlockable(user.stringView())) {
     Builder newValue;
     {
       // isReadUnlockable ensured that `this->slice()` is always an array of strings
       VPackArrayBuilder arr(&newValue);
       for (auto const& i : VPackArrayIterator(this->slice())) {
-        if (!i.isEqualString(user.stringRef())) {
+        if (!i.isEqualString(user.stringView())) {
           newValue.add(i);
         }
       }
@@ -759,7 +759,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_LOCK>(VPackSlice const& slice)
       TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
   }
 
-  if (isWriteLockable(user.stringRef())) {
+  if (isWriteLockable(user.stringView())) {
     this->operator=(user);
     return ResultT<std::shared_ptr<Node>>::success(nullptr);
   }
@@ -775,7 +775,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slic
       TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
   }
 
-  if (isWriteUnlockable(user.stringRef())) {
+  if (isWriteUnlockable(user.stringView())) {
     return deleteMe();
   }
 
@@ -783,7 +783,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slic
     TRI_ERROR_FAILED, "Write unlock failed");
 }
 
-bool Node::isReadLockable(const VPackStringRef& by) const {
+bool Node::isReadLockable(std::string_view by) const {
   if (_children != nullptr && !_children->empty()) {
     return false;
   }
@@ -794,7 +794,7 @@ bool Node::isReadLockable(const VPackStringRef& by) const {
   if (slice.isArray()) {
     // check if `by` is not in the array
     for (auto const& i : VPackArrayIterator(slice)) {
-      if (!i.isString() || i.isEqualString(VPackStringRef(by.data(), by.length()))) {
+      if (!i.isString() || i.isEqualString(by)) {
         return false;
       }
     }
@@ -804,7 +804,7 @@ bool Node::isReadLockable(const VPackStringRef& by) const {
   return slice.isEmptyObject();
 }
 
-bool Node::isReadUnlockable(const VPackStringRef& by) const {
+bool Node::isReadUnlockable(std::string_view by) const {
   if (_children != nullptr && !_children->empty()) {
     return false;
   }
@@ -818,7 +818,7 @@ bool Node::isReadUnlockable(const VPackStringRef& by) const {
         valid = false;
         break;
       }
-      if (i.isEqualString(VPackStringRef(by.data(), by.length()))) {
+      if (i.isEqualString(by)) {
         valid = true;
       }
     }
@@ -827,7 +827,7 @@ bool Node::isReadUnlockable(const VPackStringRef& by) const {
   return false;
 }
 
-bool Node::isWriteLockable(const VPackStringRef& by) const {
+bool Node::isWriteLockable(std::string_view) const {
   if (_children != nullptr && !_children->empty()) {
     return false;
   }
@@ -837,21 +837,21 @@ bool Node::isWriteLockable(const VPackStringRef& by) const {
   return slice.isEmptyObject();
 }
 
-bool Node::isWriteUnlockable(const VPackStringRef& by) const {
+bool Node::isWriteUnlockable(std::string_view by) const {
   if (_children != nullptr && !_children->empty()) {
     return false;
   }
   Slice slice = this->slice();
   // the following states are counted as writeLockable
   //  string - when write lock was obtained
-  return slice.isString() && slice.isEqualString(VPackStringRef(by.data(), by.length()));
+  return slice.isString() && slice.isEqualString(by);
 }
 
 }  // namespace consensus
 }  // namespace arangodb
 
-arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) {
-  std::string oper = slice.get("op").copyString();
+arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice slice) {
+  std::string_view oper = slice.get("op").stringView();
 
   if (oper == "delete") {
     return deleteMe();
@@ -885,12 +885,12 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
 
   return ResultT<std::shared_ptr<Node>>::error(
     TRI_ERROR_FAILED,
-    std::string("Unknown operation '") + oper + "'");
+    std::string("Unknown operation '") + std::string(oper) + "'");
 
 }
 
 // Apply slice to this node
-bool Node::applies(VPackSlice const& slice) {
+bool Node::applies(VPackSlice slice) {
   clear();
 
   if (slice.isObject()) {
@@ -1216,6 +1216,5 @@ std::vector<std::string> Node::keys() const {
 
 auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
     -> std::int64_t {
-  return arangodb::basics::VelocyPackHelper::getNumericValue<std::int64_t>(
-      slice, VPackStringRef(key.data(), key.size()), def);
+  return arangodb::basics::VelocyPackHelper::getNumericValue<std::int64_t>(slice, key, def);
 }

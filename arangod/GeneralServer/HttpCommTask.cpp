@@ -464,13 +464,13 @@ void HttpCommTask<T>::doProcessRequest() {
         << this->_connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << url() << "\"";
 
-    VPackStringRef body = _request->rawPayload();
+    std::string_view body = _request->rawPayload();
     this->_generalServerFeature.countHttp1Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(body.toString()) << "\"";
+          << StringUtils::escapeUnicode(std::string(body)) << "\"";
     }
   }
 
@@ -541,7 +541,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   _header.clear();
   _header.reserve(220);
 
-  _header.append(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
+  _header.append(std::string_view("HTTP/1.1 "));
   _header.append(GeneralResponse::responseString(response.responseCode()));
   _header.append("\r\n", 2);
 
@@ -604,37 +604,37 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   // add "Server" response header
   if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
-    _header.append(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
+    _header.append(std::string_view("Server: ArangoDB\r\n"));
   }
 
   if (needWwwAuthenticate) {
     TRI_ASSERT(response.responseCode() == rest::ResponseCode::UNAUTHORIZED);
-    _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Basic, realm=\"ArangoDB\"\r\n"));
-    _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Bearer, token_type=\"JWT\", realm=\"ArangoDB\"\r\n"));
+    _header.append(std::string_view("Www-Authenticate: Basic, realm=\"ArangoDB\"\r\n"));
+    _header.append(std::string_view("Www-Authenticate: Bearer, token_type=\"JWT\", realm=\"ArangoDB\"\r\n"));
   }
 
   // turn on the keepAlive timer
   double secs = this->_generalServerFeature.keepAliveTimeout();
   if (_shouldKeepAlive && secs > 0) {
-    _header.append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
+    _header.append(std::string_view("Connection: Keep-Alive\r\n"));
   } else {
-    _header.append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
+    _header.append(std::string_view("Connection: Close\r\n"));
   }
 
   if (response.contentType() != ContentType::CUSTOM) {
-    _header.append("Content-Type: ");
+    _header.append(std::string_view("Content-Type: "));
     _header.append(rest::contentTypeToString(response.contentType()));
-    _header.append("\r\n");
+    _header.append("\r\n", 2);
   }
 
   for (auto const& it : response.cookies()) {
-    _header.append(TRI_CHAR_LENGTH_PAIR("Set-Cookie: "));
+    _header.append(std::string_view("Set-Cookie: "));
     _header.append(it);
     _header.append("\r\n", 2);
   }
 
   size_t len = response.bodySize();
-  _header.append(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
+  _header.append(std::string_view("Content-Length: "));
   _header.append(std::to_string(len));
   _header.append("\r\n\r\n", 4);
 

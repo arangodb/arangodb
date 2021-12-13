@@ -24,14 +24,13 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include "Basics/Common.h"
 #include "BaseOptions.h"
 #include "Graph/EdgeCursor.h"
 #include "Indexes/IndexIterator.h"
-
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
@@ -83,7 +82,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   /// @brief number of HTTP requests performed. always 0 in single server
   size_t httpRequests() const override { return 0; }
   
-  void rearm(arangodb::velocypack::StringRef vertex, uint64_t depth) override;
+  void rearm(std::string_view vertex, uint64_t depth) override;
   
  private:
   // returns false if cursor can not be further advanced
@@ -91,9 +90,9 @@ class SingleServerEdgeCursor final : public EdgeCursor {
 
   void getDocAndRunCallback(IndexIterator*, EdgeCursor::Callback const& callback);
 
-  void buildLookupInfo(arangodb::velocypack::StringRef vertex); 
+  void buildLookupInfo(std::string_view vertex); 
 
-  void addCursor(BaseOptions::LookupInfo const& info, arangodb::velocypack::StringRef vertex);
+  void addCursor(BaseOptions::LookupInfo const& info, std::string_view vertex);
 };
 
 }  // namespace graph

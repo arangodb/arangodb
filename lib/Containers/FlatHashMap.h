@@ -28,8 +28,7 @@
 namespace arangodb {
 namespace containers {
 
-template <typename T,
-          typename V,
+template <typename T, typename V, 
           typename Hash = ::iresearch_absl::container_internal::hash_default_hash<T>,
           typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
           typename Allocator = std::allocator<T>>

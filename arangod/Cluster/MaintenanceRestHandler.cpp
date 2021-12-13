@@ -206,12 +206,12 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
     // attempt insert into map ... but needs to be unique
     if (key.isString() && value.isString()) {
       good = desc.insert({key.copyString(), value.copyString()}).second;
-    } else if (key.isString() && (key.copyString() == "properties") && value.isObject()) {
+    } else if (key.isString() && (key.stringView() == "properties") && value.isObject()) {
       // code here
       prop.reset(new VPackBuilder(value));
-    } else if (key.isString() && (key.copyString() == "priority") && value.isInteger()) {
+    } else if (key.isString() && (key.stringView() == "priority") && value.isInteger()) {
       priority = static_cast<int>(value.getInt());
-    } else if (key.isString() && (key.stringRef() == "forced") && value.isBool()) {
+    } else if (key.isString() && (key.stringView() == "forced") && value.isBool()) {
       forced = value.isTrue();
     } else {
       good = false;

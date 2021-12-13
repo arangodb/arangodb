@@ -375,6 +375,32 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
+  
+  options->addOption("--rocksdb.throttle-slots", "number of historic metrics to use for throttle value calculation",
+                     new UInt64Parameter(&_throttleSlots),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-frequency", "frequency for write-throttle calculations (in milliseconds)",
+                     new UInt64Parameter(&_throttleFrequency),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-scaling-factor", "adaptiveness scaling factor for write-throttle calculations",
+                     new UInt64Parameter(&_throttleScalingFactor),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-max-write-rate", "maximum write rate enforced by throttle (in bytes per second, 0 = unlimited)",
+                     new UInt64Parameter(&_throttleMaxWriteRate),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-slow-down-writes-trigger", "number of level 0 files whose payload "
+                     "is not considered in throttle calculations when penalizing the presence of L0 files",
+                     new UInt64Parameter(&_throttleSlowdownWritesTrigger),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
@@ -411,6 +437,20 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+
+  if (_throttleSlots == 0) {
+    LOG_TOPIC("76e1b", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --rocksdb.throttle-slots";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_throttleScalingFactor == 0) {
+    _throttleScalingFactor = 1;
+  }
+
+  if (_throttleSlots < 8) {
+    _throttleSlots = 8;
+  }
 
   if (_requiredDiskFreePercentage < 0.0 || _requiredDiskFreePercentage > 1.0) {
     LOG_TOPIC("e4697", FATAL, arangodb::Logger::CONFIG)
@@ -634,7 +674,7 @@ void RocksDBEngine::start() {
 
     if (!_debugLogging) {
       logger->disable();
-    }  // if
+    } 
   }
 
   if (opts._enableStatistics) {
@@ -698,7 +738,8 @@ void RocksDBEngine::start() {
   _options.bloom_locality = 1;
 
   if (_useThrottle) {
-    _throttleListener = std::make_shared<RocksDBThrottle>();
+    _throttleListener = std::make_shared<RocksDBThrottle>(_throttleSlots, _throttleFrequency, _throttleScalingFactor,
+                                                          _throttleMaxWriteRate, _throttleSlowdownWritesTrigger);
     _options.listeners.push_back(_throttleListener);
   }
 
@@ -759,6 +800,7 @@ void RocksDBEngine::start() {
     testOptions.avoid_flush_during_recovery = true;
     testOptions.avoid_flush_during_shutdown = true;
     testOptions.env = _options.env;
+    
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status =
         rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
@@ -768,7 +810,7 @@ void RocksDBEngine::start() {
       if (res.errorNumber() != TRI_ERROR_ARANGO_IO_ERROR) {
         // not an I/O error. so we better report the error and abort here
         LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
-            << "unable to initialize RocksDB engine: " << status.ToString();
+            << "unable to initialize RocksDB engine: " << res.errorMessage();
         FATAL_ERROR_EXIT();
       }
     }
@@ -1720,8 +1762,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
-      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(),
-                                      arangodb::velocypack::StringRef(coll.guid()));
+      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(), coll.guid());
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
@@ -1839,8 +1880,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
       LogicalDataSource::Serialization::PersistenceWithInProgress);
   Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
-                                        arangodb::velocypack::StringRef(oldName)));
+      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), oldName));
 
   return res;
 }
@@ -1890,8 +1930,8 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   builder.close();
 
   auto logValue =
-      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
-                                arangodb::velocypack::StringRef(view.guid()));
+      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), view.guid());
+  
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
@@ -2494,8 +2534,7 @@ bool RocksDBEngine::systemDatabaseExists() {
   for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
     TRI_ASSERT(item.isObject());
     TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
-    if (item.get(StaticStrings::DatabaseName)
-            .compareString(arangodb::velocypack::StringRef(StaticStrings::SystemDatabase)) == 0) {
+    if (item.get(StaticStrings::DatabaseName).stringView() == StaticStrings::SystemDatabase) {
       return true;
     }
   }

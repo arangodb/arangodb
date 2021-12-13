@@ -42,7 +42,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 

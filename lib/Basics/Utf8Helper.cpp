@@ -42,8 +42,6 @@
 #include <unicode/ustring.h>
 #include <unicode/utypes.h>
 
-#include <velocypack/StringRef.h>
-
 #include "Utf8Helper.h"
 
 #include "Basics/Exceptions.h"
@@ -402,7 +400,7 @@ char* Utf8Helper::toupper(char const* src, int32_t srcLength, int32_t& dstLength
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Utf8Helper::tokenize(std::set<std::string>& words,
-                          arangodb::velocypack::StringRef const& text,
+                          std::string_view text,
                           size_t minimalLength, size_t maximalLength, bool lowerCase) {
   UErrorCode status = U_ZERO_ERROR;
   UnicodeString word;
