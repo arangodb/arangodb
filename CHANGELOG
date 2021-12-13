@@ -1,6 +1,8 @@
 devel
 -----
 
+* Change internal RocksDB checksum function from crc32c to XXH3 for new files.
+
 * Improve some RocksDB-related error messages during server startup.
 
 * Added startup options to adjust previously hard-coded parameters for the 

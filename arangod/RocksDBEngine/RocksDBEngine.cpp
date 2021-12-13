@@ -704,6 +704,7 @@ void RocksDBEngine::start() {
   // use slightly space-optimized format version 3
   tableOptions.format_version = 3;
   tableOptions.block_align = opts._blockAlignDataBlocks;
+  tableOptions.checksum = static_cast<rocksdb::ChecksumType>(rocksdb::kXXH3);
 
   _options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(tableOptions));
 
