@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Containers/HashSet.h"
+#include "Containers/FlatHashMap.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
@@ -228,7 +229,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // for a shortest path between start and end together with
   // the number of paths leading to that vertex and information
   // how to trace paths from the vertex from start/to end.
-  typedef std::unordered_map<VertexRef, FoundVertex> FoundVertexCache;
+  typedef containers::FlatHashMap<VertexRef, FoundVertex> FoundVertexCache;
 
  public:
   explicit KShortestPathsFinder(ShortestPathOptions& options);

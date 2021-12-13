@@ -24,10 +24,10 @@
 
 #include <memory>
 #include <numeric>
-#include <unordered_map>
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Containers/FlatHashMap.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb {
@@ -89,7 +89,7 @@ class PathValidatorOptions {
 
  private:
   std::shared_ptr<aql::Expression> _allVerticesExpression;
-  std::unordered_map<uint64_t, std::shared_ptr<aql::Expression>> _vertexExpressionOnDepth;
+  containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>> _vertexExpressionOnDepth;
   aql::Variable const* _tmpVar;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 

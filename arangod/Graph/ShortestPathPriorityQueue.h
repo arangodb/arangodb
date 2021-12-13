@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace graph {
@@ -384,7 +385,7 @@ class ShortestPathPriorityQueue {
   /// @brief _lookup, this provides O(1) lookup by Key
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<Key, ssize_t> _lookup;
+  containers::FlatHashMap<Key, ssize_t> _lookup;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _isHeap, starts as false, in which case we only use a deque,
