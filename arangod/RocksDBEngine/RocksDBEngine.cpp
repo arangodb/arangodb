@@ -674,7 +674,7 @@ void RocksDBEngine::start() {
 
     if (!_debugLogging) {
       logger->disable();
-    }  // if
+    } 
   }
 
   if (opts._enableStatistics) {
@@ -800,6 +800,7 @@ void RocksDBEngine::start() {
     testOptions.avoid_flush_during_recovery = true;
     testOptions.avoid_flush_during_shutdown = true;
     testOptions.env = _options.env;
+    
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status =
         rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
@@ -809,7 +810,7 @@ void RocksDBEngine::start() {
       if (res.errorNumber() != TRI_ERROR_ARANGO_IO_ERROR) {
         // not an I/O error. so we better report the error and abort here
         LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
-            << "unable to initialize RocksDB engine: " << status.ToString();
+            << "unable to initialize RocksDB engine: " << res.errorMessage();
         FATAL_ERROR_EXIT();
       }
     }
