@@ -721,9 +721,8 @@ void InvertedIndexFieldIterator::next() {
       TRI_ASSERT(_value._analyzer.get());
       _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
       return;
-    } else {
-      _currentTypedAnalyzer.reset();
     }
+    _currentTypedAnalyzer.reset();
   }
   while (_begin != _end) {
     _valueSlice = VPackSlice::noneSlice();
@@ -732,16 +731,15 @@ void InvertedIndexFieldIterator::next() {
         if (_begin->expansion.empty()) {
           _valueSlice = *_arrayStack.back();
         } else {
-          // fo array subobjects we index "null" in case of absence as declared for other indicies
+          // for array subobjects we index "null" in case of absence as declared for other indicies
           _valueSlice = get(*_arrayStack.back(), _begin->expansion,
                             arangodb::velocypack::Slice::nullSlice());
         }
         ++_arrayStack.back();
         _nameBuffer.resize(_prefixLength); // FIXME: just clear should work!
         break;
-      } else {
-        _arrayStack.pop_back();
       }
+      _arrayStack.pop_back();
     }
     if (_arrayStack.empty()) {
       while(_valueSlice.isNone()) {
@@ -793,7 +791,7 @@ void InvertedIndexFieldIterator::next() {
               "object or exclude field '%s' "
               "from index definition",
               _nameBuffer.c_str());
-          break;
+          return; // never reached
         case VPackValueType::Array: {
           if (_begin->attribute.back().shouldExpand && _arrayStack.empty()) {
             _arrayStack.push_back(VPackArrayIterator(_valueSlice));
@@ -810,7 +808,8 @@ void InvertedIndexFieldIterator::next() {
                 "from index definition or enable expansion",
                 _nameBuffer.c_str());
           }
-        } break;
+          break;
+        }
         case VPackValueType::Double:
         case VPackValueType::Int:
         case VPackValueType::UInt:

@@ -234,7 +234,7 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(arangodb::velocypack::Slic
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = other.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  arangodb::velocypack::StringRef typeStr(typeSlice);
+  std::string_view typeStr = typeSlice.stringView();
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = other.get(arangodb::StaticStrings::IndexId);
@@ -246,7 +246,7 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(arangodb::velocypack::Slic
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    arangodb::velocypack::StringRef idRef(value);
+    std::string_view idRef = value.stringView();
     return idRef == std::to_string(IResearchDataStore::id().id());
   }
   return IResearchInvertedIndex::matchesFieldsDefinition(other);

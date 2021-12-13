@@ -1033,7 +1033,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
                                mutableCondition->getMember(0) : mutableCondition->getMember(1);
         if (attributeAccess->type == aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS &&
             attributeAccess->value.type == aql::AstNodeValueType::VALUE_TYPE_STRING) {
-          auto fieldName = attributeAccess->getStringRef();
+          auto fieldName = attributeAccess->getStringView();
           if (fieldName == arangodb::StaticStrings::FromString) {
             extraFieldName = arangodb::StaticStrings::ToString;
           } else if (fieldName == arangodb::StaticStrings::ToString) {
