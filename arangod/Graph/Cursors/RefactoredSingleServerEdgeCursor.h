@@ -28,6 +28,7 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/QueryContext.h"
+#include "Containers/FlatHashMap.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 
@@ -105,7 +106,7 @@ class RefactoredSingleServerEdgeCursor {
  private:
   aql::Variable const* _tmpVar;
   std::vector<LookupInfo> _lookupInfo;
-  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;

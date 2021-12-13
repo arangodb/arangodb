@@ -193,6 +193,7 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
+  static std::string const LockLocation;
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
@@ -248,6 +249,7 @@ class StaticStrings {
   static std::string const ShardingSingle;
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
+  static std::string_view const SoftWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;

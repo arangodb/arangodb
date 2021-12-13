@@ -31,13 +31,15 @@
 #include "utils/vpack_utils.hpp"
 #include "store/store_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
 using namespace irs::analysis;
 
-constexpr VPackStringRef MODEL_LOCATION_PARAM_NAME {"model_location"};
-constexpr VPackStringRef TOP_K_PARAM_NAME {"top_k"};
-constexpr VPackStringRef THRESHOLD_PARAM_NAME {"threshold"};
+constexpr std::string_view MODEL_LOCATION_PARAM_NAME {"model_location"};
+constexpr std::string_view TOP_K_PARAM_NAME {"top_k"};
+constexpr std::string_view THRESHOLD_PARAM_NAME {"threshold"};
 
 std::atomic<classification_stream::model_provider_f> MODEL_PROVIDER{nullptr};
 

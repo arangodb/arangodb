@@ -95,7 +95,7 @@ std::string Utils::baseUrl(std::string const& prefix) {
 
 ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                               std::string const& collectionName,
-                              std::string const& shardKey, VPackStringRef vertexKey,
+                              std::string const& shardKey, std::string_view vertexKey,
                               std::string& responsibleShard) {
   if (!ServerState::instance()->isRunningInCluster()) {
     responsibleShard = collectionName;

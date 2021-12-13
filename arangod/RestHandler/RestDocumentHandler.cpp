@@ -30,6 +30,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogContextKeys.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -158,7 +159,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
   if (!mode.empty()) {
-    auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
+    auto overwriteMode = OperationOptions::determineOverwriteMode(std::string_view(mode));
 
     if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
       opOptions.overwriteMode = overwriteMode;
@@ -271,6 +272,7 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // split the document reference
   std::string const& collection = suffixes[0];
+  
   std::string const& key = suffixes[1];
 
   // check for an etag
@@ -578,6 +580,7 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   // split the document reference
   std::string const& cname = suffixes[0];
+  
   std::string key;
   if (suffixes.size() == 2) {
     key = suffixes[1];

@@ -31,6 +31,7 @@
 
 #include <type_traits>
 #include <random>
+#include <tuple>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -298,10 +299,19 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
 
     TRI_ASSERT(logId == spec->id);
     TRI_ASSERT(spec->currentTerm.has_value());
-    auto& leader = spec->currentTerm->leader;
+    auto& plannedLeader = spec->currentTerm->leader;
     auto log = ctx.ensureReplicatedLog(logId);
 
-    if (leader.has_value() && leader->serverId == myServerId && leader->rebootId == myRebootId) {
+    auto status = log->getParticipant()->getStatus();
+
+    if (status.getCurrentTerm() == spec->currentTerm->term) {
+      // something has changed in the term volatile configuration
+      auto leader = log->getLeader();
+      TRI_ASSERT(leader != nullptr);
+      leader->updateParticipantsConfig(
+          std::make_shared<ParticipantsConfig const>(spec->participantsConfig));
+    } else if (plannedLeader.has_value() && plannedLeader->serverId == myServerId &&
+               plannedLeader->rebootId == myRebootId) {
       auto followers =
           std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
@@ -326,59 +336,31 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
   });
 }
 
-auto algorithms::operator<<(std::ostream& os, ParticipantFlag const& p) noexcept
-    -> std::ostream& {
-  switch(p) {
-    case ParticipantFlag::Excluded: {
-      return os << "excluded";
-    } break;
-    case ParticipantFlag::Failed: {
-      return os << "failed";
-    } break;
-    case ParticipantFlag::Forced: {
-      return os << "forced";
-    } break;
-  }
-  return os;
-}
-
-// TODO: Make prettier
 auto algorithms::operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
     -> std::ostream& {
-  os << '{' << p.id << ':' << p.index <<
-    ", ";
-
-  auto of = std::ostream_iterator<ParticipantFlag>{os, ", "};
-  std::copy(std::begin(p.flags), std::end(p.flags), of);
-
-  os<< '}';
+  os << '{' << p.id << ':' << p.index << ", ";
+  os << "failed = " << std::boolalpha << p.failed;
+  os << ", flags = " << p.flags;
+  os << '}';
   return os;
 }
 
-ParticipantStateTuple::ParticipantStateTuple(LogIndex index, ParticipantId id, ParticipantFlags flags)
-  : index(index), id(std::move(id)), flags(std::move(flags))
-{}
-
 auto ParticipantStateTuple::isExcluded() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Excluded) != std::end(flags);
+  return flags.excluded;
 };
 
 auto ParticipantStateTuple::isForced() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Forced) != std::end(flags);
+  return flags.forced;
 };
 
 auto ParticipantStateTuple::isFailed() const noexcept -> bool {
-  return std::find(std::begin(flags), std::end(flags), ParticipantFlag::Failed) != std::end(flags);
+  return failed;
 };
 
-auto operator<=(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept -> bool {
-  if (left.index < right.index) {
-    return true;
-  } else if (left.index==right.index) {
-    return left.id <= right.id;
-  } else {
-    return false;
-  }
+auto operator<=>(ParticipantStateTuple const& left, ParticipantStateTuple const& right) noexcept {
+  // return std::tie(left.index, left.id) <=> std::tie(right.index, right.id); -- not supported by apple clang
+  if (auto c = left.index <=> right.index; c != 0) { return c; }
+  return left.id.compare(right.id) <=> 0;
 }
 
 algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(

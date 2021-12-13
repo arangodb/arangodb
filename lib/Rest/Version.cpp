@@ -47,7 +47,7 @@
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 
-#include "3rdParty/iresearch/core/utils/version_defines.hpp"
+#include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
 using namespace arangodb::rest;
 

@@ -37,7 +37,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -146,7 +145,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         if (shouldHandleCollection(RocksDBLogValue::databaseId(blob),
                                    RocksDBLogValue::collectionId(blob))) {
           _state = COLLECTION_RENAME;
-          _oldCollectionName = RocksDBLogValue::oldCollectionName(blob).toString();
+          _oldCollectionName = std::string(RocksDBLogValue::oldCollectionName(blob));
         }
         break;
       case RocksDBLogType::CollectionChange:
@@ -164,7 +163,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         // always return false for dropped collections
         if (shouldHandleDB(dbid)) {
           {  // tick number
-            arangodb::velocypack::StringRef uuid = RocksDBLogValue::collectionUUID(blob);
+            std::string_view uuid = RocksDBLogValue::collectionUUID(blob);
             TRI_ASSERT(!uuid.empty());
             uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
             VPackObjectBuilder marker(&_builder, true);
@@ -461,7 +460,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     }
     TRI_ASSERT(_vocbase->id() == dbid);
 
-    arangodb::velocypack::StringRef docKey = RocksDBKey::primaryKey(key);
+    std::string_view docKey = RocksDBKey::primaryKey(key);
     LogicalCollection* coll = loadCollection(cid);
     TRI_ASSERT(coll != nullptr);
     {

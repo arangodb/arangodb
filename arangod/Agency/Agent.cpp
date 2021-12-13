@@ -41,6 +41,11 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -52,10 +57,10 @@ using namespace std::chrono;
 
 
 struct AppendScale {
-  static log_scale_t<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
+  static arangodb::metrics::LogScale<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
 };
 struct AgentScale {
-  static log_scale_t<float> scale() { return {std::exp(1.f), 0.f, 200.f, 10}; }
+  static arangodb::metrics::LogScale<float> scale() { return {std::exp(1.f), 0.f, 200.f, 10}; }
 };
 
 DECLARE_HISTOGRAM(arangodb_agency_append_hist, AppendScale, "Agency write histogram [ms]");
@@ -94,23 +99,23 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
       _preparing(0),
       _loaded(false),
       _write_ok(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_ok_total{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_write_ok_total{})),
       _write_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_no_leader_total{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_write_no_leader_total{})),
       _read_ok(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_ok_total{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_read_ok_total{})),
       _read_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_no_leader_total{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_read_no_leader_total{})),
       _write_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_hist{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_write_hist{})),
       _commit_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_commit_hist{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_commit_hist{})),
       _append_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_append_hist{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_append_hist{})),
       _compaction_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_compaction_hist{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_compaction_hist{})),
       _local_index(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_local_commit_index{})) {
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -443,7 +448,7 @@ void Agent::logsForTrigger() {
       }
     }
   }
-  
+
   triggerPollsNoLock(std::move(builder));
   _lowestPromise = std::numeric_limits<index_t>::max();
 }
@@ -1494,7 +1499,7 @@ void Agent::clearExpiredPolls() {
     empty->add(VPackValue("log"));
     VPackArrayBuilder a(empty.get());
   }
-  
+
   std::lock_guard lck(_promLock);
   triggerPollsNoLock(std::move(empty), std::chrono::steady_clock::now());
 }
@@ -1509,8 +1514,8 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   while (pit != _promises.end()) {
     if (pit->first < tp) {
       auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp = std::move(pp), qu] { 
-        pp->setValue(qu); 
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp = std::move(pp), qu] {
+        pp->setValue(qu);
       });
       pit = _promises.erase(pit);
     } else {

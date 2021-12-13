@@ -38,7 +38,7 @@ namespace arangodb {
 namespace rocksdb {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rotate the active journals for the collection on all DBServers
+/// @brief recalculate counts on all DB servers
 ////////////////////////////////////////////////////////////////////////////////
 
 Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& server,

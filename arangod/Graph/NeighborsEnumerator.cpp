@@ -43,15 +43,19 @@ NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions*
   TRI_ASSERT(!opts->hasDepthLookupInfo());
 }
 
-void NeighborsEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
-  PathEnumerator::setStartVertex(startVertex);
-
+void NeighborsEnumerator::clear() {
   _allFound.clear();
   _currentDepth.clear();
   _lastDepth.clear();
   _iterator = _currentDepth.end();
   _toPrune.clear();
   _searchDepth = 0;
+}
+
+void NeighborsEnumerator::setStartVertex(std::string_view startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+
+  clear();
 
   _allFound.emplace(startVertex);
   _currentDepth.insert(startVertex);
@@ -128,7 +132,7 @@ bool NeighborsEnumerator::next() {
           vertex = tmp;
         }
 
-        arangodb::velocypack::StringRef v(vertex);
+        std::string_view v(vertex.stringView());
 
         if (!_allFound.contains(v)) {
           v = _opts->cache()->persistString(v);
@@ -190,7 +194,7 @@ void NeighborsEnumerator::swapLastAndCurrentDepth() {
   _currentDepth.clear();
 }
 
-bool NeighborsEnumerator::shouldPrune(arangodb::velocypack::StringRef v) {
+bool NeighborsEnumerator::shouldPrune(std::string_view v) {
   // Prune here
   if (!_opts->usesPrune()) {
     return false;

@@ -35,7 +35,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -65,7 +64,7 @@ void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
   result.add(VPackSlice(token.vpack()));
 }
 
-bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id, VPackBuilder& result) {
+bool ClusterTraverserCache::appendVertex(std::string_view id, VPackBuilder& result) {
   // There will be no idString of length above uint32_t
   auto it = _cache.find(
       arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
@@ -76,7 +75,7 @@ bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id, VPa
     return true;
   }
   // Register a warning. It is okay though but helps the user
-  std::string msg = "vertex '" + id.toString() + "' not found";
+  std::string msg = "vertex '" + std::string(id) + "' not found";
   _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
 
   // Document not found append NULL
@@ -84,7 +83,7 @@ bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id, VPa
   return false;
 }
 
-bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::aql::AqlValue& result) {
+bool ClusterTraverserCache::appendVertex(std::string_view id, arangodb::aql::AqlValue& result) {
   // There will be no idString of length above uint32_t
   auto it = _cache.find(
       arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
@@ -95,7 +94,7 @@ bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id, ara
     return true;
   }
   // Register a warning. It is okay though but helps the user
-  std::string msg = "vertex '" + id.toString() + "' not found";
+  std::string msg = "vertex '" + std::string(id) + "' not found";
   _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
 
   // Document not found append NULL

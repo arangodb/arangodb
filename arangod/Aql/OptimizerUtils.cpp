@@ -558,10 +558,10 @@ AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
     // check, we need them all sorted here.
 
     if (sorted) {
-      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array, true);
+      return ast->createNodeFunctionCall("SORTED_UNIQUE", array, true);
     }
     // a regular UNIQUE will do
-    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array, true);
+    return ast->createNodeFunctionCall("UNIQUE", array, true);
   }
 
   // presumably an array with no or a single member

@@ -31,7 +31,6 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -51,10 +50,10 @@ class Methods;
   
 namespace helpers {
 /// @brief extract the _key attribute from a slice
-arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
+std::string_view extractKeyPart(VPackSlice);
 
-/// @brief extract the _key attribute from a StringRef
-arangodb::velocypack::StringRef extractKeyPart(velocypack::StringRef);
+/// @brief extract the _key attribute from a string_view
+std::string_view extractKeyPart(std::string_view);
 
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 
@@ -88,7 +87,7 @@ VPackSlice extractToFromDocument(VPackSlice);
 void extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
                                   RevisionId& revisionId);
 
-velocypack::StringRef extractCollectionFromId(velocypack::StringRef id);
+std::string_view extractCollectionFromId(std::string_view id);
 
 /// @brief extract _rev from a database document
 RevisionId extractRevFromDocument(VPackSlice slice);

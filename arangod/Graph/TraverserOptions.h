@@ -29,8 +29,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 
-#include <velocypack/StringRef.h>
-
 #include <memory>
 
 namespace arangodb {
@@ -158,13 +156,13 @@ struct TraverserOptions : public graph::BaseOptions {
   bool hasVertexCollectionRestrictions() const;
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                              arangodb::velocypack::StringRef vertexId, uint64_t, size_t);
+                              std::string_view vertexId, uint64_t, size_t);
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
 
-  bool checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const;
+  bool checkSmartDestination(VPackSlice edge, std::string_view sourceVertex) const;
 
-  bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex) const;
+  bool destinationCollectionAllowed(velocypack::Slice edge, std::string_view sourceVertex) const;
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
@@ -229,8 +227,8 @@ struct TraverserOptions : public graph::BaseOptions {
   auto isSatelliteLeader() const -> bool;
 
   auto getEdgeDestination(arangodb::velocypack::Slice edge,
-                          arangodb::velocypack::StringRef origin) const
-      -> arangodb::velocypack::StringRef;
+                          std::string_view origin) const
+      -> std::string_view;
 
   void initializeIndexConditions(
     aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,

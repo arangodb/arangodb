@@ -61,6 +61,11 @@
 #include "VocBase/vocbase.h"
 #include "V8Server/V8DealerFeature.h"
 
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
@@ -191,7 +196,7 @@ class HeartbeatBackgroundJobThread : public Thread {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct HeartbeatScale {
-  static log_scale_t<uint64_t> scale() { return {2, 4, 8000, 10}; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 4, 8000, 10}; }
 };
 DECLARE_COUNTER(arangodb_heartbeat_failures_total, "Counting failed heartbeat transmissions");
 DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale, "Time required to send heartbeat [ms]");
@@ -225,9 +230,9 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
       _heartbeat_send_time_ms(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_send_time_msec{})),
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_heartbeat_send_time_msec{})),
       _heartbeat_failure_counter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_failures_total{})) {}
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_heartbeat_failures_total{})) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -1389,7 +1394,7 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
     try {
       std::vector<std::string> values;
       // we have to make sure that the leader is on the front
-      auto leaderId = agentPool.get("id").stringRef();
+      auto leaderId = agentPool.get("id").stringView();
       auto pool = agentPool.get("pool");
       values.reserve(pool.length());
       values.emplace_back(pool.get(leaderId).copyString());

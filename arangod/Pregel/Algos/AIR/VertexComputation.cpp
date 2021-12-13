@@ -279,7 +279,7 @@ greenspun::EvalResult VertexComputation::air_outboundEdges(greenspun::Machine& c
       result.add(VPackValue("shard"));
       result.add(VPackValue((*edgeIter)->targetShard()));
       result.add(VPackValue("key"));
-      result.add(VPackValue((*edgeIter)->toKey().toString()));
+      result.add(VPackValue((*edgeIter)->toKey()));
     }
 
     result.add(VPackValue("document"));
@@ -485,10 +485,10 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
         return {};
       }
     } else if (rs.isString()) {
-      if (rs.stringRef().equals(StaticStrings::VertexComputationVoteActive)) {
+      if (rs.stringView() == StaticStrings::VertexComputationVoteActive) {
         this->voteActive();
         return {};
-      } else if (rs.stringRef().equals(StaticStrings::VertexComputationVoteHalt)) {
+      } else if (rs.stringView() == StaticStrings::VertexComputationVoteHalt) {
         this->voteHalt();
         return {};
       }

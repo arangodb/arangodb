@@ -37,7 +37,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <type_traits>
 
@@ -626,13 +625,7 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
 
 /// @brief get the (object) element by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       std::string const& name, bool& mustDestroy, bool doCopy) const {
-  return get(resolver, arangodb::velocypack::StringRef(name), mustDestroy, doCopy);
-}
-
-/// @brief get the (object) element by name
-AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       arangodb::velocypack::StringRef const& name, bool& mustDestroy, bool doCopy) const {
+                       std::string_view name, bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   AqlValueType t = type();
   switch (t) {
@@ -748,7 +741,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 }
 
 /// @brief check whether an object has a specific key
-bool AqlValue::hasKey(std::string const& name) const {
+bool AqlValue::hasKey(std::string_view name) const {
   AqlValueType t = type();
   switch (t) {
     case VPACK_INLINE_INT48:

@@ -75,6 +75,12 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
     }
   }
 
+  void runAllAsyncAppendEntries() {
+    while(hasPendingAppendEntries()) {
+      runAsyncAppendEntries();
+    }
+  }
+
   using WaitForAsyncPromise = futures::Promise<replicated_log::AppendEntriesRequest>;
 
   struct AsyncRequest {

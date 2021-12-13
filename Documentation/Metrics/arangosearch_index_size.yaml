@@ -1,0 +1,13 @@
+name: arangosearch_index_size
+introducedIn: "3.10.0"
+help: |
+  Size of the index in bytes for current snapshot.
+unit: number
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Size of the index in bytes for current snapshot.

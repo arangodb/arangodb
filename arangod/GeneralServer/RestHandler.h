@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/ResultT.h"
 #include "GeneralServer/RequestLane.h"
+#include "Logger/LogContext.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
@@ -161,7 +162,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
+    std::move(f).thenFinal(withLogContext([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
       auto thisPtr = self.get();
       if (t.hasException()) {
         thisPtr->handleExceptionPtr(std::move(t).exception());
@@ -171,7 +172,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       } else {
         thisPtr->wakeupHandler();
       }
-    });
+    }));
     return done ? RestStatus::DONE : RestStatus::WAITING;
   }
 
@@ -200,6 +201,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void compressResponse();
 
  protected:
+  // This alias allows the RestHandler and derived classes to add values to the LogContext.
+  // The intention behind RestHandler being a friend of LogContext::Accessor and defining
+  // this alias as protected is to restrict usage of ScopedValues to RestHandlers only in
+  // order to prevent ScopedValues to be created in some inner function where they might
+  // cause significant performance overhead.
+  using ScopedValue = LogContext::Accessor::ScopedValue;
+ 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;

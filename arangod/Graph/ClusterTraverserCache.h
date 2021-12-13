@@ -29,7 +29,8 @@
 #include "Graph/TraverserCache.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/StringRef.h>
+
+#include <string_view>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -47,7 +48,6 @@ namespace velocypack {
 class Builder;
 class Slice;
 class HashedStringRef;
-class StringRef;
 }  // namespace velocypack
 
 namespace graph {
@@ -74,8 +74,8 @@ class ClusterTraverserCache final : public TraverserCache {
                             arangodb::velocypack::Builder& builder) override;
 
   /// Lookup document in cache and add it into the builder
-  bool appendVertex(arangodb::velocypack::StringRef idString, velocypack::Builder& result) override;
-  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result) override;
+  bool appendVertex(std::string_view idString, velocypack::Builder& result) override;
+  bool appendVertex(std::string_view idString, arangodb::aql::AqlValue& result) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result

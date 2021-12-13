@@ -24,7 +24,7 @@
 
 #include "gtest/gtest.h"
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "search/all_filter.hpp"
@@ -63,7 +63,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -269,7 +269,7 @@ struct IResearchExpressionFilterTest
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(), false);
     server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                                                      systemDBInfo(server));

@@ -307,14 +307,14 @@ Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptio
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
+Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, std::string_view /*key*/,
                                     std::pair<LocalDocumentId, RevisionId>& /*result*/,
                                     ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               arangodb::velocypack::StringRef const& /*key*/,
+                               std::string_view /*key*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
                                ReadOwnWrites) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);

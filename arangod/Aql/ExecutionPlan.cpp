@@ -208,7 +208,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
       auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto const name = member->getStringRef();
+        auto const name = member->getStringView();
         auto value = member->getMember(0);
         TRI_ASSERT(value->isConstant());
 
@@ -311,7 +311,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(Ast* ast, AstNode 
       auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto const name = member->getStringRef();
+        auto const name = member->getStringView();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
@@ -835,7 +835,7 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
     auto member = node->getMember(i);
 
     if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      auto const name = member->getStringRef();
+      auto const name = member->getStringView();
 
       if (name == "exclusive") {
         auto value = member->getMember(0);
@@ -862,7 +862,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(QueryContext& query,
       auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto const name = member->getStringRef();
+        auto const name = member->getStringView();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
@@ -883,7 +883,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(QueryContext& query,
           }
         } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
           auto overwriteMode =
-              OperationOptions::determineOverwriteMode(value->getStringRef());
+              OperationOptions::determineOverwriteMode(value->getStringView());
 
           if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
             options.overwriteMode = overwriteMode;
@@ -925,11 +925,11 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         bool handled = false;
-        auto const name = member->getStringRef();
+        auto const name = member->getStringView();
         if (name == "method") {
           auto value = member->getMember(0);
           if (value->isStringValue()) {
-            options.method = CollectOptions::methodFromString(value->getString());
+            options.method = CollectOptions::methodFromString(value->getStringView());
             if (options.method != CollectOptions::CollectMethod::UNDEFINED) {
               handled = true;
             }
@@ -1998,7 +1998,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
     if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
       continue;
     }
-    VPackStringRef const name = member->getStringRef();
+    auto const name = member->getStringView();
     AstNode* value = member->getMember(0);
     if (!value->isConstant()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
@@ -2534,25 +2534,23 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(ExecutionNode*
     // the number of arguments should also be one (note: this has been
     // validated before)
     TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
-    auto const& functionName = Aggregator::translateAlias(func->name);
+    std::string_view functionName = Aggregator::translateAlias(func->name);
+    Variable const* variable = nullptr;
     if (args->numMembers() == 1) {
       auto arg = args->getMember(0);
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable
-        auto e = static_cast<Variable*>(arg->getData());
-        aggregateVariables.emplace_back(
-            AggregateVarInfo{outVar, e, functionName});
+        variable = static_cast<Variable*>(arg->getData());
       } else {
         auto calc = createTemporaryCalculation(arg, *previous);
         *previous = calc;
-        aggregateVariables.emplace_back(
-            AggregateVarInfo{outVar, getOutVariable(calc), functionName});
+        variable = getOutVariable(calc);
       }
     } else {
       TRI_ASSERT(!Aggregator::requiresInput(func->name));
-      aggregateVariables.emplace_back(
-          AggregateVarInfo{outVar, nullptr, functionName});
     }
+    aggregateVariables.emplace_back(
+        AggregateVarInfo{outVar, variable, std::string(functionName)});
   }
   
   return aggregateVariables;

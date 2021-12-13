@@ -38,7 +38,7 @@ CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel",
                  "Statistics", "Replication", "Disk", "Errors",
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",
                  "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",
-                 "License"]
+                 "License", "ArangoSearch"]
 
 NODE_TYPES = ["coordinator", "dbserver", "agent", "single"]
 
@@ -106,7 +106,7 @@ for f in files:
                 if m:
                     METRICSLIST.append(m.group(1))
 if len(METRICSLIST) == 0:
-    print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
+    print("Did not find any metrics in arangod/Metrics/MetricsFeature.h!")
     sys.exit(2)
 
 METRICSLIST.sort()

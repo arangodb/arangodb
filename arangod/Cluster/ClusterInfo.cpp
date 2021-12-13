@@ -59,7 +59,10 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -133,7 +136,7 @@ void addToShardStatistics(arangodb::ShardStatistics& stats,
     for (auto pair : VPackObjectIterator(shards)) {
       int i = 0;
       for (auto const& serv : VPackArrayIterator(pair.value)) {
-        if (!restrictServer.empty() && serv.stringRef() != restrictServer) {
+        if (!restrictServer.empty() && serv.stringView() != restrictServer) {
           // different server
           i++;
           continue;
@@ -167,7 +170,7 @@ void addToShardStatistics(arangodb::ShardStatistics& stats,
 
 void addToShardStatistics(std::unordered_map<arangodb::ServerID, arangodb::ShardStatistics>& stats, 
                           arangodb::velocypack::Slice databaseSlice) {
-  std::unordered_set<VPackStringRef> serversSeenForDatabase;
+  std::unordered_set<std::string_view> serversSeenForDatabase;
 
   for (auto it : VPackObjectIterator(databaseSlice)) {
     VPackSlice collection = it.value;
@@ -177,7 +180,7 @@ void addToShardStatistics(std::unordered_map<arangodb::ServerID, arangodb::Shard
       hasDistributeShardsLike = dsl.getStringLength() > 0;
     }
 
-    std::unordered_set<VPackStringRef> serversSeenForCollection;
+    std::unordered_set<std::string_view> serversSeenForCollection;
 
     VPackSlice shards = collection.get("shards");
     for (auto pair : VPackObjectIterator(shards)) {
@@ -185,10 +188,10 @@ void addToShardStatistics(std::unordered_map<arangodb::ServerID, arangodb::Shard
       for (auto const& serv : VPackArrayIterator(pair.value)) {
         auto& stat = stats[serv.copyString()];
 
-        if (serversSeenForCollection.emplace(serv.stringRef()).second) {
+        if (serversSeenForCollection.emplace(serv.stringView()).second) {
           ++stat.collections;
 
-          if (serversSeenForDatabase.emplace(serv.stringRef()).second) {
+          if (serversSeenForDatabase.emplace(serv.stringView()).second) {
             ++stat.databases;
           }
         }
@@ -373,7 +376,7 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterInfoScale {
-  static log_scale_t<float> scale() { return { std::exp(1.f), 0.f, 2500.f, 10 }; }
+  static metrics::LogScale<float> scale() { return { std::exp(1.f), 0.f, 2500.f, 10 }; }
 };
 
 DECLARE_LEGACY_COUNTER(arangodb_load_current_accum_runtime_msec_total, "Accumulated runtime of Current loading [ms]");
@@ -395,10 +398,10 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _currentIndex(0),
     _planLoader(std::thread::id()),
     _uniqid(),
-    _lpTimer(_server.getFeature<MetricsFeature>().add(arangodb_load_plan_runtime{})),
-    _lpTotal(_server.getFeature<MetricsFeature>().add(arangodb_load_plan_accum_runtime_msec_total{})),
-    _lcTimer(_server.getFeature<MetricsFeature>().add(arangodb_load_current_runtime{})),
-    _lcTotal(_server.getFeature<MetricsFeature>().add(arangodb_load_current_accum_runtime_msec_total{})) {
+    _lpTimer(_server.getFeature<metrics::MetricsFeature>().add(arangodb_load_plan_runtime{})),
+    _lpTotal(_server.getFeature<metrics::MetricsFeature>().add(arangodb_load_plan_accum_runtime_msec_total{})),
+    _lcTimer(_server.getFeature<metrics::MetricsFeature>().add(arangodb_load_current_runtime{})),
+    _lcTotal(_server.getFeature<metrics::MetricsFeature>().add(arangodb_load_current_accum_runtime_msec_total{})) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -1251,14 +1254,13 @@ void ClusterInfo::loadPlan() {
       }
       continue;
     }
-    collectionsSlice = collectionsSlice.get(collectionsPath);
-
-    auto databaseCollections = std::make_shared<DatabaseCollections>();
 
     // Skip databases that are still building.
     if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
       continue;
     }
+
+    collectionsSlice = collectionsSlice.get(collectionsPath);
 
     auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
@@ -1274,6 +1276,8 @@ void ClusterInfo::loadPlan() {
 
       continue;
     }
+    
+    auto databaseCollections = std::make_shared<DatabaseCollections>();
 
     // an iterator to all collections in the current database (from the previous round)
     // we can safely keep this iterator around because we hold the read-lock on _planProt here.
@@ -2516,7 +2520,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
       VPackSlice agencyId = databaseSlice.get("id");
       VPackSlice preconditionId = builder.slice().get("id");
       if (agencyId.isString() && preconditionId.isString() &&
-          !agencyId.isEqualString(preconditionId.stringRef())) {
+          !agencyId.isEqualString(preconditionId.stringView())) {
         // database key is there, but has a different id, this can happen if the
         // database has already been dropped in the meantime and recreated, in
         // any case, let's get us out of here...

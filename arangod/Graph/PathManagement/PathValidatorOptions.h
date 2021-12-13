@@ -24,10 +24,10 @@
 
 #include <memory>
 #include <numeric>
-#include <unordered_map>
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Containers/FlatHashMap.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Transaction/Methods.h"
 
@@ -128,7 +128,7 @@ class PathValidatorOptions {
  private:
   // Vertex expression section
   std::shared_ptr<aql::Expression> _allVerticesExpression;
-  std::unordered_map<uint64_t, std::shared_ptr<aql::Expression>> _vertexExpressionOnDepth;
+  containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>> _vertexExpressionOnDepth;
   std::vector<std::string> _allowedVertexCollections;
 
   // Prune section

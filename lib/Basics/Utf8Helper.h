@@ -42,9 +42,6 @@ class RegexMatcher;
 }
 
 namespace arangodb {
-namespace velocypack {
-class StringRef;
-}
 namespace basics {
 
 #ifdef _WIN32
@@ -147,7 +144,7 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tokenize(std::set<std::string>& words, arangodb::velocypack::StringRef const& text,
+  bool tokenize(std::set<std::string>& words, std::string_view text,
                 size_t minimalWordLength, size_t maximalWordLength, bool lowerCase);
 
   //////////////////////////////////////////////////////////////////////////////

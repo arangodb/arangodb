@@ -166,14 +166,14 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder, bool ne
       return;
     }
 
-    arangodb::velocypack::StringRef id(v);
+    std::string_view id = v.stringView();
     size_t pos = id.find('/');
     if (pos == std::string::npos || pos + 1 == id.size()) {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
-                                     "edge contains invalid value " + id.toString());
+                                     "edge contains invalid value " + std::string(id));
     }
-    std::string shardName = id.substr(0, pos).toString();
+    std::string shardName = std::string(id.substr(0, pos));
     auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
@@ -185,7 +185,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder, bool ne
     }
 
     if (shouldProduceVertices) {
-      arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
+      std::string_view vertex = id.substr(pos + 1);
       for (std::string const& shard : shards->second) {
         Result res = _trx->documentFastPathLocal(shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
           // FOUND short circuit.
@@ -240,7 +240,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
-graph::EdgeCursor* BaseTraverserEngine::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
+graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex, uint64_t currentDepth) {
   if (currentDepth >= _cursors.size()) {
     _cursors.emplace_back(_opts->buildCursor(currentDepth));
   }
@@ -253,7 +253,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
   auto outputVertex = [this, depth](VPackBuilder& builder, VPackSlice vertex) {
     TRI_ASSERT(vertex.isString());
 
-    graph::EdgeCursor* cursor = getCursor(arangodb::velocypack::StringRef(vertex), depth);
+    graph::EdgeCursor* cursor = getCursor(vertex.stringView(), depth);
 
     cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
@@ -262,7 +262,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
       if (edge.isNull()) {
         return;
       }
-      if (_opts->evaluateEdgeExpression(edge, arangodb::velocypack::StringRef(vertex), depth, cursorId)) {
+      if (_opts->evaluateEdgeExpression(edge, vertex.stringView(), depth, cursorId)) {
         builder.add(edge);
       }
     });
@@ -358,11 +358,11 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
       if (!v.isString()) {
         continue;
       }
-      addEdgeData(builder, backward, arangodb::velocypack::StringRef(v));
+      addEdgeData(builder, backward, v.stringView());
       // Result now contains all valid edges, probably multiples.
     }
   } else if (vertex.isString()) {
-    addEdgeData(builder, backward, arangodb::velocypack::StringRef(vertex));
+    addEdgeData(builder, backward, vertex.stringView());
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -373,7 +373,7 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
   builder.close();
 }
 
-void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward, arangodb::velocypack::StringRef v) {
+void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward, std::string_view v) {
   graph::EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
   cursor->rearm(v, 0);
 

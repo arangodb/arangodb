@@ -235,9 +235,9 @@ void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOp
       continue;
     }
     if (name[0] == '-') {
-      disableRule(plan, arangodb::velocypack::StringRef(name));
+      disableRule(plan, name);
     } else {
-      enableRule(plan, arangodb::velocypack::StringRef(name));
+      enableRule(plan, name);
     }
   }
 }
@@ -422,8 +422,8 @@ void Optimizer::disableRule(ExecutionPlan* plan, int level) {
   }
 }
 
-void Optimizer::disableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef name) {
-  if (!name.empty() && name[0] == '-') {
+void Optimizer::disableRule(ExecutionPlan* plan, std::string_view name) {
+  if (!name.empty() && name.front() == '-') {
     name = name.substr(1);
   }
 
@@ -446,8 +446,8 @@ void Optimizer::enableRule(ExecutionPlan* plan, int level) {
   plan->enableRule(level);
 }
 
-void Optimizer::enableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef name) {
-  if (!name.empty() && name[0] == '+') {
+void Optimizer::enableRule(ExecutionPlan* plan, std::string_view name) {
+  if (!name.empty() && name.front() == '+') {
     name = name.substr(1);
   }
 

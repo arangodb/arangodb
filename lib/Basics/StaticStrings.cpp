@@ -206,6 +206,7 @@ std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
+std::string const StaticStrings::LockLocation("lockLocation");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::PotentialDirtyRead(
@@ -267,6 +268,7 @@ std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
 std::string const StaticStrings::ReplicationVersion("replicationVersion");
 std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
+std::string_view const StaticStrings::SoftWriteConcern("softWriteConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
