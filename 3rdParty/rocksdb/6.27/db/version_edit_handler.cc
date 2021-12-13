@@ -68,6 +68,30 @@ void VersionEditHandlerBase::Iterate(log::Reader& reader,
   CheckIterationResult(reader, &s);
 
   if (!s.ok()) {
+    if (s.IsCorruption()) {
+      // when we find a Corruption error, something is
+      // wrong with the underlying file. in this case we
+      // want to report the filename, so in here we append
+      // the filename to the Corruption message
+      assert(reader.file());
+
+      // build a new error message
+      std::string message;
+      // append previous dynamic state message
+      const char* state = s.getState();
+      if (state != nullptr) {
+        message.append(state);
+      }
+      if (!message.empty() && message.back() != ' ') {
+        // avoid adding redundant whitespace
+        message += " ";
+      }
+      // append the filename to the corruption message
+      message += "in file ";
+      message += reader.file()->file_name();
+      // overwrite the status with the extended status
+      s = Status(s.code(), s.subcode(), s.severity(), message);
+    }
     status_ = s;
   }
   TEST_SYNC_POINT_CALLBACK("VersionEditHandlerBase::Iterate:Finish",
