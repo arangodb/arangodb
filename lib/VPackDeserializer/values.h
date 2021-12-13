@@ -100,7 +100,7 @@ template <const char V[], typename H>
 struct value_comparator<string_value<V>, H> {
   static bool compare(::arangodb::velocypack::deserializer::slice_type s) {
     if (hints::hint_is_string<H> || s.isString()) {
-      return s.isEqualString(arangodb::velocypack::StringRef(V, strlen(V)));
+      return s.isEqualString(std::string_view(V, strlen(V)));
     }
 
     return false;

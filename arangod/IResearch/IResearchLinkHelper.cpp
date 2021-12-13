@@ -55,6 +55,7 @@
 
 namespace {
 
+#ifdef USE_ENTERPRISE
 bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
   /*
    * Note: As IResearchView.cpp L204 says:
@@ -67,7 +68,6 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
    * Another attempt could be to rewrite the links itself, but more code changes will then be
    * necessary.
    */
-#ifdef USE_ENTERPRISE
   if (arangodb::ServerState::instance()->isSingleServer()) {
     if (cName[0] == '_') {
       if (strncmp(cName.c_str(), arangodb::StaticStrings::FullLocalPrefix.c_str(),
@@ -86,9 +86,9 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
       }
     }
   }
-#endif
   return false;
 }
+#endif
 
 using namespace arangodb;
 using namespace arangodb::iresearch;

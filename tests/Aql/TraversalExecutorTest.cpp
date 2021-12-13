@@ -69,7 +69,7 @@ class TestGraph {
     vertex.add(StaticStrings::RevString, VPackValue("123"));  // just to have it there
     vertex.close();
     auto vslice = vertex.slice();
-    arangodb::velocypack::StringRef id(vslice.get(StaticStrings::IdString));
+    std::string_view id(vslice.get(StaticStrings::IdString).stringView());
     _dataLake.emplace_back(vertex.steal());
     _vertices.emplace(id, vslice);
   }
@@ -86,20 +86,20 @@ class TestGraph {
     edge.add(StaticStrings::ToString, VPackValue(toVal));
     edge.close();
     auto eslice = edge.slice();
-    _outEdges[arangodb::velocypack::StringRef(eslice.get(StaticStrings::FromString))]
+    _outEdges[eslice.get(StaticStrings::FromString).stringView()]
         .emplace_back(eslice);
-    _inEdges[arangodb::velocypack::StringRef(eslice.get(StaticStrings::ToString))]
+    _inEdges[eslice.get(StaticStrings::ToString).stringView()]
         .emplace_back(eslice);
     _dataLake.emplace_back(edge.steal());
   }
 
-  VPackSlice getVertexData(arangodb::velocypack::StringRef id) const {
+  VPackSlice getVertexData(std::string_view id) const {
     auto const& it = _vertices.find(id);
     TRI_ASSERT(it != _vertices.end());
     return it->second;
   }
 
-  std::vector<VPackSlice> const& getInEdges(arangodb::velocypack::StringRef id) const {
+  std::vector<VPackSlice> const& getInEdges(std::string_view id) const {
     auto it = _inEdges.find(id);
     if (it == _inEdges.end()) {
       return _noEdges;
@@ -107,7 +107,7 @@ class TestGraph {
     return it->second;
   }
 
-  std::vector<VPackSlice> const& getOutEdges(arangodb::velocypack::StringRef id) const {
+  std::vector<VPackSlice> const& getOutEdges(std::string_view id) const {
     auto it = _outEdges.find(id);
     if (it == _outEdges.end()) {
       return _noEdges;
@@ -121,9 +121,9 @@ class TestGraph {
 
   std::vector<VPackSlice> _noEdges;
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _dataLake;
-  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
-  std::unordered_map<arangodb::velocypack::StringRef, std::vector<VPackSlice>> _outEdges;
-  std::unordered_map<arangodb::velocypack::StringRef, std::vector<VPackSlice>> _inEdges;
+  std::unordered_map<std::string_view, VPackSlice> _vertices;
+  std::unordered_map<std::string_view, std::vector<VPackSlice>> _outEdges;
+  std::unordered_map<std::string_view, std::vector<VPackSlice>> _inEdges;
 };
 
 // @brief
@@ -141,13 +141,17 @@ class GraphEnumerator : public PathEnumerator {
 
   ~GraphEnumerator() = default;
 
-  void setStartVertex(arangodb::velocypack::StringRef startVertex) override {
-    PathEnumerator::setStartVertex(startVertex);
-
+  void clear() override {
     _idx = 0;
     _depth = 0;
     _currentDepth.clear();
     _nextDepth.clear();
+  }
+
+  void setStartVertex(std::string_view startVertex) override {
+    PathEnumerator::setStartVertex(startVertex);
+
+    clear();
     _nextDepth.emplace_back(startVertex);
   }
 
@@ -155,8 +159,8 @@ class GraphEnumerator : public PathEnumerator {
     ++_idx;
     while (true) {
       if (_idx < _edges.size()) {
-        _nextDepth.emplace_back(arangodb::velocypack::StringRef(
-            _edges.at(_idx).get(StaticStrings::ToString)));
+        _nextDepth.emplace_back(
+            _edges.at(_idx).get(StaticStrings::ToString).stringView());
         return true;
       } else {
         if (_currentDepth.empty()) {
@@ -190,8 +194,8 @@ class GraphEnumerator : public PathEnumerator {
   size_t _idx;
   size_t _depth;
   std::vector<VPackSlice> _edges;
-  std::vector<arangodb::velocypack::StringRef> _currentDepth;
-  std::vector<arangodb::velocypack::StringRef> _nextDepth;
+  std::vector<std::string_view> _currentDepth;
+  std::vector<std::string_view> _nextDepth;
 };
 
 class TraverserHelper : public Traverser {
@@ -203,7 +207,7 @@ class TraverserHelper : public Traverser {
 
   void setStartVertex(std::string const& value) override {
     _usedVertexAt.push_back(value);
-    _enumerator->setStartVertex(arangodb::velocypack::StringRef(_usedVertexAt.back()));
+    _enumerator->setStartVertex(std::string_view(_usedVertexAt.back()));
     _done = false;
   }
 
@@ -212,23 +216,23 @@ class TraverserHelper : public Traverser {
     return false;
   }
 
-  bool getSingleVertex(VPackSlice edge, arangodb::velocypack::StringRef const sourceVertex,
-                       uint64_t depth, arangodb::velocypack::StringRef& targetVertex) override {
+  bool getSingleVertex(VPackSlice edge, std::string_view const sourceVertex,
+                       uint64_t depth, std::string_view& targetVertex) override {
     // Implement
     return false;
   }
 
-  bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override {
+  bool getVertex(std::string_view vertex, size_t depth) override {
     // Implement
     return false;
   }
 
-  AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) override {
+  AqlValue fetchVertexData(std::string_view vid) override {
     VPackSlice v = _graph.getVertexData(vid);
     return AqlValue(v);
   }
 
-  void addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& builder) override {
+  void addVertexToVelocyPack(std::string_view vid, VPackBuilder& builder) override {
     TRI_ASSERT(builder.isOpenArray());
     VPackSlice v = _graph.getVertexData(vid);
     builder.add(v);
@@ -435,7 +439,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_edges_are_
     ASSERT_TRUE(arangodb::basics::VelocyPackHelper::compare(
                     value.slice(),
                     myGraph.getVertexData(
-                        arangodb::velocypack::StringRef(expectedResult.at(index))),
+                        std::string_view(expectedResult.at(index))),
                     false) == 0);
   }
 }
@@ -636,7 +640,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_edges_connected) {
     ASSERT_TRUE(arangodb::basics::VelocyPackHelper::compare(
                     value.slice(),
                     myGraph.getVertexData(
-                        arangodb::velocypack::StringRef(expectedResult.at(index))),
+                        std::string_view(expectedResult.at(index))),
                     false) == 0);
   }
 }

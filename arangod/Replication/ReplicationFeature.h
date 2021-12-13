@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Counter.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 
 struct TRI_vocbase_t;
@@ -145,7 +145,7 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// @brief quick replication keys limit
   uint64_t _quickKeysLimit;
 
-  Counter& _inventoryRequests;
+  metrics::Counter& _inventoryRequests;
 };
 
 }  // namespace arangodb

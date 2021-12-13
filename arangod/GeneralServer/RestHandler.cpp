@@ -247,7 +247,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
 
-  VPackStringRef resPayload = _request->rawPayload();
+  std::string_view resPayload = _request->rawPayload();
   VPackBuffer<uint8_t> payload(resPayload.size());
   payload.append(resPayload.data(), resPayload.size());
 

@@ -40,8 +40,8 @@ size_t GeneralRequestMock::contentLength() const {
   return _contentLength;
 }
 
-arangodb::velocypack::StringRef GeneralRequestMock::rawPayload() const {
-  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
+std::string_view GeneralRequestMock::rawPayload() const {
+  return std::string_view(reinterpret_cast<char const*>(_payload.data()), _payload.size());
 }
 
 arangodb::velocypack::Slice GeneralRequestMock::payload(bool /*strictValidation*/) { return _payload.slice(); }
@@ -75,7 +75,7 @@ void GeneralResponseMock::addPayload(
 }
 
 void GeneralResponseMock::addPayload(
-    arangodb::velocypack::Slice const& slice,
+    arangodb::velocypack::Slice slice,
     arangodb::velocypack::Options const* options /*= nullptr*/,
     bool resolveExternals /*= true*/
 ) {
@@ -85,7 +85,7 @@ void GeneralResponseMock::addPayload(
            ;
 }
 
-void GeneralResponseMock::addRawPayload(arangodb::velocypack::StringRef payload) {
+void GeneralResponseMock::addRawPayload(std::string_view payload) {
   TRI_ASSERT(false);
 }
 

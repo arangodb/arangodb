@@ -50,13 +50,19 @@ function ReplicatedLogsSuite () {
   'use strict';
 
   const logId = 12;
+  const targetConfig = {
+    replicationFactor: 3,
+    writeConcern: 2,
+    softWriteConcern: 2,
+    waitForSync: true
+  };
 
   return {
     setUp : function () {},
     tearDown : function () {},
 
     testCreateAndDropReplicatedLog : function() {
-      const log = db._createReplicatedLog({id: logId, targetConfig: {replicationFactor: 3, writeConcern: 2, waitForSync: true}});
+      const log = db._createReplicatedLog({id: logId, targetConfig: targetConfig});
       assertEqual(log.id(), logId);
       waitForLeader(logId);
       assertEqual(db._replicatedLog(logId).id(), logId);
@@ -75,10 +81,16 @@ function ReplicatedLogsWriteSuite () {
   'use strict';
 
   const logId = 12;
+  const targetConfig = {
+    replicationFactor: 3,
+    writeConcern: 2,
+    softWriteConcern: 2,
+    waitForSync: true
+  };
 
   return {
     setUp : function () {
-      db._createReplicatedLog({id: logId, targetConfig: {replicationFactor: 3, writeConcern: 2, waitForSync: true}});
+      db._createReplicatedLog({id: logId, targetConfig: targetConfig});
       waitForLeader(logId);
     },
     tearDown : function () {

@@ -81,6 +81,10 @@ void initTestCases(std::vector<Builder>& testCases) {
   }
   {
     auto& builder = testCases.emplace_back();
+    builder.add(Value(UINT64_MAX));
+  }
+  {
+    auto& builder = testCases.emplace_back();
     builder.add(Value(42));
   }
   {
@@ -158,7 +162,7 @@ forAllTestCases(F f) {
     auto sliceString = [&](){
       try {
         return slice.toString();
-      } catch (Exception&) {
+      } catch (Exception const&) {
         return slice.toHex();
       }
     }();
@@ -184,7 +188,7 @@ forAllTestCases(F f) {
     auto sliceString = [&]() {
       try {
         return sharedSlice.toString();
-      } catch (Exception& e) {
+      } catch (Exception const& e) {
         return sharedSlice.toHex();
       }
     }();
@@ -210,7 +214,7 @@ class ResultOrException {
   explicit ResultOrException(F f) {
     try {
       variant.template emplace<V>(f());
-    } catch (Exception& e) {
+    } catch (Exception const& e) {
       variant.template emplace<Exception>(e);
     }
   }
@@ -233,7 +237,7 @@ class ResultOrException {
       return false;
     }
 
-    switch(variant.index()) {
+    switch (variant.index()) {
       case 0: {
         auto const& left = std::get<0>(variant);
         auto const& right = std::get<0>(other.variant);
@@ -362,6 +366,12 @@ TEST(SharedSliceAgainstSliceTest, type) {
 TEST(SharedSliceAgainstSliceTest, typeName) {
   forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
     ASSERT_EQ(slice.typeName(), sharedSlice.typeName());
+  });
+}
+
+TEST(SharedSliceAgainstSliceTest, volatileHash) {
+  forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
+    ASSERT_EQ(slice.volatileHash(), sharedSlice.volatileHash());
   });
 }
 
@@ -649,6 +659,16 @@ TEST(SharedSliceAgainstSliceTest, getNthValue) {
   });
 }
 
+TEST(SharedSliceAgainstSliceTest, getPCharVectorCharLen) {
+  using namespace std::string_literals;
+  auto paths = std::vector<std::pair<char const*, std::size_t>>{{"foo", 3}, {"bar", 3}};
+  forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
+    for (auto const& path : paths) {
+      ASSERT_EQ_EX(slice.get(path.first, path.second), sharedSlice.get(path.first, path.second));
+    }
+  });
+}
+
 TEST(SharedSliceAgainstSliceTest, getPVector) {
   using namespace std::string_literals;
   auto paths = std::vector<std::vector<std::string>>{{"foo"s}, {"bar"s}};
@@ -691,10 +711,10 @@ TEST(SharedSliceAgainstSliceTest, getPCharPtr) {
 
 TEST(SharedSliceAgainstSliceTest, getPCharPtrLen) {
   using namespace std::string_literals;
-  auto attrs = std::vector<std::string>{"foo"s, "bar"s};
+  auto attrs = std::vector<std::pair<char const*, std::size_t>>{{"foo", 3}, {"bar", 3}};
   forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
     for (auto const& attr : attrs) {
-      ASSERT_EQ_EX(slice.get(attr.c_str(), attr.length()), sharedSlice.get(attr.c_str(), attr.length()));
+      ASSERT_EQ_EX(slice.get(attr.first, attr.second), sharedSlice.get(attr.first, attr.second));
     }
   });
 }
@@ -715,6 +735,15 @@ TEST(SharedSliceAgainstSliceTest, operatorIndexPString) {
   forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
     for (auto const& attr : attrs) {
       ASSERT_EQ_EX(slice.operator[](attr), sharedSlice.operator[](attr));
+    }
+  });
+}
+
+TEST(SharedSliceAgainstSliceTest, findDataOffset) {
+  forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
+    if ((slice.isArray() && !slice.isEmptyArray()) ||
+        (slice.isObject() && !slice.isEmptyObject())) {
+      ASSERT_EQ_EX(slice.findDataOffset(slice.head()), sharedSlice.findDataOffset(slice.head()));
     }
   });
 }
@@ -751,10 +780,10 @@ TEST(SharedSliceAgainstSliceTest, hasKeyPCharPtr) {
 
 TEST(SharedSliceAgainstSliceTest, hasKeyPCharPtrLen) {
   using namespace std::string_literals;
-  auto attrs = std::vector<std::string>{"foo"s, "bar"s};
+  auto attrs = std::vector<std::pair<char const*, std::size_t>>{{"foo", 3}, {"bar", 3}};
   forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
     for (auto const& attr : attrs) {
-      ASSERT_EQ_EX(slice.hasKey(attr.c_str(), attr.length()), sharedSlice.hasKey(attr.c_str(), attr.length()));
+      ASSERT_EQ_EX(slice.hasKey(attr.first, attr.second), sharedSlice.hasKey(attr.first, attr.second));
     }
   });
 }
@@ -929,13 +958,6 @@ TEST(SharedSliceAgainstSliceTest, valueByteSize) {
   });
 }
 
-// TODO Maybe it makes sense to add a test for this, but I don't know what this
-//      does, exactly.
-// TEST(SharedSliceAgainstSliceTest, findDataOffset) {
-//   forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
-//   });
-// }
-
 TEST(SharedSliceAgainstSliceTest, getNthOffset) {
   forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
     if (slice.isArray() || slice.isObject()) { // avoid assertion
@@ -965,6 +987,14 @@ TEST(SharedSliceAgainstSliceTest, compareStringPString) {
     ASSERT_EQ_EX(slice.compareString("42"s), sharedSlice.compareString("42"s));
     ASSERT_EQ_EX(slice.compareString("foo"s), sharedSlice.compareString("foo"s));
     ASSERT_EQ_EX(slice.compareString("bar"s), sharedSlice.compareString("bar"s));
+  });
+}
+
+TEST(SharedSliceAgainstSliceTest, compareStringPCharPtr) {
+  forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
+    ASSERT_EQ_EX(slice.compareString("42"), sharedSlice.compareString("42"));
+    ASSERT_EQ_EX(slice.compareString("foo"), sharedSlice.compareString("foo"));
+    ASSERT_EQ_EX(slice.compareString("bar"), sharedSlice.compareString("bar"));
   });
 }
 
@@ -999,6 +1029,19 @@ TEST(SharedSliceAgainstSliceTest, compareStringUncheckedPString) {
                    sharedSlice.compareStringUnchecked("foo"s));
       ASSERT_EQ_EX(slice.compareStringUnchecked("bar"s),
                    sharedSlice.compareStringUnchecked("bar"s));
+    }
+  });
+}
+
+TEST(SharedSliceAgainstSliceTest, compareStringUncheckedPCharPtr) {
+  forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
+    if (slice.isString()) {
+      ASSERT_EQ_EX(slice.compareStringUnchecked("42"),
+                   sharedSlice.compareStringUnchecked("42"));
+      ASSERT_EQ_EX(slice.compareStringUnchecked("foo"),
+                   sharedSlice.compareStringUnchecked("foo"));
+      ASSERT_EQ_EX(slice.compareStringUnchecked("bar"),
+                   sharedSlice.compareStringUnchecked("bar"));
     }
   });
 }
@@ -1103,7 +1146,7 @@ TEST(SharedSliceAgainstSliceTest, hexType) {
 
 TEST(SharedSliceAgainstSliceTest, getIntUnchecked) {
   forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
-    if (slice.isInteger()) {
+    if (slice.isInt()) {
       ASSERT_EQ_EX(slice.getIntUnchecked(), sharedSlice.getIntUnchecked());
     }
   });
@@ -1119,7 +1162,7 @@ TEST(SharedSliceAgainstSliceTest, getUIntUnchecked) {
 
 TEST(SharedSliceAgainstSliceTest, getSmallIntUnchecked) {
   forAllTestCases([&](Slice slice, SharedSlice sharedSlice) {
-    if (slice.isInteger()) {
+    if (slice.isSmallInt()) {
       ASSERT_EQ_EX(slice.getSmallIntUnchecked(), sharedSlice.getSmallIntUnchecked());
     }
   });
@@ -1141,6 +1184,60 @@ TEST(SharedSliceAgainstSliceTest, getBCD) {
       ASSERT_EQ(leftMantissaLength, rightMantissaLength);
     }
   });
+}
+
+TEST(SharedSliceRefcountTest, createFromEmpty) {
+  std::shared_ptr<uint8_t const> empty;
+
+  SharedSlice sharedSlice{empty};
+  ASSERT_TRUE(sharedSlice.isNone());
+}
+
+TEST(SharedSliceRefcountTest, createFromEmptyBuffer) {
+  Builder b;
+
+  SharedSlice sharedSlice = std::move(b).sharedSlice();
+  ASSERT_TRUE(sharedSlice.isNone());
+}
+
+TEST(SharedSliceRefcountTest, createFromOpenBuffer) {
+  Builder b;
+  b.openObject();
+
+  SharedSlice s;
+  ASSERT_VELOCYPACK_EXCEPTION(s = std::move(b).sharedSlice(), Exception::BuilderNotSealed);
+}
+
+TEST(SharedSliceRefcountTest, createFromUInt8) {
+  std::shared_ptr<uint8_t> data(new uint8_t[7], std::default_delete<uint8_t[]>());
+  char* p = reinterpret_cast<char*>(data.get());
+  *p++ = '\x46';
+  *p++ = 'f';
+  *p++ = 'o';
+  *p++ = 'o';
+  *p++ = 'b';
+  *p++ = 'a';
+  *p++ = 'r';
+  
+  SharedSlice sharedSlice{std::const_pointer_cast<uint8_t const>(data)};
+  ASSERT_TRUE(sharedSlice.isString());
+  ASSERT_EQ("foobar", sharedSlice.copyString());
+}
+
+TEST(SharedSliceRefcountTest, createFromUInt8Move) {
+  std::shared_ptr<uint8_t> data(new uint8_t[7], std::default_delete<uint8_t[]>());
+  char* p = reinterpret_cast<char*>(data.get());
+  *p++ = '\x46';
+  *p++ = 'f';
+  *p++ = 'o';
+  *p++ = 'o';
+  *p++ = 'b';
+  *p++ = 'a';
+  *p++ = 'r';
+
+  SharedSlice sharedSlice{std::const_pointer_cast<uint8_t const>(data)};
+  ASSERT_TRUE(sharedSlice.isString());
+  ASSERT_EQ("foobar", sharedSlice.copyString());
 }
 
 TEST(SharedSliceRefcountTest, copyConstructor) {

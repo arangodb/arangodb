@@ -27,7 +27,6 @@
 #include <string_view>
 
 #include <velocypack/Parser.h>
-#include <velocypack/StringRef.h>
 
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"

@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <string_view>
 
 #include "RocksDBLogger.h"
 
@@ -30,8 +31,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-
-#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 
@@ -85,17 +84,17 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
 
   switch (logLevel) {
     case rocksdb::InfoLogLevel::DEBUG_LEVEL:
-      LOG_TOPIC("299ce", DEBUG, arangodb::Logger::ROCKSDB) << arangodb::velocypack::StringRef(buffer, l);
+      LOG_TOPIC("299ce", DEBUG, arangodb::Logger::ROCKSDB) << std::string_view(buffer, l);
       break;
     case rocksdb::InfoLogLevel::INFO_LEVEL:
-      LOG_TOPIC("45661", INFO, arangodb::Logger::ROCKSDB) << arangodb::velocypack::StringRef(buffer, l);
+      LOG_TOPIC("45661", INFO, arangodb::Logger::ROCKSDB) << std::string_view(buffer, l);
       break;
     case rocksdb::InfoLogLevel::WARN_LEVEL:
-      LOG_TOPIC("2bc83", WARN, arangodb::Logger::ROCKSDB) << arangodb::velocypack::StringRef(buffer, l);
+      LOG_TOPIC("2bc83", WARN, arangodb::Logger::ROCKSDB) << std::string_view(buffer, l);
       break;
     case rocksdb::InfoLogLevel::ERROR_LEVEL:
     case rocksdb::InfoLogLevel::FATAL_LEVEL:
-      LOG_TOPIC("be9ea", ERR, arangodb::Logger::ROCKSDB) << arangodb::velocypack::StringRef(buffer, l);
+      LOG_TOPIC("be9ea", ERR, arangodb::Logger::ROCKSDB) << std::string_view(buffer, l);
       break;
     default: {
       // ignore other levels

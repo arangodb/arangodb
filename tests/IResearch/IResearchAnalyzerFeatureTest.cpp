@@ -67,7 +67,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -195,7 +195,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
   explicit TestTokensTypedAnalyzer(irs::string_ref const& args) : irs::analysis::analyzer(irs::type<TestTokensTypedAnalyzer>::get()) {
     VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
     if (slice.hasKey("type")) {
-      auto type = slice.get("type").stringRef();
+      auto type = slice.get("type").stringView();
       if (type == "number") {
         _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
         _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(1));
@@ -2210,7 +2210,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(
     bogus.slice());
 
-  arangodb::network::ConnectionPool::Config poolConfig(server.server().getFeature<arangodb::MetricsFeature>());
+  arangodb::network::ConnectionPool::Config poolConfig(server.server().getFeature<arangodb::metrics::MetricsFeature>());
   poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;
@@ -2293,7 +2293,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // cannot use the existing server since its features already have some state
 
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::MetricsFeature>();
+    newServer.addFeature<arangodb::metrics::MetricsFeature>();
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace>(std::make_unique<arangodb::DatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::emplace>(...)
@@ -2361,7 +2361,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     });
 
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::MetricsFeature>();
+    newServer.addFeature<arangodb::metrics::MetricsFeature>();
     auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
@@ -2755,7 +2755,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
-  newServer.addFeature<arangodb::MetricsFeature>();
+  newServer.addFeature<arangodb::metrics::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
@@ -3725,7 +3725,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
-  newServer.addFeature<arangodb::MetricsFeature>();
+  newServer.addFeature<arangodb::metrics::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
@@ -4015,7 +4015,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
-  newServer.addFeature<arangodb::MetricsFeature>();
+  newServer.addFeature<arangodb::metrics::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
@@ -4142,7 +4142,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
-  newServer.addFeature<arangodb::MetricsFeature>();
+  newServer.addFeature<arangodb::metrics::MetricsFeature>();
   newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
   newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)

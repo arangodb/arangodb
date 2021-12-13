@@ -51,34 +51,35 @@ class Result;
 
 namespace arangodb::replication2::replicated_log {
 
-struct MessageId : implement_compare<MessageId> {
+struct MessageId {
   constexpr MessageId() noexcept : value{0} {}
   constexpr explicit MessageId(std::uint64_t value) noexcept : value{value} {}
 
-  friend auto operator<=(MessageId, MessageId) noexcept -> bool;
+  friend auto operator<=>(MessageId, MessageId) noexcept = default;
   friend auto operator++(MessageId& id) -> MessageId&;
   friend auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
+  friend auto to_string(MessageId id) -> std::string;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
  private:
   std::uint64_t value;
 };
 
-auto operator<=(MessageId, MessageId) noexcept -> bool;
 auto operator++(MessageId& id) -> MessageId&;
 auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
+auto to_string(MessageId id) -> std::string;
 
 struct AppendEntriesResult {
   LogTerm const logTerm;
   ErrorCode const errorCode;
-  AppendEntriesErrorReason const reason;
+  AppendEntriesErrorReason reason;
   MessageId messageId;
 
   std::optional<TermIndexPair> conflict;
 
   [[nodiscard]] auto isSuccess() const noexcept -> bool;
 
-  AppendEntriesResult(LogTerm, MessageId, TermIndexPair conflict) noexcept;
+  AppendEntriesResult(LogTerm term, MessageId id, TermIndexPair conflict, AppendEntriesErrorReason reason) noexcept;
   AppendEntriesResult(LogTerm, MessageId) noexcept;
   AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
                       AppendEntriesErrorReason reason, MessageId) noexcept;

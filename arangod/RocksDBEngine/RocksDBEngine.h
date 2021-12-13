@@ -33,6 +33,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "Metrics/Fwd.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
@@ -59,7 +60,6 @@ class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
-class RocksDBShaCalculator;
 class RocksDBSyncThread;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
@@ -337,10 +337,10 @@ class RocksDBEngine final : public StorageEngine {
 
   void trackRevisionTreeHibernation() noexcept;
   void trackRevisionTreeResurrection() noexcept;
-  
+
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
-  
+
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
@@ -399,8 +399,6 @@ class RocksDBEngine final : public StorageEngine {
 
   static arangodb::Result registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper);
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& recoveryHelpers();
-
-  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
 
  private:
   void shutdownRocksDBInstance() noexcept;
@@ -546,10 +544,6 @@ class RocksDBEngine final : public StorageEngine {
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _throttleListener;
-
-  // optional code to notice when rocksdb creates or deletes .ssh files.  Currently
-  //  uses that input to create or delete parallel sha256 files
-  std::shared_ptr<RocksDBShaCalculator> _shaListener;
   
   /// @brief background error listener. will be invoked by rocksdb in case of
   /// a non-recoverable error
@@ -584,16 +578,33 @@ class RocksDBEngine final : public StorageEngine {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
+
+  // frequency for throttle in milliseconds
+  uint64_t _throttleFrequency = 60 * 1000; 
+
+  // number of historic data slots to keep around for throttle
+  uint64_t _throttleSlots = 63;
+  // adaptiveness factor for throttle
+  // following is a heuristic value, determined by trial and error.
+  // its job is slow down the rate of change in the current throttle.
+  // we do not want sudden changes in one or two intervals to swing
+  // the throttle value wildly. the goal is a nice, even throttle value.
+  uint64_t _throttleScalingFactor = 17;
+  // max write rate enforced by throttle
+  uint64_t _throttleMaxWriteRate = 0;
+  // trigger point where level-0 file is considered "too many pending"
+  // (from original Google leveldb db/dbformat.h)
+  uint64_t _throttleSlowdownWritesTrigger = 8;
   
-  Gauge<uint64_t>& _metricsWalSequenceLowerBound;
-  Gauge<uint64_t>& _metricsArchivedWalFiles;
-  Gauge<uint64_t>& _metricsPrunableWalFiles;
-  Gauge<uint64_t>& _metricsWalPruningActive;
-  Gauge<uint64_t>& _metricsTreeMemoryUsage;
-  Counter& _metricsTreeRebuildsSuccess;
-  Counter& _metricsTreeRebuildsFailure;
-  Counter& _metricsTreeHibernations;
-  Counter& _metricsTreeResurrections;
+  metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;
+  metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
+  metrics::Gauge<uint64_t>& _metricsWalPruningActive;
+  metrics::Gauge<uint64_t>& _metricsTreeMemoryUsage;
+  metrics::Counter& _metricsTreeRebuildsSuccess;
+  metrics::Counter& _metricsTreeRebuildsFailure;
+  metrics::Counter& _metricsTreeHibernations;
+  metrics::Counter& _metricsTreeResurrections;
   
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBLogPersistor> _logPersistor;

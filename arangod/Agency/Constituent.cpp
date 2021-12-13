@@ -46,6 +46,9 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
+
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
@@ -75,7 +78,7 @@ Constituent::Constituent(application_features::ApplicationServer& server)
       _vocbase(nullptr),
       _term(0),
       _gterm(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_term{})),
+        _server.getFeature<metrics::MetricsFeature>().add(arangodb_agency_term{})),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),

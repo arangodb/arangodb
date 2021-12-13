@@ -152,6 +152,36 @@ function iResearchFeatureAqlTestSuite () {
         }
         assertEqual(oldCount, db._analyzers.count());
       }
+      {
+        try {analyzers.remove("classificationPropAnalyzer"); } catch (e) {}
+        let oldCount = db._analyzers.count();
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+        const modelFile = require("path").resolve(filePath);
+        let analyzer = analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true});
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("classificationPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
+      }
+      {
+        try {analyzers.remove("nearestNeighborsPropAnalyzer"); } catch (e) {}
+        let oldCount = db._analyzers.count();
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+        const modelFile = require("path").resolve(filePath);
+        let analyzer = analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
+        try {
+          assertEqual(oldCount + 1, db._analyzers.count());
+          assertNotNull(analyzer);
+          assertUndefined(analyzer.properties.invalid_param);
+        } finally {
+          analyzers.remove("nearestNeighborsPropAnalyzer", true);
+        }
+        assertEqual(oldCount, db._analyzers.count());
+      }
     },
 
     testAnalyzerRemovalWithDatabaseName_InSystem: function() {
@@ -1573,7 +1603,209 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
-    
+
+    testCustomClassificationAnalyzer : function() {
+      let analyzerName = "classificationUnderTest";
+      const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+      const modelFile = require("path").resolve(filePath);
+
+      // all defaults
+      {
+        analyzers.save(analyzerName, "classification", { "model_location": modelFile });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.top_k);
+          assertEqual(0.0, props.threshold);
+          let result = db._query(
+              "RETURN TOKENS('baking', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "__label__baking" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // With top_k
+      {
+        analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": 2 });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.top_k);
+          assertEqual(0.0, props.threshold);
+          let result = db._query(
+              "RETURN TOKENS('Which baking dish is best to bake a banana bread ?', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual([ "__label__baking", "__label__bananas" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // With multiple lines
+      {
+        analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": 1 });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.top_k);
+          assertEqual(0.0, props.threshold);
+          let result = db._query(
+              "RETURN TOKENS('Which baking dish is best to bake\na banana bread ?', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "__label__baking" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // Invalid model location
+      {
+        try {
+          analyzers.save(analyzerName, "classification", { "model_location": "this path does not exist" } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Missing model location
+      {
+        try {
+          analyzers.save(analyzerName, "classification", {} );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Invalid top_k
+      {
+        try {
+          analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": -1 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Invalid threshold
+      {
+        try {
+          analyzers.save(analyzerName, "classification", { "model_location": modelFile, "threshold": 2.0 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+    },
+
+    testCustomNearestNeighborsAnalyzer: function() {
+      let analyzerName = "nearestNeighborsUnderTest";
+      const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+      const modelFile = require("path").resolve(filePath);
+
+
+      // all defaults
+      {
+        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(1, props.top_k);
+          let result = db._query(
+              "RETURN TOKENS('salt', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(1, result[0].length);
+          assertEqual([ "homogenized" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // With top_k
+      {
+        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": 2 });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.top_k);
+          let result = db._query(
+              "RETURN TOKENS('pizza', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(2, result[0].length);
+          assertEqual([ "\"prepared\"", "tinfoil" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // With multiple words in string
+      {
+        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": 2 });
+        try {
+          let props = analyzers.analyzer(analyzerName).properties();
+          assertEqual(2, props.top_k);
+          let result = db._query(
+              "RETURN TOKENS('salt oil', '" + analyzerName + "' )",
+              null,
+              { }
+          ).toArray();
+          assertEqual(1, result.length);
+          assertEqual(4, result[0].length);
+          assertEqual([ "homogenized", "teach", "tube\"", "\"breather" ], result[0]);
+        } finally {
+          analyzers.remove(analyzerName, true);
+        }
+      }
+
+      // Invalid model location
+      {
+        try {
+          analyzers.save(analyzerName, "nearest_neighbors", { "model_location": "this path does not exist" } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Missing model location
+      {
+        try {
+          analyzers.save(analyzerName, "nearest_neighbors", {} );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+      // Invalid top_k
+      {
+        try {
+          analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": -1 } );
+          fail();
+        } catch (err) {
+          assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
+              err.errorNum);
+        }
+      }
+    },
+
     testCustomPipelineAnalyzer : function() {
       let analyzerName = "pipeUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}

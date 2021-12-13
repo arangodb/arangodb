@@ -41,6 +41,7 @@
 #include <velocypack/Builder.h>
 
 #include <memory>
+#include <string>
 
 namespace arangodb {
 namespace aql {
@@ -55,7 +56,7 @@ class SortedCollectExecutorInfos {
   SortedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, RegisterId expressionRegister,
                              Variable const* expressionVariable,
-                             std::vector<std::string>&& aggregateTypes,
+                             std::vector<std::string> aggregateTypes,
                              std::vector<std::pair<std::string, RegisterId>>&& variables,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                              velocypack::Options const*);

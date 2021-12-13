@@ -32,8 +32,6 @@
 
 #include <cmath>
 
-#include <velocypack/StringRef.h>
-
 using namespace arangodb;
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
@@ -168,9 +166,9 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::calculateIndexCosts(
     // the index mocks do not have a selectivity estimate...
     if (idx->hasSelectivityEstimate()) {
       // use index selectivity estimate
-      arangodb::velocypack::StringRef att;
+      std::string_view att;
       if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-        att = arangodb::velocypack::StringRef(attribute->getStringValue(), attribute->getStringLength());
+        att = attribute->getStringView();
       }
       double estimate = idx->selectivityEstimate(att);
       if (estimate > 0.0) {

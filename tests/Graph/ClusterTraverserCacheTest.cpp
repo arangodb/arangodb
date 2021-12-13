@@ -72,7 +72,7 @@ TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
   AqlValue val;
-  testee.appendVertex(arangodb::velocypack::StringRef(vertexId), val);
+  testee.appendVertex(std::string_view(vertexId), val);
   ASSERT_TRUE(val.isNull(false));
   auto all = q->warnings().all();
   ASSERT_TRUE(all.size() == 1);
@@ -91,7 +91,7 @@ TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_ca
   ClusterTraverserCache testee(*q, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
-  testee.appendVertex(arangodb::velocypack::StringRef(vertexId), result);
+  testee.appendVertex(std::string_view(vertexId), result);
 
   VPackSlice sl = result.slice();
   ASSERT_TRUE(sl.isNull());
