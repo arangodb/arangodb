@@ -1,7 +1,7 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
-* Added startup options to adjust previously hard-coded parameters for the 
+* Added startup options to adjust previously hard-coded parameters for the
   RocksDB throttle:
   - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
     (in milliseconds, default value is 60000, i.e. 60 seconds).
@@ -15,8 +15,9 @@ v3.8.5 (XXXX-XX-XX)
     The actual write rate will be the minimum of this value and the value the
     throttle calculation produces.
   - `--rocksdb.throttle-slow-down-writes-trigger`: number of level 0 files whose
-    payload is not considered in throttle calculations when penalizing the 
+    payload is not considered in throttle calculations when penalizing the
     presence of L0 files. There is normally no need to change this value.
+
   All these options will only have an effect if `--rocksdb.throttle` is enabled
   (which is the default). The configuration options introduced here use the
   previously hard-coded settings as their default values, so there should not be
