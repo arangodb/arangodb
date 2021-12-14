@@ -77,6 +77,17 @@ TraversalExecutorInfos::TraversalExecutorInfos(
              (!_fixedSource.empty() && _inputRegister.value() == RegisterId::maxRegisterId));
   // All Nodes are located in the AST it cannot be non existing.
   TRI_ASSERT(_ast != nullptr);
+  if (_refactor) {
+    /*
+     * In the refactored variant we need to parse the correct enumerator type here,
+     * before we're allowed to use it.
+     */
+    if (_traversalEnumerator != nullptr) {
+      _traversalEnumerator->clear(false); // TODO [GraphRefactor]: check - potentially call reset instead
+    }
+    parseTraversalEnumerator(_order, _uniqueVertices, _uniqueEdges);
+    TRI_ASSERT(_traversalEnumerator != nullptr);
+  }
 }
 
 arangodb::graph::TraversalEnumerator& TraversalExecutorInfos::traversalEnumerator() const {
