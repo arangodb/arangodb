@@ -191,10 +191,6 @@ auto replication2::operator==(LogPayload const& left, LogPayload const& right) -
                                                    true);
 }
 
-auto replication2::operator!=(LogPayload const& left, LogPayload const& right) -> bool {
-  return !(left == right);
-}
-
 LogPayload::LogPayload(velocypack::UInt8Buffer dummy)
     : dummy(std::move(dummy)) {}
 
@@ -318,6 +314,10 @@ auto replication2::intersect(LogRange a, LogRange b) noexcept -> LogRange {
   }
 }
 
+auto replication2::to_string(LogRange const& r) -> std::string {
+  return basics::StringUtils::concatT('[', r.from, ", ", r.to, ')');
+}
+
 auto LogRange::end() const noexcept -> LogRange::Iterator {
   return Iterator{to};
 }
@@ -341,24 +341,6 @@ auto LogRange::Iterator::operator*() const noexcept -> LogIndex {
 }
 auto LogRange::Iterator::operator->() const noexcept -> LogIndex const* {
   return &current;
-}
-
-auto replication2::operator==(LogRange a, LogRange b) noexcept -> bool {
-  return a.from == b.from && a.to == b.to;
-}
-
-auto replication2::operator!=(LogRange a, LogRange b) noexcept -> bool {
-  return !(a == b);
-}
-
-auto replication2::operator==(LogRange::Iterator const& a,
-                              LogRange::Iterator const& b) noexcept -> bool {
-  return a.current == b.current;
-}
-
-auto replication2::operator!=(LogRange::Iterator const& a,
-                              LogRange::Iterator const& b) noexcept -> bool {
-  return !(a == b);
 }
 
 template <typename... Args>

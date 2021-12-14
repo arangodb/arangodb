@@ -185,6 +185,7 @@ class Logger {
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REPLICATION2;
+  static LogTopic REPLICATED_STATE;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
