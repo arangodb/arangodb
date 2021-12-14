@@ -23,8 +23,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 #include "Metrics/Builder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
@@ -78,10 +76,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   bool _export;
   bool _exportReadWriteMetrics;
-
-  containers::FlatHashMap<std::string_view, std::string_view> nameVersionTable;
-  containers::FlatHashSet<std::string_view> v2suppressions;
-  containers::FlatHashSet<std::string_view> v1suppressions;
 };
 
 }  // namespace arangodb::metrics
