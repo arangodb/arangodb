@@ -1,7 +1,11 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
-* Updated Enterprise license behaviour: now there will be a one hour period for
+* Added startup security option `--foxx.allow-install-from-remote` to allow 
+  installing Foxx apps from remote URLs other than Github. The option is turned 
+  off by default.
+
+* Updated Enterprise license behavior: now there will be a one hour period for
   a new deployment to provide the license. After that period, the read-only mode
   will be enforced.
 
