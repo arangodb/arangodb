@@ -919,7 +919,7 @@ AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(AnalyzerPool const& analy
     return nullptr;
   }
 
-  auto const pool = *it;
+  auto pool = *it;
 
   if (pool && analyzer == *pool) {
     return pool;
@@ -1053,6 +1053,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     }
   } else {
     //sorting  case
+    TRI_ASSERT(!_meta._sort.empty()); // we should not be called for sort optimization if our index is not sorted
     return std::make_unique<IResearchInvertedIndexMergeIterator>(collection, trx, node,
                                                                  this, reference, -1,
                                                                  extraFieldName);
