@@ -30,11 +30,23 @@ struct LeaderStateMachineTest : ::testing::Test {
 };
 
 TEST_F(LeaderStateMachineTest, check_something_cool) {
-    auto log = log::Log {};
-    auto state = state::State {};
+    auto log = Log {
+      .target = Log::Target {
+        .id = LogId{12},
+      },
+      .plan = Log::Plan {
+      },
+      .current = Log::Current {
+      }
+    };
+
+    auto state = State {
+    .target = State::Target { },
+    .plan = State::Plan { },
+    .current = State::Current { }};
 
     auto r = replicatedStateAction(log, state);
 
-    EXPECT_EQ(r, action::Action::DoStuff);
+    // FAIL.
     EXPECT_TRUE(false);
 }

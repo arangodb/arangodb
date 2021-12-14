@@ -51,125 +51,178 @@
 // and sub-sub-structs.
 //
 // risk: spreading the namespace out too much.
-
+// risk: namespacetangle
 
 namespace arangodb::replication2::replicated_state {
 
+using RebootId = size_t;
+
 using namespace arangodb::replication2;
 
-using Generation = size_t;
+struct Log {
+  struct Target {
 
-namespace log {
-  namespace target {
-    struct ParticipantMap {};
-
-    struct Target {
-        ParticipantMap participants;
+    struct Participant {
+      bool forced;
     };
-  }
+    using Participants = std::unordered_map<ParticipantId, Participant>;
 
-  namespace current {
-    struct Current {
-
+    struct Config {
+      size_t writeConcern;
+      size_t softWriteConcern;
+      bool waitForSync;
     };
-  }
 
-  namespace plan {
-    struct Plan {
+    using Leader = std::optional<ParticipantId>;
 
+    struct Properties {
+     // ...
     };
-  }
-}
 
-namespace log {
-    using namespace target;
-    using namespace current;
-    using namespace plan;
+    LogId id;
+    Participants participants;
+    Config config;
+    Leader leader;
+    Properties properties;
+  };
 
-    // goal: make the struct definition as concise as one can
-    // ideal example is below: the struct consists of only
-    // the relevant members, no syntactic (or otherwise) noise
-    struct Log {
-        Target target;
-        Current current;
-        Plan plan;
+  struct Plan {
+    struct Term {
+      struct Leader {
+        ParticipantId leader;
+        RebootId rebootId;
+      };
+      struct Config {
+        size_t writeConcern;
+      };
+
+      Leader leader;
+      Config config;
     };
-}
 
+    struct Participants {
+      using Generation = size_t;
 
-namespace state {
-  namespace target {
-    namespace properties {
+      struct Participant {
+        bool forced;
+        bool excluded;
+      };
+      using Set = std::unordered_map<ParticipantId, Participant>;
 
+      Generation generation;
+      Set set;
+    };
+
+    Term term;
+    Participants participants;
+  };
+
+  struct Current {
+
+    struct LocalState {
+    };
+    using LocalStates = std::unordered_map<ParticipantId, LocalState>;
+
+    struct Leader {
+      using Term = size_t;
+
+      struct Participants {
+        using Generation = size_t;
+
+        Generation generation;
+        // TODO: probably missing, participants
+      };
+
+      Term term;
+      Participants participants;
+    };
+
+    struct Supervision {
+      // TODO.
+    };
+
+    LocalStates localStates;
+    Leader leader;
+    Supervision supervision;
+  };
+
+  Target target;
+  Plan plan;
+  Current current;
+};
+
+struct State {
+  struct Target {
+
+    using StateId = size_t;
+    struct Properties {
       enum class Hash { Crc32 };
       enum class Implementation { DocumentStore };
 
-      struct Properties {
-        Hash hash;
-        Implementation implementation;
-      };
-    }
-
-    namespace participants {
-      struct Participant {};
-      using Participants = std::unordered_map<ParticipantId, Participant>;
-    }
-
-    namespace configuration {
-      struct Configuration {
-        bool waitForSync;
-        size_t writeConcern;
-        size_t softWriteConcern;
-      };
-    }
-
-    using namespace properties;
-    using namespace participants;
-    using namespace configuration;
-
-    struct Target {
-      LogId id;
-      Properties properties;
-      Participants participants;
-      Configuration configuration;
+      Hash hash;
+      Implementation implementation;
     };
-  }
-
-  namespace current {
-    struct Current {
-
+    struct Configuration {
+      bool waitForSync;
+      size_t writeConcern;
+      size_t softWriteConcern;
     };
-  }
-  namespace plan {
-    namespace participants {
-      struct Participant { Generation generation; };
-      using Participants = std::unordered_map<ParticipantId, Participant>;
-    }
-
-    using namespace participants;
-    struct Plan {
-      LogId id;
-      Generation generation;
-      Participants participants;
+    struct Participant {
+      // TODO
     };
-  }
+    using Participants = std::unordered_map<ParticipantId, Participant>;
 
-  using namespace target;
-  using namespace current;
-  using namespace plan;
-  struct State {
-    Target target;
-    Current current;
-    Plan plan;
+    StateId id;
+    Properties properties;
+    Configuration configuration;
+    Participants participants;
   };
-}
+  struct Plan {
+    using PlanId = size_t;
+    using Generation = size_t;
+    struct Participant {
+      Generation generation;
+    };
+    using Participants = std::unordered_map<ParticipantId, Participant>;
+
+    PlanId id;
+    Generation generation;
+    Participants participants;
+  };
+  struct Current {
+    using CurrentId = size_t;
+
+    struct Participant {
+      using Generation = size_t;
+      struct Snapshot {
+        enum class Status { Completed, InProgreess, Failed };
+        struct Timestamp {
+        // TODO std::chrono?
+        };
+
+        Status status;
+        Timestamp timestamp;
+      };
+
+      Generation generation;
+      Snapshot snapshot;
+    };
+    using Participants = std::unordered_map<ParticipantId, Participant>;
+
+    CurrentId id;
+    Participants participants;
+  };
+
+  Target target;
+  Plan plan;
+  Current current;
+};
 
 
+struct Action {
 
-namespace action {
-  enum class Action { Update, Delete, DoStuff };
-}
+};
 
-auto replicatedStateAction(log::Log, state::State) -> action::Action;
+auto replicatedStateAction(Log, State) -> Action;
 
 }
