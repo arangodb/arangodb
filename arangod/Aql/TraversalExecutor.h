@@ -105,7 +105,6 @@ class TraversalExecutorInfos {
                                 traverser::TraverserOptions::UniquenessLevel uniqueVertices,
                                 traverser::TraverserOptions::UniquenessLevel uniqueEdges) -> void;
 
-  auto createTrx() -> void;
   traverser::TraverserOptions::UniquenessLevel getUniqueVertices() const;
   traverser::TraverserOptions::UniquenessLevel getUniqueEdges() const;
   traverser::TraverserOptions::Order getOrder() const;
@@ -119,9 +118,6 @@ class TraversalExecutorInfos {
 
  private:
   std::unique_ptr<traverser::Traverser> _traverser; // TODO [GraphRefactor]: Old way, to be removed after refactor is done!
-
-  /// @brief the shortest path finder.
-  //std::unique_ptr<FinderType> _finder;
   std::unique_ptr<arangodb::graph::TraversalEnumerator> _traversalEnumerator = nullptr;
 
   std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> _registerMapping;
