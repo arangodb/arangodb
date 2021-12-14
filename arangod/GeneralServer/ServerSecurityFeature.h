@@ -38,11 +38,13 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
   bool isFoxxApiDisabled() const;
   bool isFoxxStoreDisabled() const;
   bool canAccessHardenedApi() const;
+  bool foxxAllowInstallFromRemote() const;
 
  private:
   bool _enableFoxxApi;
   bool _enableFoxxStore;
   bool _hardenedRestApi;
+  bool _foxxAllowInstallFromRemote;
 };
 
 }  // namespace arangodb
