@@ -69,23 +69,22 @@ TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
       _writeLockTimeouts(_metrics.add(arangodb_collection_lock_timeouts_write_total{})),
       _lockTimeMicros(_metrics.add(arangodb_collection_lock_acquisition_micros_total{})),
       _lockTimes(_metrics.add(arangodb_collection_lock_acquisition_time{})),
-      _sequentialLocks(_metrics.add(arangodb_collection_lock_sequential_mode_total{})),
-      _exportReadWriteMetrics(/*may be updated later*/ false) {}
+      _sequentialLocks(_metrics.add(arangodb_collection_lock_sequential_mode_total{})) {}
 
 void TransactionStatistics::setupDocumentMetrics() {
   // the following metrics are conditional, so we don't initialize them in the constructor
-  _exportReadWriteMetrics = true;
-  
-  _numWrites = &_metrics.add(arangodb_document_writes_total{});
-  _numWritesReplication = &_metrics.add(arangodb_document_writes_replication_total{});
-  _numTruncates = &_metrics.add(arangodb_collection_truncates_total{});
-  _numTruncatesReplication = &_metrics.add(arangodb_collection_truncates_replication_total{});
-  _rocksdb_read_sec = &_metrics.add(arangodb_document_read_time{});
-  _rocksdb_insert_sec = &_metrics.add(arangodb_document_insert_time{});
-  _rocksdb_replace_sec = &_metrics.add(arangodb_document_replace_time{});
-  _rocksdb_remove_sec = &_metrics.add(arangodb_document_remove_time{});
-  _rocksdb_update_sec = &_metrics.add(arangodb_document_update_time{});
-  _rocksdb_truncate_sec = &_metrics.add(arangodb_collection_truncate_time{});
+  _readWriteMetrics.emplace(ReadWriteMetrics{
+      _metrics.add(arangodb_document_writes_total{}),
+      _metrics.add(arangodb_document_writes_replication_total{}),
+      _metrics.add(arangodb_collection_truncates_total{}),
+      _metrics.add(arangodb_collection_truncates_replication_total{}),
+      _metrics.add(arangodb_document_read_time{}),
+      _metrics.add(arangodb_document_insert_time{}),
+      _metrics.add(arangodb_document_replace_time{}),
+      _metrics.add(arangodb_document_remove_time{}),
+      _metrics.add(arangodb_document_update_time{}),
+      _metrics.add(arangodb_collection_truncate_time{}),
+  });
 }
 
 void ServerStatistics::setupDocumentMetrics() {

@@ -59,26 +59,27 @@ struct TransactionStatistics {
   // Total number of times we used a fallback to sequential locking
   metrics::Counter& _sequentialLocks;
 
-  // Total number of write operations in storage engine (excl. sync replication)
-  metrics::Counter* _numWrites = nullptr;
-  // Total number of write operations in storage engine by sync replication
-  metrics::Counter* _numWritesReplication = nullptr;
-  // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
-  metrics::Counter* _numTruncates = nullptr;
-  // Total number of truncate operations (not number of documents truncated!) by sync replication
-  metrics::Counter* _numTruncatesReplication = nullptr;
+  struct ReadWriteMetrics {
+    // Total number of write operations in storage engine (excl. sync replication)
+    metrics::Counter& numWrites;
+    // Total number of write operations in storage engine by sync replication
+    metrics::Counter& numWritesReplication;
+    // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
+    metrics::Counter& numTruncates;
+    // Total number of truncate operations (not number of documents truncated!) by sync replication
+    metrics::Counter& numTruncatesReplication;
 
-  /// @brief the following metrics are conditional and only initialized if
-  /// startup option `--server.export-read-write-metrics` is set
-  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_read_sec = nullptr;
-  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_insert_sec = nullptr;
-  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_replace_sec = nullptr;
-  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_remove_sec = nullptr;
-  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_update_sec = nullptr;
-  metrics::Histogram<metrics::LogScale<float>>* _rocksdb_truncate_sec = nullptr;
+    /// @brief the following metrics are conditional and only initialized if
+    /// startup option `--server.export-read-write-metrics` is set
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_read_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_insert_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_replace_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_remove_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_update_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_truncate_sec;
+  };
 
-  bool _exportReadWriteMetrics;
-
+  std::optional<ReadWriteMetrics> _readWriteMetrics;
 };
 
 struct ServerStatistics {
