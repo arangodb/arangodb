@@ -54,7 +54,12 @@ struct LogMultiplexerStreamDispatcher : std::enable_shared_from_this<Self>,
 template <typename Spec>
 struct LogDemultiplexer
     : LogMultiplexerStreamDispatcher<LogDemultiplexer<Spec>, Spec, Stream> {
-  virtual auto digestIterator(LogRangeIterator& iter) -> void = 0;
+  virtual auto digestIterator(LogIterator& iter) -> void = 0;
+
+  /*
+   * After construction the demultiplexer is not yet in a listen state. You have
+   * to call `listen` once.
+   */
   virtual auto listen() -> void = 0;
 
   static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant>)
@@ -74,6 +79,11 @@ struct LogMultiplexer
   static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> leader)
       -> std::shared_ptr<LogMultiplexer>;
 
+  /*
+   * After construction the multiplexer has an empty internal state. To populate
+   * it with the existing state in the replicated log, call `digestAvailableEntries`.
+   */
+  virtual void digestAvailableEntries() = 0;
  protected:
   LogMultiplexer() = default;
 };
