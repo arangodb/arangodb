@@ -23,6 +23,8 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Metrics/Builder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
@@ -77,9 +79,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   bool _export;
   bool _exportReadWriteMetrics;
 
-  std::unordered_map<std::string, std::string> nameVersionTable;  // TODO(MBkkt) abseil hash map
-  std::unordered_set<std::string> v2suppressions;  // TODO(MBkkt) abseil hash set
-  std::unordered_set<std::string> v1suppressions;  // TODO(MBkkt) abseil hash set
+  containers::FlatHashMap<std::string_view, std::string_view> nameVersionTable;
+  containers::FlatHashSet<std::string_view> v2suppressions;
+  containers::FlatHashSet<std::string_view> v1suppressions;
 };
 
 }  // namespace arangodb::metrics
