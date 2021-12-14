@@ -1237,6 +1237,8 @@ static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::Leade
   if (status.leadershipEstablished) {
     // check if either there is no entry in current yet, the term has changed or
     // the participant config generation has changed.
+    // TODO Why do we want to update if committedParticipantsConfig.generation
+    //      is outdated, even if activeParticipantsConfig.generation might not be?
     bool requiresUpdate = currentLeader == nullptr || currentLeader->term != status.term ||
                           currentLeader->committedParticipantsConfig.generation !=
                               status.committedParticipantConfig.generation;
@@ -1244,6 +1246,7 @@ static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::Leade
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
       leader.term = status.term;
+      // TODO committed = active - is that right?
       leader.committedParticipantsConfig = status.activeParticipantConfig;
       return leader;
     }
