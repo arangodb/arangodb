@@ -118,9 +118,8 @@ function indexFieldToName(v) {
   'use strict';
   if (typeof v === 'object') {
     return v.name;
-  } else {
-    return v;
   }
+  return v;
 }
 
 function keyword(v) {
