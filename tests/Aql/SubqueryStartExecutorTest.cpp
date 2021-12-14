@@ -46,13 +46,16 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
 namespace {
-RegisterInfos MakeBaseInfos(RegisterCount numRegs) {
+RegisterInfos MakeBaseInfos(RegisterCount numRegs, size_t subqueryDepth = 2) {
   RegIdSet prototype{};
   for (RegisterId::value_t r = 0; r < numRegs; ++r) {
     prototype.emplace(r);
   }
-  return RegisterInfos({}, {}, numRegs, numRegs, {},
-                       {{prototype}, {prototype}, {prototype}});
+  RegIdSetStack regsToKeep{};
+  for (size_t i = 0; i <= subqueryDepth; ++i) {
+    regsToKeep.push_back({prototype});
+  }
+  return RegisterInfos({}, {}, numRegs, numRegs, {}, regsToKeep);
 }
 }  // namespace
 
@@ -599,3 +602,84 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
     }
   }
 }
+
+TEST_F(SubqueryStartSpecficTest, count_shadow_rows_test) {
+  // NOTE: This is a regression test for BTS-673
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> inputData{};
+
+  // The issue under test is to return too few results to SubqueryStartExecutor
+  // including higher level shadow rows,which forces the SubqueryStartExecutor
+  // to correctly count the returned rows.
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{1, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {2, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {3, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {4, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {5, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {6, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}}},
+                                    {{1, 0}, {2, 1}, {4, 0}, {6, 0}, {7, 1}, {9, 0}, {11, 0}, {13, 0}}));
+  // After this block we have returned 2 level 1 shadowrows, and 3 level 0 shadowrows.
+
+  inputData.push_back(buildBlock<2>(manager(),
+                                    {{NoneEntry{}, NoneEntry{}},
+                                     {6, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {7, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}},
+                                     {NoneEntry{}, NoneEntry{}}},
+                                    {{0, 1}, {2, 0}, {4, 0}, {5, 1}}));
+
+  MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1}, ExecutionNode::FILTER};
+  FixedOutputExecutionBlockMock dependency{fakedQuery->rootEngine(), &inputNode,
+                                           std::move(inputData)};
+  MockTypedNode sqNode{fakedQuery->plan(), ExecutionNodeId{42}, ExecutionNode::SUBQUERY_START};
+  ExecutionBlockImpl<SubqueryStartExecutor> testee{fakedQuery->rootEngine(), &sqNode,
+                                                   MakeBaseInfos(2, 3), MakeBaseInfos(2, 3)};
+  testee.addDependency(&dependency);
+  size_t mainQuerySoftLimit = 100;
+  // MainQuery (SoftLimit 100)
+  AqlCallStack callStack{AqlCallList{AqlCall{0, false, mainQuerySoftLimit, AqlCall::LimitType::SOFT}}};
+  // outer subquery (SoftLimit 10)
+  size_t subQuerySoftLimit = 10;
+  callStack.pushCall(AqlCallList{AqlCall{0, false, subQuerySoftLimit, AqlCall::LimitType::SOFT},
+                                 AqlCall{0, false, subQuerySoftLimit, AqlCall::LimitType::SOFT}});
+  // InnerSubquery (Produce all)
+  callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
+  callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
+  size_t numCalls = 0;
+
+  dependency.setExecuteEnterHook([&numCalls, mainQuerySoftLimit, subQuerySoftLimit](AqlCallStack const& stack) {
+      auto mainQCall = stack.getCallAtDepth(2);
+      auto subQCall = stack.getCallAtDepth(1);
+      ASSERT_FALSE(mainQCall.needSkipMore());
+      ASSERT_FALSE(subQCall.needSkipMore());
+      if (numCalls == 0) {
+        // Call with the original limits, SubqueryStart does not reduce it.
+        ASSERT_EQ(mainQCall.getLimit(), mainQuerySoftLimit);
+        ASSERT_EQ(subQCall.getLimit(), subQuerySoftLimit);
+      } else if (numCalls == 1) {
+        // We have returned some rows of each in the block before. They need to be accounted
+        ASSERT_EQ(mainQCall.getLimit(), mainQuerySoftLimit - 2);
+        ASSERT_EQ(subQCall.getLimit(), subQuerySoftLimit - 3);
+      } else {
+        // Should not be called thrice.
+        ASSERT_TRUE(false);
+      }
+      numCalls++;
+  });
+
+  auto [state, skipped, block] = testee.execute(callStack);
+
+  ASSERT_EQ(numCalls, 2);
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(block->numRows(), 28);
+}
+

@@ -31,7 +31,7 @@ using namespace arangodb::tests::aql;
 
 namespace {
 // NOTE copy pasted from Waiting ExecutionBlock mock
-static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
+static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const &blocks)
     -> RegisterInfos {
   // If there are no blocks injected, we have nothing to analyze.
   // This Mock does only work with predefined data output.
@@ -41,7 +41,7 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
   RegIdSet toClear{};
   RegIdSetStack toKeep{{}};
   RegisterCount regs = 1;
-  for (auto const& b : blocks) {
+  for (auto const &b : blocks) {
     if (b != nullptr) {
       // Find the first non-nullptr block
       regs = b->numRegisters();
@@ -55,23 +55,25 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
   }
   return {readInput, writeOutput, regs, regs, toClear, toKeep};
 }
-}  // namespace
+} // namespace
 
 FixedOutputExecutionBlockMock::FixedOutputExecutionBlockMock(
-    ExecutionEngine* engine, ExecutionNode const* node,
-    std::deque<SharedAqlItemBlockPtr>&& data)
-    : ExecutionBlock(engine, node),
-      _infos{::blocksToInfos(data)},
-      _blockData{std::move(data)} {}
+    ExecutionEngine *engine, ExecutionNode const *node,
+    std::deque<SharedAqlItemBlockPtr> &&data)
+    : ExecutionBlock(engine, node), _infos{::blocksToInfos(data)},
+      _blockData{std::move(data)},
+      _executeEnterHook([](AqlCallStack const &) {}) {}
 
 std::pair<ExecutionState, arangodb::Result>
-FixedOutputExecutionBlockMock::initializeCursor(InputAqlItemRow const& input) {
+FixedOutputExecutionBlockMock::initializeCursor(InputAqlItemRow const &input) {
   // Nothing to do
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-FixedOutputExecutionBlockMock::execute(AqlCallStack const& stack) {
+FixedOutputExecutionBlockMock::execute(AqlCallStack const &stack) {
+  _executeEnterHook(stack);
+  traceExecuteBegin(stack);
   SkipResult skipped{};
   for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
     // For every additional subquery level we need to increase the skipped
@@ -79,7 +81,10 @@ FixedOutputExecutionBlockMock::execute(AqlCallStack const& stack) {
     skipped.incrementSubquery();
   }
   if (_blockData.empty()) {
-    return {ExecutionState::DONE, skipped, nullptr};
+    std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> res = {
+        ExecutionState::DONE, skipped, nullptr};
+    traceExecuteEnd(res);
+    return res;
   }
   // This Block is very dump, it does NOT care what you ask it for. it will just
   // deliver what it has in the queue
@@ -88,4 +93,9 @@ FixedOutputExecutionBlockMock::execute(AqlCallStack const& stack) {
   ExecutionState state =
       _blockData.empty() ? ExecutionState::DONE : ExecutionState::HASMORE;
   return {state, skipped, block};
+}
+
+void FixedOutputExecutionBlockMock::setExecuteEnterHook(
+    std::function<void(AqlCallStack const &stack)> hook) {
+  _executeEnterHook = hook;
 }
