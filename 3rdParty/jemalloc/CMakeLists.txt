@@ -43,7 +43,7 @@ if (LINUX OR DARWIN)
     PREFIX
       ${JEMALLOC_BINARY_DIR}
     PATCH_COMMAND
-      cmake -E touch
+        ${CMAKE_COMMAND} -E touch
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.html
         ${JEMALLOC_BINARY_DIR}/doc/jemalloc.3
     CONFIGURE_COMMAND
