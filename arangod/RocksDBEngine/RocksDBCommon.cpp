@@ -242,8 +242,10 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
   }
 }
 
-Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel) {
+Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel,
+                  std::atomic<bool>* canceled) {
   rocksdb::CompactRangeOptions options;
+  options.canceled = canceled;
   options.change_level = changeLevel;
   options.bottommost_level_compaction = compactBottomMostLevel ?
       rocksdb::BottommostLevelCompaction::kForceOptimized : 
