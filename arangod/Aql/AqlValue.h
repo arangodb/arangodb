@@ -30,6 +30,7 @@
 #include "IResearch/Misc.h"
 
 #include <velocypack/velocypack-common.h>
+#include <string_view>
 #include <vector>
 
 namespace v8 {
@@ -51,7 +52,6 @@ class Buffer;
 class Builder;
 struct Options;
 class Slice;
-class StringRef;
 }
 }  // namespace arangodb
 
@@ -406,13 +406,11 @@ struct AqlValue final {
   AqlValue getToAttribute(bool& mustDestroy, bool copy) const;
 
   /// @brief get the (object) element by name(s)
-  AqlValue get(CollectionNameResolver const& resolver, std::string const& name,
-               bool& mustDestroy, bool copy) const;
-  AqlValue get(CollectionNameResolver const& resolver, arangodb::velocypack::StringRef const& name,
+  AqlValue get(CollectionNameResolver const& resolver, std::string_view name,
                bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
                std::vector<std::string> const& names, bool& mustDestroy, bool copy) const;
-  bool hasKey(std::string const& name) const;
+  bool hasKey(std::string_view name) const;
 
   /// @brief get the numeric value of an AqlValue
   double toDouble() const;

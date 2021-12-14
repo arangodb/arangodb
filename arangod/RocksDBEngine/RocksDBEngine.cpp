@@ -62,7 +62,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
-#include "RocksDBEngine/Listeners/RocksDBShaCalculator.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
@@ -83,6 +82,7 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBSha256Checksum.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -137,6 +137,9 @@ DECLARE_COUNTER(arangodb_revision_tree_resurrections_total, "Number of revision 
 
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
+
+// global flag to cancel all compactions. will be flipped to true on shutdown
+static std::atomic<bool> cancelCompactions{false};
 
 // minimum value for --rocksdb.sync-interval (in ms)
 // a value of 0 however means turning off the syncing altogether!
@@ -375,6 +378,32 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
+  
+  options->addOption("--rocksdb.throttle-slots", "number of historic metrics to use for throttle value calculation",
+                     new UInt64Parameter(&_throttleSlots),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-frequency", "frequency for write-throttle calculations (in milliseconds)",
+                     new UInt64Parameter(&_throttleFrequency),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-scaling-factor", "adaptiveness scaling factor for write-throttle calculations",
+                     new UInt64Parameter(&_throttleScalingFactor),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-max-write-rate", "maximum write rate enforced by throttle (in bytes per second, 0 = unlimited)",
+                     new UInt64Parameter(&_throttleMaxWriteRate),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-slow-down-writes-trigger", "number of level 0 files whose payload "
+                     "is not considered in throttle calculations when penalizing the presence of L0 files",
+                     new UInt64Parameter(&_throttleSlowdownWritesTrigger),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
@@ -411,6 +440,20 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+
+  if (_throttleSlots == 0) {
+    LOG_TOPIC("76e1b", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --rocksdb.throttle-slots";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_throttleScalingFactor == 0) {
+    _throttleScalingFactor = 1;
+  }
+
+  if (_throttleSlots < 8) {
+    _throttleSlots = 8;
+  }
 
   if (_requiredDiskFreePercentage < 0.0 || _requiredDiskFreePercentage > 1.0) {
     LOG_TOPIC("e4697", FATAL, arangodb::Logger::CONFIG)
@@ -634,7 +677,7 @@ void RocksDBEngine::start() {
 
     if (!_debugLogging) {
       logger->disable();
-    }  // if
+    } 
   }
 
   if (opts._enableStatistics) {
@@ -678,6 +721,15 @@ void RocksDBEngine::start() {
     _options.max_open_files = -1;
   }
 
+  if (_createShaFiles) {
+    auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
+    // Register checksum factory
+    _options.file_checksum_gen_factory = std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
+    // Do an initial check in the database directory for missing SHA checksum files
+    shaFileManager->checkMissingShaFiles();
+    _options.listeners.push_back(std::move(shaFileManager));
+  }
+
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
   // manager. Should be several times bigger counter_sync_seconds
   _options.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
@@ -689,15 +741,11 @@ void RocksDBEngine::start() {
   _options.bloom_locality = 1;
 
   if (_useThrottle) {
-    _throttleListener = std::make_shared<RocksDBThrottle>();
+    _throttleListener = std::make_shared<RocksDBThrottle>(_throttleSlots, _throttleFrequency, _throttleScalingFactor,
+                                                          _throttleMaxWriteRate, _throttleSlowdownWritesTrigger);
     _options.listeners.push_back(_throttleListener);
   }
 
-  _shaListener = std::make_shared<RocksDBShaCalculator>(server(), _createShaFiles);
-  if (_createShaFiles) {
-    _options.listeners.push_back(_shaListener);
-  } 
-  
   _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
 
   _options.listeners.push_back(_errorListener);
@@ -755,6 +803,7 @@ void RocksDBEngine::start() {
     testOptions.avoid_flush_during_recovery = true;
     testOptions.avoid_flush_during_shutdown = true;
     testOptions.env = _options.env;
+    
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status =
         rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
@@ -764,7 +813,7 @@ void RocksDBEngine::start() {
       if (res.errorNumber() != TRI_ERROR_ARANGO_IO_ERROR) {
         // not an I/O error. so we better report the error and abort here
         LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
-            << "unable to initialize RocksDB engine: " << status.ToString();
+            << "unable to initialize RocksDB engine: " << res.errorMessage();
         FATAL_ERROR_EXIT();
       }
     }
@@ -974,10 +1023,10 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
-  // signal the event listener that we are going to shut down soon
-  if (_createShaFiles && _shaListener != nullptr) {
-    _shaListener->beginShutdown();
-  } 
+  // from now on, all started compactions can be canceled.
+  // note that this is only a best-effort hint to RocksDB and
+  // may not be followed immediately.
+  ::cancelCompactions.store(true, std::memory_order_release);
 }
 
 void RocksDBEngine::stop() {
@@ -986,10 +1035,6 @@ void RocksDBEngine::stop() {
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
-  
-  if (_createShaFiles && _shaListener != nullptr) {
-    _shaListener->waitForShutdown();
-  }
 
   if (_backgroundThread) {
     // stop the press
@@ -1641,6 +1686,7 @@ void RocksDBEngine::processCompactions() {
         double start = TRI_microtime();
         try {
           rocksdb::CompactRangeOptions opts;
+          opts.canceled = &::cancelCompactions;
           rocksdb::Slice b = bounds.start(), e = bounds.end();
           _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
         } catch (std::exception const& ex) {
@@ -1724,8 +1770,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
-      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(),
-                                      arangodb::velocypack::StringRef(coll.guid()));
+      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(), coll.guid());
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
@@ -1843,8 +1888,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
       LogicalDataSource::Serialization::PersistenceWithInProgress);
   Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
-                                        arangodb::velocypack::StringRef(oldName)));
+      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), oldName));
 
   return res;
 }
@@ -1894,8 +1938,8 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   builder.close();
 
   auto logValue =
-      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(),
-                                arangodb::velocypack::StringRef(view.guid()));
+      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), view.guid());
+  
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
@@ -1962,7 +2006,8 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
 }
 
 Result RocksDBEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
-  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel);
+  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel, 
+                                &::cancelCompactions);
 }
 
 /// @brief Add engine-specific optimizer rules
@@ -2498,8 +2543,7 @@ bool RocksDBEngine::systemDatabaseExists() {
   for (auto const& item : velocypack::ArrayIterator(builder.slice())) {
     TRI_ASSERT(item.isObject());
     TRI_ASSERT(item.get(StaticStrings::DatabaseName).isString());
-    if (item.get(StaticStrings::DatabaseName)
-            .compareString(arangodb::velocypack::StringRef(StaticStrings::SystemDatabase)) == 0) {
+    if (item.get(StaticStrings::DatabaseName).stringView() == StaticStrings::SystemDatabase) {
       return true;
     }
   }
@@ -3195,12 +3239,6 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   } while (true);
-}
-      
-void RocksDBEngine::checkMissingShaFiles(std::string const& pathname, int64_t requireAge) {
-  if (_shaListener != nullptr) {
-    _shaListener->checkMissingShaFiles(pathname, requireAge);
-  }
 }
 
 auto RocksDBEngine::dropReplicatedLog(TRI_vocbase_t& vocbase,

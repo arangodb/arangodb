@@ -77,13 +77,13 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void addPayload(velocypack::Slice const&,
+  void addPayload(velocypack::Slice slice,
                   velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override final;
   void addPayload(velocypack::Buffer<uint8_t>&&,
                   velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override final;
-  void addRawPayload(velocypack::StringRef payload) override final;
+  void addRawPayload(std::string_view payload) override final;
 
   bool isResponseEmpty() const override final {
     return _body->empty();

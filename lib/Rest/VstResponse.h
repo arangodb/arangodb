@@ -42,11 +42,11 @@ class VstResponse : public GeneralResponse {
   };
 
   void reset(ResponseCode code) override final;
-  void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Slice slice, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
   void addPayload(velocypack::Buffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
-  void addRawPayload(velocypack::StringRef payload) override;
+  void addRawPayload(std::string_view payload) override;
  
   velocypack::Buffer<uint8_t>& payload() { return _payload; }
 

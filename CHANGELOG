@@ -1,6 +1,53 @@
 devel
 -----
 
+* Added startup security option `--foxx.allow-install-from-remote` to allow 
+  installing Foxx apps from remote URLs other than Github. The option is turned 
+  off by default.
+
+* Cancel ongoing RocksDB compactions on server shutdown.
+
+* Added new option `--custom-query-bindvars` to arangoexport, so queries given 
+  via option `--custom-query` can have bind variables in them. Also changed the 
+  flag names `--query` to `--custom-query` and `--query-max-runtime` to 
+  `--custom-query-max-runtime` to be like in the other client-tools.
+
+* Improve some RocksDB-related error messages during server startup.
+
+* Added startup options to adjust previously hard-coded parameters for the 
+  RocksDB throttle:
+  - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
+    (in milliseconds, default value is 60000, i.e. 60 seconds).
+  - `--rocksdb.throttle-slots`: number of historic measures to use for throttle
+    value calculation (default value is 63).
+  - `--rocksdb.throttle-scaling-factor`: adaptiveness scaling factor for write-
+    throttle calculations (default value is 17). There is normally no need to
+    change this value.
+  - `--rocksdb.throttle-max-write-rate`: maximum write rate enforced by the
+    throttle (in bytes per second, default value is 0, meaning "unlimited").
+    The actual write rate will be the minimum of this value and the value the
+    throttle calculation produces.
+  - `--rocksdb.throttle-slow-down-writes-trigger`: number of level 0 files whose
+    payload is not considered in throttle calculations when penalizing the 
+    presence of L0 files. There is normally no need to change this value.
+  All these options will only have an effect if `--rocksdb.throttle` is enabled
+  (which is the default). The configuration options introduced here use the
+  previously hard-coded settings as their default values, so there should not be
+  a change in behavior if the options are not adjusted.
+
+* Raised minimal macOS supported version to 10.15 (Catalina).
+
+* Remove background thread `RocksDBShaThread` for background SHA256 checksum
+  calculation for .sst files in the Enterprise Edition. The checksums are now
+  calculated incrementally while writing into the .sst files, and the checksum
+  files will be stored on disk as soon as an .sst file is made durable by
+  RocksDB. There is no more need to periodically scan the database directory
+  and look for any additional .sst files.
+
+* Fix BTS-580: Trimmed the password field from the payload in the client 
+  requests when displaying error messages in arangorestore, because they 
+  displayed the password as plain text. 
+
 * Refactored unit tests with the `grey` keyword, which is for skipping certain 
   tests. A test file that did not perform any test, but only had a function to 
   sleep, was removed. Two test files were renamed so they would not be skipped.

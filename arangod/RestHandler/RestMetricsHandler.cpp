@@ -131,7 +131,7 @@ RestStatus RestMetricsHandler::execute() {
               self->_response->setResponseCode(rest::ResponseCode::OK);
               self->_response->setContentType(rest::ContentType::TEXT);
               auto payload = r.response().stealPayload();
-              self->_response->addRawPayload(VPackStringRef(reinterpret_cast<char const*>(payload->data()), payload->size()));
+              self->_response->addRawPayload(std::string_view(reinterpret_cast<char const*>(payload->data()), payload->size()));
             }
             return RestStatus::DONE;
           }));
@@ -156,7 +156,7 @@ RestStatus RestMetricsHandler::execute() {
   metrics.toPrometheus(result, v2);
   _response->setResponseCode(rest::ResponseCode::OK);
   _response->setContentType(rest::ContentType::TEXT);
-  _response->addRawPayload(VPackStringRef(result));
+  _response->addRawPayload(result);
   
   return RestStatus::DONE;
 }

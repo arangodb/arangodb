@@ -92,15 +92,15 @@ auto DistributeExecutorInfos::shouldDistributeToAll(arangodb::velocypack::Slice 
   }
 
   // NOTE: Copy Paste code, shall be unified
-  VPackStringRef vid(id);
+  std::string_view vid = id.stringView();
   size_t pos = vid.find('/');
-  if (pos == std::string::npos) {
+  if (pos == vid.npos) {
     // Invalid input. Let the sharding take care of it, one server shall complain
     return false;
   }
   vid = vid.substr(0, pos);
   for (auto const& it : _satellites) {
-    if (vid.equals(it->name())) {
+    if (vid == it->name()) {
       // This vertex is from a satellite collection start everywhere!
       return true;
     }

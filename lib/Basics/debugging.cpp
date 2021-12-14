@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <set>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -40,7 +41,6 @@
 #include "Logger/LoggerStream.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -52,50 +52,28 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
-/// @brief custom comparer for failure points. this allows an implicit
-/// conversion from char const* to arangodb::velocypack::StringRef in order to avoid memory
-/// allocations for temporary string values
-struct Comparer {
-  using is_transparent = std::true_type;
-  // implement comparison functions for various types
-  inline bool operator()(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) const noexcept {
-    return lhs < arangodb::velocypack::StringRef(rhs);
-  }
-  inline bool operator()(std::string const& lhs, arangodb::velocypack::StringRef const& rhs) const noexcept {
-    return arangodb::velocypack::StringRef(lhs) < rhs;
-  }
-  inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
-    return lhs < rhs;
-  }
-};
-
-/// @brief custom comparer for failure points. allows avoiding memory allocations
-/// for temporary string objects
-Comparer const comparer;
-
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
 /// @brief a global set containing the currently registered failure points
-std::set<std::string, ::Comparer> failurePoints(comparer);
+std::set<std::string, std::less<>> failurePoints;
 }  // namespace
 
 /// @brief intentionally cause a segmentation violation or other failures
 /// this is used for crash and recovery tests
-void TRI_TerminateDebugging(char const* message) {
+void TRI_TerminateDebugging(std::string_view message) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   CrashHandler::setHardKill();
 
   // there are some reserved crash messages we use in testing the
   // crash handler
-  velocypack::StringRef const s(message);
-  if (s == "CRASH-HANDLER-TEST-ABORT") {
+  if (message == "CRASH-HANDLER-TEST-ABORT") {
     // intentionally crashes the program!
     std::abort();
-  } else if (s == "CRASH-HANDLER-TEST-TERMINATE") {
+  } else if (message == "CRASH-HANDLER-TEST-TERMINATE") {
     // intentionally crashes the program!
     std::terminate();
-  } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+  } else if (message == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
     // intentionally crashes the program!
     // note: when using ASan/UBSan, this actually does not crash
     // the program but continues.
@@ -107,7 +85,7 @@ void TRI_TerminateDebugging(char const* message) {
     f();
     // we will get here at least with ASan/UBSan.
     std::terminate();
-  } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
+  } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
     std::unique_ptr<int> x;
     // intentionally crashes the program!
     // cppcheck-suppress *
@@ -115,7 +93,7 @@ void TRI_TerminateDebugging(char const* message) {
     // cppcheck-suppress *
     *x = 2;
     TRI_ASSERT(a == 1);
-  } else if (s == "CRASH-HANDLER-TEST-ASSERT") {
+  } else if (message == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
     // intentionally crashes the program!
     TRI_ASSERT(a == 2);
@@ -129,13 +107,13 @@ void TRI_TerminateDebugging(char const* message) {
 }
 
 /// @brief check whether we should fail at a specific failure point
-bool TRI_ShouldFailDebugging(char const* value) {
+bool TRI_ShouldFailDebugging(std::string_view value) noexcept {
   READ_LOCKER(readLocker, ::failurePointsLock);
-  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
+  return ::failurePoints.find(value) != ::failurePoints.end();
 }
 
 /// @brief add a failure point
-void TRI_AddFailurePointDebugging(char const* value) {
+void TRI_AddFailurePointDebugging(std::string_view value) {
   bool added = false;
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
@@ -150,7 +128,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 }
 
 /// @brief remove a failure point
-void TRI_RemoveFailurePointDebugging(char const* value) {
+void TRI_RemoveFailurePointDebugging(std::string_view value) {
   size_t numRemoved = 0;
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);

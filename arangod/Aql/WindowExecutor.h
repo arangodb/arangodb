@@ -34,6 +34,7 @@
 
 #include <deque>
 #include <memory>
+#include <string>
 
 namespace arangodb {
 namespace aql {
@@ -55,7 +56,7 @@ class WindowExecutorInfos {
    * @param options The AQL transaction, as it might be needed for aggregates
    */
   WindowExecutorInfos(WindowBounds const& b, RegisterId rangeRegister,
-                      std::vector<std::string>&& aggregateTypes,
+                      std::vector<std::string> aggregateTypes,
                       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                       QueryWarnings& warnings, velocypack::Options const* options);
 
@@ -68,7 +69,7 @@ class WindowExecutorInfos {
   WindowBounds const& bounds() const;
   RegisterId rangeRegister() const;
   std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
-  std::vector<std::string> getAggregateTypes() const;
+  std::vector<std::string> const& getAggregateTypes() const;
   QueryWarnings& warnings() const;
   velocypack::Options const* getVPackOptions() const;
 

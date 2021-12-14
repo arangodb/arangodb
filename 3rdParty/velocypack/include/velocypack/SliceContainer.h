@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_SLICE_CONTAINER_H
-#define VELOCYPACK_SLICE_CONTAINER_H 1
+#pragma once
 
 #include <cstring>
 #include <string>
@@ -32,8 +31,7 @@
 #include "velocypack/Options.h"
 #include "velocypack/Slice.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 class SliceContainer {
  public:
@@ -135,6 +133,5 @@ class SliceContainer {
 static_assert(sizeof(SliceContainer) == sizeof(void*), "invalid size for SliceContainer");
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackSliceContainer = arangodb::velocypack::SliceContainer;

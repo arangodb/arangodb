@@ -69,6 +69,9 @@ class LogFollower final : public ILogParticipant,
 
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
+  /// @brief Resolved when the leader has committed at least one entry.
+  auto waitForLeaderAcked() -> WaitForFuture;
+
  private:
   struct GuardedFollowerData {
     GuardedFollowerData() = delete;

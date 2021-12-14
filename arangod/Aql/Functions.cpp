@@ -108,7 +108,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 
@@ -211,12 +210,12 @@ bool isValidDocument(VPackSlice slice) {
   slice = slice.resolveExternals();
 
   if (slice.isObject()) {
-    containers::FlatHashSet<VPackStringRef> keys;
+    containers::FlatHashSet<std::string_view> keys;
 
     auto it = VPackObjectIterator(slice, true);
 
     while (it.valid()) {
-      if (!keys.emplace(it.key().stringRef()).second) {
+      if (!keys.emplace(it.key().stringView()).second) {
         // duplicate key
         return false;
       }
@@ -492,7 +491,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
 
 AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionContext,
                                                tp_sys_clock_ms const& tp,
-                                               arangodb::velocypack::StringRef duration,
+                                               std::string_view duration,
                                                char const* AFN, bool isSubtract) {
   date::year_month_day ymd{floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
@@ -547,7 +546,7 @@ bool parameterToTimePoint(ExpressionContext* expressionContext,
   }
 
   if (value.isString()) {
-    if (!basics::parseDateTime(value.slice().stringRef(), tp)) {
+    if (!basics::parseDateTime(value.slice().stringView(), tp)) {
       aql::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
@@ -1460,7 +1459,7 @@ AqlValue Functions::Typename(ExpressionContext*, AstNode const&,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   char const* type = value.getTypeString();
 
-  return AqlValue(TRI_CHAR_LENGTH_PAIR(type));
+  return AqlValue(type, std::strlen(type));
 }
 
 /// @brief function TO_NUMBER
@@ -3535,7 +3534,7 @@ AqlValue Functions::IsDatestring(ExpressionContext*, AstNode const&,
 
   if (value.isString()) {
     tp_sys_clock_ms tp;  // unused
-    isValid = basics::parseDateTime(value.slice().stringRef(), tp);
+    isValid = basics::parseDateTime(value.slice().stringView(), tp);
   }
 
   return AqlValue(AqlValueHintBool(isValid));
@@ -4020,7 +4019,7 @@ AqlValue Functions::DateAdd(ExpressionContext* expressionContext, AstNode const&
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp,
-                                                   isoDuration.slice().stringRef(),
+                                                   isoDuration.slice().stringView(),
                                                    AFN, false);
   }
 }
@@ -4063,7 +4062,7 @@ AqlValue Functions::DateSubtract(ExpressionContext* expressionContext,
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(expressionContext, tp,
-                                                   isoDuration.slice().stringRef(),
+                                                   isoDuration.slice().stringView(),
                                                    AFN, true);
   }
 }
@@ -4292,7 +4291,7 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  velocypack::StringRef s = durationType.slice().stringRef();
+  std::string_view s = durationType.slice().stringView();
 
   int64_t factor = 1;
   if (s == "milliseconds" || s == "millisecond" || s == "f") {
@@ -4528,14 +4527,14 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value, false);
 
   if (doSort) {
-    std::set<std::string, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8> keys;
+    std::set<std::string_view, arangodb::basics::VelocyPackHelper::AttributeSorterUTF8StringView> keys;
 
     VPackCollection::keys(slice, keys);
     transaction::BuilderLeaser builder(trx);
     builder->openArray();
     for (auto const& it : keys) {
       TRI_ASSERT(!it.empty());
-      if (removeInternal && !it.empty() && it.at(0) == '_') {
+      if (removeInternal && !it.empty() && it.front() == '_') {
         continue;
       }
       builder->add(VPackValue(it));
@@ -4545,13 +4544,13 @@ AqlValue Functions::Attributes(ExpressionContext* expressionContext,
     return AqlValue(builder->slice(), builder->size());
   }
 
-  std::unordered_set<std::string> keys;
+  std::unordered_set<std::string_view> keys;
   VPackCollection::keys(slice, keys);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
   for (auto const& it : keys) {
-    if (removeInternal && !it.empty() && it.at(0) == '_') {
+    if (removeInternal && !it.empty() && it.front() == '_') {
       continue;
     }
     builder->add(VPackValue(it));
@@ -6735,7 +6734,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, AstNode const&
     TRI_ASSERT(example.isObject());
     TRI_ASSERT(docSlice.isObject());
     for (auto it : VPackObjectIterator(example, true)) {
-      VPackSlice keySlice = docSlice.get(it.key.stringRef());
+      VPackSlice keySlice = docSlice.get(it.key.stringView());
 
       if (it.value.isNull() && keySlice.isNone()) {
         continue;
@@ -7282,7 +7281,7 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode 
 
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   if (value.isString()) {
-    VPackStringRef v = value.slice().stringRef();
+    std::string_view v = value.slice().stringView();
     char const* p = v.data();
     char const* e = p + v.size();
 
@@ -8672,7 +8671,7 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
   }
 }
 
-static void buildKeyObject(VPackBuilder& builder, VPackStringRef key, bool closeObject = true) {
+static void buildKeyObject(VPackBuilder& builder, std::string_view key, bool closeObject = true) {
   builder.openObject(true);
   builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(), VPackValueType::String));
   if (closeObject) {
@@ -8703,7 +8702,7 @@ static AqlValue ConvertToObject(transaction::Methods& trx, VPackSlice input,
   // convert string key into object with { _key: "string" }
   TRI_ASSERT(allowKeyConversionToObject);
   transaction::BuilderLeaser builder(&trx);
-  buildKeyObject(*builder.get(), input.stringRef());
+  buildKeyObject(*builder.get(), input.stringView());
   return AqlValue{builder->slice()};
 }
 
@@ -8805,9 +8804,9 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(
   if (buildNewObject) {
     transaction::BuilderLeaser builder(&trx);
     buildKeyObject(*builder.get(),
-                   VPackStringRef(logicalCollection->createKey(input)), false);
+                   std::string_view(logicalCollection->createKey(input)), false);
     for (auto cur : VPackObjectIterator(input)) {
-      builder->add(cur.key.stringRef(), cur.value);
+      builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
     return AqlValue{builder->slice()};
@@ -8826,9 +8825,9 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
     // Need to fix this document.
     // We need id and key as input.
 
-    VPackStringRef s(input);
+    std::string_view s(input.stringView());
     size_t pos = s.find('/');
-    if (pos == std::string::npos) {
+    if (pos == s.npos) {
       transaction::BuilderLeaser builder(&trx);
       buildKeyObject(*builder.get(), s);
       return AqlValue{builder->slice()};
@@ -8865,9 +8864,9 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
     // We can work with _id value only however so let us do this.
     auto keyPart = transaction::helpers::extractKeyPart(idSlice);
     transaction::BuilderLeaser builder(&trx);
-    buildKeyObject(*builder.get(), VPackStringRef(keyPart), false);
+    buildKeyObject(*builder.get(), std::string_view(keyPart), false);
     for (auto cur : VPackObjectIterator(input)) {
-      builder->add(cur.key.stringRef(), cur.value);
+      builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
     return AqlValue{builder->slice()};

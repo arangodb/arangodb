@@ -26,8 +26,6 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/StringRef.h>
-
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
@@ -35,6 +33,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace arangodb {
@@ -92,35 +91,35 @@ class V8ClientConnection {
 
   application_features::ApplicationServer& server();
 
-  v8::Handle<v8::Value> getData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
+  v8::Handle<v8::Value> getData(v8::Isolate* isolate, std::string_view location,
                                 std::unordered_map<std::string, std::string> const& headerFields,
                                 bool raw);
 
-  v8::Handle<v8::Value> headData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
+  v8::Handle<v8::Value> headData(v8::Isolate* isolate, std::string_view location,
                                  std::unordered_map<std::string, std::string> const& headerFields,
                                  bool raw);
 
-  v8::Handle<v8::Value> deleteData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
+  v8::Handle<v8::Value> deleteData(v8::Isolate* isolate, std::string_view location,
                                    v8::Local<v8::Value> const& body,
                                    std::unordered_map<std::string, std::string> const& headerFields,
                                    bool raw);
 
-  v8::Handle<v8::Value> optionsData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
+  v8::Handle<v8::Value> optionsData(v8::Isolate* isolate, std::string_view location,
                                     v8::Local<v8::Value> const& body,
                                     std::unordered_map<std::string, std::string> const& headerFields,
                                     bool raw);
 
-  v8::Handle<v8::Value> postData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
+  v8::Handle<v8::Value> postData(v8::Isolate* isolate, std::string_view location,
                                  v8::Local<v8::Value> const& body,
                                  std::unordered_map<std::string, std::string> const& headerFields,
                                  bool raw = false, bool isFile = false);
 
-  v8::Handle<v8::Value> putData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
+  v8::Handle<v8::Value> putData(v8::Isolate* isolate, std::string_view location,
                                 v8::Local<v8::Value> const& body,
                                 std::unordered_map<std::string, std::string> const& headerFields,
                                 bool raw);
 
-  v8::Handle<v8::Value> patchData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
+  v8::Handle<v8::Value> patchData(v8::Isolate* isolate, std::string_view location,
                                   v8::Local<v8::Value> const& body,
                                   std::unordered_map<std::string, std::string> const& headerFields,
                                   bool raw);
@@ -132,13 +131,13 @@ class V8ClientConnection {
   std::shared_ptr<fuerte::Connection> acquireConnection();
 
   v8::Local<v8::Value> requestData(v8::Isolate* isolate, fuerte::RestVerb verb,
-                                   arangodb::velocypack::StringRef const& location,
+                                   std::string_view location,
                                    v8::Local<v8::Value> const& body,
                                    std::unordered_map<std::string, std::string> const& headerFields,
                                    bool isFile = false);
 
   v8::Local<v8::Value> requestDataRaw(v8::Isolate* isolate, fuerte::RestVerb verb,
-                                      arangodb::velocypack::StringRef const& location,
+                                      std::string_view location,
                                       v8::Local<v8::Value> const& body,
                                       std::unordered_map<std::string, std::string> const& headerFields);
 

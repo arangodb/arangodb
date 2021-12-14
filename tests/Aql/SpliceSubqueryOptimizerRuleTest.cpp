@@ -44,11 +44,12 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Collection.h"
 #include "velocypack/Slice.h"
-#include "velocypack/StringRef.h"
 #include "velocypack/velocypack-aliases.h"
 
 #include "../IResearch/IResearchQueryCommon.h"
 #include "../Mocks/Servers.h"
+
+#include <string_view>
 
 using namespace arangodb::aql;
 using namespace arangodb::containers;
@@ -473,7 +474,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
                                                               noCollections, opts);
   ASSERT_EQ(1, collection->numberDocuments(trx.get(), transaction::CountType::Normal));
   bool called = false;
-  auto result = collection->getPhysical()->read(trx.get(), arangodb::velocypack::StringRef{"myKey"}, [&](LocalDocumentId const&, VPackSlice document) {
+  auto result = collection->getPhysical()->read(trx.get(), std::string_view{"myKey"}, [&](LocalDocumentId const&, VPackSlice document) {
     called = true;
     EXPECT_TRUE(document.isObject());
     EXPECT_TRUE(document.get("_key").isString());
