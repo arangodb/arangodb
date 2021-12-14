@@ -577,14 +577,14 @@ def generateAQL(testName):
       const explainResult =  require('@arangodb/aql/explainer').explain({bindVars:bv, query:query}, {}, false);
       ansiAppender(explainResult);
     } catch (err) {
-      allErrors += '\nRUN FAILED: ' + testName + ', ' + err + '\n' + err.stack + '\n';
+      allErrors += '\\nRUN FAILED: ' + testName + ', ' + err + '\\n' + err.stack + '\\n';
     }
   } else {
     try {
       const result = db._query(query, bv).toArray();
       jsonAppender(JSON.stringify(result, null, 2));
     } catch (err) {
-      allErrors += '\nRUN FAILED: ' + testName + ', ' + err + '\n' + err.stack + '\n';
+      allErrors += '\\nRUN FAILED: ' + testName + ', ' + err + '\\n' + err.stack + '\\n';
     }
   }
 
