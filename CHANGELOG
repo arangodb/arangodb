@@ -5,6 +5,8 @@ devel
   a new deployment to provide the license. After that period, the read-only mode
   will be enforced.
 
+* Cancel ongoing RocksDB compactions on server shutdown.
+
 * Added new option `--custom-query-bindvars` to arangoexport, so queries given 
   via option `--custom-query` can have bind variables in them. Also changed the 
   flag names `--query` to `--custom-query` and `--query-max-runtime` to 
