@@ -288,6 +288,25 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
   }
 }
 
+namespace {
+// For (unordered) maps left and right, return keys(left) \ keys(right)
+auto keySetDifference = [](auto const& left, auto const& right) {
+  using left_t = std::decay_t<decltype(left)>;
+  using right_t = std::decay_t<decltype(right)>;
+  static_assert(std::is_same_v<typename left_t::key_type, typename right_t::key_type>);
+  using key_t = typename left_t::key_type;
+
+  auto result = std::vector<key_t>{};
+  for (auto const& [key, val] : left) {
+    if (!right.contains(key)) {
+      result.emplace_back(key);
+    }
+  }
+
+  return result;
+};
+}
+
 auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
                                      RebootId myRebootId, LogId logId,
                                      agency::LogPlanSpecification const* spec) noexcept
@@ -308,8 +327,22 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
       // something has changed in the term volatile configuration
       auto leader = log->getLeader();
       TRI_ASSERT(leader != nullptr);
-      leader->updateParticipantsConfig(
-          std::make_shared<ParticipantsConfig const>(spec->participantsConfig));
+      auto previousConfig = status.asLeaderStatus()->activeParticipantConfig;
+      auto const& oldParticipants = previousConfig.participants;
+      auto const& newParticipants = spec->participantsConfig.participants;
+      auto additionalParticipantIds = keySetDifference(oldParticipants, newParticipants);
+      auto additionalParticipants =
+          std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>{};
+      for (auto const& participantId : additionalParticipantIds) {
+        if (participantId != myServerId) {
+          additionalParticipants.try_emplace(participantId,
+                                             ctx.buildAbstractFollowerImpl(logId, participantId));
+        }
+      }
+      leader->updateParticipantsConfig(std::make_shared<ParticipantsConfig const>(
+                                           spec->participantsConfig),
+                                       previousConfig.generation,
+                                       std::move(additionalParticipants));
     } else if (plannedLeader.has_value() && plannedLeader->serverId == myServerId &&
                plannedLeader->rebootId == myRebootId) {
       auto followers =

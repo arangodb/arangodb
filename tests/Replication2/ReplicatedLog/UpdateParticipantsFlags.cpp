@@ -74,11 +74,12 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
   runAllAsyncAppendEntries();
 
   {
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 forced
     newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig);
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
   }
 
   {
@@ -129,11 +130,12 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
   runAllAsyncAppendEntries();
 
   {
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower1 excluded
     newConfig->participants["follower1"] = replication2::ParticipantFlags{false, true};
-    leader->updateParticipantsConfig(newConfig);
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
   }
 
   {
@@ -173,11 +175,12 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
 
   // Force follower 2
   {
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 forced
     newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig);
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
   }
 
   auto idx = leader->insert(LogPayload::createFromString("entry #1"));
@@ -195,9 +198,10 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
 
   // change configuration back to non-forced follower 2
   {
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 2;
-    leader->updateParticipantsConfig(newConfig);
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
   }
 
   {
@@ -228,11 +232,12 @@ TEST_F(UpdateParticipantsFlagsTest, update_without_additional_entry) {
 
   // Force follower 2
   {
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 excluded
     newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig);
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
   }
 
   EXPECT_EQ(leader->getCommitIndex(), LogIndex{1});
