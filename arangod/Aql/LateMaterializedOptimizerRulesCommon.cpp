@@ -61,6 +61,29 @@ struct TraversalState {
   bool wasAccess;
 };
 
+template <bool indexDataOnly, typename Fields, typename Slot, typename Node>
+bool findMatchedField(Fields const& fields, Slot& tmpSlot, Node& nodeAttr) {
+  size_t fieldNum = 0;
+  typename arangodb::aql::latematerialized::ColumnVariant<indexDataOnly>::PostfixType postfix{};
+  for (auto const& field : fields) {
+    std::vector<arangodb::basics::AttributeName> const* fieldValue;
+    if constexpr (std::is_same_v<std::vector<arangodb::basics::AttributeName> const&, decltype(field)>) {
+      fieldValue = &field;
+    } else {
+      fieldValue = &field.second;
+    }
+    TRI_ASSERT(fieldValue);
+    if (arangodb::aql::latematerialized::isPrefix<indexDataOnly>(*fieldValue,
+                                                                 nodeAttr.attr,
+                                                                 false, postfix)) {
+      tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, fieldValue, std::move(postfix));
+      return true;
+    }
+    ++fieldNum;
+  }
+  return false;
+}
+
 }
 
 namespace arangodb::aql::latematerialized {
@@ -139,42 +162,23 @@ bool attributesMatch(iresearch::IResearchViewSort const& primarySort,
   TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
   // check all node attributes to be in sort
   std::remove_reference_t<decltype(usedColumnsCounter)> tmpUsedColumnsCounter(columnsCount);
-  typename ColumnVariant<indexDataOnly>::PostfixType postfix{};
   for (auto& nodeAttr : attrs) {
     auto found = false;
     nodeAttr.afData.field = nullptr;
     // try to find in the sort column
     size_t fieldNum = 0;
     TRI_ASSERT(!tmpUsedColumnsCounter.empty());
-    auto& tmpSlot = tmpUsedColumnsCounter.front();
-    for (auto const& field : primarySort.fields()) {
-      if (latematerialized::isPrefix<indexDataOnly>(field, nodeAttr.attr, false, postfix)) {
-        tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field, std::move(postfix));
-        if constexpr (std::is_arithmetic_v<decltype(postfix)>) {
-          postfix = 0;
-        }
-        found = true;
-        break;
-      }
-      ++fieldNum;
-    }
+    found |= findMatchedField<indexDataOnly>(primarySort.fields(),
+                                             tmpUsedColumnsCounter.front(),
+                                             nodeAttr);
     // try to find in other columns
     ptrdiff_t columnNum = 1;
     for (auto const& column : storedValues.columns()) {
       fieldNum = 0;
       TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) >= columnNum);
-      auto& tmpSlot = tmpUsedColumnsCounter[columnNum];
-      for (auto const& field : column.fields) {
-        if (latematerialized::isPrefix<indexDataOnly>(field.second, nodeAttr.attr, false, postfix)) {
-          tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix));
-          if constexpr (std::is_arithmetic_v<decltype(postfix)>) {
-            postfix = 0;
-          }
-          found = true;
-          break;
-        }
-        ++fieldNum;
-      }
+      found |= findMatchedField<indexDataOnly>(column.fields,
+                                               tmpUsedColumnsCounter[columnNum],
+                                               nodeAttr);
       ++columnNum;
     }
     // not found value in columns
