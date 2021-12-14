@@ -540,26 +540,6 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 }
 
-std::pair<arangodb::graph::VertexUniquenessLevel, arangodb::graph::EdgeUniquenessLevel>
-TraversalNode::convertUniquenessLevels() const {
-  auto vertexUniquenessLevel = graph::VertexUniquenessLevel::NONE;
-  auto edgeUniquenessLevel = graph::EdgeUniquenessLevel::NONE;
-
-  if (options()->uniqueVertices == traverser::TraverserOptions::PATH) {
-    vertexUniquenessLevel = graph::VertexUniquenessLevel::PATH;
-  } else if (options()->uniqueVertices == traverser::TraverserOptions::GLOBAL) {
-    vertexUniquenessLevel = graph::VertexUniquenessLevel::GLOBAL;
-  }
-
-  if (options()->uniqueEdges == traverser::TraverserOptions::PATH) {
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
-  } else if (options()->uniqueVertices == traverser::TraverserOptions::GLOBAL) {
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::GLOBAL;
-  }
-
-  return std::make_pair(vertexUniquenessLevel, edgeUniquenessLevel);
-}
-
 std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes() const {
   std::vector<IndexAccessor> indexAccessors{};
 
@@ -794,8 +774,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       arangodb::graph::BaseProviderOptions baseProviderOptions{
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
           opts->collectionToShard()};
-
-      // auto uniqueVerticesAndEdges = convertUniquenessLevels();
 
       arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth, opts->maxDepth};
       PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx()};
