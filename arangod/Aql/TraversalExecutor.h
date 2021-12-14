@@ -30,7 +30,9 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/TraversalStats.h"
 #include "Aql/Variable.h"
+#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb {
@@ -52,15 +54,17 @@ class TraversalExecutorInfosHelper {
   };
 };
 
-template <class FinderType>
 class TraversalExecutorInfos {
  public:
   TraversalExecutorInfos(
-      std::unique_ptr<FinderType>&& finder, QueryContext& query,
+      std::unique_ptr<traverser::Traverser>&& traverser,
       std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> registerMapping,
       std::string fixedSource, RegisterId inputRegister,
       std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
-      Ast* ast);
+      Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
+      traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
+      traverser::TraverserOptions::Order order, bool refactor, transaction::Methods* trx);
+  // TODO [GraphRefactor]: Tidy-up input parameter "mess" after refactor is done.
 
   TraversalExecutorInfos() = delete;
 
@@ -68,9 +72,8 @@ class TraversalExecutorInfos {
   TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
   ~TraversalExecutorInfos() = default;
 
-  [[nodiscard]] auto finder() const -> FinderType&;
-
-  aql::QueryContext& query() noexcept;
+  [[nodiscard]] auto traversalEnumerator() const -> arangodb::graph::TraversalEnumerator&;
+  traverser::Traverser& traverser();
 
   bool usesOutputRegister(TraversalExecutorInfosHelper::OutputName type) const;
 
@@ -98,26 +101,44 @@ class TraversalExecutorInfos {
 
   Ast* getAst() const;
 
+  auto parseTraversalEnumerator(traverser::TraverserOptions::Order order,
+                                traverser::TraverserOptions::UniquenessLevel uniqueVertices,
+                                traverser::TraverserOptions::UniquenessLevel uniqueEdges) -> void;
+
+  auto createTrx() -> void;
+  traverser::TraverserOptions::UniquenessLevel getUniqueVertices() const;
+  traverser::TraverserOptions::UniquenessLevel getUniqueEdges() const;
+  traverser::TraverserOptions::Order getOrder() const;
+  void setOrder(traverser::TraverserOptions::Order order);
+  bool isRefactor() const;
+  transaction::Methods* getTrx();
+
  private:
   std::string typeToString(TraversalExecutorInfosHelper::OutputName type) const;
   RegisterId findRegisterChecked(TraversalExecutorInfosHelper::OutputName type) const;
 
  private:
-  QueryContext& _query;
+  std::unique_ptr<traverser::Traverser> _traverser; // TODO [GraphRefactor]: Old way, to be removed after refactor is done!
 
   /// @brief the shortest path finder.
-  std::unique_ptr<FinderType> _finder;
+  //std::unique_ptr<FinderType> _finder;
+  std::unique_ptr<arangodb::graph::TraversalEnumerator> _traversalEnumerator = nullptr;
+
   std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> _registerMapping;
   std::string _fixedSource;
   RegisterId _inputRegister;
   std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
   Ast* _ast;
+  traverser::TraverserOptions::UniquenessLevel _uniqueVertices;
+  traverser::TraverserOptions::UniquenessLevel _uniqueEdges;
+  traverser::TraverserOptions::Order _order;
+  bool _refactor;
+  transaction::Methods* _trx;
 };
 
 /**
  * @brief Implementation of Traversal Node
  */
-template <class FinderType>
 class TraversalExecutor {
  public:
   struct Properties {
@@ -126,7 +147,7 @@ class TraversalExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = TraversalExecutorInfos<FinderType>;
+  using Infos = TraversalExecutorInfos;
   using Stats = TraversalStats;
 
   TraversalExecutor() = delete;
@@ -150,13 +171,12 @@ class TraversalExecutor {
 
  private:
   Infos& _infos;
-  transaction::Methods _trx;
   InputAqlItemRow _inputRow;
 
-  // traverser::Traverser& _traverser;
+  traverser::Traverser& _traverser; // TODO [GraphRefactor]: Old way, to be removed after refactor is done!
 
   /// @brief the refactored finder variant.
-  FinderType& _finder;
+  arangodb::graph::TraversalEnumerator& _traversalEnumerator;
 };
 
 }  // namespace aql

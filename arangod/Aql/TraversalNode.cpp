@@ -837,11 +837,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           opts->query().resourceMonitor());
 
       auto executorInfos =
-          TraversalExecutorInfos(std::move(dfsUnique), engine.getQuery(), outputRegisterMapping,
+          TraversalExecutorInfos(nullptr, outputRegisterMapping,
                                  getStartVertex(), inputRegister,
-                                 std::move(filterConditionVariables), plan()->getAst());
+                                 std::move(filterConditionVariables),
+                                 plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges,
+                                 opts->mode, opts->refactor(), opts->trx());
 
-      return std::make_unique<ExecutionBlockImpl<TraversalExecutor<SingleServerDFSRefactored>>>(
+      return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     } else {
       traverser = std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
@@ -850,11 +852,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   TRI_ASSERT(traverser != nullptr);
   auto executorInfos =
-      TraversalExecutorInfos(std::move(traverser), engine.getQuery(), outputRegisterMapping,
-                             getStartVertex(), inputRegister,
-                             std::move(filterConditionVariables), plan()->getAst());
+      TraversalExecutorInfos(std::move(traverser),
+                             outputRegisterMapping, getStartVertex(),
+                             inputRegister, std::move(filterConditionVariables),
+                             plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges,
+                             opts->mode, opts->refactor(), opts->trx());
 
-  return std::make_unique<ExecutionBlockImpl<TraversalExecutor<traverser::Traverser>>>(
+  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
