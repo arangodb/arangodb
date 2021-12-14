@@ -105,7 +105,6 @@ struct TermIndexPair {
   friend auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 };
 
-auto operator<=(TermIndexPair, TermIndexPair) noexcept -> bool;
 auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
 
 struct LogRange {
@@ -126,8 +125,7 @@ struct LogRange {
     auto operator++(int) noexcept -> Iterator;
     auto operator*() const noexcept -> LogIndex;
     auto operator->() const noexcept -> LogIndex const*;
-    friend auto operator==(Iterator const& a, Iterator const& b) noexcept -> bool;
-    friend auto operator!=(Iterator const& a, Iterator const& b) noexcept -> bool;
+    friend auto operator==(Iterator const& a, Iterator const& b) noexcept -> bool = default;
 
    private:
     friend LogRange;
@@ -135,8 +133,7 @@ struct LogRange {
     LogIndex current;
   };
 
-  friend auto operator==(LogRange, LogRange) noexcept -> bool;
-  friend auto operator!=(LogRange, LogRange) noexcept -> bool;
+  friend auto operator==(LogRange, LogRange) noexcept -> bool = default;
 
   [[nodiscard]] auto begin() const noexcept -> Iterator;
   [[nodiscard]] auto end() const noexcept -> Iterator;
@@ -144,11 +141,7 @@ struct LogRange {
 
 auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
 auto intersect(LogRange a, LogRange b) noexcept -> LogRange;
-auto operator==(LogRange, LogRange) noexcept -> bool;
-auto operator!=(LogRange, LogRange) noexcept -> bool;
-
-auto operator==(LogRange::Iterator const& a, LogRange::Iterator const& b) noexcept -> bool;
-auto operator!=(LogRange::Iterator const& a, LogRange::Iterator const& b) noexcept -> bool;
+auto to_string(LogRange const&) -> std::string;
 
 struct LogPayload {
   explicit LogPayload(velocypack::UInt8Buffer dummy);
@@ -158,7 +151,6 @@ struct LogPayload {
   [[nodiscard]] static auto createFromString(std::string_view string) -> LogPayload;
 
   friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
-  friend auto operator!=(LogPayload const&, LogPayload const&) -> bool;
 
   [[nodiscard]] auto byteSize() const noexcept -> std::size_t;
   [[nodiscard]] auto slice() const noexcept -> velocypack::Slice;
@@ -167,8 +159,7 @@ struct LogPayload {
   velocypack::UInt8Buffer dummy;
 };
 
-[[nodiscard]] auto operator==(LogPayload const&, LogPayload const&) -> bool;
-[[nodiscard]] auto operator!=(LogPayload const&, LogPayload const&) -> bool;
+auto operator==(LogPayload const&, LogPayload const&) -> bool;
 
 using ParticipantId = std::string;
 
@@ -351,7 +342,7 @@ struct CommitFailReason {
   struct NothingToCommit {
     static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
     void toVelocyPack(velocypack::Builder& builder) const;
-    friend auto operator==(NothingToCommit const& left, NothingToCommit const& right)
+    friend auto operator==(NothingToCommit const& left, NothingToCommit const& right) noexcept
         -> bool = default;
   };
   struct QuorumSizeNotReached {
@@ -359,14 +350,15 @@ struct CommitFailReason {
     void toVelocyPack(velocypack::Builder& builder) const;
     ParticipantId who;
     friend auto operator==(QuorumSizeNotReached const& left,
-                           QuorumSizeNotReached const& right) -> bool = default;
+                           QuorumSizeNotReached const& right) noexcept -> bool = default;
   };
   struct ForcedParticipantNotInQuorum {
     static auto fromVelocyPack(velocypack::Slice) -> ForcedParticipantNotInQuorum;
     void toVelocyPack(velocypack::Builder& builder) const;
     ParticipantId who;
     friend auto operator==(ForcedParticipantNotInQuorum const& left,
-                           ForcedParticipantNotInQuorum const& right) -> bool = default;
+                           ForcedParticipantNotInQuorum const& right) noexcept
+        -> bool = default;
   };
   std::variant<NothingToCommit, QuorumSizeNotReached, ForcedParticipantNotInQuorum> value;
 
