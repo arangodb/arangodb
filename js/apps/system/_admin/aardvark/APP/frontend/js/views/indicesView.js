@@ -442,7 +442,12 @@
           }
 
           if (v.fields !== undefined) {
-            fieldString = v.fields.join(', ');
+            fieldString = v.fields.map(
+              function(v) {
+                if (typeof v === 'object') {
+                  return v.name;
+                }
+                return v;}).join(', ');
           }
 
           // cut index id
