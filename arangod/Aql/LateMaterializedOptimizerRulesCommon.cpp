@@ -244,13 +244,11 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
                                 std::vector<arangodb::basics::AttributeName> const& attrs,
                                 bool ignoreExpansionInLast,
                                 typename ColumnVariant<indexDataOnly>::PostfixType& postfix) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if constexpr (!indexDataOnly) {
     TRI_ASSERT(postfix.empty());
   } else {
     TRI_ASSERT(postfix == 0);
   }
-#endif
   if (prefix.size() > attrs.size()) {
     return false;
   }
