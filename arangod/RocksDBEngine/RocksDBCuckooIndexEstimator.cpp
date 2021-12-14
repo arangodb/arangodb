@@ -62,7 +62,7 @@ RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(uint64_t size)
 }
 
 template <class Key>
-RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef serialized)
+RocksDBCuckooIndexEstimator<Key>::RocksDBCuckooIndexEstimator(std::string_view serialized)
     : _randState(0x2636283625154737ULL),
       _logSize(0),
       _size(0),
@@ -91,7 +91,7 @@ RocksDBCuckooIndexEstimator<Key>::~RocksDBCuckooIndexEstimator() {
 }
   
 template <class Key>
-/*static*/ bool RocksDBCuckooIndexEstimator<Key>::isFormatSupported(arangodb::velocypack::StringRef serialized) {
+/*static*/ bool RocksDBCuckooIndexEstimator<Key>::isFormatSupported(std::string_view serialized) {
   TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + sizeof(char));
   switch (serialized[sizeof(_appliedSeq)]) {
     case SerializeFormat::UNCOMPRESSED:
@@ -482,7 +482,7 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(rocksdb::
 }
 
 template <class Key>
-void RocksDBCuckooIndexEstimator<Key>::deserialize(arangodb::velocypack::StringRef serialized) {
+void RocksDBCuckooIndexEstimator<Key>::deserialize(std::string_view serialized) {
   // minimum size
   TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + 1);
 
@@ -523,7 +523,7 @@ void RocksDBCuckooIndexEstimator<Key>::deserialize(arangodb::velocypack::StringR
 
     // from now on, we have an UNCOMPRESSED value, and can pretend
     // it was always like this
-    return deserializeUncompressedBody(arangodb::velocypack::StringRef(scratch));
+    return deserializeUncompressedBody(std::string_view(scratch));
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -532,7 +532,7 @@ void RocksDBCuckooIndexEstimator<Key>::deserialize(arangodb::velocypack::StringR
 }
 
 template <class Key>
-void RocksDBCuckooIndexEstimator<Key>::deserializeUncompressedBody(arangodb::velocypack::StringRef serialized) {
+void RocksDBCuckooIndexEstimator<Key>::deserializeUncompressedBody(std::string_view serialized) {
   // Assert that we have at least the member variables
   constexpr size_t minRequiredSize = 
     sizeof(uint64_t) + sizeof(_size) +

@@ -47,7 +47,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <utility>
@@ -62,8 +61,7 @@ static bool isValidId(VPackSlice id) {
     return false;
   }
   TRI_ASSERT(id.isString());
-  arangodb::velocypack::StringRef tester(id);
-  return tester.find('/') != std::string::npos;
+  return id.stringView().find('/') != std::string_view::npos;
 }
 }  // namespace
 

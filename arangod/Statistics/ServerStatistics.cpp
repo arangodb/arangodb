@@ -24,13 +24,15 @@
 #include "ServerStatistics.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 
 template <typename T = float>
 struct TimeScale {
-  static log_scale_t<T> scale() { return {10., 0.0, 1000.0, 11}; }
+  static metrics::LogScale<T> scale() { return {10., 0.0, 1000.0, 11}; }
 };
 
 DECLARE_COUNTER(arangodb_collection_lock_acquisition_micros_total, "Total amount of collection lock acquisition time [μs]");
@@ -55,7 +57,7 @@ DECLARE_HISTOGRAM(arangodb_document_remove_time, TimeScale<>, "Total time spent 
 DECLARE_HISTOGRAM(arangodb_document_update_time, TimeScale<>, "Total time spent in document update operations [s]");
 DECLARE_HISTOGRAM(arangodb_collection_truncate_time, TimeScale<>, "Total time spent in collection truncate operations [s]");
 
-TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
+TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
     : _metrics(metrics),
       _transactionsStarted(_metrics.add(arangodb_transactions_started_total{})),
       _transactionsAborted(_metrics.add(arangodb_transactions_aborted_total{})),

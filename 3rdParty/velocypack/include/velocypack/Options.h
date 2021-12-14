@@ -22,15 +22,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_OPTIONS_H
-#define VELOCYPACK_OPTIONS_H 1
+#pragma once
 
 #include <string>
 
 #include "velocypack/velocypack-common.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 class AttributeTranslator;
 class Dumper;
 struct Options;
@@ -154,6 +152,6 @@ struct Options {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
 
-#endif
+using VPackOptions = arangodb::velocypack::Options;
+using VPackCustomTypeHandler = arangodb::velocypack::CustomTypeHandler;

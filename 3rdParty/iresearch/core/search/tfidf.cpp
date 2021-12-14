@@ -23,6 +23,7 @@
 #include "tfidf.hpp"
 
 #include <cmath>
+#include <string_view>
 
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
@@ -52,7 +53,7 @@ irs::sort::ptr make_from_bool(const VPackSlice slice) {
   return irs::memory::make_unique<irs::tfidf_sort>(slice.getBool());
 }
 
-constexpr VPackStringRef WITH_NORMS_PARAM_NAME("withNorms");
+constexpr std::string_view WITH_NORMS_PARAM_NAME("withNorms");
 
 irs::sort::ptr make_from_object(const VPackSlice slice) {
   assert(slice.isObject());

@@ -36,7 +36,6 @@
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -132,7 +131,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
 
   VPackSlice read = obj.get("vertexCollections");
   if (read.isString()) {
-    auto c = read.stringRef();
+    auto c = read.stringView();
     vertexCollections.emplace_back(c.data(), c.size());
   } else if (read.isArray()) {
     for (auto slice : VPackArrayIterator(read)) {
@@ -142,7 +141,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
             "The options require vertexCollections to "
             "be a string or array of strings");
       }
-      auto c = slice.stringRef();
+      auto c = slice.stringView();
       vertexCollections.emplace_back(c.data(), c.size());
     }
   } else if (!read.isNone()) {
@@ -153,7 +152,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
 
   read = obj.get("edgeCollections");
   if (read.isString()) {
-    auto c = read.stringRef();
+    auto c = read.stringView();
     edgeCollections.emplace_back(c.data(), c.size());
   } else if (read.isArray()) {
     for (auto slice : VPackArrayIterator(read)) {
@@ -162,7 +161,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlic
                                        "The options require edgeCollections to "
                                        "be a string or array of strings");
       }
-      auto c = slice.stringRef();
+      auto c = slice.stringView();
       edgeCollections.emplace_back(c.data(), c.size());
     }
   } else if (!read.isNone()) {
@@ -292,7 +291,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 
   read = info.get("vertexCollections");
   if (read.isString()) {
-    auto c = read.stringRef();
+    auto c = read.stringView();
     vertexCollections.emplace_back(c.data(), c.size());
   } else if (read.isArray()) {
     for (auto slice : VPackArrayIterator(read)) {
@@ -302,7 +301,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
             "The options require vertexCollections to "
             "be a string or array of strings");
       }
-      auto c = slice.stringRef();
+      auto c = slice.stringView();
       vertexCollections.emplace_back(c.data(), c.size());
     }
   } else if (!read.isNone()) {
@@ -313,7 +312,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 
   read = info.get("edgeCollections");
   if (read.isString()) {
-    auto c = read.stringRef();
+    auto c = read.stringView();
     edgeCollections.emplace_back(c.data(), c.size());
   } else if (read.isArray()) {
     for (auto slice : VPackArrayIterator(read)) {
@@ -322,7 +321,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                        "The options require edgeCollections to "
                                        "be a string or array of strings");
       }
-      auto c = slice.stringRef();
+      auto c = slice.stringView();
       edgeCollections.emplace_back(c.data(), c.size());
     }
   } else if (!read.isNone()) {
@@ -697,7 +696,7 @@ bool TraverserOptions::hasVertexCollectionRestrictions() const {
 }
 
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
-                                              arangodb::velocypack::StringRef vertexId,
+                                              std::string_view vertexId,
                                               uint64_t depth, size_t cursorId) {
   arangodb::aql::Expression* expression = nullptr;
 
@@ -761,21 +760,21 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 #endif
 
 auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
-                                          arangodb::velocypack::StringRef origin) const
-    -> arangodb::velocypack::StringRef {
+                                          std::string_view origin) const
+    -> std::string_view {
   if (edge.isString()) {
-    return edge.stringRef();
+    return edge.stringView();
   }
 
   TRI_ASSERT(edge.isObject());
   auto from = edge.get(arangodb::StaticStrings::FromString);
   TRI_ASSERT(from.isString());
-  if (from.stringRef() == origin) {
+  if (from.stringView() == origin) {
     auto to = edge.get(arangodb::StaticStrings::ToString);
     TRI_ASSERT(to.isString());
-    return to.stringRef();
+    return to.stringView();
   }
-  return from.stringRef();
+  return from.stringView();
 }
 
 // TODO [GraphRefactor]: Check initialize index expressions
@@ -817,13 +816,13 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
 }
 
 #ifndef USE_ENTERPRISE
-bool TraverserOptions::checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const {
+bool TraverserOptions::checkSmartDestination(VPackSlice edge, std::string_view sourceVertex) const {
   return false;
 }
 #endif
 
 bool TraverserOptions::destinationCollectionAllowed(VPackSlice edge,
-                                                    velocypack::StringRef sourceVertex) const {
+                                                    std::string_view sourceVertex) const {
   if (hasVertexCollectionRestrictions()) {
     auto destination = getEdgeDestination(edge, sourceVertex);
     auto collection = transaction::helpers::extractCollectionFromId(destination);

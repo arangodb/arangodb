@@ -22,24 +22,24 @@
 
 #include "LogFollower.h"
 
+#include "Logger/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
-#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Gauge.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
+#include <Basics/StringUtils.h>
 #include <Basics/debugging.h>
 #include <Basics/voc-errors.h>
 #include <Futures/Promise.h>
 
-#include <algorithm>
 #include <Basics/ScopeGuard.h>
 #include <Basics/application-exit.h>
+#include <algorithm>
 
 #include <utility>
 #if (_MSC_VER >= 1)
@@ -67,14 +67,14 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     LOG_CTX("d290d", DEBUG, _loggerContext)
         << "reject append entries - log core gone";
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
-                                              AppendEntriesErrorReason::LOST_LOG_CORE);
+                                              {AppendEntriesErrorReason::ErrorType::kLostLogCore});
   }
 
   if (data._lastRecvMessageId >= req.messageId) {
     LOG_CTX("d291d", DEBUG, _loggerContext)
         << "reject append entries - message id out dated: " << req.messageId;
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
-                                              AppendEntriesErrorReason::MESSAGE_OUTDATED);
+                                              {AppendEntriesErrorReason::ErrorType::kMessageOutdated});
   }
 
   if (req.leaderId != _leaderId) {
@@ -82,7 +82,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - wrong leader, given = " << req.leaderId
         << " current = " << _leaderId.value_or("<none>");
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
-                                              AppendEntriesErrorReason::INVALID_LEADER_ID);
+                                              {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId});
   }
 
   if (req.leaderTerm != _currentTerm) {
@@ -90,7 +90,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - wrong term, given = " << req.leaderTerm
         << ", current = " << _currentTerm;
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
-                                              AppendEntriesErrorReason::WRONG_TERM);
+                                              {AppendEntriesErrorReason::ErrorType::kWrongTerm});
   }
 
   // It is always allowed to replace the log entirely
@@ -148,13 +148,14 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     }
   }
 
-  // If there are no new entries to be appended, we can simply update the commit index
-  // and lci and return early.
+  // If there are no new entries to be appended, we can simply update the commit
+  // index and lci and return early.
   auto toBeResolved = std::make_unique<WaitForQueue>();
   if (req.entries.empty()) {
-    auto action = self->checkCommitIndex(req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
+    auto action = self->checkCommitIndex(req.leaderCommit, req.largestCommonIndex,
+                                         std::move(toBeResolved));
     auto result = AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId);
-    self.unlock(); // unlock here, action will be executed via destructor
+    self.unlock();  // unlock here, action will be executed via destructor
     static_assert(std::is_nothrow_move_constructible_v<AppendEntriesResult>);
     return {std::move(result)};
   }
@@ -210,7 +211,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           << req.prevLogEntry.index << ", leader commit index = " << req.leaderCommit;
     }
 
-    auto action = self->checkCommitIndex(req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
+    auto action = self->checkCommitIndex(req.leaderCommit, req.largestCommonIndex,
+                                         std::move(toBeResolved));
 
     static_assert(noexcept(
         AppendEntriesResult::withOk(self->_follower._currentTerm, req.messageId)));
@@ -280,16 +282,15 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
       << "req.lci = " << newLCI << ", this.lci = " << _largestCommonIndex;
   if (_largestCommonIndex < newLCI) {
     LOG_CTX("fc467", TRACE, _follower._loggerContext)
-        << "largest common index went from " << _largestCommonIndex
-        << " to " << newLCI << ".";
+        << "largest common index went from " << _largestCommonIndex << " to "
+        << newLCI << ".";
     _largestCommonIndex = newLCI;
     // TODO do we want to call checkCompaction here?
     std::ignore = checkCompaction();
   }
 
   if (_commitIndex < newCommitIndex && !_inMemoryLog.empty()) {
-    _commitIndex =
-        std::min(newCommitIndex, _inMemoryLog.back().entry().logIndex());
+    _commitIndex = std::min(newCommitIndex, _inMemoryLog.back().entry().logIndex());
     LOG_CTX("1641d", TRACE, _follower._loggerContext)
         << "increment commit index: " << _commitIndex;
     return generateToBeResolved();
@@ -479,6 +480,10 @@ auto LogFollower::release(LogIndex doneWithIdx) -> Result {
         << "new release index set to " << self._releaseIndex;
     return self.checkCompaction();
   });
+}
+
+auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
+  return waitFor(LogIndex{1});
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept

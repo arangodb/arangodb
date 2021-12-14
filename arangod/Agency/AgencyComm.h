@@ -42,7 +42,7 @@
 #include "Basics/Result.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 class Endpoint;
@@ -646,7 +646,7 @@ class AgencyComm {
 
  private:
   application_features::ApplicationServer& _server;
-  Histogram<log_scale_t<uint64_t>>& _agency_comm_request_time_ms;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
 }  // namespace arangodb
 

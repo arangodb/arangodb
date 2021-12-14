@@ -22,16 +22,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_SLICE_STATIC_DATA_H
-#define VELOCYPACK_SLICE_STATIC_DATA_H 1
+#pragma once
 
 #include <cstdint>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/ValueType.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 struct SliceStaticData {
   using VT = arangodb::velocypack::ValueType;
@@ -744,6 +742,3 @@ struct SliceStaticData {
 };
 
 }  // namespace arangodb::velocypack
-}  // namespace arangodb
-
-#endif

@@ -47,10 +47,12 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Metrics/BatchBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -65,30 +67,24 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-DECLARE_GUARD_METRIC(arangodb_arangosearch_link_stats, IResearchLink::LinkStats);
-DECLARE_GAUGE(arangodb_arangosearch_num_buffered_docs, uint64_t,
+DECLARE_GAUGE(arangosearch_num_buffered_docs, uint64_t,
               "Number of buffered documents");
-DECLARE_GAUGE(arangodb_arangosearch_num_docs, uint64_t,  //
-              "Number of documents");
-DECLARE_GAUGE(arangodb_arangosearch_num_live_docs, uint64_t,
-              "Number of live documents");
-DECLARE_GAUGE(arangodb_arangosearch_num_segments, uint64_t,
-              "Number of segments");
-DECLARE_GAUGE(arangodb_arangosearch_num_files, uint64_t,  //
-              "Number of files");
-DECLARE_GAUGE(arangodb_arangosearch_index_size, uint64_t,
-              "Size of the index in bytes");
-DECLARE_GAUGE(arangodb_arangosearch_num_failed_commits, uint64_t,
+DECLARE_GAUGE(arangosearch_num_docs, uint64_t, "Number of documents");
+DECLARE_GAUGE(arangosearch_num_live_docs, uint64_t, "Number of live documents");
+DECLARE_GAUGE(arangosearch_num_segments, uint64_t, "Number of segments");
+DECLARE_GAUGE(arangosearch_num_files, uint64_t, "Number of files");
+DECLARE_GAUGE(arangosearch_index_size, uint64_t, "Size of the index in bytes");
+DECLARE_GAUGE(arangosearch_num_failed_commits, uint64_t,
               "Number of failed commits");
-DECLARE_GAUGE(arangodb_arangosearch_num_failed_cleanups, uint64_t,
+DECLARE_GAUGE(arangosearch_num_failed_cleanups, uint64_t,
               "Number of failed cleanups");
-DECLARE_GAUGE(arangodb_arangosearch_num_failed_consolidations, uint64_t,
+DECLARE_GAUGE(arangosearch_num_failed_consolidations, uint64_t,
               "Number of failed consolidations");
-DECLARE_GAUGE(arangodb_arangosearch_commit_time, uint64_t,
+DECLARE_GAUGE(arangosearch_commit_time, uint64_t,
               "Average time of few last commits");
-DECLARE_GAUGE(arangodb_arangosearch_cleanup_time, uint64_t,
+DECLARE_GAUGE(arangosearch_cleanup_time, uint64_t,
               "Average time of few last cleanups");
-DECLARE_GAUGE(arangodb_arangosearch_consolidation_time, uint64_t,
+DECLARE_GAUGE(arangosearch_consolidation_time, uint64_t,
               "Average time of few last consolidations");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -624,6 +620,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _maintenanceState{std::make_shared<MaintenanceState>()},
       _id{iid},
       _lastCommittedTick{0},
+      _cleanupIntervalCount{0},
       _createdInRecovery{false},
       _linkStats{nullptr},
       _numFailedCommits{nullptr},
@@ -693,6 +690,14 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
 void IResearchLink::afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) {
   auto lock = _asyncSelf->lock();  // '_dataStore' can be asynchronously modified
 
+  bool ok{false};
+  auto computeMetrics = irs::make_finally([&]() noexcept {
+    // We don't measure time because we believe that it should tend to zero
+    if (!ok && _numFailedCommits != nullptr) {
+      _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
+    }
+  });
+
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -753,6 +758,8 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx
     // update reader
     _dataStore._reader = reader;
 
+    _linkStats->store(statsUnsafe());
+
     auto subscription = std::atomic_load(&_flushSubscription);
 
     if (subscription) {
@@ -760,6 +767,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx
 
       impl.tick(_lastCommittedTick);
     }
+    ok = true;
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, iresearch::TOPIC)
         << "caught exception while truncating arangosearch link '" << id()
@@ -823,7 +831,15 @@ Result IResearchLink::commit(bool wait /*= true*/) {
   }
 
   CommitResult code{CommitResult::UNDEFINED};
-  return commitUnsafe(wait, &code).result;
+  auto result = commitUnsafe(wait, &code).result;
+  if (auto& meta = _dataStore._meta; meta._commitIntervalMsec == 0) {
+    // If auto commit is disabled, we want to manually trigger the cleanup for the consistent API
+    if (meta._cleanupIntervalStep != 0 && ++_cleanupIntervalCount >= meta._cleanupIntervalStep) {
+      _cleanupIntervalCount = 0;
+      (void)cleanupUnsafe();
+    }
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -837,9 +853,9 @@ IResearchLink::UnsafeOpResult IResearchLink::commitUnsafe(bool wait, CommitResul
                         .count();
 
   if (bool ok = result.ok(); !ok && _numFailedCommits != nullptr) {
-    _numFailedCleanups->fetch_add(1, std::memory_order_relaxed);
+    _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
   } else if (ok && *code == CommitResult::DONE && _avgCommitTimeMs != nullptr) {
-    _avgCommitTimeMs->store(computeAvg(_cleanupTimeNum, timeMs), std::memory_order_relaxed);
+    _avgCommitTimeMs->store(computeAvg(_commitTimeNum, timeMs), std::memory_order_relaxed);
   }
   return {result, timeMs};
 }
@@ -1324,19 +1340,18 @@ Result IResearchLink::init(velocypack::Slice const& definition,
   // of for DB Server. But in case of DB Server we must check that
   // link created for actual dataStore and not for ClusterInfo
   if (ServerState::instance()->isSingleServer() || !clusterWideLink) {
-    auto& metric = _collection.vocbase().server().getFeature<arangodb::MetricsFeature>();
-    _linkStats = &metric.add(getMetric<arangodb_arangosearch_link_stats>(*this));
-    _numFailedCommits =
-        &metric.add(getMetric<arangodb_arangosearch_num_failed_commits>(*this));
-    _numFailedCleanups =
-        &metric.add(getMetric<arangodb_arangosearch_num_failed_cleanups>(*this));
+    auto& metric = _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+    auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
+    builder.setName("arangosearch_link_stats");
+    _linkStats = &metric.add(std::move(builder));
+    _numFailedCommits = &metric.add(getMetric<arangosearch_num_failed_commits>(*this));
+    _numFailedCleanups = &metric.add(getMetric<arangosearch_num_failed_cleanups>(*this));
     _numFailedConsolidations =
-        &metric.add(getMetric<arangodb_arangosearch_num_failed_consolidations>(*this));
-    _avgCommitTimeMs = &metric.add(getMetric<arangodb_arangosearch_commit_time>(*this));
-    _avgCleanupTimeMs =
-        &metric.add(getMetric<arangodb_arangosearch_cleanup_time>(*this));
+        &metric.add(getMetric<arangosearch_num_failed_consolidations>(*this));
+    _avgCommitTimeMs = &metric.add(getMetric<arangosearch_commit_time>(*this));
+    _avgCleanupTimeMs = &metric.add(getMetric<arangosearch_cleanup_time>(*this));
     _avgConsolidationTimeMs =
-        &metric.add(getMetric<arangodb_arangosearch_consolidation_time>(*this));
+        &metric.add(getMetric<arangosearch_consolidation_time>(*this));
   }
 
   return {};
@@ -2074,34 +2089,36 @@ IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
 
 void IResearchLink::removeStats() {
   auto& metricFeature =
-      _collection.vocbase().server().getFeature<arangodb::MetricsFeature>();
+      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
   if (_linkStats) {
     _linkStats = nullptr;
-    metricFeature.remove(getMetric<arangodb_arangosearch_link_stats>(*this));
+    auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
+    builder.setName("arangosearch_link_stats");
+    metricFeature.remove(std::move(builder));
   }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
-    metricFeature.remove(getMetric<arangodb_arangosearch_num_failed_commits>(*this));
+    metricFeature.remove(getMetric<arangosearch_num_failed_commits>(*this));
   }
   if (_numFailedCleanups) {
     _numFailedCleanups = nullptr;
-    metricFeature.remove(getMetric<arangodb_arangosearch_num_failed_cleanups>(*this));
+    metricFeature.remove(getMetric<arangosearch_num_failed_cleanups>(*this));
   }
   if (_numFailedConsolidations) {
     _numFailedConsolidations = nullptr;
-    metricFeature.remove(getMetric<arangodb_arangosearch_num_failed_consolidations>(*this));
+    metricFeature.remove(getMetric<arangosearch_num_failed_consolidations>(*this));
   }
   if (_avgCommitTimeMs) {
     _avgCommitTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangodb_arangosearch_commit_time>(*this));
+    metricFeature.remove(getMetric<arangosearch_commit_time>(*this));
   }
   if (_avgCleanupTimeMs) {
     _avgCleanupTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangodb_arangosearch_cleanup_time>(*this));
+    metricFeature.remove(getMetric<arangosearch_cleanup_time>(*this));
   }
   if (_avgConsolidationTimeMs) {
     _avgConsolidationTimeMs = nullptr;
-    metricFeature.remove(getMetric<arangodb_arangosearch_consolidation_time>(*this));
+    metricFeature.remove(getMetric<arangosearch_consolidation_time>(*this));
   }
 }
 
@@ -2188,18 +2205,13 @@ void IResearchLink::LinkStats::toPrometheus(std::string& result,       //
     result.append(std::to_string(value));
     result.push_back('\n');
   };
-  writeMetric(arangodb_arangosearch_num_buffered_docs::kName,
+  writeMetric(arangosearch_num_buffered_docs::kName,
               "Number of buffered documents", numBufferedDocs);
-  writeMetric(arangodb_arangosearch_num_docs::kName,  //
-              "Number of documents", numDocs);
-  writeMetric(arangodb_arangosearch_num_live_docs::kName,
-              "Number of live documents", numLiveDocs);
-  writeMetric(arangodb_arangosearch_num_segments::kName,  //
-              "Number of segments", numSegments);
-  writeMetric(arangodb_arangosearch_num_files::kName,  //
-              "Number of files", numFiles);
-  writeMetric(arangodb_arangosearch_index_size::kName,
-              "Size of the index in bytes", indexSize);
+  writeMetric(arangosearch_num_docs::kName, "Number of documents", numDocs);
+  writeMetric(arangosearch_num_live_docs::kName, "Number of live documents", numLiveDocs);
+  writeMetric(arangosearch_num_segments::kName, "Number of segments", numSegments);
+  writeMetric(arangosearch_num_files::kName, "Number of files", numFiles);
+  writeMetric(arangosearch_index_size::kName, "Size of the index in bytes", indexSize);
   _needName = false;
 }
 

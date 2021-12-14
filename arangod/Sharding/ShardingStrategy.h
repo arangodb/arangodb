@@ -72,7 +72,7 @@ class ShardingStrategy {
 
   virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
                                         ShardID& shardID, bool& usesDefaultShardKeys,
-                                        arangodb::velocypack::StringRef const& key) = 0;
+                                        std::string_view const& key) = 0;
 };
 
 }  // namespace arangodb

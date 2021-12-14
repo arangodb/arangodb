@@ -70,8 +70,9 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server, in
     : ApplicationFeature(server, "Export"),
       _xgmmlLabelAttribute("label"),
       _typeExport("json"),
-      _queryMaxRuntime(0.0),
+      _customQueryMaxRuntime(0.0),
       _useMaxRuntime(false),
+      _escapeCsvFormulae(true),
       _xgmmlLabelOnly(false),
       _overwrite(false),
       _progress(true),
@@ -97,11 +98,22 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_collections));
 
-  options->addOption("--query", "AQL query to run", new StringParameter(&_query));
-  
-  options->addOption("--query-max-runtime", "runtime threshold for AQL queries (in seconds, 0 = no limit)", 
-                     new DoubleParameter(&_queryMaxRuntime))
-                     .setIntroducedIn(30800);
+  options->addOldOption("--query", "custom-query");
+  options
+      ->addOption("--custom-query", "AQL query to run", new StringParameter(&_customQuery));
+  options->addOldOption("--query-max-runtime", "custom-query-max-runtime");
+  options
+      ->addOption(
+          "--custom-query-max-runtime",
+          "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+          new DoubleParameter(&_customQueryMaxRuntime))
+      .setIntroducedIn(30800);
+
+  options
+      ->addOption("--custom-query-bindvars",
+                  "bind parameters to be used in the 'custom-query' testcase.",
+                  new StringParameter(&_customQueryBindVars))
+      .setIntroducedIn(31000);
 
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
@@ -119,6 +131,11 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--documents-per-batch", "number of documents to return in each batch",
                      new UInt64Parameter(&_documentsPerBatch))
                      .setIntroducedIn(30800);
+  
+  options->addOption("--escape-csv-formulae", "prefix string cells in CSV output with extra single quote "
+                     "to prevent formula injection",
+                     new BooleanParameter(&_escapeCsvFormulae))
+                     .setIntroducedIn(30805);
 
   options->addOption("--overwrite", "overwrite data in output directory",
                      new BooleanParameter(&_overwrite));
@@ -162,16 +179,28 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
   TRI_NormalizePath(_outputDirectory);
 
-  if (_graphName.empty() && _collections.empty() && _query.empty()) {
+  if (_graphName.empty() && _collections.empty() && _customQuery.empty()) {
     LOG_TOPIC("488d8", FATAL, Logger::CONFIG)
         << "expecting at least one collection, a graph name or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
-  if (!_query.empty() && (!_collections.empty() || !_graphName.empty())) {
+  if (!_customQuery.empty() && (!_collections.empty() || !_graphName.empty())) {
     LOG_TOPIC("6ff88", FATAL, Logger::CONFIG)
         << "expecting either a list of collections or an AQL query";
     FATAL_ERROR_EXIT();
+  }
+
+  if (!_customQueryBindVars.empty()) {
+    try {
+      _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
+    } catch (...) {
+      LOG_TOPIC("bafc2", FATAL, arangodb::Logger::BENCH)
+          << "For flag '--custom-query-bindvars "
+          << _customQueryBindVars
+          << "': invalid JSON format.";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   if (_typeExport == "xgmml" && _graphName.empty()) {
@@ -181,7 +210,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
 
   if ((_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "csv") &&
-      _collections.empty() && _query.empty()) {
+      _collections.empty() && _customQuery.empty()) {
     LOG_TOPIC("cdcf7", FATAL, Logger::CONFIG)
         << "expecting at least one collection or an AQL query";
     FATAL_ERROR_EXIT();
@@ -198,7 +227,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
   
   // we will use _maxRuntime only if the option was set by the user
-  _useMaxRuntime = options->processingResult().touched("--query-max-runtime");
+  _useMaxRuntime = options->processingResult().touched("--custom-query-max-runtime");
 }
 
 void ExportFeature::prepare() {
@@ -281,7 +310,7 @@ void ExportFeature::start() {
           exportedSize += fileSize;
         }
       }
-    } else if (!_query.empty()) {
+    } else if (!_customQuery.empty()) {
       queryExport(httpClient.get());
 
       std::string filePath =
@@ -377,20 +406,24 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   std::string errorMsg;
 
   if (_progress) {
-    std::cout << "# Running AQL query '" << _query << "'..." << std::endl;
+    std::cout << "# Running AQL query '" << _customQuery << "'..." << std::endl;
   }
 
   std::string const url = "_api/cursor";
 
   VPackBuilder post;
   post.openObject();
-  post.add("query", VPackValue(_query));
+  post.add("query", VPackValue(_customQuery));
+  if (!_customQueryBindVars.empty()) {
+    post.add("bindVars", _customQueryBindVarsBuilder->slice());
+  }
   post.add("ttl", VPackValue(::ttlValue));
   post.add("batchSize", VPackValue(_documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
   if (_useMaxRuntime) {
-    post.add("maxRuntime", VPackValue(_queryMaxRuntime));
+    post.add("maxRuntime", VPackValue(_customQueryMaxRuntime));
   }
+
   post.add("stream", VPackSlice::trueSlice());
   post.close();
   post.close();
@@ -398,7 +431,6 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   std::shared_ptr<VPackBuilder> parsedBody =
       httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
   VPackSlice body = parsedBody->slice();
-
   std::string fileName = "query." + _typeExport;
 
   std::unique_ptr<ManagedDirectory::File> fd = _directory->writableFile(fileName, _overwrite, 0, true);
@@ -449,13 +481,13 @@ void ExportFeature::writeFirstLine(ManagedDirectory::File & fd, std::string cons
     bool isFirstValue = true;
     for (auto const& str : _csvFields) {
       if (isFirstValue) {
-        firstLine += str;
         isFirstValue = false;
       } else {
-        firstLine += "," + str;
+        firstLine.push_back(',');
       }
+      appendCsvStringValue(firstLine, str);
     }
-    firstLine += "\n";
+    firstLine.push_back('\n');
     writeToFile(fd, firstLine);
   }
 }
@@ -490,6 +522,7 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
       writeToFile(fd, line);
     }
   } else if (_typeExport == "csv") {
+    std::string value;
     for (auto const& doc : it) {
       line.clear();
       bool isFirstValue = true;
@@ -502,38 +535,30 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
         }
 
         VPackSlice val = doc.get(key);
-        if (!val.isNone()) {
-          std::string value;
-          bool escape = false;
-          if (val.isArray() || val.isObject()) {
-            value = val.toJson();
-            escape = true;
+        if (val.isNone()) {
+          continue;
+        }
+        bool escape = false;
+        if (val.isArray() || val.isObject()) {
+          value = val.toJson();
+          escape = true;
+        } else if (val.isNull() || val.isBoolean() || val.isNumber()) {
+          value = val.toString();
+          escape = false;
+        } else {
+          if (val.isString()) {
+            value = val.copyString();
           } else {
-            if (val.isString()) {
-              value = val.copyString();
-              escape = true;
-            } else {
-              value = val.toString();
-            }
+            value = val.toString();
           }
+          escape = true;
+        }
 
-          if (escape) {
-            value = std::regex_replace(value, std::regex("\""), "\"\"");
-
-            if (value.find(',') != std::string::npos ||
-                value.find('\"') != std::string::npos ||
-                value.find('\r') != std::string::npos ||
-                value.find('\n') != std::string::npos) {
-              // escape value and put it in quotes
-              line.push_back('\"');
-              line.append(value);
-              line.push_back('\"');
-
-              continue;
-            }
-          }
-
+        if (escape) {
+          appendCsvStringValue(line, value);
+        } else {
           // write unescaped
+          TRI_ASSERT(!val.isString());
           line.append(value);
         }
       }
@@ -832,6 +857,25 @@ void ExportFeature::xgmmlWriteOneAtt(ManagedDirectory::File & fd,
     xmlTag = "  </att>\n";
     writeToFile(fd, xmlTag);
   }
+}
+
+void ExportFeature::appendCsvStringValue(std::string& output, std::string const& value) {
+  // escape value and put it in quotes
+  output.push_back('\"');
+  // if we are going to emit a string, we have to take some security precautions.
+  // for example, to prevent formula injection in MS Excel and LibreOffice calc, any
+  // string cells starting with one of the characters =, +, -, @ need to be escaped
+  // with an extra single quote (') so that their contents will not be interpreted
+  // as formulae 🙄
+  // https://infosecwriteups.com/formula-injection-exploiting-csv-functionality-cd3d8efd02ec
+  if (_escapeCsvFormulae && !value.empty()) {
+    bool escapeFormula = value.front() == '=' || value.front() == '+' || value.front() == '-' || value.front() == '@';
+    if (escapeFormula) {
+      output.push_back('\'');
+    }
+  }
+  output.append(basics::StringUtils::replace(value, "\"", "\"\""));
+  output.push_back('\"');
 }
 
 }  // namespace arangodb

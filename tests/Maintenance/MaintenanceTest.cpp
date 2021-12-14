@@ -514,7 +514,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    as.addFeature<arangodb::MetricsFeature>();
+    as.addFeature<arangodb::metrics::MetricsFeature>();
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
     auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
 

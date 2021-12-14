@@ -187,10 +187,15 @@ void UpgradeFeature::start() {
         // for coordinators, the default password will be installed by the
         // BootstrapFeature later.
         Result res = catchToResult([&]() {
-          return um->updateUser("root", [&](auth::User& user) {
+          Result res = um->updateUser("root", [&](auth::User& user) {
             user.updatePassword(init.defaultPassword());
             return TRI_ERROR_NO_ERROR;
           });
+          if (res.is(TRI_ERROR_USER_NOT_FOUND)) {
+            VPackSlice extras = VPackSlice::noneSlice();
+            res = um->storeUser(false, "root", init.defaultPassword(), true, extras);
+          }
+          return res;
         });
         if (res.fail()) {
           LOG_TOPIC("ce6bf", ERR, arangodb::Logger::FIXME)

@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include <functional>
 #include <cstdint>
+#include <functional>
+#include <string_view>
 
 #include "Basics/Common.h"
 
@@ -32,7 +33,6 @@ namespace arangodb {
 
 namespace velocypack {
 class Slice;
-class StringRef;
 }
 
 namespace graph {
@@ -56,7 +56,7 @@ class EdgeCursor {
 
   virtual size_t httpRequests() const = 0;
 
-  virtual void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) = 0;
+  virtual void rearm(std::string_view vid, uint64_t depth) = 0;
 };
 
 }  // namespace graph

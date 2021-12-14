@@ -27,11 +27,9 @@
 #include "Utils/ExecContext.h"
 
 #include <string>
+#include <string_view>
 
 namespace arangodb {
-namespace velocypack {
-class StringRef;
-}
 class ExecContext;
 
 /// @brief Indicates whether we want to observe writes performed within the
@@ -97,7 +95,7 @@ struct OperationOptions {
   static char const* stringifyOverwriteMode(OperationOptions::OverwriteMode mode);
 
   /// @brief determine the overwrite mode from the string value
-  static OverwriteMode determineOverwriteMode(velocypack::StringRef value);
+  static OverwriteMode determineOverwriteMode(std::string_view value);
   
  public:
   

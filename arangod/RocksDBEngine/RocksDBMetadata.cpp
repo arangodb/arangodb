@@ -573,7 +573,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       continue;
     }
 
-    arangodb::velocypack::StringRef estimateInput(value.data(), value.size());
+    std::string_view estimateInput(value.data(), value.size());
     if (RocksDBCuckooIndexEstimatorType::isFormatSupported(estimateInput)) {
       TRI_ASSERT(rocksutils::uint64FromPersistent(value.data()) <= db->GetLatestSequenceNumber());
 

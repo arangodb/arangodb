@@ -57,7 +57,8 @@ EvalResult Prim_StringRef(Machine& ctx, VPackSlice const slice, VPackBuilder& re
     return res.error();
   }
 
-  auto&& [str, idx] = res.value();
+  auto&& [str, didx] = res.value();
+  auto const idx = static_cast<std::size_t>(didx);
   if (idx >= str.length()) {
     return EvalError("index out of bounds");
   }
@@ -73,7 +74,8 @@ EvalResult Prim_StringSet(Machine& ctx, VPackSlice const slice, VPackBuilder& re
     return res.error();
   }
 
-  auto&& [str, idx, c] = res.value();
+  auto&& [str, didx, c] = res.value();
+  auto const idx = static_cast<std::size_t>(didx);
   if (idx >= str.length()) {
     return EvalError("index out of bounds");
   }

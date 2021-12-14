@@ -560,31 +560,31 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   _writeBuffer.appendText(*l);
 
   // append protocol
-  _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
+  _writeBuffer.appendText(std::string_view(" HTTP/1.1\r\n"));
 
   // append hostname
   LOG_TOPIC("908b8", DEBUG, Logger::HTTPCLIENT)
       << "request to " << _hostname << ": "
       << GeneralRequest::translateMethod(method) << ' ' << *l;
   
-  _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
+  _writeBuffer.appendText(std::string_view("Host: "));
   _writeBuffer.appendText(_hostname);
-  _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+  _writeBuffer.appendText(std::string_view("\r\n"));
 
   if (_params._keepAlive) {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
+    _writeBuffer.appendText(std::string_view("Connection: Keep-Alive\r\n"));
   } else {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
+    _writeBuffer.appendText(std::string_view("Connection: Close\r\n"));
   }
 
   if (_params._exposeArangoDB) {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("User-Agent: ArangoDB\r\n"));
+    _writeBuffer.appendText(std::string_view("User-Agent: ArangoDB\r\n"));
   }
 
   // do not automatically advertise deflate support
   if (_params._supportDeflate) {
     _writeBuffer.appendText(
-        TRI_CHAR_LENGTH_PAIR("Accept-Encoding: deflate\r\n"));
+        std::string_view("Accept-Encoding: deflate\r\n"));
   }
 
   // basic authorization
@@ -593,17 +593,17 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   ::arangodb::containers::SmallVector<ExclusionType> exclusions{arena};
   size_t pos = 0;
   if (!_params._jwt.empty()) {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
+    _writeBuffer.appendText(std::string_view("Authorization: bearer "));
     pos = _writeBuffer.size();
     _writeBuffer.appendText(_params._jwt);
     exclusions.emplace_back(pos, _writeBuffer.size());
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+    _writeBuffer.appendText(std::string_view("\r\n"));
   } else if (!_params._basicAuth.empty()) {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
+    _writeBuffer.appendText(std::string_view("Authorization: Basic "));
     pos = _writeBuffer.size();
     _writeBuffer.appendText(_params._basicAuth);
     exclusions.emplace_back(pos, _writeBuffer.size());
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+    _writeBuffer.appendText(std::string_view("\r\n"));
   }
 
   bool foundContentLength = false;
@@ -614,7 +614,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
       continue; // skip content-length header
     }
     _writeBuffer.appendText(header.first);
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
+    _writeBuffer.appendText(std::string_view(": "));
     if (basics::StringUtils::equalStringsCaseInsensitive(StaticStrings::Authorization, header.first)) {
       pos = _writeBuffer.size();
       _writeBuffer.appendText(header.second);
@@ -622,15 +622,15 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
     } else {
       _writeBuffer.appendText(header.second);
     }
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+    _writeBuffer.appendText(std::string_view("\r\n"));
   }
 
   if (method != rest::RequestType::GET) {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
+    _writeBuffer.appendText(std::string_view("Content-Length: "));
     _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
+    _writeBuffer.appendText(std::string_view("\r\n\r\n"));
   } else {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+    _writeBuffer.appendText(std::string_view("\r\n"));
   }
 
   if (body != nullptr) {

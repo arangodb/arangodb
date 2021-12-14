@@ -92,7 +92,7 @@ class VocbaseTest : public ::testing::Test {
   VocbaseTest() {
     // register view factory
     server.getFeature<arangodb::ViewTypesFeature>().emplace(
-        arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
+        arangodb::LogicalDataSource::Type::emplace(std::string_view("testViewType")),
         viewFactory);
   }
 };

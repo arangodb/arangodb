@@ -115,8 +115,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_
   {
     auto const* access =
         ast->createNodeAttributeAccess(getTemporaryRefNode(),
-                                       StaticStrings::FromString.c_str(),
-                                       StaticStrings::FromString.length());
+                                       StaticStrings::FromString);
     auto const* cond =
         ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
     _fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -127,8 +126,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_
   {
     auto const* access =
         ast->createNodeAttributeAccess(getTemporaryRefNode(),
-                                       StaticStrings::ToString.c_str(),
-                                       StaticStrings::ToString.length());
+                                       StaticStrings::ToString);
     auto const* cond =
         ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
     _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);

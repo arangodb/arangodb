@@ -34,6 +34,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
+#include "Metrics/Counter.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -249,7 +250,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
       _canWrite = false;
     }
     // we are finished
-    _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().followersDroppedCounter()++;
+    ++_docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().followersDroppedCounter();
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
         << "Removing follower " << sid << " from " << _docColl->name() << " succeeded";
     return agencyRes;

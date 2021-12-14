@@ -52,6 +52,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override final;
   void start() override final;
+  std::shared_ptr<VPackBuilder> customQueryBindVars() const { return _customQueryBindVarsBuilder; }
 
  private:
   void collectionExport(httpclient::SimpleHttpClient* httpClient);
@@ -68,16 +69,19 @@ class ExportFeature final : public application_features::ApplicationFeature,
                                          std::string const& url, arangodb::rest::RequestType,
                                          std::string postBody = "");
 
+  void appendCsvStringValue(std::string& output, std::string const& value);
+
   std::vector<std::string> _collections;
-  std::string _query;
+  std::string _customQuery;
   std::string _graphName;
   std::string _xgmmlLabelAttribute;
   std::string _typeExport;
   std::string _csvFieldOptions;
   std::vector<std::string> _csvFields;
   std::string _outputDirectory;
-  double _queryMaxRuntime;
+  double _customQueryMaxRuntime;
   bool _useMaxRuntime; 
+  bool _escapeCsvFormulae;
   bool _xgmmlLabelOnly;
   bool _overwrite;
   bool _progress;
@@ -88,6 +92,8 @@ class ExportFeature final : public application_features::ApplicationFeature,
   uint64_t _httpRequestsDone;
   std::string _currentCollection;
   std::string _currentGraph;
+  std::string _customQueryBindVars;
+  std::shared_ptr<VPackBuilder> _customQueryBindVarsBuilder;
   std::unique_ptr<ManagedDirectory> _directory;
 
   int* _result;
