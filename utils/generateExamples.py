@@ -573,11 +573,19 @@ def generateAQL(testName):
   output += "\\n@R\\n";
 
   if (explainAql) {
-    const explainResult =  require('@arangodb/aql/explainer').explain({bindVars:bv, query:query}, {}, false);
-    ansiAppender(explainResult);
+    try {
+      const explainResult =  require('@arangodb/aql/explainer').explain({bindVars:bv, query:query}, {}, false);
+      ansiAppender(explainResult);
+    } catch (err) {
+      allErrors += '\nRUN FAILED: ' + testName + ', ' + err + '\n' + err.stack + '\n';
+    }
   } else {
-    const result = db._query(query, bv).toArray();
-    jsonAppender(JSON.stringify(result, null, 2));
+    try {
+      const result = db._query(query, bv).toArray();
+      jsonAppender(JSON.stringify(result, null, 2));
+    } catch (err) {
+      allErrors += '\nRUN FAILED: ' + testName + ', ' + err + '\n' + err.stack + '\n';
+    }
   }
 
   if (ds !== '') {
