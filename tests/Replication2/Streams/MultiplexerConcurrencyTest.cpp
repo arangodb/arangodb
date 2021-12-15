@@ -31,6 +31,7 @@
 #include "Replication2/Streams/LogMultiplexer.h"
 
 #include "Replication2/Streams/TestLogSpecification.h"
+#include "Replication2/Mocks/AsyncLeader.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -85,25 +86,25 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
   };
 
   struct FollowerInstance {
-    explicit FollowerInstance(std::shared_ptr<LogFollower> const& follower)
+    explicit FollowerInstance(std::shared_ptr<ILogFollower> const& follower)
         : _follower(follower),
           _demux(streams::LogDemultiplexer<Spec>::construct(follower)),
           combiner(_demux) {
       _demux->listen();
     }
 
-    std::shared_ptr<LogFollower> _follower;
+    std::shared_ptr<ILogFollower> _follower;
     std::shared_ptr<streams::LogDemultiplexer<test::MyTestSpecification>> _demux;
     StateCombiner<Spec> combiner;
   };
 
   struct LeaderInstance {
-    explicit LeaderInstance(std::shared_ptr<LogLeader> const& leader)
+    explicit LeaderInstance(std::shared_ptr<ILogLeader> const& leader)
         : _leader(leader),
           _mux(streams::LogMultiplexer<Spec>::construct(leader)),
           combiner(_mux) {}
 
-    std::shared_ptr<LogLeader> _leader;
+    std::shared_ptr<ILogLeader> _leader;
     std::shared_ptr<streams::LogMultiplexer<test::MyTestSpecification>> _mux;
     StateCombiner<Spec> combiner;
   };
@@ -118,9 +119,10 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
 
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
                                         LogTerm{1}, {asyncFollower});
+  auto asyncLeader = std::make_shared<AsyncLeader>(leader);
 
   auto followerInstance = std::make_shared<FollowerInstance>(follower);
-  auto leaderInstance = std::make_shared<LeaderInstance>(leader);
+  auto leaderInstance = std::make_shared<LeaderInstance>(asyncLeader);
 
   auto producer = leaderInstance->_mux->getStreamById<test::my_int_stream_id>();
 
@@ -144,6 +146,8 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   });
   asyncFollower->waitFor(lastIndex).wait();
   asyncFollower->stop();
+  asyncLeader->waitFor(lastIndex).wait();
+  asyncLeader->stop();
 
   auto iterA = follower->waitForIterator(LogIndex{1}).get();
   auto iterB = leader->waitForIterator(LogIndex{1}).get();
