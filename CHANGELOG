@@ -5,6 +5,10 @@ devel
   a new deployment to provide the license. After that period, the read-only mode
   will be enforced.
 
+* Added startup security option `--foxx.allow-install-from-remote` to allow 
+  installing Foxx apps from remote URLs other than Github. The option is turned 
+  off by default.
+
 * Cancel ongoing RocksDB compactions on server shutdown.
 
 * Added new option `--custom-query-bindvars` to arangoexport, so queries given 
