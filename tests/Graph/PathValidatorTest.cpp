@@ -60,10 +60,11 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
 using Step = typename graph::MockGraphProvider::Step;
 
+// TODO [GraphRefactor]: Add matrix out of all variants we have here (added EdgeUniquenessLevel)
 using TypesToTest = ::testing::Types<
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::NONE>,
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>,
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL>>;
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>,
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::NONE>,
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::NONE>>;
 
 template <class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
@@ -93,10 +94,10 @@ class PathValidatorTest : public ::testing::Test {
   PathValidatorOptions _opts{&_tmpVar, _expressionContext};
 
  protected:
-  VertexUniquenessLevel getVertexUniquness() {
-    if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::NONE>>) {
+  VertexUniquenessLevel getVertexUniquness() { // TODO [GraphRefactor]: Also integrate getEdgeUniqueness here.
+    if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>) {
       return VertexUniquenessLevel::NONE;
-    } else if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::PATH>>) {
+    } else if constexpr (std::is_same_v<ValidatorType, PathValidator<graph::MockGraphProvider, PathStore<Step>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>) {
       return VertexUniquenessLevel::PATH;
     } else {
       return VertexUniquenessLevel::GLOBAL;
@@ -150,8 +151,7 @@ class PathValidatorTest : public ::testing::Test {
    */
   std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
     auto expectedKey = _ast->createNodeValueString(toMatch.c_str(), toMatch.length());
-    auto keyAccess =
-        _ast->createNodeAttributeAccess(_varNode, StaticStrings::KeyString);
+    auto keyAccess = _ast->createNodeAttributeAccess(_varNode, StaticStrings::KeyString);
     // This condition cannot be fulfilled
     auto condition = _ast->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
                                                     keyAccess, expectedKey);
