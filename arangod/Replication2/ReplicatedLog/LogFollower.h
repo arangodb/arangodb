@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -43,8 +43,7 @@ namespace arangodb::replication2::replicated_log {
 /**
  * @brief Follower instance of a replicated log.
  */
-class LogFollower final : public ILogParticipant,
-                          public AbstractFollower,
+class LogFollower final : public ILogFollower,
                           public std::enable_shared_from_this<LogFollower> {
  public:
   ~LogFollower() override;
@@ -58,7 +57,7 @@ class LogFollower final : public ILogParticipant,
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
-  [[nodiscard]] auto getLeader() const noexcept -> std::optional<ParticipantId> const&;
+  [[nodiscard]] auto getLeader() const noexcept -> std::optional<ParticipantId> const& override;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
@@ -67,12 +66,12 @@ class LogFollower final : public ILogParticipant,
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
       -> std::unique_ptr<LogIterator>;
-  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex;
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
   /// @brief Resolved when the leader has committed at least one entry.
-  auto waitForLeaderAcked() -> WaitForFuture;
+  auto waitForLeaderAcked() -> WaitForFuture override;
 
  private:
   struct GuardedFollowerData {

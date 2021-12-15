@@ -548,7 +548,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/LogCore.cpp
   Replication2/ReplicatedLog/LogFollower.cpp
   Replication2/ReplicatedLog/LogLeader.cpp
-  Replication2/ReplicatedLog/ILogParticipant.cpp
+  Replication2/ReplicatedLog/ILogInterfaces.cpp
   Replication2/ReplicatedLog/LogStatus.cpp
   Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
   Replication2/ReplicatedLog/NetworkMessages.cpp

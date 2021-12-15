@@ -42,6 +42,7 @@ namespace arangodb::replication2::replicated_log {
 
 struct LogCore;
 struct LogStatus;
+struct InMemoryLog;
 
 struct WaitForResult {
   /// @brief contains the _current_ commit index. (Not the index waited for)
@@ -75,10 +76,37 @@ struct ILogParticipant {
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
-  [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
+  [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture = 0;
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
+  [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
 
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
+};
+
+/**
+ * Interface describing a LogFollower API. Components should use this interface
+ * if they want to refer to a LogFollower instance.
+ */
+struct ILogFollower : ILogParticipant, AbstractFollower {
+  virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto getLeader() const noexcept -> std::optional<ParticipantId> const& = 0;
+};
+
+/**
+ * Interfaces describe a LogLeader API. Components should use this interface
+ * if they want to refer to a LogLeader instance.
+ */
+struct ILogLeader : ILogParticipant {
+  virtual auto insert(LogPayload payload, bool waitForSync) -> LogIndex = 0;
+
+  struct DoNotTriggerAsyncReplication {};
+  constexpr static auto doNotTriggerAsyncReplication = DoNotTriggerAsyncReplication{};
+  virtual auto insert(LogPayload payload, bool waitForSync, DoNotTriggerAsyncReplication) -> LogIndex = 0;
+  virtual void triggerAsyncReplication() = 0;
+
+  [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept -> bool = 0;
+  virtual auto waitForLeadership() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
 };
 
 /**
@@ -97,6 +125,8 @@ struct LogUnconfiguredParticipant final
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
+  [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
  private:
   std::unique_ptr<LogCore> _logCore;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
