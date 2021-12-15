@@ -88,15 +88,19 @@ struct Log {
 
   struct Plan {
     struct Term {
+      using TermId = size_t;
       struct Leader {
-        ParticipantId leader;
+        ParticipantId serverId;
         RebootId rebootId;
       };
       struct Config {
+        bool waitForSync;
         size_t writeConcern;
+        size_t softWriteConcern;
       };
 
-      Leader leader;
+      TermId id;
+      std::optional<Leader> leader;
       Config config;
     };
 
@@ -219,10 +223,27 @@ struct State {
 };
 
 
-struct Action {
-
+struct ParticipantHealth {
+  RebootId rebootId;
+  bool isHealthy;
 };
 
-auto replicatedStateAction(Log, State) -> Action;
+using ParticipantsHealth = std::unordered_map<ParticipantId, ParticipantHealth>;
+
+
+
+struct Action {
+  virtual void execute() = 0;
+  virtual ~Action() = default;
+};
+
+struct UpdateTermAction : Action {
+  UpdateTermAction(Log::Plan::Term const& newTerm) : _newTerm(newTerm) {};
+  void execute() override {};
+
+  Log::Plan::Term _newTerm;
+};
+
+auto replicatedLogAction(Log const&, ParticipantsHealth const&) -> std::unique_ptr<Action>;
 
 }
