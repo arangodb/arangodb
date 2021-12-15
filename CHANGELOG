@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow initial shard synchronization to abort prematurely if it turns out
+  that the follower was removed from the plan as a follower (e.g. if there are
+  enough other in-sync followers).
+
 * Added startup security option `--foxx.allow-install-from-remote` to allow 
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
