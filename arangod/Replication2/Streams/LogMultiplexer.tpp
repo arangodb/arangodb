@@ -93,8 +93,8 @@ auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs.
 
 template <typename Derived, typename Spec, template <typename> typename StreamInterface>
 struct LogMultiplexerImplementationBase {
-  explicit LogMultiplexerImplementationBase(std::shared_ptr<replicated_log::ILogParticipant> const& interface_)
-      : _guardedData(static_cast<Derived&>(*this)), _interface(interface_) {}
+  explicit LogMultiplexerImplementationBase()
+      : _guardedData(static_cast<Derived&>(*this)) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
             typename E = StreamEntryView<T>>
@@ -147,7 +147,7 @@ struct LogMultiplexerImplementationBase {
 
     if (globalReleaseIndex) {
       // TODO handle return value
-      std::ignore = _interface->release(*globalReleaseIndex);
+      std::ignore = getLogInterface()->release(*globalReleaseIndex);
     }
   }
 
@@ -166,6 +166,8 @@ struct LogMultiplexerImplementationBase {
   }
 
  protected:
+  auto& getLogInterface() { return static_cast<Derived&>(*this)._interface; }
+
   template <typename>
   struct MultiplexerData;
   template <typename... Descriptors>
@@ -232,7 +234,6 @@ struct LogMultiplexerImplementationBase {
   auto weak_from_self() -> std::weak_ptr<Derived> { return shared_from_self(); }
 
   Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guardedData{};
-  std::shared_ptr<replicated_log::ILogParticipant> const _interface;
 };
 
 #if (_MSC_VER >= 1)
@@ -246,12 +247,9 @@ template <typename Spec>
 struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,  // implement the actual class
       ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec>, Spec, Stream>,  // use a proxy stream dispatcher
-      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec>, Spec,
-                                       arangodb::replication2::streams::Stream> {
+      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec>, Spec, arangodb::replication2::streams::Stream> {
   explicit LogDemultiplexerImplementation(std::shared_ptr<replicated_log::ILogParticipant> interface_)
-      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec>, Spec,
-                                         arangodb::replication2::streams::Stream>(
-            std::move(interface_)) {}
+      : _interface(std::move(interface_)) {}
 
   auto digestIterator(LogIterator& iter) -> void override {
     this->_guardedData.getLockedGuard()->digestIterator(iter);
@@ -270,6 +268,8 @@ struct LogDemultiplexerImplementation
       triggerWaitFor(*nextIndex);
     }
   }
+
+  std::shared_ptr<replicated_log::ILogParticipant> _interface;
 
  private:
   void triggerWaitFor(LogIndex waitForIndex) {
@@ -318,17 +318,14 @@ template <typename Spec>
 struct LogMultiplexerImplementation
     : LogMultiplexer<Spec>,
       ProxyStreamDispatcher<LogMultiplexerImplementation<Spec>, Spec, ProducerStream>,
-      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec>, Spec,
-                                       arangodb::replication2::streams::ProducerStream> {
+      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec>, Spec, arangodb::replication2::streams::ProducerStream> {
   using SelfClass = LogMultiplexerImplementation<Spec>;
 
   explicit LogMultiplexerImplementation(std::shared_ptr<replicated_log::ILogLeader> interface_)
-      : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec>, Spec,
-                                         arangodb::replication2::streams::ProducerStream>(
-            std::move(interface_)) {}
+      : _interface(std::move(interface_)) {}
 
   void digestAvailableEntries() override {
-    auto log = leaderInteface()->copyInMemoryLog();
+    auto log = _interface->copyInMemoryLog();
     auto iter = log.getIteratorFrom(LogIndex{0});
     auto waitForIndex = this->_guardedData.doUnderLock([&](auto& self) {
       self.digestIterator(*iter);
@@ -354,8 +351,8 @@ struct LogMultiplexerImplementation
       // First write to replicated log - note that insert could trigger a
       // waitFor to be resolved. Therefore, we should hold the lock.
       auto insertIndex =
-          leaderInteface()->insert(LogPayload(std::move(serialized)), false,
-                                   replicated_log::LogLeader::doNotTriggerAsyncReplication);
+          _interface->insert(LogPayload(std::move(serialized)), false,
+                             replicated_log::LogLeader::doNotTriggerAsyncReplication);
       TRI_ASSERT(insertIndex > self._lastIndex);
       self._lastIndex = insertIndex;
 
@@ -369,7 +366,7 @@ struct LogMultiplexerImplementation
     //    we have a possible deadlock with triggerWaitForIndex callback.
     //    This is circumvented by first inserting the entry but not triggering
     //    replication immediately. We trigger it here instead.
-    leaderInteface()->triggerAsyncReplication();
+    _interface->triggerAsyncReplication();
 
     if (waitForIndex.has_value()) {
       triggerWaitForIndex(*waitForIndex);
@@ -377,17 +374,16 @@ struct LogMultiplexerImplementation
     return index;
   }
 
+  std::shared_ptr<replicated_log::ILogLeader> _interface;
  private:
-  auto leaderInteface() -> std::shared_ptr<replicated_log::ILogLeader> {
-    return std::static_pointer_cast<replicated_log::ILogLeader>(this->_interface);
-  }
-
   void triggerWaitForIndex(LogIndex waitForIndex) {
-    LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2) << "multiplexer trigger wait for index " << waitForIndex;
+    LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
+        << "multiplexer trigger wait for index " << waitForIndex;
     auto f = this->_interface->waitFor(waitForIndex);
     std::move(f).thenFinal([weak = this->weak_from_this()](
                                futures::Try<replicated_log::WaitForResult>&& tryResult) noexcept {
-      LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2) << "multiplexer trigger wait for returned";
+      LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
+          << "multiplexer trigger wait for returned";
       // First lock the shared pointer
       if (auto locked = weak.lock(); locked) {
         auto that = std::static_pointer_cast<SelfClass>(locked);
@@ -399,7 +395,8 @@ struct LogMultiplexerImplementation
 
             // find out what the commit index is
             self._firstUncommittedIndex = result.currentCommitIndex + 1;
-            LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2) << "multiplexer update commit index to " << result.currentCommitIndex;
+            LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
+                << "multiplexer update commit index to " << result.currentCommitIndex;
             return std::make_pair(self.getWaitForResolveSetAll(result.currentCommitIndex),
                                   self.checkWaitFor());
           });
@@ -439,15 +436,13 @@ struct LogMultiplexerImplementation
 template <typename Spec>
 auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface_)
     -> std::shared_ptr<LogDemultiplexer> {
-  return std::make_shared<streams::LogDemultiplexerImplementation<Spec>>(
-      std::move(interface_));
+  return std::make_shared<streams::LogDemultiplexerImplementation<Spec>>(std::move(interface_));
 }
 
 template <typename Spec>
 auto LogMultiplexer<Spec>::construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader> leader)
     -> std::shared_ptr<LogMultiplexer> {
-  return std::make_shared<streams::LogMultiplexerImplementation<Spec>>(
-      std::move(leader));
+  return std::make_shared<streams::LogMultiplexerImplementation<Spec>>(std::move(leader));
 }
 
 }  // namespace arangodb::replication2::streams
