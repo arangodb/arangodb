@@ -42,6 +42,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <ranges>
 #include <ratio>
 #include <string>
 #include <string_view>
@@ -1121,7 +1122,8 @@ auto replicated_log::LogLeader::waitForLeadership()
 
 void replicated_log::LogLeader::updateParticipantsConfig(
     std::shared_ptr<ParticipantsConfig const> config, std::size_t previousGeneration,
-    std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>> additionalFollowers) {
+    std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>> additionalFollowers,
+    std::vector<ParticipantId> const& followersToRemove) {
   LOG_CTX("ac277", DEBUG, _logContext)
       << "updating configuration to generation " << config->generation;
   TRI_ASSERT(previousGeneration < config->generation);
@@ -1143,48 +1145,30 @@ void replicated_log::LogLeader::updateParticipantsConfig(
           previousGeneration, data.activeParticipantsConfig->generation);
     }
 
-    constexpr auto keySetsAreEqual = [](auto const& mapLeft, auto const& mapRight) {
-      return mapLeft.size() == mapRight.size() &&
-             std::ranges::all_of(mapLeft, [&](auto const& it) {
-               return mapRight.contains(it.first);
-             });
-    };
-
-    // keys of data.activeParticipantConfig->participants must be equal to
-    // those in data._follower
-    TRI_ASSERT(keySetsAreEqual(data.activeParticipantsConfig->participants, data._follower));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // all participants in the new configuration must either exist already, or
+    // be added via additionalFollowers.
+    {
+      auto const& newConfigParticipants = data.activeParticipantsConfig->participants;
+      TRI_ASSERT(std::all_of(newConfigParticipants.begin(),
+                             newConfigParticipants.end(), [&](auto const& it) {
+                               return data._follower.contains(it.first) ||
+                                      additionalFollowers.contains(it.first) ||
+                                      it.first == data._self.getParticipantId();
+                             }));
+    }
+#endif
 
     // Create a copy. This is important to keep the following code exception-safe,
     // in particular never leave data._follower behind in a half-updated state.
     auto followers = data._follower;
 
-    {  // remove followers from data._follower, which aren't in config->participants
-      for (auto it = followers.begin(); it != followers.end();) {
-        auto const& participantId = it->first;
-        if (!config->participants.contains(participantId)) {
-          it = followers.erase(it);
-        } else {
-          ++it;
-        }
+    {  // remove obsolete followers
+      for (auto const& it : followersToRemove) {
+        followers.erase(it);
       }
     }
-    {  // add followers to data._follower, which are new in config->participants
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      {  // check our input
-        // TODO This is so important, it should probably get a runtime check as
-        //      well.
-        auto const newFollowers = std::invoke([&] {
-          auto res = std::unordered_map<ParticipantId, std::monostate>{};
-          for (auto const& [participantId, val] : config->participants) {
-            if (!followers.contains(participantId)) {
-              res.try_emplace(participantId, std::monostate{});
-            }
-          }
-          return res;
-        });
-        TRI_ASSERT(keySetsAreEqual(additionalFollowers, newFollowers));
-      }
-#endif
+    {  // add new followers
       for (auto&& [participantId, abstractFollowerPtr] : additionalFollowers) {
         auto const lastIndex =
             data._inMemoryLog.getLastTermIndexPair().index.saturatedDecrement();
@@ -1195,13 +1179,22 @@ void replicated_log::LogLeader::updateParticipantsConfig(
       }
     }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // all participants (but the leader) in the new configuration must now be
+    // part of followers
+    {
+      auto const& newConfigParticipants = data.activeParticipantsConfig->participants;
+      TRI_ASSERT(std::all_of(newConfigParticipants.begin(),
+                             newConfigParticipants.end(), [&](auto const& it) {
+                               return followers.contains(it.first) ||
+                                      it.first == data._self.getParticipantId();
+                             }));
+    }
+#endif
+
     auto const idx = data.insertInternal(std::nullopt, true, std::nullopt);
     data.activeParticipantsConfig = config;
     data._follower.swap(followers);
-
-    // keys of data.activeParticipantsConfig->participants must again be equal to
-    // those in data._follower
-    TRI_ASSERT(keySetsAreEqual(data.activeParticipantsConfig->participants, data._follower));
 
     return idx;
   });

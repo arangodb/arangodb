@@ -79,7 +79,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
     newConfig->generation = 1;
     // make follower2 forced
     newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
   {
@@ -135,7 +135,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
     newConfig->generation = 1;
     // make follower1 excluded
     newConfig->participants["follower1"] = replication2::ParticipantFlags{false, true};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
   {
@@ -180,7 +180,7 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
     newConfig->generation = 1;
     // make follower2 forced
     newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
   auto idx = leader->insert(LogPayload::createFromString("entry #1"));
@@ -201,7 +201,7 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
     auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 2;
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
   {
@@ -237,7 +237,7 @@ TEST_F(UpdateParticipantsFlagsTest, update_without_additional_entry) {
     newConfig->generation = 1;
     // make follower2 excluded
     newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
+    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
   }
 
   EXPECT_EQ(leader->getCommitIndex(), LogIndex{1});

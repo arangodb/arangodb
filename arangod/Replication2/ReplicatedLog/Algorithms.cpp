@@ -327,10 +327,13 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
       // something has changed in the term volatile configuration
       auto leader = log->getLeader();
       TRI_ASSERT(leader != nullptr);
-      auto previousConfig = status.asLeaderStatus()->activeParticipantsConfig;
-      auto const& oldParticipants = previousConfig.participants;
-      auto const& newParticipants = spec->participantsConfig.participants;
-      auto additionalParticipantIds = keySetDifference(oldParticipants, newParticipants);
+      auto* const leaderStatus = status.asLeaderStatus();
+      // Note that newParticipants contains the leader, while oldFollowers does not.
+      auto const& oldFollowers = leaderStatus->follower;
+      auto const& newParticipants = spec->currentTerm->participants;
+      auto const additionalParticipantIds = keySetDifference(newParticipants, oldFollowers);
+      auto const obsoleteParticipantIds = keySetDifference(oldFollowers, newParticipants);
+
       auto additionalParticipants =
           std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>{};
       for (auto const& participantId : additionalParticipantIds) {
@@ -339,10 +342,13 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
                                              ctx.buildAbstractFollowerImpl(logId, participantId));
         }
       }
+
+      auto const& previousConfig = leaderStatus->activeParticipantsConfig;
       leader->updateParticipantsConfig(std::make_shared<ParticipantsConfig const>(
                                            spec->participantsConfig),
                                        previousConfig.generation,
-                                       std::move(additionalParticipants));
+                                       std::move(additionalParticipants),
+                                       obsoleteParticipantIds);
     } else if (plannedLeader.has_value() && plannedLeader->serverId == myServerId &&
                plannedLeader->rebootId == myRebootId) {
       auto followers =
