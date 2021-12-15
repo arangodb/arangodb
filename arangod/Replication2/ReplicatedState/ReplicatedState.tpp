@@ -163,6 +163,7 @@ void ReplicatedState<S>::LeaderState::run() {
                       LOG_TOPIC("1a375", DEBUG, Logger::REPLICATED_STATE)
                           << "recovery on leader completed";
                       self->state = machine;
+                      self->core->snapshot.updateStatus(SnapshotStatus::kCompleted);
                       self->updateInternalState(LeaderInternalState::kServiceAvailable);
                       self->state->_stream = self->stream;
                       return result;

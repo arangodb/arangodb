@@ -131,8 +131,8 @@ struct ReplicatedState final : ReplicatedStateBase,
 
   std::shared_ptr<StateBase> currentState;
   StateGeneration generation{0};
-  std::shared_ptr<replicated_log::ReplicatedLog> log{};
-  std::shared_ptr<Factory> factory;
+  std::shared_ptr<replicated_log::ReplicatedLog> const log{};
+  std::shared_ptr<Factory> const factory;
 };
 
 template <typename S>
