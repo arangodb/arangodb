@@ -547,13 +547,16 @@ TraversalNode::convertUniquenessLevels() const {
 
   if (options()->uniqueVertices == traverser::TraverserOptions::PATH) {
     vertexUniquenessLevel = graph::VertexUniquenessLevel::PATH;
+    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   } else if (options()->uniqueVertices == traverser::TraverserOptions::GLOBAL) {
     vertexUniquenessLevel = graph::VertexUniquenessLevel::GLOBAL;
+    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   }
 
   if (options()->uniqueEdges == traverser::TraverserOptions::PATH) {
     edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   } else if (options()->uniqueVertices == traverser::TraverserOptions::GLOBAL) {
+    TRI_ASSERT(options()->mode != TraverserOptions::Order::DFS);
     edgeUniquenessLevel = graph::EdgeUniquenessLevel::GLOBAL;
   }
 
@@ -828,7 +831,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       }
 
       using SingleServerDFSRefactored =
-          DFSEnumerator<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE>;
+          DFSEnumerator<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
 
       auto dfsUnique = std::make_unique<SingleServerDFSRefactored>(
           SingleServerProvider<SingleServerProviderStep>{opts->query(), std::move(baseProviderOptions),

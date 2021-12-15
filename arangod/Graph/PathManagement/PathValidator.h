@@ -50,7 +50,8 @@ class ValidationResult;
  * - Path Conditions. Vertex, Edge maybe in LookupInfo
  *     (e.g. p.vertices[*].name ALL == "HANS")
  */
-template <class Provider, class PathStore, VertexUniquenessLevel vertexUniqueness>
+template <class Provider, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
 class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
   using Step = typename Provider::Step;
@@ -61,7 +62,7 @@ class PathValidator {
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
-                    PathValidator<Provider, PathStore, vertexUniqueness> const& otherValidator)
+                    PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness> const& otherValidator)
       -> ValidationResult;
 
   void reset();

@@ -616,20 +616,32 @@ template <class FinderType>
 
 /* SingleServerProvider Section */
 template class ::arangodb::aql::TraversalExecutorInfos<::arangodb::graph::DFSEnumerator<
-    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::NONE>>;
+    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+    graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::NONE>>;
+template class ::arangodb::aql::TraversalExecutorInfos<::arangodb::graph::DFSEnumerator<
+    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+    graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::aql::TraversalExecutorInfos<::arangodb::graph::DFSEnumerator<
-    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::PATH>>;
+    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+    graph::VertexUniquenessLevel::PATH, graph::EdgeUniquenessLevel::PATH>>;
 template class ::arangodb::aql::TraversalExecutorInfos<::arangodb::graph::DFSEnumerator<
-    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::GLOBAL>>;
+    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+    graph::VertexUniquenessLevel::GLOBAL, graph::EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::aql::TraversalExecutor<::arangodb::graph::DFSEnumerator<
-    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::NONE>>;
+    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+    graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::NONE>>;
+template class ::arangodb::aql::TraversalExecutor<::arangodb::graph::DFSEnumerator<
+    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+    graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::aql::TraversalExecutor<::arangodb::graph::DFSEnumerator<
-    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::PATH>>;
+    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+    graph::VertexUniquenessLevel::PATH, graph::EdgeUniquenessLevel::PATH>>;
 template class ::arangodb::aql::TraversalExecutor<::arangodb::graph::DFSEnumerator<
-    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>, graph::VertexUniquenessLevel::GLOBAL>>;
+    arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+    graph::VertexUniquenessLevel::GLOBAL, graph::EdgeUniquenessLevel::PATH>>;
 
 // Old non refactored variant
 template class ::arangodb::aql::TraversalExecutorInfos<arangodb::traverser::Traverser>;

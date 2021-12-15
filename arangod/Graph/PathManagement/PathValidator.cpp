@@ -42,16 +42,19 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-PathValidator<ProviderType, PathStore, vertexUniqueness>::PathValidator(
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+    EdgeUniquenessLevel edgeUniqueness>
+PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::PathValidator(
     ProviderType& provider, PathStore& store, PathValidatorOptions opts)
     : _store(store), _provider(provider), _options(std::move(opts)) {}
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-PathValidator<ProviderType, PathStore, vertexUniqueness>::~PathValidator() = default;
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::~PathValidator() = default;
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::validatePath(
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::validatePath(
     typename PathStore::Step const& step) -> ValidationResult {
   auto ctx = _options.getExpressionContext();
   // Reset variables
@@ -87,10 +90,11 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::validatePath(
   return res;
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::validatePath(
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::validatePath(
     typename PathStore::Step const& step,
-    PathValidator<ProviderType, PathStore, vertexUniqueness> const& otherValidator)
+    PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness> const& otherValidator)
     -> ValidationResult {
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
     // For PATH: take _uniqueVertices of otherValidator, and run Visitor of other side, check if one vertex is duplicate.
@@ -127,14 +131,16 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::validatePath(
   return ValidationResult{ValidationResult::Type::TAKE};
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::exposeUniqueVertices() const
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::exposeUniqueVertices() const
     -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const& {
   return _uniqueVertices;
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexRestriction(
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::evaluateVertexRestriction(
     typename PathStore::Step const& step) -> bool {
   if (step.isFirst()) {
     // first step => always allowed
@@ -158,8 +164,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexRes
   return false;
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCondition(
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::evaluateVertexCondition(
     typename PathStore::Step const& step) -> ValidationResult {
   // evaluate if vertex collection is allowed
   bool isAllowed = evaluateVertexRestriction(step);
@@ -237,8 +244,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexCon
   return ValidationResult{ValidationResult::Type::TAKE};
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexExpression(
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::evaluateVertexExpression(
     arangodb::aql::Expression* expression, VPackSlice value) -> bool {
   if (expression == nullptr) {
     return true;
@@ -256,109 +264,139 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness>::evaluateVertexExp
   return res.toBoolean();
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-void PathValidator<ProviderType, PathStore, vertexUniqueness>::reset() {
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::reset() {
   if constexpr (vertexUniqueness != VertexUniquenessLevel::NONE) {
     _uniqueVertices.clear();
   }
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-bool PathValidator<ProviderType, PathStore, vertexUniqueness>::usesPrune() const {
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+bool PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::usesPrune() const {
   if (_options.usesPrune()) {
     return true;
   }
   return false;
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-bool PathValidator<ProviderType, PathStore, vertexUniqueness>::usesPostFilter() const {
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+bool PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::usesPostFilter() const {
   if (_options.usesPostFilter()) {
     return true;
   }
   return false;
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPruneContext(aql::InputAqlItemRow& inputRow) {
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::setPruneContext(aql::InputAqlItemRow& inputRow) {
   TRI_ASSERT(_options.usesPrune());
   _options.setPruneContext(inputRow);
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-void PathValidator<ProviderType, PathStore, vertexUniqueness>::setPostFilterContext(aql::InputAqlItemRow& inputRow) {
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::setPostFilterContext(aql::InputAqlItemRow& inputRow) {
   TRI_ASSERT(_options.usesPostFilter());
   _options.setPostFilterContext(inputRow);
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-void PathValidator<ProviderType, PathStore, vertexUniqueness>::unpreparePruneContext(){
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::unpreparePruneContext(){
   TRI_ASSERT(_options.usesPrune());
   _options.unpreparePruneContext();
 }
 
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness>
-void PathValidator<ProviderType, PathStore, vertexUniqueness>::unpreparePostFilterContext(){
+template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
+          EdgeUniquenessLevel edgeUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::unpreparePostFilterContext(){
   TRI_ASSERT(_options.usesPostFilter());
   _options.unpreparePostFilterContext();
 }
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
-template class PathValidator<SingleServerProvider<SingleServerProviderStep>,
-                             PathStore<SingleServerProviderStep>, VertexUniquenessLevel::NONE>;
+template class PathValidator<SingleServerProvider<SingleServerProviderStep>, PathStore<SingleServerProviderStep>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
 template class PathValidator<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
                              PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
-                             VertexUniquenessLevel::NONE>;
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
+template class PathValidator<SingleServerProvider<SingleServerProviderStep>, PathStore<SingleServerProviderStep>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
+template class PathValidator<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
+                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<SingleServerProvider<SingleServerProviderStep>,
-                             PathStore<SingleServerProvider<SingleServerProviderStep>::Step>, VertexUniquenessLevel::PATH>;
+                             PathStore<SingleServerProvider<SingleServerProviderStep>::Step>,
+                             VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 template class PathValidator<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
                              PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
-                             VertexUniquenessLevel::PATH>;
+                             VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<SingleServerProvider<SingleServerProviderStep>,
-                             PathStore<SingleServerProvider<SingleServerProviderStep>::Step>, VertexUniquenessLevel::GLOBAL>;
+                             PathStore<SingleServerProvider<SingleServerProviderStep>::Step>,
+                             VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 template class PathValidator<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
                              PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
-                             VertexUniquenessLevel::GLOBAL>;
+                             VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 
 #ifdef USE_ENTERPRISE
-template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
-                             PathStore<enterprise::SmartGraphStep>, VertexUniquenessLevel::NONE>;
+template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>, PathStore<enterprise::SmartGraphStep>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
 template class PathValidator<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
                              PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
-                             VertexUniquenessLevel::NONE>;
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
+template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>, PathStore<enterprise::SmartGraphStep>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
+template class PathValidator<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
+                             PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
-                             PathStore<SingleServerProvider<enterprise::SmartGraphStep>::Step>, VertexUniquenessLevel::PATH>;
+                             PathStore<SingleServerProvider<enterprise::SmartGraphStep>::Step>,
+                             VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 template class PathValidator<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
                              PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
-                             VertexUniquenessLevel::PATH>;
+                             VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
-                             PathStore<SingleServerProvider<enterprise::SmartGraphStep>::Step>, VertexUniquenessLevel::GLOBAL>;
+                             PathStore<SingleServerProvider<enterprise::SmartGraphStep>::Step>,
+                             VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 template class PathValidator<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
                              PathStoreTracer<PathStore<ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
-                             VertexUniquenessLevel::GLOBAL>;
+                             VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 #endif
 
 /* ClusterProvider Section */
-template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>, VertexUniquenessLevel::NONE>;
+template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
 template class PathValidator<ProviderTracer<ClusterProvider>,
-                             PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>, VertexUniquenessLevel::NONE>;
-
-template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>, VertexUniquenessLevel::PATH>;
+                             PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
+template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
 template class PathValidator<ProviderTracer<ClusterProvider>,
-                             PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>, VertexUniquenessLevel::PATH>;
+                             PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
+                             VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
 
-template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>, VertexUniquenessLevel::GLOBAL>;
+template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>,
+                             VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 template class PathValidator<ProviderTracer<ClusterProvider>,
-                             PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>, VertexUniquenessLevel::GLOBAL>;
+                             PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
+                             VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 
-}  // namespace graph
-}  // namespace arangodb
+template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>,
+                             VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+template class PathValidator<ProviderTracer<ClusterProvider>,
+                             PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
+                             VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+
+}  // namespace arangodb::graph
