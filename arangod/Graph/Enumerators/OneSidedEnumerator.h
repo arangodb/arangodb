@@ -136,28 +136,26 @@ class OneSidedEnumerator : public TraversalEnumerator {
    */
   auto stealStats() -> aql::TraversalStats override;
 
-  auto validatorUsesPrune() const -> bool;
-  auto validatorUsesPostFilter() const -> bool;
+  auto validatorUsesPrune() const -> bool override;
+  auto validatorUsesPostFilter() const -> bool override;
 
-  auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow) -> void;
-  auto setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow) -> void;
+  auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow) -> void override;
+  auto setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow) -> void override;
 
-  auto unpreparePruneValidatorContext() -> void;
-  auto unpreparePostFilterValidatorContext() -> void;
+  auto unpreparePruneValidatorContext() -> void override;
+  auto unpreparePostFilterValidatorContext() -> void override;
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
 
   auto computeNeighbourhoodOfNextVertex() -> void;
 
-  // Ensure that we have fetched all vertices
-  // in the _results list.
-  // Otherwise we will not be able to
-  // generate the resulting path
+  // Ensure that we have fetched all vertices in the _results list.
+  // Otherwise, we will not be able to generate the resulting path
   auto fetchResults() -> void;
 
   // Ensure that we have more valid paths in the _result stock.
-  // May be a noop if _result is not empty.
+  // It may be a noop if _result is not empty.
   auto searchMoreResults() -> void;
   void clearProvider();
 

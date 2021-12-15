@@ -138,6 +138,9 @@ DECLARE_COUNTER(arangodb_revision_tree_resurrections_total, "Number of revision 
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
+// global flag to cancel all compactions. will be flipped to true on shutdown
+static std::atomic<bool> cancelCompactions{false};
+
 // minimum value for --rocksdb.sync-interval (in ms)
 // a value of 0 however means turning off the syncing altogether!
 static constexpr uint64_t minSyncInterval = 5;
@@ -375,6 +378,32 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle));
+  
+  options->addOption("--rocksdb.throttle-slots", "number of historic metrics to use for throttle value calculation",
+                     new UInt64Parameter(&_throttleSlots),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-frequency", "frequency for write-throttle calculations (in milliseconds)",
+                     new UInt64Parameter(&_throttleFrequency),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-scaling-factor", "adaptiveness scaling factor for write-throttle calculations",
+                     new UInt64Parameter(&_throttleScalingFactor),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-max-write-rate", "maximum write rate enforced by throttle (in bytes per second, 0 = unlimited)",
+                     new UInt64Parameter(&_throttleMaxWriteRate),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+  
+  options->addOption("--rocksdb.throttle-slow-down-writes-trigger", "number of level 0 files whose payload "
+                     "is not considered in throttle calculations when penalizing the presence of L0 files",
+                     new UInt64Parameter(&_throttleSlowdownWritesTrigger),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
@@ -411,6 +440,20 @@ void RocksDBEngine::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+
+  if (_throttleSlots == 0) {
+    LOG_TOPIC("76e1b", FATAL, arangodb::Logger::CONFIG)
+        << "invalid value for --rocksdb.throttle-slots";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_throttleScalingFactor == 0) {
+    _throttleScalingFactor = 1;
+  }
+
+  if (_throttleSlots < 8) {
+    _throttleSlots = 8;
+  }
 
   if (_requiredDiskFreePercentage < 0.0 || _requiredDiskFreePercentage > 1.0) {
     LOG_TOPIC("e4697", FATAL, arangodb::Logger::CONFIG)
@@ -634,7 +677,7 @@ void RocksDBEngine::start() {
 
     if (!_debugLogging) {
       logger->disable();
-    }  // if
+    } 
   }
 
   if (opts._enableStatistics) {
@@ -698,7 +741,8 @@ void RocksDBEngine::start() {
   _options.bloom_locality = 1;
 
   if (_useThrottle) {
-    _throttleListener = std::make_shared<RocksDBThrottle>();
+    _throttleListener = std::make_shared<RocksDBThrottle>(_throttleSlots, _throttleFrequency, _throttleScalingFactor,
+                                                          _throttleMaxWriteRate, _throttleSlowdownWritesTrigger);
     _options.listeners.push_back(_throttleListener);
   }
 
@@ -759,6 +803,7 @@ void RocksDBEngine::start() {
     testOptions.avoid_flush_during_recovery = true;
     testOptions.avoid_flush_during_shutdown = true;
     testOptions.env = _options.env;
+    
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status =
         rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
@@ -768,7 +813,7 @@ void RocksDBEngine::start() {
       if (res.errorNumber() != TRI_ERROR_ARANGO_IO_ERROR) {
         // not an I/O error. so we better report the error and abort here
         LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
-            << "unable to initialize RocksDB engine: " << status.ToString();
+            << "unable to initialize RocksDB engine: " << res.errorMessage();
         FATAL_ERROR_EXIT();
       }
     }
@@ -978,6 +1023,10 @@ void RocksDBEngine::beginShutdown() {
     _replicationManager->beginShutdown();
   }
 
+  // from now on, all started compactions can be canceled.
+  // note that this is only a best-effort hint to RocksDB and
+  // may not be followed immediately.
+  ::cancelCompactions.store(true, std::memory_order_release);
 }
 
 void RocksDBEngine::stop() {
@@ -1637,6 +1686,7 @@ void RocksDBEngine::processCompactions() {
         double start = TRI_microtime();
         try {
           rocksdb::CompactRangeOptions opts;
+          opts.canceled = &::cancelCompactions;
           rocksdb::Slice b = bounds.start(), e = bounds.end();
           _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
         } catch (std::exception const& ex) {
@@ -1956,7 +2006,8 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
 }
 
 Result RocksDBEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
-  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel);
+  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel, 
+                                &::cancelCompactions);
 }
 
 /// @brief Add engine-specific optimizer rules

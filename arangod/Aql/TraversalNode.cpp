@@ -540,26 +540,6 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 }
 
-std::pair<arangodb::graph::VertexUniquenessLevel, arangodb::graph::EdgeUniquenessLevel>
-TraversalNode::convertUniquenessLevels() const {
-  auto vertexUniquenessLevel = graph::VertexUniquenessLevel::NONE;
-  auto edgeUniquenessLevel = graph::EdgeUniquenessLevel::NONE;
-
-  if (options()->uniqueVertices == traverser::TraverserOptions::PATH) {
-    vertexUniquenessLevel = graph::VertexUniquenessLevel::PATH;
-  } else if (options()->uniqueVertices == traverser::TraverserOptions::GLOBAL) {
-    vertexUniquenessLevel = graph::VertexUniquenessLevel::GLOBAL;
-  }
-
-  if (options()->uniqueEdges == traverser::TraverserOptions::PATH) {
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
-  } else if (options()->uniqueVertices == traverser::TraverserOptions::GLOBAL) {
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::GLOBAL;
-  }
-
-  return std::make_pair(vertexUniquenessLevel, edgeUniquenessLevel);
-}
-
 std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes() const {
   std::vector<IndexAccessor> indexAccessors{};
 
@@ -795,8 +775,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
           opts->collectionToShard()};
 
-      // auto uniqueVerticesAndEdges = convertUniquenessLevels();
-
       arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth, opts->maxDepth};
       PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx()};
 
@@ -837,11 +815,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
           opts->query().resourceMonitor());
 
       auto executorInfos =
-          TraversalExecutorInfos(std::move(dfsUnique), engine.getQuery(), outputRegisterMapping,
+          TraversalExecutorInfos(nullptr, outputRegisterMapping,
                                  getStartVertex(), inputRegister,
-                                 std::move(filterConditionVariables), plan()->getAst());
+                                 std::move(filterConditionVariables),
+                                 plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges,
+                                 opts->mode, opts->refactor(), opts->trx());
 
-      return std::make_unique<ExecutionBlockImpl<TraversalExecutor<SingleServerDFSRefactored>>>(
+      return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     } else {
       traverser = std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
@@ -850,11 +830,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   TRI_ASSERT(traverser != nullptr);
   auto executorInfos =
-      TraversalExecutorInfos(std::move(traverser), engine.getQuery(), outputRegisterMapping,
-                             getStartVertex(), inputRegister,
-                             std::move(filterConditionVariables), plan()->getAst());
+      TraversalExecutorInfos(std::move(traverser),
+                             outputRegisterMapping, getStartVertex(),
+                             inputRegister, std::move(filterConditionVariables),
+                             plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges,
+                             opts->mode, opts->refactor(), opts->trx());
 
-  return std::make_unique<ExecutionBlockImpl<TraversalExecutor<traverser::Traverser>>>(
+  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 

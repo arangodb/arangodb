@@ -286,11 +286,11 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   RegisterId inReg;
   RegisterId outReg;
   TraverserHelper* traverser;
-  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
+  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> registerMapping;
 
   std::string const noFixed;
   RegisterInfos registerInfos;
-  TraversalExecutorInfos executorInfos;
+  TraversalExecutorInfos executorInfos; // TODO [GraphRefactor]: We need to test all variants of graph refactor here as well
 
   TraversalExecutorTestInputStartVertex()
       : fakedQuery(server.createFakeQuery()),
@@ -302,12 +302,15 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         inReg(0),
         outReg(1),
         traverser(traverserPtr.get()),
-        registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
+        registerMapping{{TraversalExecutorInfosHelper::OutputName::VERTEX, outReg}},
         noFixed(""),
         registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {}, {RegIdSet{0}}),
-        executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg, filterConditionVariables, fakedQuery->ast())
-
-  {}
+        executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg,
+                      filterConditionVariables, fakedQuery->ast(),
+                      traverser::TraverserOptions::UniquenessLevel::NONE,
+                      traverser::TraverserOptions::UniquenessLevel::NONE,
+                      traverser::TraverserOptions::Order::DFS, false,
+                      server.createFakeTransaction().get()) {}
 };
 
 TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_producer_doesnt_produce) {
@@ -466,11 +469,11 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   TraverserHelper* traverser;
   std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters;
   std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
-  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
+  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> registerMapping;
 
   std::string const fixed;
   RegisterInfos registerInfos;
-  TraversalExecutorInfos executorInfos;
+  TraversalExecutorInfos executorInfos; // TODO [GraphRefactor]: We need to test all variants of graph refactor here as well
 
   TraversalExecutorTestConstantStartVertex()
       : fakedQuery(server.createFakeQuery()),
@@ -481,11 +484,15 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
         traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, myGraph)),
         outReg(1),
         traverser(traverserPtr.get()),
-        registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
+        registerMapping{{TraversalExecutorInfosHelper::OutputName::VERTEX, outReg}},
         fixed("v/1"),
         registerInfos({}, RegIdSet{1}, 1, 2, {}, {RegIdSet{0}}),
         executorInfos(std::move(traverserPtr), registerMapping, fixed,
-                      RegisterPlan::MaxRegisterId, filterConditionVariables, fakedQuery->ast()) {}
+                      RegisterPlan::MaxRegisterId, filterConditionVariables,
+                      fakedQuery->ast(), traverser::TraverserOptions::UniquenessLevel::NONE,
+                      traverser::TraverserOptions::UniquenessLevel::NONE,
+                      traverser::TraverserOptions::Order::DFS, false,
+                      server.createFakeTransaction().get()) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesnt_produce) {
