@@ -308,9 +308,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     CommitFailReason _lastCommitFailReason;
 
     // active - that is currently used to check for committed entries
-    std::shared_ptr<ParticipantsConfig const> activeParticipantConfig;
+    std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig;
     // committed - latest active config that has committed at least one entry
-    std::shared_ptr<ParticipantsConfig const> committedParticipantConfig;
+    std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig;
   };
 
   LoggerContext const _logContext;

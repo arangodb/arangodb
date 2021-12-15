@@ -78,10 +78,10 @@ void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
   local.toVelocyPack(builder);
   builder.add(VPackValue("lastCommitStatus"));
   lastCommitStatus.toVelocyPack(builder);
-  builder.add(VPackValue("activeParticipantConfig"));
-  activeParticipantConfig.toVelocyPack(builder);
-  builder.add(VPackValue("committedParticipantConfig"));
-  committedParticipantConfig.toVelocyPack(builder);
+  builder.add(VPackValue("activeParticipantsConfig"));
+  activeParticipantsConfig.toVelocyPack(builder);
+  builder.add(VPackValue("committedParticipantsConfig"));
+  committedParticipantsConfig.toVelocyPack(builder);
   {
     VPackObjectBuilder ob2(&builder, StaticStrings::Follower);
     for (auto const& [id, stat] : follower) {
@@ -102,10 +102,10 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
       slice.get("commitLagMS").extract<double>()};
   status.lastCommitStatus =
       CommitFailReason::fromVelocyPack(slice.get("lastCommitStatus"));
-  status.activeParticipantConfig = ParticipantsConfig::fromVelocyPack(
-      slice.get("activeParticipantConfig"));
-  status.committedParticipantConfig = ParticipantsConfig::fromVelocyPack(
-      slice.get("committedParticipantConfig"));
+  status.activeParticipantsConfig = ParticipantsConfig::fromVelocyPack(
+      slice.get("activeParticipantsConfig"));
+  status.committedParticipantsConfig = ParticipantsConfig::fromVelocyPack(
+      slice.get("committedParticipantsConfig"));
   for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);

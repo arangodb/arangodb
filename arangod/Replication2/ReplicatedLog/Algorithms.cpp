@@ -327,7 +327,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
       // something has changed in the term volatile configuration
       auto leader = log->getLeader();
       TRI_ASSERT(leader != nullptr);
-      auto previousConfig = status.asLeaderStatus()->activeParticipantConfig;
+      auto previousConfig = status.asLeaderStatus()->activeParticipantsConfig;
       auto const& oldParticipants = previousConfig.participants;
       auto const& newParticipants = spec->participantsConfig.participants;
       auto additionalParticipantIds = keySetDifference(oldParticipants, newParticipants);

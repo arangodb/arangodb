@@ -568,7 +568,7 @@ void arangodb::maintenance::diffReplicatedLogs(
 
           // check if participants generation has changed (in case we are the leader)
           if (auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
-            if (leaderStatus->activeParticipantConfig.generation <
+            if (leaderStatus->activeParticipantsConfig.generation <
                 spec.participantsConfig.generation) {
               return true;
             }
@@ -1231,23 +1231,22 @@ static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::LogSta
   return std::nullopt;
 }
 
-static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::LeaderStatus const& status,
-                                             replication2::agency::LogCurrent::Leader const* currentLeader)
+static auto reportCurrentReplicatedLogLeader(
+    replication2::replicated_log::LeaderStatus const& status,
+    replication2::agency::LogCurrent::Leader const* currentLeader)
     -> std::optional<replication2::agency::LogCurrent::Leader> {
   if (status.leadershipEstablished) {
     // check if either there is no entry in current yet, the term has changed or
     // the participant config generation has changed.
-    // TODO Why do we want to update if committedParticipantsConfig.generation
-    //      is outdated, even if activeParticipantsConfig.generation might not be?
-    bool requiresUpdate = currentLeader == nullptr || currentLeader->term != status.term ||
+    bool requiresUpdate = currentLeader == nullptr ||
+                          currentLeader->term != status.term ||
                           currentLeader->committedParticipantsConfig.generation !=
-                              status.committedParticipantConfig.generation;
+                              status.committedParticipantsConfig.generation;
 
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
       leader.term = status.term;
-      // TODO committed = active - is that right?
-      leader.committedParticipantsConfig = status.activeParticipantConfig;
+      leader.committedParticipantsConfig = status.committedParticipantsConfig;
       return leader;
     }
   }

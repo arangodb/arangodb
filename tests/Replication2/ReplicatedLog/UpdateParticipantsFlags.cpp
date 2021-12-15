@@ -74,7 +74,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
   runAllAsyncAppendEntries();
 
   {
-    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 forced
@@ -130,7 +130,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
   runAllAsyncAppendEntries();
 
   {
-    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower1 excluded
@@ -175,7 +175,7 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
 
   // Force follower 2
   {
-    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 forced
@@ -198,7 +198,7 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
 
   // change configuration back to non-forced follower 2
   {
-    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 2;
     leader->updateParticipantsConfig(newConfig, oldConfig.generation, {});
@@ -232,7 +232,7 @@ TEST_F(UpdateParticipantsFlagsTest, update_without_additional_entry) {
 
   // Force follower 2
   {
-    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantConfig;
+    auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 excluded

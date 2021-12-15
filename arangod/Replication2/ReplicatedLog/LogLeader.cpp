@@ -331,8 +331,8 @@ auto replicated_log::LogLeader::construct(
 
     leaderDataGuard->_follower =
         instantiateFollowers(commonLogContext, followers, localFollower, lastIndex);
-    leaderDataGuard->activeParticipantConfig = participantsConfig;
-    leaderDataGuard->committedParticipantConfig = participantsConfig;
+    leaderDataGuard->activeParticipantsConfig = participantsConfig;
+    leaderDataGuard->committedParticipantsConfig = participantsConfig;
     leader->_localFollower = std::move(localFollower);
     TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
@@ -412,8 +412,8 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.largestCommonIndex = leaderData._largestCommonIndex;
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
-    status.activeParticipantConfig = *leaderData.activeParticipantConfig;
-    status.committedParticipantConfig = *leaderData.committedParticipantConfig;
+    status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
+    status.committedParticipantsConfig = *leaderData.committedParticipantsConfig;
     for (auto const& [pid, f] : leaderData._follower) {
       auto lastRequestLatencyMS =
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f->_lastRequestLatency);
@@ -790,8 +790,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectEligibleFollowerIndexe
     // LocalFollower is no exception.
     if (lastAckedEntry.term == this->_self._currentTerm) {
       auto flags = std::invoke([&, &pid = pid] {
-        if (auto f = activeParticipantConfig->participants.find(pid);
-            f != std::end(activeParticipantConfig->participants)) {
+        if (auto f = activeParticipantsConfig->participants.find(pid);
+            f != std::end(activeParticipantsConfig->participants)) {
           return f->second;
         }
         return ParticipantFlags{};
@@ -1126,21 +1126,21 @@ void replicated_log::LogLeader::updateParticipantsConfig(
       << "updating configuration to generation " << config->generation;
   TRI_ASSERT(previousGeneration < config->generation);
   auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
-    if (data.activeParticipantConfig->generation >= config->generation) {
+    if (data.activeParticipantsConfig->generation >= config->generation) {
       THROW_ARANGO_EXCEPTION_FORMAT(
           TRI_ERROR_BAD_PARAMETER,
           "updated participant config generation is smaller or equal to "
           "current generation - refusing to update; new = %zu, current = %zu",
-          config->generation, data.activeParticipantConfig->generation);
+          config->generation, data.activeParticipantsConfig->generation);
     }
-    if (data.activeParticipantConfig->generation != previousGeneration) {
+    if (data.activeParticipantsConfig->generation != previousGeneration) {
       // This is to make sure the `additionalFollowers` list is really the
       // (asymmetric) difference between the current and new configuration.
       THROW_ARANGO_EXCEPTION_FORMAT(
           TRI_ERROR_BAD_PARAMETER,
           "assumed participant config generation does not match the current "
           "generation - refusing to update; previous = %zu, current = %zu",
-          previousGeneration, data.activeParticipantConfig->generation);
+          previousGeneration, data.activeParticipantsConfig->generation);
     }
 
     constexpr auto keySetsAreEqual = [](auto const& mapLeft, auto const& mapRight) {
@@ -1152,7 +1152,7 @@ void replicated_log::LogLeader::updateParticipantsConfig(
 
     // keys of data.activeParticipantConfig->participants must be equal to
     // those in data._follower
-    TRI_ASSERT(keySetsAreEqual(data.activeParticipantConfig->participants, data._follower));
+    TRI_ASSERT(keySetsAreEqual(data.activeParticipantsConfig->participants, data._follower));
 
     // Create a copy. This is important to keep the following code exception-safe,
     // in particular never leave data._follower behind in a half-updated state.
@@ -1196,12 +1196,12 @@ void replicated_log::LogLeader::updateParticipantsConfig(
     }
 
     auto const idx = data.insertInternal(std::nullopt, true, std::nullopt);
-    data.activeParticipantConfig = config;
+    data.activeParticipantsConfig = config;
     data._follower.swap(followers);
 
-    // keys of data.activeParticipantConfig->participants must again be equal to
+    // keys of data.activeParticipantsConfig->participants must again be equal to
     // those in data._follower
-    TRI_ASSERT(keySetsAreEqual(data.activeParticipantConfig->participants, data._follower));
+    TRI_ASSERT(keySetsAreEqual(data.activeParticipantsConfig->participants, data._follower));
 
     return idx;
   });
@@ -1212,12 +1212,12 @@ void replicated_log::LogLeader::updateParticipantsConfig(
       try {
         result.throwIfFailed();
         if (auto guard = self->_guardedLeaderData.getLockedGuard();
-             guard->activeParticipantConfig->generation == config->generation) {
+             guard->activeParticipantsConfig->generation == config->generation) {
           // Make sure config is the currently active configuration. It could
-          // happen that activeParticipantConfig was changed before config got
+          // happen that activeParticipantsConfig was changed before config got
           // any chance to see anything committed, thus never being considered
-          // an actual committedParticipantConfig. In this case we skip it.
-          guard->committedParticipantConfig = config;
+          // an actual committedParticipantsConfig. In this case we skip it.
+          guard->committedParticipantsConfig = config;
           LOG_CTX("536f5", DEBUG, self->_logContext)
               << "configuration committed, generation " << config->generation;
         } else {
@@ -1253,8 +1253,8 @@ auto replicated_log::LogLeader::getCommitIndex() const noexcept -> LogIndex {
 auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
     -> std::pair<std::size_t, std::size_t> {
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData const& data) {
-    return std::make_pair(data.activeParticipantConfig->generation,
-                          data.committedParticipantConfig->generation);
+    return std::make_pair(data.activeParticipantsConfig->generation,
+                          data.committedParticipantsConfig->generation);
   });
 }
 
