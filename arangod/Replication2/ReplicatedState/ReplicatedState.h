@@ -113,9 +113,6 @@ struct ReplicatedState final : ReplicatedStateBase,
     return getFollower();
   }
 
-  friend struct ReplicatedFollowerState<S>;
-  friend struct ReplicatedLeaderState<S>;
-
   struct StateBase {
     virtual ~StateBase() = default;
     virtual auto getStatus() -> StateStatus = 0;

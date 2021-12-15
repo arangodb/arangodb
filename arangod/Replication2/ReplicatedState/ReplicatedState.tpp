@@ -301,7 +301,7 @@ void ReplicatedState<S>::FollowerState::tryTransferSnapshot() {
         LOG_TOPIC("44d58", INFO, Logger::REPLICATED_STATE)
             << "snapshot transfer successfully completed";
         self->core->snapshot.updateStatus(SnapshotStatus::kCompleted);
-        self->startService();
+        return self->startService();
       }
     } catch (...) {
     }
