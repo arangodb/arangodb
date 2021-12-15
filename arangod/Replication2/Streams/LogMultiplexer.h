@@ -3,7 +3,7 @@
 
 #include <Futures/Future.h>
 
-#include <Replication2/ReplicatedLog/ILogParticipant.h>
+#include <Replication2/ReplicatedLog/ILogInterfaces.h>
 #include <Replication2/ReplicatedLog/LogCommon.h>
 #include <Replication2/ReplicatedLog/types.h>
 
@@ -11,8 +11,8 @@
 #include <Replication2/Streams/Streams.h>
 
 namespace arangodb::replication2::replicated_log {
-class LogFollower;
-class LogLeader;
+struct ILogFollower;
+struct ILogLeader;
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::streams {
@@ -76,7 +76,7 @@ struct LogDemultiplexer
 template <typename Spec>
 struct LogMultiplexer
     : LogMultiplexerStreamDispatcher<LogMultiplexer<Spec>, Spec, ProducerStream> {
-  static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> leader)
+  static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader> leader)
       -> std::shared_ptr<LogMultiplexer>;
 
   /*

@@ -50,8 +50,7 @@
 
 #include "LogMultiplexer.h"
 
-#include <Replication2/ReplicatedLog/LogFollower.h>
-#include <Replication2/ReplicatedLog/LogLeader.h>
+#include <Replication2/ReplicatedLog/ILogInterfaces.h>
 
 #include <Replication2/Streams/MultiplexedValues.h>
 #include <Replication2/Streams/StreamInformationBlock.h>
@@ -92,9 +91,9 @@ auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs.
 }
 }  // namespace
 
-template <typename Derived, typename Spec, template <typename> typename StreamInterface, typename Interface>
+template <typename Derived, typename Spec, template <typename> typename StreamInterface>
 struct LogMultiplexerImplementationBase {
-  explicit LogMultiplexerImplementationBase(std::shared_ptr<Interface> const& interface_)
+  explicit LogMultiplexerImplementationBase(std::shared_ptr<replicated_log::ILogParticipant> const& interface_)
       : _guardedData(static_cast<Derived&>(*this)), _interface(interface_) {}
 
   template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
@@ -233,7 +232,7 @@ struct LogMultiplexerImplementationBase {
   auto weak_from_self() -> std::weak_ptr<Derived> { return shared_from_self(); }
 
   Guarded<MultiplexerData<Spec>, basics::UnshackledMutex> _guardedData{};
-  std::shared_ptr<Interface> const _interface;
+  std::shared_ptr<replicated_log::ILogParticipant> const _interface;
 };
 
 #if (_MSC_VER >= 1)
@@ -243,15 +242,15 @@ struct LogMultiplexerImplementationBase {
 #pragma warning(disable : 4250)
 #endif
 
-template <typename Spec, typename Interface>
+template <typename Spec>
 struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,  // implement the actual class
-      ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec, Interface>, Spec, Stream>,  // use a proxy stream dispatcher
-      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec,
-                                       arangodb::replication2::streams::Stream, Interface> {
-  explicit LogDemultiplexerImplementation(std::shared_ptr<Interface> interface_)
-      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec, Interface>, Spec,
-                                         arangodb::replication2::streams::Stream, Interface>(
+      ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec>, Spec, Stream>,  // use a proxy stream dispatcher
+      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec>, Spec,
+                                       arangodb::replication2::streams::Stream> {
+  explicit LogDemultiplexerImplementation(std::shared_ptr<replicated_log::ILogParticipant> interface_)
+      : LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec>, Spec,
+                                         arangodb::replication2::streams::Stream>(
             std::move(interface_)) {}
 
   auto digestIterator(LogIterator& iter) -> void override {
@@ -315,21 +314,21 @@ struct LogDemultiplexerImplementation
   }
 };
 
-template <typename Spec, typename Interface>
+template <typename Spec>
 struct LogMultiplexerImplementation
     : LogMultiplexer<Spec>,
-      ProxyStreamDispatcher<LogMultiplexerImplementation<Spec, Interface>, Spec, ProducerStream>,
-      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec,
-                                       arangodb::replication2::streams::ProducerStream, Interface> {
-  using SelfClass = LogMultiplexerImplementation<Spec, Interface>;
+      ProxyStreamDispatcher<LogMultiplexerImplementation<Spec>, Spec, ProducerStream>,
+      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec>, Spec,
+                                       arangodb::replication2::streams::ProducerStream> {
+  using SelfClass = LogMultiplexerImplementation<Spec>;
 
-  explicit LogMultiplexerImplementation(std::shared_ptr<Interface> interface_)
-      : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec, Interface>, Spec,
-                                         arangodb::replication2::streams::ProducerStream, Interface>(
+  explicit LogMultiplexerImplementation(std::shared_ptr<replicated_log::ILogLeader> interface_)
+      : LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec>, Spec,
+                                         arangodb::replication2::streams::ProducerStream>(
             std::move(interface_)) {}
 
   void digestAvailableEntries() override {
-    auto log = this->_interface->copyInMemoryLog();
+    auto log = leaderInteface()->copyInMemoryLog();
     auto iter = log.getIteratorFrom(LogIndex{0});
     auto waitForIndex = this->_guardedData.doUnderLock([&](auto& self) {
       self.digestIterator(*iter);
@@ -355,7 +354,7 @@ struct LogMultiplexerImplementation
       // First write to replicated log - note that insert could trigger a
       // waitFor to be resolved. Therefore, we should hold the lock.
       auto insertIndex =
-          this->_interface->insert(LogPayload(std::move(serialized)), false,
+          leaderInteface()->insert(LogPayload(std::move(serialized)), false,
                                    replicated_log::LogLeader::doNotTriggerAsyncReplication);
       TRI_ASSERT(insertIndex > self._lastIndex);
       self._lastIndex = insertIndex;
@@ -370,7 +369,7 @@ struct LogMultiplexerImplementation
     //    we have a possible deadlock with triggerWaitForIndex callback.
     //    This is circumvented by first inserting the entry but not triggering
     //    replication immediately. We trigger it here instead.
-    this->_interface->triggerAsyncReplication();
+    leaderInteface()->triggerAsyncReplication();
 
     if (waitForIndex.has_value()) {
       triggerWaitForIndex(*waitForIndex);
@@ -379,6 +378,10 @@ struct LogMultiplexerImplementation
   }
 
  private:
+  auto leaderInteface() -> std::shared_ptr<replicated_log::ILogLeader> {
+    return std::static_pointer_cast<replicated_log::ILogLeader>(this->_interface);
+  }
+
   void triggerWaitForIndex(LogIndex waitForIndex) {
     LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2) << "multiplexer trigger wait for index " << waitForIndex;
     auto f = this->_interface->waitFor(waitForIndex);
@@ -436,14 +439,14 @@ struct LogMultiplexerImplementation
 template <typename Spec>
 auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface_)
     -> std::shared_ptr<LogDemultiplexer> {
-  return std::make_shared<streams::LogDemultiplexerImplementation<Spec, replicated_log::ILogParticipant>>(
+  return std::make_shared<streams::LogDemultiplexerImplementation<Spec>>(
       std::move(interface_));
 }
 
 template <typename Spec>
-auto LogMultiplexer<Spec>::construct(std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> leader)
+auto LogMultiplexer<Spec>::construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader> leader)
     -> std::shared_ptr<LogMultiplexer> {
-  return std::make_shared<streams::LogMultiplexerImplementation<Spec, replicated_log::LogLeader>>(
+  return std::make_shared<streams::LogMultiplexerImplementation<Spec>>(
       std::move(leader));
 }
 
