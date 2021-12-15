@@ -86,9 +86,7 @@ RestStatus RestVersionHandler::execute() {
   ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   bool const allowInfo = security.canAccessHardenedApi();
-  bool found;
-  std::string const& detailsStr = _request->value("details", found);
-  bool const includeDetails = found && StringUtils::boolean(detailsStr);
+  bool const includeDetails = _request->parsedValue("details", false);
   getVersion(server(), allowInfo, includeDetails, result);
   
   response()->setAllowCompression(true);
