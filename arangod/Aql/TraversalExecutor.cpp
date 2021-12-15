@@ -214,19 +214,23 @@ TraversalExecutorInfos::convertUniquenessLevels() const {
 
   if (getUniqueVertices() == traverser::TraverserOptions::PATH) {
     vertexUniquenessLevel = graph::VertexUniquenessLevel::PATH;
+    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   } else if (getUniqueVertices() == traverser::TraverserOptions::GLOBAL) {
     vertexUniquenessLevel = graph::VertexUniquenessLevel::GLOBAL;
+    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   }
 
   if (getUniqueEdges() == traverser::TraverserOptions::PATH) {
     edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   } else if (getUniqueEdges() == traverser::TraverserOptions::GLOBAL) {
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::GLOBAL;
+    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
   }
 
   return std::make_pair(vertexUniquenessLevel, edgeUniquenessLevel);
 }
 
+
+// TODO [GraphRefactor]: Add a parameter to toggle tracing variants of enumerators.
 auto TraversalExecutorInfos::parseTraversalEnumerator(
     TraverserOptions::Order order, TraverserOptions::UniquenessLevel uniqueVertices,
     TraverserOptions::UniquenessLevel uniqueEdges, arangodb::aql::QueryContext& query,
@@ -239,27 +243,53 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
   if (order == TraverserOptions::Order::DFS) {
     switch (uniqueVertices) {
       case TraverserOptions::UniquenessLevel::NONE:
-        using SingleServerDFSRefactoredNONE =
-            graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
-                                 graph::VertexUniquenessLevel::NONE>;
+        switch(uniqueEdges) {
+          case TraverserOptions::NONE:
+            using SingleServerDFSRefactoredNoneNone =
+                graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                     graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::NONE>;
 
-        _traversalEnumerator = std::make_unique<SingleServerDFSRefactoredNONE>(
+            _traversalEnumerator = std::make_unique<SingleServerDFSRefactoredNoneNone>(
+                graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                    query, std::move(baseProviderOptions), query.resourceMonitor()},
+                std::move(enumeratorOptions), std::move(pathValidatorOptions),
+                query.resourceMonitor());
+            break;
+          case TraverserOptions::PATH:
+          case TraverserOptions::GLOBAL:
+            using SingleServerDFSRefactoredNonePath =
+                graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                     graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::PATH>;
+
+            _traversalEnumerator = std::make_unique<SingleServerDFSRefactoredNonePath>(
+                graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                    query, std::move(baseProviderOptions), query.resourceMonitor()},
+                std::move(enumeratorOptions), std::move(pathValidatorOptions),
+                query.resourceMonitor());
+            break;
+        }
+        break;
+      case TraverserOptions::UniquenessLevel::PATH:
+        using SingleServerDFSRefactoredPath =
+            graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                 graph::VertexUniquenessLevel::PATH, graph::EdgeUniquenessLevel::PATH>;
+
+        _traversalEnumerator = std::make_unique<SingleServerDFSRefactoredPath>(
             graph::SingleServerProvider<graph::SingleServerProviderStep>{
                 query, std::move(baseProviderOptions), query.resourceMonitor()},
             std::move(enumeratorOptions), std::move(pathValidatorOptions),
             query.resourceMonitor());
         break;
-      case TraverserOptions::UniquenessLevel::PATH:
-        using SingleServerDFSRefactoredPATH =
-            graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
-                                 graph::VertexUniquenessLevel::PATH>;
-        _traversalEnumerator = nullptr;
-        break;
       case TraverserOptions::UniquenessLevel::GLOBAL:
-        using SingleServerDFSRefactoredGLOBAL =
+        using SingleServerDFSRefactoredGlobal =
             graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
-                                 graph::VertexUniquenessLevel::GLOBAL>;
-        _traversalEnumerator = nullptr;
+                                 graph::VertexUniquenessLevel::GLOBAL, graph::EdgeUniquenessLevel::PATH>;
+
+        _traversalEnumerator = std::make_unique<SingleServerDFSRefactoredGlobal>(
+            graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                query, std::move(baseProviderOptions), query.resourceMonitor()},
+            std::move(enumeratorOptions), std::move(pathValidatorOptions),
+            query.resourceMonitor());
         break;
       default:
         TRI_ASSERT(false);
@@ -268,22 +298,53 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
   } else if (order == TraverserOptions::Order::BFS) {
     switch (uniqueVertices) {
       case TraverserOptions::UniquenessLevel::NONE:
-        using SingleServerBFSRefactoredNONE =
-            graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
-                                 graph::VertexUniquenessLevel::NONE>;
-        _traversalEnumerator = nullptr;
+        switch(uniqueEdges) {
+          case TraverserOptions::NONE:
+            using SingleServerBFSRefactoredNoneNone =
+                graph::BFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                     graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::NONE>;
+
+            _traversalEnumerator = std::make_unique<SingleServerBFSRefactoredNoneNone>(
+                graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                    query, std::move(baseProviderOptions), query.resourceMonitor()},
+                std::move(enumeratorOptions), std::move(pathValidatorOptions),
+                query.resourceMonitor());
+            break;
+          case TraverserOptions::PATH:
+          case TraverserOptions::GLOBAL:
+            using SingleServerBFSRefactoredNonePath =
+                graph::BFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                     graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::PATH>;
+
+            _traversalEnumerator = std::make_unique<SingleServerBFSRefactoredNonePath>(
+                graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                    query, std::move(baseProviderOptions), query.resourceMonitor()},
+                std::move(enumeratorOptions), std::move(pathValidatorOptions),
+                query.resourceMonitor());
+            break;
+        }
         break;
       case TraverserOptions::UniquenessLevel::PATH:
-        using SingleServerBFSRefactoredPATH =
-            graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
-                                 graph::VertexUniquenessLevel::PATH>;
-        _traversalEnumerator = nullptr;
+        using SingleServerBFSRefactoredPath =
+            graph::BFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                 graph::VertexUniquenessLevel::PATH, graph::EdgeUniquenessLevel::PATH>;
+
+        _traversalEnumerator = std::make_unique<SingleServerBFSRefactoredPath>(
+            graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                query, std::move(baseProviderOptions), query.resourceMonitor()},
+            std::move(enumeratorOptions), std::move(pathValidatorOptions),
+            query.resourceMonitor());
         break;
       case TraverserOptions::UniquenessLevel::GLOBAL:
-        using SingleServerBFSRefactoredGLOBAL =
-            graph::DFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
-                                 graph::VertexUniquenessLevel::GLOBAL>;
-        _traversalEnumerator = nullptr;
+        using SingleServerBFSRefactoredGlobal =
+            graph::BFSEnumerator<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                 graph::VertexUniquenessLevel::GLOBAL, graph::EdgeUniquenessLevel::PATH>;
+
+        _traversalEnumerator = std::make_unique<SingleServerBFSRefactoredGlobal>(
+            graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                query, std::move(baseProviderOptions), query.resourceMonitor()},
+            std::move(enumeratorOptions), std::move(pathValidatorOptions),
+            query.resourceMonitor());
         break;
       default:
         TRI_ASSERT(false);
@@ -291,6 +352,60 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
     }
   } else {
     TRI_ASSERT(order == TraverserOptions::Order::WEIGHTED);
+    switch (uniqueVertices) {
+      case TraverserOptions::UniquenessLevel::NONE:
+        switch(uniqueEdges) {
+          case TraverserOptions::NONE:
+            using SingleServerWeightedRefactoredNoneNone =
+                graph::WeightedEnumeratorRefactored<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                     graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::NONE>;
+
+            _traversalEnumerator = std::make_unique<SingleServerWeightedRefactoredNoneNone>(
+                graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                    query, std::move(baseProviderOptions), query.resourceMonitor()},
+                std::move(enumeratorOptions), std::move(pathValidatorOptions),
+                query.resourceMonitor());
+            break;
+          case TraverserOptions::PATH:
+          case TraverserOptions::GLOBAL:
+            using SingleServerWeightedRefactoredNonePath =
+                graph::WeightedEnumeratorRefactored<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                     graph::VertexUniquenessLevel::NONE, graph::EdgeUniquenessLevel::PATH>;
+
+            _traversalEnumerator = std::make_unique<SingleServerWeightedRefactoredNonePath>(
+                graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                    query, std::move(baseProviderOptions), query.resourceMonitor()},
+                std::move(enumeratorOptions), std::move(pathValidatorOptions),
+                query.resourceMonitor());
+            break;
+        }
+        break;
+      case TraverserOptions::UniquenessLevel::PATH:
+        using SingleServerWeightedRefactoredPath =
+            graph::WeightedEnumeratorRefactored<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                 graph::VertexUniquenessLevel::PATH, graph::EdgeUniquenessLevel::PATH>;
+
+        _traversalEnumerator = std::make_unique<SingleServerWeightedRefactoredPath>(
+            graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                query, std::move(baseProviderOptions), query.resourceMonitor()},
+            std::move(enumeratorOptions), std::move(pathValidatorOptions),
+            query.resourceMonitor());
+        break;
+      case TraverserOptions::UniquenessLevel::GLOBAL:
+        using SingleServerWeightedRefactoredGlobal =
+            graph::WeightedEnumeratorRefactored<arangodb::graph::SingleServerProvider<arangodb::graph::SingleServerProviderStep>,
+                                 graph::VertexUniquenessLevel::GLOBAL, graph::EdgeUniquenessLevel::PATH>;
+
+        _traversalEnumerator = std::make_unique<SingleServerWeightedRefactoredGlobal>(
+            graph::SingleServerProvider<graph::SingleServerProviderStep>{
+                query, std::move(baseProviderOptions), query.resourceMonitor()},
+            std::move(enumeratorOptions), std::move(pathValidatorOptions),
+            query.resourceMonitor());
+        break;
+      default:
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
   }
 }
 
