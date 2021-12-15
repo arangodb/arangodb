@@ -559,9 +559,11 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   Replication2/Methods.cpp
-  Replication2/Methods.h
   RestHandler/RestLogInternalHandler.cpp
-  RestHandler/RestLogInternalHandler.h)
+  Replication2/ReplicatedState/ReplicatedStateFeature.cpp
+  Replication2/ReplicatedState/AgencySpecification.cpp
+  Replication2/ReplicatedState/StateStatus.cpp
+  Replication2/ReplicatedState/StateCommon.cpp)
 
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp

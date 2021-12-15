@@ -69,7 +69,7 @@ struct ReplicatedLogTest : ::testing::Test {
     auto core = makeLogCore(id);
     return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock,
                                                _optionsMock,
-                                               LoggerContext(Logger::FIXME));
+                                               LoggerContext(Logger::REPLICATION2));
   }
 
   auto makeReplicatedLogWithAsyncMockLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
@@ -78,7 +78,7 @@ struct ReplicatedLogTest : ::testing::Test {
     auto core = std::make_unique<LogCore>(persisted);
     return std::make_shared<TestReplicatedLog>(std::move(core), _logMetricsMock,
                                                _optionsMock,
-                                               LoggerContext(Logger::FIXME));
+                                               LoggerContext(Logger::REPLICATION2));
   }
 
   auto defaultLogger() {

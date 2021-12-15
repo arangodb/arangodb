@@ -151,6 +151,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // entry within its term has been committed.
   [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
 
+  auto waitForLeadership() -> WaitForFuture;
+
   // This function returns the current commit index. Do NOT poll this function,
   // use waitFor(idx) instead. This function is used in tests.
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex;
@@ -166,7 +168,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options, LogConfig config,
-            ParticipantId id, LogTerm term, InMemoryLog inMemoryLog);
+            ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog);
 
  private:
   struct GuardedLeaderData;
@@ -315,6 +317,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   LogConfig const _config;
   ParticipantId const _id;
   LogTerm const _currentTerm;
+  LogIndex const _firstIndexOfCurrentTerm;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
   // make this thread safe in the most simple way possible, wrap everything in
