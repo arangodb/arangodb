@@ -2063,12 +2063,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         }
         // Otherwise just check like the other blocks
       }
-      if (!ctx.stack.hasAllValidCalls()) {
-        // We can only continue if we still have a valid call
-        // on all levels
-        _execState = ExecState::DONE;
-        break;
-      }
 
       if (ctx.clientCallList.hasMoreCalls()) {
         // Update to next call and start all over.
