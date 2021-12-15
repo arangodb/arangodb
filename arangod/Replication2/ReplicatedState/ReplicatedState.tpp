@@ -92,6 +92,10 @@ struct ReplicatedState<S>::FollowerState : StateBase,
   void awaitLeaderShip();
   void ingestLogData();
   void pollNewEntries();
+  void checkSnapshot();
+  void tryTransferSnapshot();
+  void startService();
+
   void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
 
   using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
@@ -284,6 +288,54 @@ void ReplicatedState<S>::FollowerState::pollNewEntries() {
 }
 
 template <typename S>
+void ReplicatedState<S>::FollowerState::tryTransferSnapshot() {
+  auto& leader = logFollower->getLeader();
+  TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
+                                    "has to be a leader in the current term";
+  auto f = state->acquireSnapshot(*leader, logFollower->getCommitIndex());
+  std::move(f).thenFinal([self = this->shared_from_this()](futures::Try<Result>&& tryResult) {
+    try {
+      auto& result = tryResult.get();
+      if (result.ok()) {
+        LOG_TOPIC("44d58", INFO, Logger::REPLICATED_STATE)
+            << "snapshot transfer successfully completed";
+        self->core->snapshot.updateStatus(SnapshotStatus::kCompleted);
+        self->startService();
+      }
+    } catch (...) {
+    }
+    TRI_ASSERT(false) << "error handling not implemented";
+    FATAL_ERROR_EXIT();
+  });
+}
+
+template <typename S>
+void ReplicatedState<S>::FollowerState::checkSnapshot() {
+  LOG_TOPIC("aee5b", DEBUG, Logger::REPLICATED_STATE)
+      << "snapshot status is " << core->snapshot << ", planned generation is "
+      << core->plannedGeneration;
+  bool needsSnapshot = core->snapshot.status != SnapshotStatus::kCompleted ||
+                       core->snapshot.generation != core->plannedGeneration;
+  if (needsSnapshot) {
+    LOG_TOPIC("3d0fc", INFO, Logger::REPLICATED_STATE)
+        << "new snapshot is required";
+    tryTransferSnapshot();
+  } else {
+    LOG_TOPIC("9cd75", DEBUG, Logger::REPLICATED_STATE)
+        << "no snapshot transfer required";
+    startService();
+  }
+}
+
+template <typename S>
+void ReplicatedState<S>::FollowerState::startService() {
+  LOG_TOPIC("26c55", DEBUG, Logger::REPLICATED_STATE)
+      << "starting service as follower";
+  state->_stream = stream;
+  pollNewEntries();
+}
+
+template <typename S>
 void ReplicatedState<S>::FollowerState::ingestLogData() {
   if (auto locked = parent.lock(); locked) {
     updateInternalState(FollowerInternalState::kTransferSnapshot);
@@ -297,11 +349,7 @@ void ReplicatedState<S>::FollowerState::ingestLogData() {
 
     LOG_TOPIC("ea777", TRACE, Logger::REPLICATED_STATE)
         << "check if new snapshot is required";
-
-    LOG_TOPIC("26c55", DEBUG, Logger::REPLICATED_STATE)
-        << "starting service as follower";
-    state->_stream = stream;
-    pollNewEntries();
+    checkSnapshot();
   } else {
     LOG_TOPIC("3237c", DEBUG, Logger::REPLICATED_STATE)
         << "Parent state already gone";

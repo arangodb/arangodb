@@ -53,7 +53,7 @@ void MyLeaderState::set(std::string key, std::string value) {
   });
 }
 
-auto MyFollowerState::acquireSnapshot(ParticipantId const& destination) noexcept
+auto MyFollowerState::acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
     -> futures::Future<Result> {
   return futures::Future<Result>{TRI_ERROR_NO_ERROR};
 }

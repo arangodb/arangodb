@@ -58,6 +58,7 @@ class LogFollower final : public ILogParticipant,
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
+  [[nodiscard]] auto getLeader() const noexcept -> std::optional<ParticipantId> const&;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
@@ -66,6 +67,7 @@ class LogFollower final : public ILogParticipant,
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
       -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex;
 
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 

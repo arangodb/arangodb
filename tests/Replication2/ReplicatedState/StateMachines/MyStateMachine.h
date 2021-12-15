@@ -62,7 +62,7 @@ struct MyLeaderState : MyStateBase, replicated_state::ReplicatedLeaderState<MySt
 
 struct MyFollowerState : MyStateBase, replicated_state::ReplicatedFollowerState<MyState> {
  protected:
-  auto acquireSnapshot(ParticipantId const& destination) noexcept -> futures::Future<Result> override;
+  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> override;
 };
 

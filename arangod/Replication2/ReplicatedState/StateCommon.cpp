@@ -48,6 +48,28 @@ auto replicated_state::operator<<(std::ostream& os, StateGeneration g) -> std::o
   return os << g.value;
 }
 
+auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss) -> std::ostream& {
+  return os << "[" << to_string(ss.status) << "@" << ss.generation << "]";
+}
+
 void SnapshotStatus::updateStatus(Status s, std::optional<Result> newError) {
   TRI_ASSERT((s == kFailed) == (error.has_value()));
+  status = s;
+  error = std::move(newError);
+  lastChange = clock::now();
+}
+
+auto replicated_state::to_string(SnapshotStatus::Status s) noexcept -> std::string_view {
+  switch (s) {
+    case SnapshotStatus::kUninitialized:
+      return "Uninitialized";
+    case SnapshotStatus::kInitiated:
+      return "Initiated";
+    case SnapshotStatus::kCompleted:
+      return "Completed";
+    case SnapshotStatus::kFailed:
+      return "Failed";
+    default:
+      return "(unknown snapshot status)";
+  }
 }

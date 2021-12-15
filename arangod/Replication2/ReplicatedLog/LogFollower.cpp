@@ -486,6 +486,14 @@ auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
   return waitFor(LogIndex{1});
 }
 
+auto LogFollower::getLeader() const noexcept -> std::optional<ParticipantId> const& {
+  return _leaderId;
+}
+
+auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
+  return _guardedFollowerData.getLockedGuard()->_commitIndex;
+}
+
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept
     -> LogStatistics {
   auto result = LogStatistics{};

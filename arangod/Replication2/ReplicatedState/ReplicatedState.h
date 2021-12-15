@@ -189,10 +189,11 @@ struct ReplicatedFollowerState : ReplicatedFollowerStateBase {
    * Called by the state machine manager if a follower is requested to pull
    * data from the leader in order to transfer the snapshot.
    * @param leader
+   * @param localCommitIndex
    * @return Future with Result value. If the result contains an error,
    *    the operation is eventually retried.
    */
-  virtual auto acquireSnapshot(ParticipantId const& leader) noexcept
+  virtual auto acquireSnapshot(ParticipantId const& leader, LogIndex localCommitIndex) noexcept
       -> futures::Future<Result> = 0;
 
   [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;

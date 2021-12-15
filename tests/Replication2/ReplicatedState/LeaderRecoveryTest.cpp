@@ -53,7 +53,7 @@ struct EmptyFollowerType : ReplicatedFollowerState<S> {
       -> futures::Future<Result> override {
     return futures::Future<Result>{std::in_place};
   }
-  auto acquireSnapshot(ParticipantId const& leader) noexcept
+  auto acquireSnapshot(ParticipantId const& leader, LogIndex) noexcept
       -> futures::Future<Result> override {
     return futures::Future<Result>{std::in_place};
   }
