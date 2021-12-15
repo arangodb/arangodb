@@ -832,9 +832,11 @@ Result IResearchLink::commit(bool wait /*= true*/) {
 
   CommitResult code{CommitResult::UNDEFINED};
   auto result = commitUnsafe(wait, &code).result;
+  READ_LOCKER(metaLock, _dataStore._mutex);  // '_meta' can be asynchronously modified
   if (auto& meta = _dataStore._meta; meta._commitIntervalMsec == 0) {
     // If auto commit is disabled, we want to manually trigger the cleanup for the consistent API
     if (meta._cleanupIntervalStep != 0 && ++_cleanupIntervalCount >= meta._cleanupIntervalStep) {
+      metaLock.unlock();
       _cleanupIntervalCount = 0;
       (void)cleanupUnsafe();
     }
