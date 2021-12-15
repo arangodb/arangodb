@@ -37,20 +37,20 @@ using namespace arangodb::rest;
 
 static void addVersionDetails(application_features::ApplicationServer& server, VPackBuilder& result) {
   result.add("details", VPackValue(VPackValueType::Object));
-      Version::getVPack(result);
+  Version::getVPack(result);
 
-      auto& serverFeature = server.getFeature<ServerFeature>();
-      result.add("mode", VPackValue(serverFeature.operationModeString()));
-      auto serverState = ServerState::instance();
-      if (serverState != nullptr) {
-        result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
-      }
+  auto& serverFeature = server.getFeature<ServerFeature>();
+  result.add("mode", VPackValue(serverFeature.operationModeString()));
+  auto serverState = ServerState::instance();
+  if (serverState != nullptr) {
+    result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+  }
 
-      std::string host = ServerState::instance()->getHost();
-      if (!host.empty()) {
-        result.add("host", VPackValue(host));
-      }
-      result.close();
+  std::string host = ServerState::instance()->getHost();
+  if (!host.empty()) {
+    result.add("host", VPackValue(host));
+  }
+  result.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
