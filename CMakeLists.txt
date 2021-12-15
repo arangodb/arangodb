@@ -26,13 +26,6 @@ endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
-message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
-  set(BUILDING_FOR_ARM64 ON)
-else()
-  set(BUILDING_FOR_ARM64 OFF)
-endif()
-
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -700,32 +693,38 @@ endif ()
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
+# TODO: What if windows?
 if (NOT WINDOWS)
   include(TargetArch)
 
-  target_architecture(CMAKE_TARGET_ARCHITECTURES)
-  list(LENGTH CMAKE_TARGET_ARCHITECTURES cmake_target_arch_len)
+  # Ask the currently selected compiler what target architecture (and
+  # by this we mean instruction set architecture) it supports.
+  #
+  # ArangoDB supports x86_64 and aarch64.
 
-  if (NOT "${cmake_target_arch_len}" EQUAL "1")
-    set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL TRUE)
-    set(CMAKE_TARGET_ARCHITECTURE_CODE "universal")
+  target_architecture(ARANGODB_TARGET_ARCHITECTURES)
+  message(STATUS "Compiler target architectures: " ${ARANGODB_TARGET_ARCHITECTURES})
+  list(LENGTH ARANGODB_TARGET_ARCHITECTURES arangodb_target_arch_len)
+
+  if (ARANGODB_TARGET_ARCHITECTURES STREQUAL "x86_64")  
+    include(VcMacros)
+
+    # Detect target architecture properties. This honors
+    # any target architecture set via -DTARGET_ARCHITECTURE=...
+    include(OptimizeForArchitecture)
+    OptimizeForArchitecture()
+
+    if (USE_SSE4_2)
+      set(ARANGODB_SSE42_FLAGS "-msse4.2")
+    endif ()
+    set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
+    set(BUILDING_FOR_ARM64 OFF)
+  elseif (ARANGODB_TARGET_ARCHITECTURES STREQUAL "aarch64")
+    # backwards compatibility hack
+    set(BUILDING_FOR_ARM64 ON)
   else ()
-    set(CMAKE_TARGET_ARCHITECTURE_UNIVERSAL FALSE)
-    set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
+    message(FATAL_ERROR "ArangoDB does not support " ${ARANGODB_TARGET_ARCHITECTURES})  
   endif ()
-
-  include(VcMacros)
-
-  # Detect target architecture properties. This honors
-  # any target architecture set via -DTARGET_ARCHITECTURE=...
-  include(OptimizeForArchitecture)
-  OptimizeForArchitecture()
-
-  if (USE_SSE4_2)
-    set(ARANGODB_SSE42_FLAGS "-msse4.2")
-  endif ()
-
-  set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
 
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
