@@ -1104,11 +1104,12 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback,
   _dataStore._meta._writebufferIdle = options.segment_pool_size;
   _dataStore._meta._writebufferSizeMax = options.segment_memory_max;
 
-  // register metrics before starting any background threads
-  insertStats();
-
   // create a new 'self' (previous was reset during unload() above)
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
+
+  // register metrics before starting any background threads
+  // FIXME: commented out. As IResearchLink has yet not all data
+  // insertStats();
 
   // ...........................................................................
   // set up in-recovery insertion hooks

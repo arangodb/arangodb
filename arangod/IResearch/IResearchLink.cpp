@@ -89,6 +89,8 @@ DECLARE_GAUGE(arangosearch_consolidation_time, uint64_t,
               "Average time of few last consolidations");
 
 
+constexpr std::string_view arangosearch_link_stats_name  = "arangosearch_link_stats";
+
 template <typename T>
 T getMetric(const IResearchLink& link) {
   T metric;
@@ -401,6 +403,13 @@ Result IResearchLink::init(velocypack::Slice const& definition,
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
   _comparer.reset(_meta._sort);
+
+  // FIXME: Move this into parent class "initDataStore".
+  //        But ensure that _viewGuid is initialized before.
+  if (_dataStore) {
+    insertStats();
+  }
+
   return {};
 }
 
@@ -619,7 +628,7 @@ void IResearchLink::updateStats(IResearchDataStore::Stats const& stats) {
 void IResearchLink::insertStats() {
   auto& metric = _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
   auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
-  builder.setName("arangosearch_link_stats");
+  builder.setName(arangosearch_link_stats_name);
   _linkStats = &metric.add(std::move(builder));
   _numFailedCommits = &metric.add(getMetric<arangosearch_num_failed_commits>(*this));
   _numFailedCleanups = &metric.add(getMetric<arangosearch_num_failed_cleanups>(*this));
@@ -637,7 +646,7 @@ void IResearchLink::removeStats() {
   if (_linkStats) {
     _linkStats = nullptr;
     auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
-    builder.setName("arangosearch_link_stats");
+    builder.setName(arangosearch_link_stats_name);
     metricFeature.remove(std::move(builder));
   }
   if (_numFailedCommits) {
