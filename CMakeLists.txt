@@ -718,6 +718,8 @@ if (NOT WINDOWS)
       set(ARANGODB_SSE42_FLAGS "-msse4.2")
     endif ()
     set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
+
+    # backwards compatibility hack
     set(BUILDING_FOR_ARM64 OFF)
   elseif (ARANGODB_TARGET_ARCHITECTURES STREQUAL "aarch64")
     # backwards compatibility hack
