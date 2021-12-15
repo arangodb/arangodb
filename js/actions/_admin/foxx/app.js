@@ -83,6 +83,7 @@ function resolveAppInfo (appInfo, refresh) {
     return {source: `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`};
   }
   if (/^https?:/i.test(appInfo)) {
+    FoxxManager.validateInstallUrl(appInfo);
     return {source: appInfo};
   }
   if (/^uploads[/\\]tmp-/.test(appInfo)) {

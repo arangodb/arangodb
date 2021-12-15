@@ -22,6 +22,12 @@
 #pragma once
 
 #include <Replication2/ReplicatedLog/LogCommon.h>
+#include "Replication2/Streams/StreamSpecification.h"
+
+namespace arangodb::futures {
+template<typename>
+class Future;
+}
 
 namespace arangodb::replication2::streams {
 

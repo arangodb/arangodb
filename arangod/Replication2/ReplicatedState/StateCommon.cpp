@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,33 +17,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "StateCommon.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include <iostream>
+#include <velocypack/Value.h>
 
-namespace arangodb {
+using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_state;
 
-class ServerSecurityFeature final : public application_features::ApplicationFeature {
- public:
-  explicit ServerSecurityFeature(application_features::ApplicationServer& server);
+StateGeneration::operator arangodb::velocypack::Value() const noexcept {
+  return arangodb::velocypack::Value(value);
+}
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+auto StateGeneration::operator+(std::uint64_t delta) const -> StateGeneration {
+  return StateGeneration{value + delta};
+}
 
-  bool isRestApiHardened() const;
-  bool isFoxxApiDisabled() const;
-  bool isFoxxStoreDisabled() const;
-  bool canAccessHardenedApi() const;
-  bool foxxAllowInstallFromRemote() const;
+auto StateGeneration::saturatedDecrement(uint64_t delta) const noexcept -> StateGeneration {
+  if (value > delta) {
+    return StateGeneration{value - delta};
+  }
+  return StateGeneration{0};
+}
 
- private:
-  bool _enableFoxxApi;
-  bool _enableFoxxStore;
-  bool _hardenedRestApi;
-  bool _foxxAllowInstallFromRemote;
-};
-
-}  // namespace arangodb
-
+auto replicated_state::operator<<(std::ostream& os, StateGeneration g) -> std::ostream& {
+  return os << g.value;
+}

@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,33 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+namespace arangodb::replication2::replicated_state {
 
-namespace arangodb {
+template <typename T>
+struct EntryDeserializer {};
+template <typename T>
+struct EntrySerializer {};
 
-class ServerSecurityFeature final : public application_features::ApplicationFeature {
- public:
-  explicit ServerSecurityFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  bool isRestApiHardened() const;
-  bool isFoxxApiDisabled() const;
-  bool isFoxxStoreDisabled() const;
-  bool canAccessHardenedApi() const;
-  bool foxxAllowInstallFromRemote() const;
-
- private:
-  bool _enableFoxxApi;
-  bool _enableFoxxStore;
-  bool _hardenedRestApi;
-  bool _foxxAllowInstallFromRemote;
+template <typename S>
+struct ReplicatedStateTraits {
+  using FactoryType = typename S::FactoryType;
+  using LeaderType = typename S::LeaderType;
+  using FollowerType = typename S::FollowerType;
+  using EntryType = typename S::EntryType;
+  using Deserializer = EntryDeserializer<EntryType>;
+  using Serializer = EntrySerializer<EntryType>;
 };
 
-}  // namespace arangodb
-
+}
