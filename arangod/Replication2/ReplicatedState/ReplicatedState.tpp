@@ -43,7 +43,8 @@ template <typename S>
 struct ReplicatedState<S>::LeaderState : StateBase,
                                          std::enable_shared_from_this<LeaderState> {
   explicit LeaderState(std::shared_ptr<ReplicatedState> const& parent,
-                       std::shared_ptr<replicated_log::LogLeader> leader) noexcept;
+                       std::shared_ptr<replicated_log::LogLeader> leader,
+                       std::unique_ptr<ReplicatedStateCore> core) noexcept;
 
   using Stream = streams::ProducerStream<EntryType>;
   using Iterator = typename Stream::Iterator;
@@ -61,6 +62,8 @@ struct ReplicatedState<S>::LeaderState : StateBase,
   LeaderInternalState internalState{LeaderInternalState::kUninitializedState};
   std::chrono::system_clock::time_point lastInternalStateChange;
   std::optional<LogRange> recoveryRange;
+
+  std::unique_ptr<ReplicatedStateCore> core;
 
  private:
   void updateInternalState(LeaderInternalState newState,
@@ -80,7 +83,8 @@ struct ReplicatedState<S>::FollowerState : StateBase,
   using Iterator = typename Stream::Iterator;
 
   FollowerState(std::shared_ptr<ReplicatedState> const& parent,
-                std::shared_ptr<replicated_log::LogFollower> logFollower) noexcept;
+                std::shared_ptr<replicated_log::LogFollower> logFollower,
+                std::unique_ptr<ReplicatedStateCore> core) noexcept;
 
   void run();
   auto getStatus() -> StateStatus final;
@@ -103,6 +107,8 @@ struct ReplicatedState<S>::FollowerState : StateBase,
   FollowerInternalState internalState{FollowerInternalState::kUninitializedState};
   std::chrono::system_clock::time_point lastInternalStateChange;
   std::optional<LogRange> ingestionRange;
+
+  std::unique_ptr<ReplicatedStateCore> core;
 
  private:
   void updateInternalState(FollowerInternalState newState,
@@ -193,10 +199,12 @@ void ReplicatedState<S>::LeaderState::run() {
 
 template <typename S>
 ReplicatedState<S>::LeaderState::LeaderState(std::shared_ptr<ReplicatedState> const& parent,
-                                             std::shared_ptr<replicated_log::LogLeader> leader) noexcept
+                                             std::shared_ptr<replicated_log::LogLeader> leader,
+                                             std::unique_ptr<ReplicatedStateCore> core) noexcept
     : parent(parent),
       logLeader(std::move(leader)),
-      internalState(LeaderInternalState::kWaitingForLeadershipEstablished) {}
+      internalState(LeaderInternalState::kWaitingForLeadershipEstablished),
+      core(std::move(core)) {}
 
 template <typename S>
 auto ReplicatedState<S>::LeaderState::getStatus() -> StateStatus {
@@ -260,7 +268,7 @@ void ReplicatedState<S>::FollowerState::pollNewEntries() {
         } catch (basics::Exception const& e) {
           if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
             if (auto ptr = self->parent.lock(); ptr) {
-              ptr->flush();
+              ptr->flush(std::move(self->core));
             } else {
               LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
                   << "LogFollower resigned, but Replicated State already "
@@ -314,7 +322,7 @@ void ReplicatedState<S>::FollowerState::awaitLeaderShip() {
           } catch (basics::Exception const& e) {
             if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
               if (auto ptr = self->parent.lock(); ptr) {
-                ptr->flush();
+                ptr->flush(std::move(self->core));
               } else {
                 LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
                     << "LogFollower resigned, but Replicated State already "
@@ -352,8 +360,9 @@ void ReplicatedState<S>::FollowerState::run() {
 template <typename S>
 ReplicatedState<S>::FollowerState::FollowerState(
     std::shared_ptr<ReplicatedState> const& parent,
-    std::shared_ptr<replicated_log::LogFollower> logFollower) noexcept
-    : parent(parent), logFollower(std::move(logFollower)) {}
+    std::shared_ptr<replicated_log::LogFollower> logFollower,
+    std::unique_ptr<ReplicatedStateCore> core) noexcept
+    : parent(parent), logFollower(std::move(logFollower)), core(std::move(core)) {}
 
 template <typename S>
 auto ReplicatedState<S>::FollowerState::getStatus() -> StateStatus {
@@ -367,18 +376,22 @@ auto ReplicatedState<S>::FollowerState::getStatus() -> StateStatus {
 }
 
 template <typename S>
-void ReplicatedState<S>::runFollower(std::shared_ptr<replicated_log::LogFollower> logFollower) {
+void ReplicatedState<S>::runFollower(std::shared_ptr<replicated_log::LogFollower> logFollower,
+                                     std::unique_ptr<ReplicatedStateCore> core) {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE)
       << "create follower state";
-  auto machine = std::make_shared<FollowerState>(this->shared_from_this(), logFollower);
+  auto machine = std::make_shared<FollowerState>(this->shared_from_this(),
+                                                 logFollower, std::move(core));
   machine->run();
   currentState = machine;
 }
 
 template <typename S>
-void ReplicatedState<S>::runLeader(std::shared_ptr<replicated_log::LogLeader> logLeader) {
+void ReplicatedState<S>::runLeader(std::shared_ptr<replicated_log::LogLeader> logLeader,
+                                   std::unique_ptr<ReplicatedStateCore> core) {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
-  auto machine = std::make_shared<LeaderState>(this->shared_from_this(), logLeader);
+  auto machine = std::make_shared<LeaderState>(this->shared_from_this(),
+                                               logLeader, std::move(core));
   machine->run();
   currentState = machine;
 }
@@ -407,13 +420,13 @@ ReplicatedState<S>::ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLo
     : log(std::move(log)), factory(std::move(factory)) {}
 
 template <typename S>
-void ReplicatedState<S>::flush() {
+void ReplicatedState<S>::flush(std::unique_ptr<ReplicatedStateCore> core) {
   auto participant = log->getParticipant();
   if (auto leader = std::dynamic_pointer_cast<replicated_log::LogLeader>(participant); leader) {
-    runLeader(std::move(leader));
+    runLeader(std::move(leader), std::move(core));
   } else if (auto follower = std::dynamic_pointer_cast<replicated_log::LogFollower>(participant);
              follower) {
-    runFollower(std::move(follower));
+    runFollower(std::move(follower), std::move(core));
   } else {
     // unconfigured
     std::abort();

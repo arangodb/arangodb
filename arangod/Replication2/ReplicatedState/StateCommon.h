@@ -22,16 +22,20 @@
 
 #pragma once
 
+#include <chrono>
+#include <compare>
 #include <cstdint>
 #include <iostream>
+#include <optional>
+
 #include <velocypack/Slice.h>
-#include <compare>
+#include "Basics/Result.h"
 
 namespace arangodb::velocypack {
 class Value;
-template<typename, typename>
+template <typename, typename>
 struct Extractor;
-}
+}  // namespace arangodb::velocypack
 namespace arangodb {
 namespace replication2::replicated_state {
 
@@ -50,6 +54,23 @@ struct StateGeneration {
   friend auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
+};
+
+struct SnapshotStatus {
+  enum Status {
+    kUninitialized,
+    kInitiated,
+    kCompleted,
+    kFailed,
+  };
+
+  using clock = std::chrono::system_clock;
+
+  void updateStatus(Status, std::optional<Result> newError = std::nullopt);
+
+  Status status{kUninitialized};
+  clock::time_point lastChange;
+  std::optional<Result> error;
 };
 
 auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;

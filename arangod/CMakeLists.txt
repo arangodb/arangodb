@@ -563,7 +563,9 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp
   Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/StateStatus.cpp
-  Replication2/ReplicatedState/StateCommon.cpp)
+  Replication2/ReplicatedState/StateCommon.cpp
+  Replication2/ReplicatedState/ReplicatedStateCore.cpp
+)
 
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp

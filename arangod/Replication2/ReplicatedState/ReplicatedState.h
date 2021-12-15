@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Replication2/ReplicatedState/ReplicatedStateCore.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Streams/Streams.h"
@@ -33,41 +34,42 @@ class Future;
 namespace arangodb {
 class Result;
 }
-
-namespace arangodb::replication2::replicated_log {
+namespace arangodb::replication2 {
+namespace replicated_log {
 struct ReplicatedLog;
 class LogFollower;
 class LogLeader;
-}  // namespace arangodb::replication2::replicated_log
+}  // namespace replicated_log
 
-namespace arangodb::replication2::replicated_state {
+namespace replicated_state {
+
+template <typename S>
+struct ReplicatedFollowerState;
+template <typename S>
+struct ReplicatedLeaderState;
 
 struct ReplicatedLeaderStateBase {
   virtual ~ReplicatedLeaderStateBase() = default;
 };
 
-template <typename S>
-struct ReplicatedLeaderState;
-
 struct ReplicatedFollowerStateBase {
   virtual ~ReplicatedFollowerStateBase() = default;
 };
 
-template <typename S>
-struct ReplicatedFollowerState;
-
+/**
+ * Common base class for all ReplicatedStates, hiding the type information.
+ */
 struct ReplicatedStateBase {
   virtual ~ReplicatedStateBase() = default;
 
-  virtual void flush() = 0;
+  virtual void flush(std::unique_ptr<ReplicatedStateCore>) = 0;
+  virtual auto getStatus() -> StateStatus = 0;
   auto getLeader() -> std::shared_ptr<ReplicatedLeaderStateBase> {
     return getLeaderBase();
   }
   auto getFollower() -> std::shared_ptr<ReplicatedFollowerStateBase> {
     return getFollowerBase();
   }
-
-  virtual auto getStatus() -> StateStatus = 0;
 
  private:
   virtual auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> = 0;
@@ -88,7 +90,7 @@ struct ReplicatedState final : ReplicatedStateBase,
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
    */
-  void flush() override;
+  void flush(std::unique_ptr<ReplicatedStateCore> = std::make_unique<ReplicatedStateCore>()) override;
 
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
@@ -122,8 +124,10 @@ struct ReplicatedState final : ReplicatedStateBase,
   struct LeaderState;
   struct FollowerState;
 
-  void runLeader(std::shared_ptr<replicated_log::LogLeader> logLeader);
-  void runFollower(std::shared_ptr<replicated_log::LogFollower> logFollower);
+  void runLeader(std::shared_ptr<replicated_log::LogLeader> logLeader,
+                 std::unique_ptr<ReplicatedStateCore>);
+  void runFollower(std::shared_ptr<replicated_log::LogFollower> logFollower,
+                   std::unique_ptr<ReplicatedStateCore>);
 
   std::shared_ptr<StateBase> currentState;
   StateGeneration generation{0};
@@ -202,4 +206,5 @@ template <typename S>
 using ReplicatedStateStreamSpec = streams::stream_descriptor_set<streams::stream_descriptor<
     streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
     streams::tag_descriptor_set<streams::tag_descriptor<1, typename ReplicatedStateTraits<S>::Deserializer, typename ReplicatedStateTraits<S>::Serializer>>>>;
-}  // namespace arangodb::replication2::replicated_state
+}  // namespace replicated_state
+}  // namespace arangodb::replication2

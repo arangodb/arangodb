@@ -20,34 +20,15 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "StateCommon.h"
+#pragma once
 
-#include <velocypack/Value.h>
+#include "Replication2/ReplicatedState/StateCommon.h"
 
-#include "Basics/debugging.h"
+namespace arangodb::replication2::replicated_state {
 
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_state;
+struct ReplicatedStateCore {
+  SnapshotStatus snapshot;
+  StateGeneration plannedGeneration;
+};
 
-StateGeneration::operator arangodb::velocypack::Value() const noexcept {
-  return arangodb::velocypack::Value(value);
-}
-
-auto StateGeneration::operator+(std::uint64_t delta) const -> StateGeneration {
-  return StateGeneration{value + delta};
-}
-
-auto StateGeneration::saturatedDecrement(uint64_t delta) const noexcept -> StateGeneration {
-  if (value > delta) {
-    return StateGeneration{value - delta};
-  }
-  return StateGeneration{0};
-}
-
-auto replicated_state::operator<<(std::ostream& os, StateGeneration g) -> std::ostream& {
-  return os << g.value;
-}
-
-void SnapshotStatus::updateStatus(Status s, std::optional<Result> newError) {
-  TRI_ASSERT((s == kFailed) == (error.has_value()));
-}
+}  // namespace arangodb::replication2::replicated_state
