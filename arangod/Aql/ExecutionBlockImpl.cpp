@@ -635,8 +635,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
               ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
-              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor<traverser::Traverser>,
-              TraversalExecutor<DFSRefactoredNoneNone>, TraversalExecutor<DFSRefactoredNonePath>, TraversalExecutor<DFSRefactoredGlobal>, TraversalExecutor<DFSRefactoredPath>,
+              ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>, TraversalExecutor,
               EnumerateListExecutor, SubqueryStartExecutor, SubqueryEndExecutor, SortedCollectExecutor,
               LimitExecutor, UnsortedGatherExecutor, SortingGatherExecutor, SortExecutor,
               IResearchViewExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize>,
@@ -2297,14 +2296,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
-
-/* SingleServer */
-template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<traverser::Traverser>>;
-template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<DFSRefactoredNoneNone>>;
-template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<DFSRefactoredNonePath>>;
-template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<DFSRefactoredPath>>;
-template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor<DFSRefactoredGlobal>>;
-
+template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ParallelUnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;

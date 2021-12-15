@@ -70,13 +70,13 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::PathValidator<::arangodb::tests::graph::MockGraphProvider,
                                      ::arangodb::graph::PathStore<::arangodb::tests::graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH>>;
 
-// BFS with PATH uniquness
+// BFS with PATH uniqueness
 template class ::arangodb::graph::OneSidedEnumerator<::arangodb::graph::BFSConfiguration<
     ::arangodb::tests::graph::MockGraphProvider, ::arangodb::graph::VertexUniquenessLevel::PATH, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<::arangodb::graph::BFSConfiguration<
     ::arangodb::tests::graph::MockGraphProvider, ::arangodb::graph::VertexUniquenessLevel::PATH, true>>;
 
-// DFS with PATH uniquness
+// DFS with PATH uniqueness
 template class ::arangodb::graph::OneSidedEnumerator<::arangodb::graph::DFSConfiguration<
     ::arangodb::tests::graph::MockGraphProvider, ::arangodb::graph::VertexUniquenessLevel::PATH, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<::arangodb::graph::DFSConfiguration<
