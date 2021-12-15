@@ -29,6 +29,7 @@ const request = require('@arangodb/request');
 const _ = require('lodash');
 const db = require('@arangodb').db;
 const {checkRequestResult} = require('@arangodb/arangosh');
+const { defaultMaxListeners } = require('events');
 const {
   assertEqual,
   assertFalse,
@@ -39,8 +40,8 @@ const {
 } = jsunity.jsUnity.assertions;
 
 // The RestLogHandler is only available in maintainer mode.
-const isInMaintainerMode = require('internal').db._version(true)['maintainer-mode'] === 'true';
-const replication2Enabled = require('internal').db._version(true)['replication2-enabled'] === 'true';
+const isInMaintainerMode = require('internal').db._version(true).details['maintainer-mode'] === 'true';
+const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
 
 const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 

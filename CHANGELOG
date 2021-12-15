@@ -1,6 +1,12 @@
 devel
 -----
 
+* Unify the result structure of `db._version(true)` calls for arangosh and
+  server console. Previously such a call in the server console would return
+  a different structure that only consisted of the `details` subobject.
+  This is now unified so that the result structure in the server console is
+  consistent with arangosh, but strictly speaking this is a breaking change.
+
 * Added startup security option `--foxx.allow-install-from-remote` to allow 
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
