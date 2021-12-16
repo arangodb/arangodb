@@ -65,7 +65,7 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
 
     void addToBuilder(SingleServerProvider<SingleServerProviderStep>& provider,
                       arangodb::velocypack::Builder& builder) const;
-    EdgeDocumentToken const& getID() const;
+    StepType const& getID() const;
     bool isValid() const;
 
    private:

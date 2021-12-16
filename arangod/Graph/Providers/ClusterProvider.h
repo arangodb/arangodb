@@ -95,7 +95,7 @@ class ClusterProvider {
       Edge() : _edge() {}
 
       void addToBuilder(ClusterProvider& provider, arangodb::velocypack::Builder& builder) const;
-      EdgeType const& getID() const;  // TODO: Performance Test compare EdgeType <-> EdgeDocumentToken
+      StepType const& getID() const;  // TODO: Performance Test compare EdgeType <-> EdgeDocumentToken
       bool isValid() const;
 
      private:
