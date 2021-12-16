@@ -86,6 +86,8 @@ class MockGraphProvider {
 
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
+    using StepType = EdgeType;
+
     class Vertex {
      public:
       explicit Vertex(VertexType v) : _vertex(v){};
@@ -114,6 +116,7 @@ class MockGraphProvider {
       }
 
       EdgeType getEdge() const { return _edge; }
+      EdgeType const& getID() const;
       bool isValid() const {
         if (_edge._from.empty() && _edge._to.empty()) {
           return false;
@@ -167,6 +170,9 @@ class MockGraphProvider {
     }
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
+    StepType getEdgeIdentifier() const {
+      return _edge.getID();
+    }
 
     std::string getCollectionName() const {
       auto collectionNameResult = extractCollectionName(_vertex.getID());

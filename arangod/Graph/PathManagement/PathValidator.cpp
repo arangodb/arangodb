@@ -67,6 +67,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
 
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
     _uniqueVertices.clear();
+    _uniqueEdges.clear();
     // Reserving here is pointless, we will test paths that increase by at most 1 entry.
 
     bool success =
@@ -74,19 +75,34 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
           auto const& [unusedV, addedVertex] =
               _uniqueVertices.emplace(step.getVertexIdentifier());
 
-//          auto const& [unusedE, addedEdge] =
-//              _uniqueEdges.emplace(step.getVertexIdentifier());
+          auto const& [unusedE, addedEdge] =
+              _uniqueEdges.emplace(step.getEdgeIdentifier());
           // If this add fails, we need to exclude this path
-          return addedVertex;
+          return addedVertex && addedEdge;
         });
     if (!success) {
       res.combine(ValidationResult::Type::FILTER);
     }
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
-    auto const& [unused, added] = _uniqueVertices.emplace(step.getVertexIdentifier());
+    _uniqueEdges.clear();
+    auto const& [unusedV, addedVertex] =
+        _uniqueVertices.emplace(step.getVertexIdentifier());
+
+    auto const& [unusedE, addedEdge] =
+        _uniqueEdges.emplace(step.getEdgeIdentifier());
     // If this add fails, we need to exclude this path
-    if (!added) {
+    if (!addedVertex || !addedEdge) {
+      res.combine(ValidationResult::Type::FILTER);
+    }
+  }
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE && edgeUniqueness == EdgeUniquenessLevel::PATH) {
+    _uniqueEdges.clear();
+
+    auto const& [unusedE, addedEdge] =
+        _uniqueEdges.emplace(step.getEdgeIdentifier());
+    // If this add fails, we need to exclude this path
+    if (!addedEdge) {
       res.combine(ValidationResult::Type::FILTER);
     }
   }

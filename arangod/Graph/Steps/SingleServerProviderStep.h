@@ -96,7 +96,7 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
     return _vertex.getID();
   }
 
-  ::arangodb::graph::EdgeType getEdgeIdentifier() const {
+  StepType getEdgeIdentifier() const {
     return _edge.getID();
   }
 
