@@ -1,6 +1,6 @@
 /* global arangoHelper, arangoFetch, frontendConfig */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Graphin, { Utils, GraphinContext } from '@antv/graphin';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
 import { message, Card, Select } from 'antd';
@@ -22,51 +22,81 @@ import {
   EditOutlined,
   QuestionCircleOutlined
 } from '@ant-design/icons';
-
 import { NodeList } from './components/node-list/node-list.component';
 import { EdgeList } from './components/edge-list/edge-list.component';
+import { EditNodeModal } from './components/modals/EditNodeModal';
+import { DeleteNodeModal } from './DeleteNodeModal';
+import { G6GraphHelpModal } from './G6GraphHelpModal';
 
-const G6GraphHelpModal = () => {
-  const [show, setShow] = useState(false);
-
-  const showG6GraphHelp = (event) => {
-    event.preventDefault();
-    setShow(true);
-  };
-
-  return <>
-    <a href={'#g6'} onClick={showG6GraphHelp}>
-      <QuestionCircleOutlined />
-    </a>
-    <Modal show={show} setShow={setShow}>
-      <ModalHeader title={'Graph Viewer Help'}/>
-      <ModalBody>
-        <dl>
-          <dt>Graphs</dt>
-          <dd>
-            If you are new to graphs and displaying graph data... have a look at our <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/docs/stable/graphs.html'}>graph documentation</a></strong>.
-          </dd>
-          <dt>Graph Course</dt>
-          <dd>
-            We also offer a course with the title <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/learn/graphs/graph-course/'}>Get Started with Graphs in ArangoDB</a></strong> for free.
-          </dd>
-          <dt>Quick Start</dt>
-          <dd>
-            To start immediately, the explanationn of our <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/docs/stable/graphs.html#example-graphs'}>example graphs</a></strong> might help very well.
-          </dd>
-        </dl>
-      </ModalBody>
-      <ModalFooter>
-        <button className="button-close" onClick={() => setShow(false)}>Close</button>
-      </ModalFooter>
-    </Modal>
-  </>;
-};
+const GraphDataInfo = (graphData) => {
+  return (
+    <>
+      <span className="badge badge-info pull-left" style={{"marginTop": "12px" }}>{graphData.graphData.nodes.length} nodes</span>
+      <span className="badge badge-info pull-right" style={{"marginTop": "12px" }}>{graphData.graphData.edges.length} edges</span>
+    </>
+  );
+}
 
 const MenuGraph = () => {
   let [queryString, setQueryString] = useState("/_admin/aardvark/g6graph/routeplanner");
   let [graphData, setGraphData] = useState(null);
   let [queryMethod, setQueryMethod] = useState("GET");
+  const [editNodeModalVisibility, setEditNodeModalVisibility] = useState(false);
+  const [toggleValue, setToggleValue] = useState(true);
+  const [currentNode, setCurrentNode] = useState("node1");
+  const [deleteNodeModalShow, setDeleteNodeModalShow] = useState(false);
+
+  const toggleModal = (toggleValue) => {
+    console.log('toggleValue', toggleValue);
+    setToggleValue(toggleValue);
+  };
+
+  const TestModal = (visibility) => {
+    const [show, setShow] = useState(false);
+  
+    const showTestModal = (event) => {
+      event.preventDefault();
+      setShow(visibility);
+    };
+  
+    return <>
+      <a href={'#g6'} onClick={showTestModal}>
+        <QuestionCircleOutlined /> TestModal
+      </a>
+      <Modal show={show} setShow={setShow}>
+        <ModalHeader title={'TestModal'}/>
+        <ModalBody>
+          <dl>
+            <dt>Graphs</dt>
+            <dd>
+              If you are new to graphs and displaying graph data... have a look at our <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/docs/stable/graphs.html'}>graph documentation</a></strong>.
+            </dd>
+            <dt>Graph Course</dt>
+            <dd>
+              We also offer a course with the title <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/learn/graphs/graph-course/'}>Get Started with Graphs in ArangoDB</a></strong> for free.
+            </dd>
+            <dt>Quick Start</dt>
+            <dd>
+              To start immediately, the explanationn of our <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/docs/stable/graphs.html#example-graphs'}>example graphs</a></strong> might help very well.
+            </dd>
+          </dl>
+        </ModalBody>
+        <ModalFooter>
+          <button className="button-close" onClick={() => setShow(false)}>Close</button>
+        </ModalFooter>
+      </Modal>
+    </>;
+  };
+
+  const toggleEditNodeModal = (editNodeModalVisibility) => {
+    setEditNodeModalVisibility(editNodeModalVisibility);
+  };
+
+  const showDeleteNodeModal = (menuData, graphData) => {
+    message.info(`showDeleteNodeModal: Open Modal with text editor (${menuData.id})`);
+    console.log("menuData: ", menuData);
+    console.log("graphData: ", graphData);
+  }
 
   const iconMap = {
     'graphin-force': <ShareAltOutlined />,
@@ -79,13 +109,18 @@ const MenuGraph = () => {
     radial: <ShareAltOutlined />,
   };
 
+  const showEditNodeModal = (node) => {
+    message.info(`showEditNodeModal: Open Modal with text editor (${node})`);
+    console.log("MenuGraph: showEditNodeModal", node);
+  }
+
   const SelectOption = Select.Option;
   const LayoutSelector = props => {
     const { value, onChange, options } = props;
 
     return (
       <div>
-        <Select style={{ width: '120px' }} value={value} onChange={onChange}>
+        <Select style={{ width: '100%' }} value={value} onChange={onChange}>
           {options.map(item => {
             const { type } = item;
             const iconComponent = iconMap[type] || <CustomerServiceFilled />;
@@ -97,7 +132,6 @@ const MenuGraph = () => {
             );
           })}
         </Select>
-        <G6GraphHelpModal />
       </div>
     );
   };
@@ -266,9 +300,11 @@ const MenuGraph = () => {
     fetchData();
   }, [fetchData]);
 
+  
+
   // Menu Component
   const { Menu } = ContextMenu;
-  const options = [
+  const menuOptions = [
         {
             key: 'tag',
             icon: <TagFilled />,
@@ -295,33 +331,50 @@ const MenuGraph = () => {
     this.setState({ searchField: e.target.value });
   }
   
-  const HandleChange = (menuItem, menuData) => {
-      console.log(menuItem, menuData);
-      message.info(`Element：${menuData.id}，Action：${menuItem.name}, Key：${menuItem.key}`);
+  const menuHandleChange = (menuItem, menuData, graphData) => {
+      console.log("menuHandleChange -> menuItem: ", menuData);
+      console.log("menuHandleChange -> menuData: ", menuData);
+      console.log("menuHandleChange -> graphData: ", graphData);
+      //message.info(`Element：${menuData.id}，Action：${menuItem.name}, Key：${menuItem.key}`);
+      message.info(`GraphData：${graphData}`);
       let query;
       switch(menuItem.key) {
         case "tag":
             query = '/_admin/aardvark/g6graph/social';
             queryMethod = "GET";
+            message.info(`query: ${query}; queryMethod: ${queryMethod}`);
+            setQueryMethod(queryMethod);
+            setQueryString(query);
             break;
         case "delete":
+            deleteNodeModalRef.current.showDeleteNodeModalFromParent(menuData);
+            //showDeleteNodeModal(menuData, graphData);
+            //showDeleteNodeModal.current();
+            /*
             query = `/_api/gharial/routeplanner/vertex/${menuData.id}`;
             queryMethod = "DELETE";
+            message.info(`query: ${query}; queryMethod: ${queryMethod}`);
+            setQueryMethod(queryMethod);
+            setQueryString(query);
+            */
             break;
         case "expand":
             query = `/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${menuData.id}" GRAPH "routeplanner" RETURN p`;
             queryMethod = "GET";
+            message.info(`query: ${query}; queryMethod: ${queryMethod}`);
+            setQueryMethod(queryMethod);
+            setQueryString(query);
             break;
         case "editnode":
-            query = `/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${menuData.id}" GRAPH "routeplanner" RETURN p`;
-            queryMethod = "GET";
+            //query = `/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${menuData.id}" GRAPH "routeplanner" RETURN p`;
+            //queryMethod = "GET";
+            message.info(`Open Modal with text editor`);
+            toggleEditNodeModal(true);
+            showEditNodeModal(graphData);
             break;
         default:
             break;
       }
-      message.info(`query: ${query}; queryMethod: ${queryMethod}`);
-      setQueryMethod(queryMethod);
-      setQueryString(query);
       /*
       const {loading, data, error} = useFetch(arangoHelper.databaseUrl(query));
       if(loading) {
@@ -338,6 +391,65 @@ const MenuGraph = () => {
       message.info("AFTER deleting");
   };
 
+  const onDeleteNode = (nodeId) => {
+    console.log('nodeId in onDeleteNode in MenuGraph: ', nodeId);
+    console.log('graphData in onDeleteNode in MenuGraph (1): ', graphData);
+    /*
+    const newGraphData = graphData.nodes.filter((node) => {
+      return node.id !== nodeId;
+    });
+    console.log('newGraphData in onDeleteNode in MenuGraph: ', newGraphData);
+    */
+    //setGraphData(newGraphData);
+    console.log('graphData in onDeleteNode in MenuGraph after delete (2): ', graphData);
+
+    return <>
+      <Modal show={true} setShow={true}>
+        <ModalHeader title={`Delete node ${nodeId}`}/>
+        <ModalBody>
+          <dl>
+            <dt>Delet node</dt>
+            <dd>
+              If you are new to graphs and displaying graph data... have a look at our <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/docs/stable/graphs.html'}>graph documentation</a></strong>.
+            </dd>
+            <dt>Graph Course</dt>
+            <dd>
+              We also offer a course with the title <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/learn/graphs/graph-course/'}>Get Started with Graphs in ArangoDB</a></strong> for free.
+            </dd>
+            <dt>Quick Start</dt>
+            <dd>
+              To start immediately, the explanationn of our <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/docs/stable/graphs.html#example-graphs'}>example graphs</a></strong> might help very well.
+            </dd>
+          </dl>
+        </ModalBody>
+        <ModalFooter>
+          <button className="button-close" onClick={() => console.log('Options')}>Close</button>
+        </ModalFooter>
+      </Modal>
+    </>;
+  };
+
+  const graphHelpModalRef = useRef();
+  const deleteNodeModalRef = useRef();
+
+  const masterFunc = (name) => {
+    const randomNumber = Math.floor(Math.random() * 100);
+    console.log("currentNode (1): ", currentNode);
+    setCurrentNode(randomNumber);
+    console.log("currentNode (2): ", currentNode);
+  };
+
+  useEffect(() => {
+    console.log(`currentNode changed to ${currentNode}`);
+  }, [currentNode]);
+
+  const toggleDeleteNodeModal = () => {
+    setCurrentNode('Washington');
+    console.log('deleteNodeModalShow (1): ', deleteNodeModalShow);
+    setDeleteNodeModalShow(!deleteNodeModalShow);
+    console.log('deleteNodeModalShow (2): ', deleteNodeModalShow);
+    console.log('currentNode: ', currentNode);
+  }
   // /_admin/aardvark/g6graph/social
   // /_admin/aardvark/g6graph/routeplanner
   if(graphData) {
@@ -347,22 +459,34 @@ const MenuGraph = () => {
     console.log(graphData.edges);
     return (
       <div>
-        <NodeList
-          nodes={graphData.nodes}
-          onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')} />
-        <EdgeList edges={graphData.edges} />
-        <AqlEditor
-          queryString={queryString}
-          onNewSearch={(myString) => {setQueryString(myString)}}
-          onQueryChange={(myString) => {setQueryString(myString)}}
-          onOnclickHandler={(myString) => {setQueryString(myString)}} />
         <Card
           title="G6 Graph Viewer"
-          extra={<LayoutSelector options={layouts} value={type} onChange={handleChange} />}
+          extra={
+            <>
+              <button onClick={() => graphHelpModalRef.current.showG6GraphHelpFromParent('somedata')}>Open GraphHelpModal (from parent)</button>
+              <G6GraphHelpModal ref={graphHelpModalRef} />
+              <DeleteNodeModal node={currentNode} show={deleteNodeModalShow} setShow={setDeleteNodeModalShow} />
+              <button onClick={masterFunc}>Change data for DeleteNodeModal</button>
+              <button onClick={toggleDeleteNodeModal}>Toggle DeleteNodeModal</button>
+              <AqlEditor
+                queryString={queryString}
+                onNewSearch={(myString) => {setQueryString(myString)}}
+                onQueryChange={(myString) => {setQueryString(myString)}}
+                onOnclickHandler={(myString) => {setQueryString(`/_admin/aardvark/g6graph/${myString}`)}} />
+              <NodeList
+                nodes={graphData.nodes}
+                graphData={graphData}
+                onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
+                onDeleteNode={onDeleteNode} />
+              <EdgeList edges={graphData.edges} />
+              <LayoutSelector options={layouts} value={type} onChange={handleChange} />
+              <GraphDataInfo graphData={graphData}/>
+            </>
+          }
         >
           <Graphin data={graphData} layout={layout}>
             <ContextMenu>
-              <Menu options={options} onChange={HandleChange} bindType="node" />
+              <Menu options={menuOptions} onChange={menuHandleChange} graphData={graphData} bindType="node" />
             </ContextMenu>
             <MiniMap />
           </Graphin>
