@@ -450,7 +450,7 @@ class Future {
   /// When this Future has completed, execute func which is a function that
   /// can be called with either `T&&` or `Try<T>&&`.
   template <typename F, typename R = typename std::invoke_result<F&&, Try<T>&&>::type>
-  typename std::enable_if<std::is_same<R, void>::value>::type thenFinal(F&& fn) {
+  typename std::enable_if<std::is_same<R, void>::value>::type thenFinal(F&& fn) && {
     getState().setCallback(std::forward<detail::decay_t<F>>(fn));
   }
 
