@@ -168,6 +168,18 @@ struct is_associative
 /// @brief forward declaration for pair output below
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO These operators cannot generally be found by ADL. It often works by luck,
+//      e.g. because T is in the arangodb namespace, or one of its template
+//      parameters is.
+//      The straight-forward solution is to have it in the same namespace as
+//      one of its argument. Currently that's std, to which we must not add this.
+//      So instead we should add a
+//      `struct ::arangodb::StreamRef { std::ostream& stream; }` and use that as
+//      its argument and return value.
+//      Our macros (like TRI_ASSERT or LOG_TOPIC) should then return such a
+//      StreamRef.
+//      For convenience, it should handle a LoggerStreamBase instead of a
+//      StreamRef as well.
 template <typename T>
 std::enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
                                                                    T const& t);
