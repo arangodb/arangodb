@@ -66,6 +66,9 @@ class ClusterProvider {
     friend class ClusterProvider;
 
    public:
+    using StepType = EdgeType;
+
+   public:
     class Vertex {
      public:
       explicit Vertex(VertexType v) : _vertex(v) {}

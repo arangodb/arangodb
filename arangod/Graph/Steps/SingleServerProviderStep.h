@@ -37,6 +37,9 @@ class SingleServerProvider;
 
 class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerProviderStep> {
  public:
+  using StepType = EdgeDocumentToken;
+
+ public:
   class Vertex {
    public:
     explicit Vertex(VertexType v) : _vertex(v) {}
