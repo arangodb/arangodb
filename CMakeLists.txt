@@ -692,15 +692,32 @@ endif ()
 ## TARGET ARCHITECTURE
 ################################################################################
 
-set(ARANGODB_SSE42_FLAGS "")
+#
+# We ask the selected target compiler what target instruction set
+# architecture(s) it supports.
+#
+# ArangoDB supports x86_64 and aarch64.
+#
+# *NOTE* Instruction set architectures come with extensions, i.e. instructions
+#        that were added and are only available on certain chips.
+#
+#        Sometimes a set of extensions is referred to by the implementation that
+#        made that set available.
+#        For example "haswell" is (mis)used to refer to all extensions (such as
+#        SSE or AVX) that were available on haswell (but are available on all
+#        later implementations).
+#
+#        For x86_64 we currently use OptimizeForArchitecture.
+#        If -DTARGET_ARCHITECTURE= is not set, then this macro
+#        will set compiler flags based on the *CURRENT HOST CPU*;
+#        
+#        !!! BINARIES BUILT WITH THIS MODE WILL NOT BE PORTABLE TO OTHER
+#        CPUS !!!       
+#
+
 # TODO: What if windows?
 if (NOT WINDOWS)
   include(TargetArch)
-
-  # Ask the currently selected compiler what target architecture (and
-  # by this we mean instruction set architecture) it supports.
-  #
-  # ArangoDB supports x86_64 and aarch64.
 
   target_architecture(ARANGODB_TARGET_ARCHITECTURES)
   message(STATUS "Compiler target architectures: " ${ARANGODB_TARGET_ARCHITECTURES})
@@ -714,14 +731,12 @@ if (NOT WINDOWS)
     include(OptimizeForArchitecture)
     OptimizeForArchitecture()
 
-    if (USE_SSE4_2)
-      set(ARANGODB_SSE42_FLAGS "-msse4.2")
-    endif ()
     set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 
     # backwards compatibility hack
     set(BUILDING_FOR_ARM64 OFF)
   elseif (ARANGODB_TARGET_ARCHITECTURES STREQUAL "aarch64")
+
     # backwards compatibility hack
     set(BUILDING_FOR_ARM64 ON)
   else ()

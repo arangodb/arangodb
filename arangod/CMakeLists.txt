@@ -929,8 +929,15 @@ target_link_libraries(arango_rocksdb rocksdb_interface)
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
 
-if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND NOT BUILDING_FOR_ARM64)
-  target_compile_options(arango_rocksdb PUBLIC "-maes")
+if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG))
+  if (ARANGODB_TARGET_ARCHITECTURES STREQUAL "x86_64")
+    target_compile_options(arango_rocksdb PUBLIC "-maes")
+  elseif (ARANGODB_TARGET_ARCHITECTURES STREQUAL "aarch64")
+    # TODO: in future we can enable aarch64 AES instructions
+    #       here.
+    #       We might also jsut opt to enable -maes globally
+    #       in the arangodb build.
+  endif()
 endif ()
 
 add_library(arango_cluster_engine STATIC
