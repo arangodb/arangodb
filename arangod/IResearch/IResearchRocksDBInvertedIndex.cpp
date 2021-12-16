@@ -59,7 +59,7 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(Logical
      return nullptr;
   }
   InvertedIndexFieldMeta fieldsMeta;
-  if (!fieldsMeta.init(_server, definition, false, errField,
+  if (!fieldsMeta.init(_server, definition, true, errField,
                         collection.vocbase().name())) {
     LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
       << (errField.empty() ?
