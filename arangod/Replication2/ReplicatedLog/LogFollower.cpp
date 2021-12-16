@@ -23,12 +23,12 @@
 #include "LogFollower.h"
 
 #include "Logger/LogContextKeys.h"
+#include "Metrics/Gauge.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Metrics/Gauge.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
@@ -484,6 +484,10 @@ auto LogFollower::release(LogIndex doneWithIdx) -> Result {
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
   return waitFor(LogIndex{1});
+}
+
+auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
+  return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept

@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ILogParticipant.h"
+#include "ILogInterfaces.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -59,7 +59,7 @@ replicated_log::LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
   _logMetrics->replicatedLogInactiveNumber->fetch_sub(1);
 }
 
-auto replicated_log::ILogParticipant::waitForIterator(LogIndex index)
+auto replicated_log::LogUnconfiguredParticipant::waitForIterator(LogIndex index)
     -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -71,6 +71,10 @@ auto replicated_log::ILogParticipant::getTerm() const noexcept -> std::optional<
 
 auto replicated_log::LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto replicated_log::LogUnconfiguredParticipant::getCommitIndex() const noexcept -> LogIndex {
+  return LogIndex{0}; // index 0 is always committed.
 }
 
 replicated_log::WaitForResult::WaitForResult(LogIndex index,
