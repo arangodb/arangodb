@@ -1,6 +1,16 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
+* Added startup options to adjust previously hard-coded parameters for
+  RocksDB's behaviour:
+
+  - `--rocksdb.pending-compactions-bytes-slowdown-trigger` controls RocksDB's
+    setting `soft_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it slows down writes.
+  - `--rocksdb.pending-compactions-bytes-stop-trigger` controls RocksDB's
+    setting `hard_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it stops writes entirely.
+
 * Added startup options to adjust previously hard-coded parameters for the
   RocksDB throttle:
   - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
