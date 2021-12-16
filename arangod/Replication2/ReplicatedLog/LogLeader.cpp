@@ -830,7 +830,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex() -> Resolve
   }
 
   if (newLargestCommonIndex != _largestCommonIndex) {
-    TRI_ASSERT(newLargestCommonIndex > _largestCommonIndex);
+    // This assertion is no longer true, as followers can now be added.
+    // TRI_ASSERT(newLargestCommonIndex > _largestCommonIndex);
     LOG_CTX("851bb", TRACE, _self._logContext)
         << "largest common index went from " << _largestCommonIndex << " to "
         << newLargestCommonIndex;
@@ -1222,7 +1223,8 @@ void replicated_log::LogLeader::updateParticipantsConfig(
       } catch (ParticipantResignedException const& err) {
         LOG_CTX("3959f", DEBUG, self->_logContext)
             << "leader resigned before new participant configuration was "
-               "committed";
+               "committed: "
+            << err.message();
       } catch (std::exception const& err) {
         LOG_CTX("1af0f", FATAL, self->_logContext)
             << "failed to commit new participant config; " << err.what();
