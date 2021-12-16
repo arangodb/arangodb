@@ -39,8 +39,6 @@ const {
   assertIdentical,
 } = jsunity.jsUnity.assertions;
 
-// The RestLogHandler is only available in maintainer mode.
-const isInMaintainerMode = require('internal').db._version(true).details['maintainer-mode'] === 'true';
 const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
 
 const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
@@ -106,46 +104,6 @@ const replicationApi = {
   },
 
 };
-
-function dbServerApiSuite() {
-  const instanceInfo = global.instanceInfo;
-  let serverA;
-  let serverB;
-  let serverC;
-  const servers = [];
-
-  return {
-    setUpAll: function () {
-      const isDBServer = (d) => (_.toLower(d.role) === 'dbserver');
-      servers.push(...
-        [serverA, serverB, serverC] = instanceInfo.arangods.filter(isDBServer)
-      );
-      assertEqual(3, servers.length);
-      assertNotUndefined(serverA);
-      assertNotUndefined(serverB);
-      assertNotUndefined(serverC);
-      assertNotNull(serverA);
-      assertNotNull(serverB);
-      assertNotNull(serverC);
-    },
-
-    testReplicationMinimalInsert: function () {
-      const id = 12;
-      const term = 1;
-      const writeConcern = 2;
-      servers.forEach(server => replicationApi.createLog(id, server));
-      replicationApi.becomeLeader(id, serverA, {term, writeConcern, follower: [serverB, serverC]});
-      replicationApi.becomeFollower(id, serverB, {term, leader: serverA});
-      replicationApi.becomeFollower(id, serverC, {term, leader: serverA});
-      const entry = {foo: "bar"};
-      const insertRes = replicationApi.insert(id, serverA, entry);
-      const index = insertRes.index;
-      assertEqual(1, index);
-      const readRes = replicationApi.readEntry(id, serverA, index);
-      assertEqual(entry, readRes.payload);
-    }
-  };
-}
 
 const runInDb = (name, callback) => {
   const oldDbName = db._name();
@@ -308,9 +266,6 @@ function ddlSuite() {
   };
 }
 
-if (isInMaintainerMode) {
-  jsunity.run(dbServerApiSuite);
-}
 if (replication2Enabled) {
   jsunity.run(ddlSuite);
 }
