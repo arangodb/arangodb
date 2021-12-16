@@ -63,8 +63,8 @@ using Step = typename graph::MockGraphProvider::Step;
 // TODO [GraphRefactor]: Add matrix out of all variants we have here (added EdgeUniquenessLevel)
 using TypesToTest = ::testing::Types<
     PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>,
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::NONE>,
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::NONE>>;
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>,
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::GLOBAL>>;
 
 template <class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
@@ -367,7 +367,7 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_du
         // No uniqueness check, take the vertex
         EXPECT_FALSE(res.isFiltered());
         EXPECT_FALSE(res.isPruned());
-      } else {
+      } else if (this->getVertexUniquness() == VertexUniquenessLevel::GLOBAL) {
         // With GLOBAL uniqueness this vertex is illegal
         EXPECT_TRUE(res.isFiltered());
         EXPECT_TRUE(res.isPruned());

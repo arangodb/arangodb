@@ -891,13 +891,12 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   return cost;
 }
 
-std::shared_ptr<aql::PruneExpressionEvaluator> TraverserOptions::createPruneEvaluator(
+std::unique_ptr<aql::PruneExpressionEvaluator> TraverserOptions::createPruneEvaluator(
     std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
     size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr) {
-  return std::make_shared<aql::PruneExpressionEvaluator>(_trx, _query, _aqlFunctionsInternalCache,
-                                                         std::move(vars),
-                                                         std::move(regs), vertexVarIdx,
-                                                         edgeVarIdx, pathVarIdx, expr);
+  return std::make_unique<aql::PruneExpressionEvaluator>(
+      _trx, _query, _aqlFunctionsInternalCache, std::move(vars),
+      std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx, expr);
 }
 
 void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
