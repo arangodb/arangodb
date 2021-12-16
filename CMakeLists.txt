@@ -733,12 +733,10 @@ if (NOT WINDOWS)
 
     set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 
-    # backwards compatibility hack
-    set(BUILDING_FOR_ARM64 OFF)
+    set(ASM_OPTIMIZATIONS_DEFAULT ON)
   elseif (ARANGODB_TARGET_ARCHITECTURES STREQUAL "aarch64")
 
-    # backwards compatibility hack
-    set(BUILDING_FOR_ARM64 ON)
+    set(ASM_OPTIMIZATIONS_DEFAULT OFF)
   else ()
     message(FATAL_ERROR "ArangoDB does not support " ${ARANGODB_TARGET_ARCHITECTURES})  
   endif ()
@@ -761,13 +759,6 @@ set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
 ################################################################################
-
-# Allow to prohibit assembler optimization code explicitly
-if (BUILDING_FOR_ARM64)
-  SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
-else (BUILDING_FOR_ARM64)
-  SET(ASM_OPTIMIZATIONS_DEFAULT ON)
-endif (BUILDING_FOR_ARM64)
 
 option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
   ${ASM_OPTIMIZATIONS_DEFAULT})
