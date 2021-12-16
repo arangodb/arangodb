@@ -1,6 +1,9 @@
 devel
 -----
 
+* Set a limit for ArangoSearch segment size to 256MB during recovery to avoid OOM kill in rare 
+  cases.
+
 * Added startup security option `--foxx.allow-install-from-remote` to allow 
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
