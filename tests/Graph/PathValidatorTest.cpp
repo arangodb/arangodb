@@ -367,7 +367,7 @@ TYPED_TEST(PathValidatorTest, it_should_honor_uniqueness_on_global_paths_last_du
         // No uniqueness check, take the vertex
         EXPECT_FALSE(res.isFiltered());
         EXPECT_FALSE(res.isPruned());
-      } else if (this->getVertexUniquness() == VertexUniquenessLevel::GLOBAL) {
+      } else {
         // With GLOBAL uniqueness this vertex is illegal
         EXPECT_TRUE(res.isFiltered());
         EXPECT_TRUE(res.isPruned());
