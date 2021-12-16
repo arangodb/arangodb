@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Metrics/Gauge.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
@@ -308,7 +309,7 @@ replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
 auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
     if (followerData._logCore == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      throw ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
     }
     FollowerStatus status;
     status.local = followerData.getLocalStatistics();
@@ -329,7 +330,8 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
     if (followerData._logCore == nullptr) {
       LOG_CTX("55a1d", WARN, _loggerContext)
           << "follower log core is already gone. Resign was called twice!";
-      basics::abortOrThrow(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+      basics::abortOrThrowException(ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+                                                                 ADB_HERE));
     }
 
     // use a unique ptr because move constructor for multimaps is not noexcept
@@ -338,8 +340,8 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<std::unique_ptr<LogC
 
     auto action = [queue = std::move(queue)]() noexcept {
       std::for_each(queue->begin(), queue->end(), [](auto& pair) {
-        pair.second.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
-                                                   __FILE__, __LINE__));
+        pair.second.setException(ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+                                                              ADB_HERE));
       });
     };
     using action_type = decltype(action);
