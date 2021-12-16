@@ -63,8 +63,8 @@ using Step = typename graph::MockGraphProvider::Step;
 // TODO [GraphRefactor]: Add matrix out of all variants we have here (added EdgeUniquenessLevel)
 using TypesToTest = ::testing::Types<
     PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>,
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::NONE>,
-    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::NONE>>;
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>,
+    PathValidator<graph::MockGraphProvider, PathStore<graph::MockGraphProvider::Step>, VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::GLOBAL>>;
 
 template <class ValidatorType>
 class PathValidatorTest : public ::testing::Test {

@@ -73,7 +73,10 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _order(order),
       _refactor(refactor),
       _trx(trx) {
-  TRI_ASSERT(_traversalEnumerator != nullptr);
+  if (!refactor) {
+    TRI_ASSERT(_traverser != nullptr);
+  }
+
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
@@ -96,15 +99,13 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   }
 }
 
+// REFACTOR
 arangodb::graph::TraversalEnumerator& TraversalExecutorInfos::traversalEnumerator() const {
-  TRI_ASSERT(_traverser == nullptr);
-  TRI_ASSERT(_traversalEnumerator);
   return *_traversalEnumerator.get();
 }
 
+// OLD
 Traverser& TraversalExecutorInfos::traverser() {
-  TRI_ASSERT(_traversalEnumerator == nullptr);
-  TRI_ASSERT(_traverser != nullptr);
   return *_traverser.get();
 }
 

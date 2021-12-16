@@ -44,6 +44,7 @@ PruneExpressionEvaluator::~PruneExpressionEvaluator() = default;
 
 bool PruneExpressionEvaluator::evaluate() {
   bool mustDestroy = false;
+  TRI_ASSERT(_pruneExpression != nullptr);
   aql::AqlValue res = _pruneExpression->execute(&_ctx, mustDestroy);
   arangodb::aql::AqlValueGuard guard(res, mustDestroy);
   return res.toBoolean();

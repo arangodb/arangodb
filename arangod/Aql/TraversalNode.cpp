@@ -681,8 +681,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     }
   };
 
-  if (!opts->refactor()) {
-    // [GraphRefactor] TODO: evaluator not needed here - we need to clean this up later
+  if (!opts->refactor() && pruneExpression() != nullptr) {
+    // [GraphRefactor] TODO: shared_ptr::evaluator not needed here - we need to clean this up later
     std::shared_ptr<aql::PruneExpressionEvaluator> evaluator;
     checkPruneAvailability(false, evaluator);
   }

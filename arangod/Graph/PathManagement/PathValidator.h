@@ -94,6 +94,11 @@ class PathValidator {
   // TODO: Figure out if we can make this Member template dependend
   //       e.g. std::enable_if<vertexUniqueness != NONE>
   ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
+  ::arangodb::containers::HashSet<
+      typename PathStore::Step::StepType,
+      std::hash<typename PathStore::Step::StepType>,
+      std::equal_to<typename PathStore::Step::StepType>>
+      _uniqueEdges;
 
   ::arangodb::containers::HashSet<EdgeDocumentToken, std::hash<EdgeDocumentToken>, std::equal_to<EdgeDocumentToken>> _uniqueEdges;
 
