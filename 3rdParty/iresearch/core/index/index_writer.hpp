@@ -427,7 +427,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     ///        written to the segment before flush
     ///        0 == unlimited
     ////////////////////////////////////////////////////////////////////////////
-    size_t segment_memory_max{0};
+    size_t segment_memory_max{256 * (size_t(1) << 20)}; // 256MB by default
   };
 
   ////////////////////////////////////////////////////////////////////////////
