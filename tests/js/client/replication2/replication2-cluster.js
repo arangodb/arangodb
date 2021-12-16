@@ -25,85 +25,15 @@
 
 const jsunity = require('jsunity');
 const console = require('console');
-const request = require('@arangodb/request');
 const _ = require('lodash');
 const db = require('@arangodb').db;
-const {checkRequestResult} = require('@arangodb/arangosh');
-const { defaultMaxListeners } = require('events');
 const {
-  assertEqual,
   assertFalse,
-  assertNotNull,
   assertNotUndefined,
-  assertTypeOf,
   assertIdentical,
 } = jsunity.jsUnity.assertions;
 
 const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
-
-const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-
-const replicationApi = {
-  createLog: (id, server) => {
-    const res = request.post({
-      url: getUrl(server.endpoint) + `/_api/log`,
-      // Note that `targetConfig` is deserialized by the RestHandler, but ignored (on a DBServer, as is the case here).
-      // Just the `id` is needed. We might want to change this if the API is kept, i.e. make passing `targetConfig`
-      // obsolete.
-      body: JSON.stringify({id, targetConfig: {waitForSync: false, writeConcern: 2}}),
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-  },
-
-  becomeLeader: (id, server, {term, writeConcern, follower}) => {
-    const res = request.post({
-      url: getUrl(server.endpoint) + `/_api/log/${id}/becomeLeader`,
-      body: JSON.stringify({term, writeConcern, follower: follower.map(server => server.id)}),
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-  },
-
-  becomeFollower: (id, server, {term, leader}) => {
-    const res = request.post({
-      url: getUrl(server.endpoint) + `/_api/log/${id}/becomeFollower`,
-      body: JSON.stringify({term, leader: leader.id}),
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-  },
-
-  insert: (id, server, data) => {
-    const res = request.post({
-      url: getUrl(server.endpoint) + `/_api/log/${id}/insert`,
-      body: JSON.stringify(data),
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-    const result = res.json.result;
-    assertTypeOf('object', result, JSON.stringify(res.json));
-    assertEqual(["index", "term", "quorum"].sort(), Object.keys(result).sort());
-    return result;
-  },
-
-  readEntry: (id, server, entry) => {
-    const res = request.get({
-      url: getUrl(server.endpoint) + `/_api/log/${id}/readEntry/${entry}`,
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-    const result = res.json.result;
-    assertEqual(["logIndex", "payload", "logTerm"].sort(), Object.keys(result).sort());
-    return result;
-  },
-
-};
 
 const runInDb = (name, callback) => {
   const oldDbName = db._name();
