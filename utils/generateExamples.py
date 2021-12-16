@@ -532,7 +532,7 @@ def generateAQL(testName):
             json.loads(value[AQLBV])
         except json.decoder.JSONDecodeError as ex:
             bv_parse_error = '''
-  allErrors += '\\nRUN FAILED TO JSON PARSE BIND VALUES: {testName},\\nError: {err}\\nUnparseable JSON:\\n {no_json}';
+  allErrors += '\\nRUN FAILED TO JSON PARSE BIND VALUES IN EXAMPLE {testName},\\nError: {err}\\nUnparseable JSON:\\n {no_json}';
 '''.format(**{
     "testName": testName,
     "err": ex.msg,
