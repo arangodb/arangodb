@@ -32,7 +32,7 @@
 ################################################################################
 
 from __future__ import print_function # py2 compat
-import re, sys, string, os, re, io
+import re, sys, string, os, re, io, json
 from pprint import pprint
 
 ################################################################################
@@ -524,8 +524,21 @@ def generateArangoshRun(testName):
 def generateAQL(testName):
     value = RunTests[testName]
     startLineNo = RunTests[testName][LINE_NO]
+    bv_parse_error = None
     if not AQLBV in value:
         value[AQLBV] = "{}"
+    else:
+        try:
+            json.loads(value[AQLBV])
+        except json.decoder.JSONDecodeError as ex:
+            bv_parse_error = '''
+  allErrors += '\\nRUN FAILED TO JSON PARSE BIND VALUES: {testName}, {err}\\nUnparseable JSON: {no_json}';
+'''.format(**{
+    "testName": testName,
+    "err": ex.msg,
+    "no_json": value[AQLBV].encode('unicode_escape').decode("utf-8").replace("'", "\\'")
+})
+            value[AQLBV] = "{}"
 
     if not AQLDS in value:
         value[AQLDS] = ""
@@ -554,11 +567,15 @@ def generateAQL(testName):
         escapeBS.sub(doubleBS, OutputDir),
         escapeBS.sub(doubleBS, MapSourceFiles[testName])
     ))
-    print("  const query = `" + value[AQL] + "`;")
-    print("  const bv = " + value[AQLBV] + ";")
-    print("  const ds = '" + value[AQLDS] + "';")
-    print("  const explainAql = " + value[AQLEXPLAIN].lower() + ";")
-    print('''
+    if bv_parse_error:
+        print(bv_parse_error)
+        print('\n})();\n')
+    else:
+        print("  const query = `" + value[AQL] + "`;")
+        print("  const bv = " + value[AQLBV] + ";")
+        print("  const ds = '" + value[AQLDS] + "';")
+        print("  const explainAql = " + value[AQLEXPLAIN].lower() + ";")
+        print('''
   if (ds !== '') {
     exds[ds].removeDS();
     exds[ds].createDS();
