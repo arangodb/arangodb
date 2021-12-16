@@ -625,13 +625,18 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   char const* p = data.begin();
   char const* end = p + data.length();
 
+  VPackBuilder builder;
+
   bool found = false;
   std::string const& cType =
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
+   
   if (found && cType == StaticStrings::MimeTypeVPack) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
 
     VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
+
+    builder.openArray(true);
 
     try {
       while (p < end) {
@@ -640,15 +645,40 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
         validator.validate(p, remaining, /*isSubPart*/ true);
 
         VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
-        Result r = parseCollectionDumpMarker(trx, coll, marker, hint);
 
-        TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
-        if (r.fail()) {
-          r.reset(r.errorNumber(),
-                  std::string("received invalid dump data for collection '") +
-                      coll->name() + "'");
-          return r;
+        if (!ADB_LIKELY(marker.isObject())) {
+          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
         }
+
+        // format auto-detection. this is executed only once per batch
+        if (hint == FormatHint::AutoDetect) {
+          if (marker.get(StaticStrings::KeyString).isString()) {
+            // _key present
+            hint = FormatHint::NoEnvelope;
+          } else {
+            hint = FormatHint::Envelope;
+          }
+        }
+
+        TRI_ASSERT(hint == FormatHint::Envelope || hint == FormatHint::NoEnvelope);
+
+        if (hint == FormatHint::Envelope) {
+          // input is wrapped in a {"type":2300,"data":{...}} envelope
+          VPackSlice s = marker.get(kTypeString);
+          TRI_replication_operation_e type = REPLICATION_INVALID;
+          if (s.isNumber()) {
+            type = static_cast<TRI_replication_operation_e>(s.getNumber<int>());
+          }
+          VPackSlice doc = marker.get(kDataString);
+          if (type != REPLICATION_MARKER_DOCUMENT || !doc.isObject()) {
+            return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+          }
+          builder.add(doc);
+        } else {
+          // input is just a document, without any {"type":2300,"data":{...}} envelope
+          builder.addExternal(reinterpret_cast<uint8_t const*>(p));
+        }
+
         ++markersProcessed;
         p += marker.byteSize();
       }
@@ -658,13 +688,42 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       return Result(TRI_ERROR_HTTP_CORRUPTED_JSON, e.what());
     }
 
+    builder.close();
+
+    OperationOptions options;
+    options.silent = true;
+    options.ignoreRevs = true;
+    options.isRestore = true;
+    options.validate = false;
+    options.returnOld = false;
+    options.returnNew = false;
+    options.checkUniqueConstraintsInPreflight = false;
+    options.isSynchronousReplicationFrom = _state.leaderId;
+
+    auto opRes = trx.insert(coll->name(), builder.slice(), options);
+    if (opRes.fail()) {
+      return opRes.result;
+    }
+
+    VPackSlice resultSlice = opRes.slice();
+    if (resultSlice.isArray()) {
+      for (VPackSlice it : VPackArrayIterator(resultSlice)) {
+        VPackSlice s = it.get(StaticStrings::Error);
+        if (!s.isTrue()) {
+          continue;
+        }
+        // found an error
+        auto errorCode = ErrorCode{it.get(StaticStrings::ErrorNum).getNumber<int>()};
+        VPackSlice msg = it.get(StaticStrings::ErrorMessage);
+        return Result(errorCode, msg.copyString());
+      }
+    }
+
   } else {
     // buffer must end with a NUL byte
     TRI_ASSERT(*end == '\0');
     LOG_TOPIC("bad5d", DEBUG, Logger::REPLICATION) << "using json for chunk contents";
 
-
-    VPackBuilder builder;
     VPackParser parser(builder, &basics::VelocyPackHelper::strictRequestValidationOptions);
 
     while (p < end) {

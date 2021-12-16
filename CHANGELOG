@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improved performance in replication dump protocol by inserting arrays of 
+  documents instead of one document at a time and also not retrieving the
+  document revision field when not needed.
+
 * Added startup security option `--foxx.allow-install-from-remote` to allow 
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
