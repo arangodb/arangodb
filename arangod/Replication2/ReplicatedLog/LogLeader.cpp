@@ -55,6 +55,7 @@
 #include "Futures/Unit.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/DeferredExecution.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -356,7 +357,7 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCor
                                          &participantId = _id](GuardedLeaderData& leaderData) {
     if (leaderData._didResign) {
       LOG_CTX("5d3b8", ERR, _logContext) << "Leader " << participantId << " already resigned!";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      throw ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
 
     // WARNING! This stunt is here to make things exception safe.
@@ -370,8 +371,8 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<std::unique_ptr<LogCor
       for (auto& [idx, promise] : *promises) {
         // Check this to make sure that setException does not throw
         if (!promise.isFulfilled()) {
-          promise.setException(basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE,
-                                                 __FILE__, __LINE__));
+          promise.setException(ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                                                            ADB_HERE));
         }
       }
     };
@@ -390,7 +391,7 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
     -> std::optional<PersistingLogEntry> {
   return _guardedLeaderData.doUnderLock([&idx](auto& leaderData) -> std::optional<PersistingLogEntry> {
     if (leaderData._didResign) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      throw ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
     if (auto entry = leaderData._inMemoryLog.getEntryByIndex(idx);
         entry.has_value() && entry->entry().logIndex() <= leaderData._commitIndex) {
@@ -404,7 +405,7 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
 auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   return _guardedLeaderData.doUnderLock([term = _currentTerm](GuardedLeaderData const& leaderData) {
     if (leaderData._didResign) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      throw ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
@@ -496,8 +497,8 @@ auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
   return _guardedLeaderData.doUnderLock([index](auto& leaderData) {
     if (leaderData._didResign) {
       auto promise = WaitForPromise{};
-      promise.setException(basics::Exception(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-                                             __FILE__, __LINE__));
+      promise.setException(ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                                                        ADB_HERE));
       return promise.getFuture();
     }
     if (leaderData._commitIndex >= index) {
@@ -936,7 +937,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag() const no
 auto replicated_log::LogLeader::getReplicatedLogSnapshot() const -> InMemoryLog::log_type {
   auto [log, commitIndex] = _guardedLeaderData.doUnderLock([](auto const& leaderData) {
     if (leaderData._didResign) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      throw ParticipantResignedException(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                                         ADB_HERE);
     }
 
     return std::make_pair(leaderData._inMemoryLog, leaderData._commitIndex);
@@ -1170,19 +1172,13 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
           LOG_CTX("fd245", TRACE, self->_logContext)
               << "configuration already newer than generation " << config->generation;
         }
-      } catch (arangodb::basics::Exception const& err) {
-        if (err.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
-          LOG_CTX("3959f", DEBUG, self->_logContext)
-              << "leader resigned before new participant configuration was "
-                 "committed";
-        } else {
-          LOG_CTX("1af0f", FATAL, self->_logContext)
-              << "failed to commit new participant config; " << err.message();
-          FATAL_ERROR_EXIT();
-        }
+      } catch (ParticipantResignedException const& err) {
+        LOG_CTX("3959f", DEBUG, self->_logContext)
+            << "leader resigned before new participant configuration was "
+               "committed";
       } catch (std::exception const& err) {
-        LOG_CTX("5cedb", FATAL, self->_logContext)
-            << "failed to establish leadership: " << err.what();
+        LOG_CTX("1af0f", FATAL, self->_logContext)
+            << "failed to commit new participant config; " << err.what();
         FATAL_ERROR_EXIT();  // TODO is there nothing we can do here?
       }
     }

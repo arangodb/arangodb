@@ -58,7 +58,7 @@
 namespace arangodb::basics {
 
 /// @brief arango exception type
-class Exception final : public virtual std::exception {
+class Exception : public virtual std::exception {
  public:
   static std::string FillExceptionString(ErrorCode, ...);
   static std::string FillFormatExceptionString(char const* format, ...);
