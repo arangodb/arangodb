@@ -650,6 +650,13 @@ void RocksDBEngine::start() {
   // Maximum number of level-0 files.  We stop writes at this point.
   _options.level0_stop_writes_trigger = static_cast<int>(opts._level0StopTrigger);
 
+  // Soft limit on pending compaction bytes. We start slowing down writes
+  // at this point.
+  _options.soft_pending_compaction_bytes_limit = opts._pendingCompactionBytesSlowdownTrigger;
+
+  // Maximum number of pending compaction bytes. We stop writes at this point.
+  _options.hard_pending_compaction_bytes_limit = opts._pendingCompactionBytesStopTrigger;
+
   _options.recycle_log_file_num = opts._recycleLogFileNum;
   _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
 

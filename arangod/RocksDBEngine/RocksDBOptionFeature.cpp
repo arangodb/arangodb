@@ -144,6 +144,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      _pendingCompactionBytesSlowdownTrigger(rocksDBDefaults.soft_pending_compaction_bytes_limit),
+      _pendingCompactionBytesStopTrigger(rocksDBDefaults.hard_pending_compaction_bytes_limit),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
@@ -359,8 +361,14 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new Int64Parameter(&_level0SlowdownTrigger));
 
   options->addOption("--rocksdb.level0-stop-trigger",
-                     "number of level-0 files that triggers a full write stall",
+                     "number of level-0 files that triggers a full write stop",
                      new Int64Parameter(&_level0StopTrigger));
+  options->addOption("--rocksdb.pending-compactions-slowdown-trigger",
+                     "number of pending compaction bytes that triggers a write slowdown",
+                     new UInt64Parameter(&_pendingCompactionBytesSlowdownTrigger));
+  options->addOption("--rocksdb.pending-compactions-stop-trigger",
+                     "number of pending compaction bytes that triggers a full write stop",
+                     new UInt64Parameter(&_pendingCompactionBytesStopTrigger));
 
   options->addOption(
       "--rocksdb.num-threads-priority-high",
