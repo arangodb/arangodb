@@ -457,7 +457,7 @@ TraversalExecutor::~TraversalExecutor() {
       _traversalEnumerator.unpreparePostFilterValidatorContext();
     }
   }
-};
+}
 
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
   if (!_infos.isRefactor()) {

@@ -71,10 +71,13 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
 
     bool success =
         _store.visitReversePath(step, [&](typename PathStore::Step const& step) -> bool {
-          auto const& [unused, added] =
+          auto const& [unusedV, addedVertex] =
               _uniqueVertices.emplace(step.getVertexIdentifier());
+
+//          auto const& [unusedE, addedEdge] =
+//              _uniqueEdges.emplace(step.getVertexIdentifier());
           // If this add fails, we need to exclude this path
-          return added;
+          return addedVertex;
         });
     if (!success) {
       res.combine(ValidationResult::Type::FILTER);
@@ -269,6 +272,10 @@ template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqu
 void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::reset() {
   if constexpr (vertexUniqueness != VertexUniquenessLevel::NONE) {
     _uniqueVertices.clear();
+
+    if constexpr (edgeUniqueness != EdgeUniquenessLevel::NONE) {
+      _uniqueEdges.clear();
+    }
   }
 }
 

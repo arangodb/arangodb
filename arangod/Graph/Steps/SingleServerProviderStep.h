@@ -93,6 +93,10 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
     return _vertex.getID();
   }
 
+  ::arangodb::graph::EdgeType getEdgeIdentifier() const {
+    return _edge.getID();
+  }
+
   std::string getCollectionName() const {
     auto collectionNameResult = extractCollectionName(_vertex.getID());
     if (collectionNameResult.fail()) {

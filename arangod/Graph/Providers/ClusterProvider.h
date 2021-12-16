@@ -121,6 +121,9 @@ class ClusterProvider {
     bool isLooseEnd() const { return !_fetched; }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
+    EdgeType getEdgeIdentifier() const {
+      return _edge.getID();
+    }
 
     std::string getCollectionName() const {
       auto collectionNameResult = extractCollectionName(_vertex.getID());

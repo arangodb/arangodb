@@ -92,7 +92,7 @@ VertexType const& ClusterProvider::Step::Vertex::getID() const {
   return _vertex;
 }
 
-EdgeType const& ClusterProvider::Step::Edge::getID() const { return _edge; }
+EdgeDocumentToken const& ClusterProvider::Step::Edge::getID() const { return _edge; }
 bool ClusterProvider::Step::Edge::isValid() const { return !_edge.empty(); };
 
 bool ClusterProvider::Step::isResponsible(transaction::Methods* trx) const {
