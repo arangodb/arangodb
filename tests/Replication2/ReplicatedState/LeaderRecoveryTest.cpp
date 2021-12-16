@@ -28,6 +28,7 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Streams/Streams.h"
+#include "Replication2/Mocks/FakeReplicatedState.h"
 
 #include "StateMachines/MyStateMachine.h"
 
@@ -41,23 +42,6 @@ struct ReplicatedStateRecoveryTest;
 namespace arangodb::replication2::test {
 struct MyHelperLeaderState;
 struct MyHelperFactory;
-
-template <typename S>
-struct EmptyFollowerType : ReplicatedFollowerState<S> {
-  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
-  using Stream = streams::Stream<EntryType>;
-  using EntryIterator = typename Stream::Iterator;
-
- protected:
-  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
-      -> futures::Future<Result> override {
-    return futures::Future<Result>{std::in_place};
-  }
-  auto acquireSnapshot(ParticipantId const& leader, LogIndex) noexcept
-      -> futures::Future<Result> override {
-    return futures::Future<Result>{std::in_place};
-  }
-};
 
 struct MyHelperState {
   using FactoryType = MyHelperFactory;

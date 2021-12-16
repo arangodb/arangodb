@@ -70,6 +70,7 @@ struct ReplicatedStateBase {
   auto getFollower() -> std::shared_ptr<ReplicatedFollowerStateBase> {
     return getFollowerBase();
   }
+  virtual auto getSnapshotStatus() const -> SnapshotStatus = 0;
 
  private:
   virtual auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> = 0;
@@ -105,6 +106,8 @@ struct ReplicatedState final : ReplicatedStateBase,
 
   auto getStatus() -> StateStatus final;
 
+  auto getSnapshotStatus() const -> SnapshotStatus override;
+
  private:
   auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> final {
     return getLeader();
@@ -118,7 +121,8 @@ struct ReplicatedState final : ReplicatedStateBase,
 
   struct StateBase {
     virtual ~StateBase() = default;
-    virtual auto getStatus() -> StateStatus = 0;
+    virtual auto getStatus() const -> StateStatus = 0;
+    virtual auto getSnapshotStatus() const -> SnapshotStatus = 0;
   };
 
   struct LeaderState;

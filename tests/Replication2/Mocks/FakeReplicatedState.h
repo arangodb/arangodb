@@ -27,12 +27,17 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/Streams/Streams.h"
 
-namespace arangodb::replication2::test {
-template <typename S>
+namespace arangodb::replication2 {
+namespace test {
+
+/**
+ * Empty follower. Always immediately responds with success.
+ * @tparam S state description
+ */
+template<typename S>
 struct EmptyFollowerType : replicated_state::ReplicatedFollowerState<S> {
-  using EntryType = typename replicated_state::ReplicatedStateTraits<S>::EntryType;
-  using Stream = streams::Stream<EntryType>;
-  using EntryIterator = typename Stream::Iterator;
+  using EntryIterator =
+      typename replicated_state::ReplicatedFollowerState<S>::EntryIterator;
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
@@ -45,14 +50,128 @@ struct EmptyFollowerType : replicated_state::ReplicatedFollowerState<S> {
   }
 };
 
+/**
+ * Empty leader. Always immediately responds with success.
+ * @tparam S
+ */
 template<typename S>
 struct EmptyLeaderType : replicated_state::ReplicatedLeaderState<S> {
-  using EntryType = typename replicated_state::ReplicatedStateTraits<S>::EntryType;
-  using Stream = streams::Stream<EntryType>;
-  using EntryIterator = typename Stream::Iterator;
+  using EntryIterator =
+      typename replicated_state::ReplicatedLeaderState<S>::EntryIterator;
+
  protected:
-  auto recoverEntries(std::unique_ptr<EntryIterator>) -> futures::Future<Result> override {
+  auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
+      -> futures::Future<Result> override {
     return futures::Future<Result>(std::in_place);
   }
 };
-}
+
+template<typename Input, typename Result>
+struct AsyncOperationMarker {
+  auto trigger(Input inValue) -> futures::Future<Result> {
+    TRI_ASSERT(in.has_value() == false);
+    in.emplace(std::move(inValue));
+    return promise.emplace().getFuture();
+  }
+
+  auto resolveWith(Result res) {
+    TRI_ASSERT(triggered);
+    TRI_ASSERT(!promise->isFulfilled());
+    promise->setValue(std::move(res));
+  }
+
+  auto inspectValue() const -> Input const& { return *in; }
+
+  [[nodiscard]] auto wasTriggered() const noexcept -> bool { return triggered; }
+
+  void reset() {
+    TRI_ASSERT(triggered);
+    TRI_ASSERT(promise->isFulfilled());
+    triggered = false;
+    promise.reset();
+  }
+
+ private:
+  bool triggered = false;
+  std::optional<Input> in;
+  std::optional<futures::Promise<Result>> promise;
+};
+
+template<typename S>
+struct FakeLeaderType : replicated_state::ReplicatedLeaderState<S> {
+  using EntryIterator =
+      typename replicated_state::ReplicatedLeaderState<S>::EntryIterator;
+
+  [[nodiscard]] auto hasReceivedRecovery() const noexcept -> bool {
+    return recovery.wasTriggered();
+  }
+
+  void resolveRecoveryOk() noexcept { resolveRecovery(Result{}); }
+
+  void resolveRecovery(Result res) noexcept {
+    recovery.resolveWith(std::move(res));
+  }
+
+  AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> recovery;
+ protected:
+  auto recoverEntries(std::unique_ptr<EntryIterator> iter)
+      -> futures::Future<Result> override {
+    return recovery.trigger(std::move(iter));
+  }
+};
+
+template<typename S>
+struct FakeFollowerType : replicated_state::ReplicatedFollowerState<S> {
+  using EntryIterator =
+      typename replicated_state::ReplicatedFollowerState<S>::EntryIterator;
+
+  AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
+  AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
+ protected:
+  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
+      -> futures::Future<Result> override {
+    return apply.trigger(std::move(ptr));
+  }
+  auto acquireSnapshot(const ParticipantId& leader,
+                       LogIndex localCommitIndex) noexcept
+      -> futures::Future<Result> override {
+    return acquire.trigger(std::make_pair(leader, localCommitIndex));
+  }
+};
+
+/**
+ * DefaultFactory simply makes the LeaderType or FollowerType shared.
+ * @tparam LeaderType
+ * @tparam FollowerType
+ */
+template<typename LeaderType, typename FollowerType>
+struct DefaultFactory {
+  auto constructLeader() -> std::shared_ptr<LeaderType> {
+    return std::make_shared<LeaderType>();
+  }
+  auto constructFollower() -> std::shared_ptr<FollowerType> {
+    return std::make_shared<FollowerType>();
+  }
+};
+
+/**
+ * DefaultEntryType contains a key and value. Should be enough for most tests.
+ */
+struct DefaultEntryType {
+  std::string key, value;
+};
+}  // namespace test
+
+template<>
+struct replicated_state::EntryDeserializer<test::DefaultEntryType> {
+  auto operator()(streams::serializer_tag_t<test::DefaultEntryType>,
+                  velocypack::Slice s) const -> test::DefaultEntryType;
+};
+
+template<>
+struct replicated_state::EntrySerializer<test::DefaultEntryType> {
+  void operator()(streams::serializer_tag_t<test::DefaultEntryType>,
+                  test::DefaultEntryType const& e,
+                  velocypack::Builder& b) const;
+};
+}  // namespace arangodb::replication2

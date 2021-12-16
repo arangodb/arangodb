@@ -21,3 +21,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FakeReplicatedState.h"
+
+using namespace arangodb;
+using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_state;
+
+void replicated_state::EntrySerializer<test::DefaultEntryType>::operator()(
+    streams::serializer_tag_t<test::DefaultEntryType>,
+    const test::DefaultEntryType& e, velocypack::Builder& b) const {
+  velocypack::ObjectBuilder ob(&b);
+  b.add("key", velocypack::Value(e.key));
+  b.add("value", velocypack::Value(e.value));
+}
+
+auto replicated_state::EntryDeserializer<test::DefaultEntryType>::operator()(
+    streams::serializer_tag_t<test::DefaultEntryType>,
+    velocypack::Slice s) const -> test::DefaultEntryType {
+  auto key = s.get("key").copyString();
+  auto value = s.get("value").copyString();
+  return test::DefaultEntryType{.key = key, .value = value};
+}
