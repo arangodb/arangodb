@@ -650,10 +650,10 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& ca
     while (call.shouldSkip()) {
       if (_traversalEnumerator.isDone()) {
         if (!initTraverser(input)) {
+          TRI_ASSERT(!input.hasDataRow());
           return {input.upstreamState(), oldStats, skipped, AqlCall{}};
         }
 
-        TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), stats(), skipped, AqlCall{}};
       } else {
         if (_traversalEnumerator.skipPath()) {
