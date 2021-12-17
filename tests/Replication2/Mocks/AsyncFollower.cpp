@@ -23,7 +23,7 @@
 
 #include <utility>
 
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 
@@ -50,6 +50,18 @@ auto AsyncFollower::release(arangodb::replication2::LogIndex doneWithIdx) -> Res
 
 auto AsyncFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return _follower->getParticipantId();
+}
+
+auto AsyncFollower::waitForIterator(LogIndex index) -> WaitForIteratorFuture {
+  return _follower->waitForIterator(index);
+}
+
+auto AsyncFollower::getCommitIndex() const noexcept -> LogIndex {
+  return _follower->getCommitIndex();
+}
+
+auto AsyncFollower::waitForLeaderAcked() -> WaitForFuture {
+  return _follower->waitForLeaderAcked();
 }
 
 auto AsyncFollower::appendEntries(AppendEntriesRequest request)
