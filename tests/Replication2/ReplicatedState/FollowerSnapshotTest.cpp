@@ -27,11 +27,13 @@
 #include "Logger/LogMacros.h"
 #include "LogLevels.h"
 
-#include "Replication2/ReplicatedLog/TestHelper.h"
+#include "Replication2/Mocks/FakeFollower.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/PersistedLog.h"
-#include "Replication2/Streams/LogMultiplexer.h"
+#include "Replication2/ReplicatedLog/TestHelper.h"
+#include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/Streams/LogMultiplexer.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -47,68 +49,14 @@ struct FollowerSnapshotTest
     using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
   };
 
-  using RepState = ReplicatedState<State>;
-
-  FollowerSnapshotTest() { feature->registerStateType<State>("my-state"); }
-
-  auto makeReplicatedLog() -> std::shared_ptr<replicated_log::ReplicatedLog> {
-    auto persisted = std::make_shared<test::MockLog>(LogId{1});
-    auto core = std::make_unique<replicated_log::LogCore>(persisted);
-    return std::make_shared<replicated_log::ReplicatedLog>(
-        std::move(core), _logMetricsMock, _optionsMock,
-        LoggerContext(Logger::REPLICATION2));
-  }
-
-  auto getInputStreamForFollower(
-      std::shared_ptr<replicated_log::ILogFollower> f)
-      -> std::shared_ptr<streams::ProducerStream<State::EntryType>> {
-    auto term = f->getTerm();
-    TRI_ASSERT(term.has_value());
-    auto leaderId = f->getLeader();
-    TRI_ASSERT(leaderId.has_value());
-    auto log = makeReplicatedLog();
-    auto leader = log->becomeLeader(
-        LogConfig(2, 2, 2, false), *leaderId, *term,
-        std::vector<std::shared_ptr<replicated_log::AbstractFollower>>{f});
-    leader->triggerAsyncReplication();
-    auto mux =
-        streams::LogMultiplexer<ReplicatedStateStreamSpec<State>>::construct(
-            leader);
-    struct Wrapper {
-      explicit Wrapper(
-          std::shared_ptr<replicated_log::ReplicatedLog> log,
-          std::shared_ptr<streams::ProducerStream<State::EntryType>> stream)
-          : log(std::move(log)), stream(std::move(stream)) {}
-      std::shared_ptr<replicated_log::ReplicatedLog> log;
-      std::shared_ptr<streams::ProducerStream<State::EntryType>> stream;
-    };
-
-    auto wrapper = std::make_shared<Wrapper>(log, mux->getStreamById<1>());
-    return std::shared_ptr<streams::ProducerStream<State::EntryType>>{
-        wrapper, wrapper->stream.get()};
-  }
-
-  auto makeCore() -> std::unique_ptr<ReplicatedStateCore> {
-    return std::make_unique<ReplicatedStateCore>();
-  }
-
-  std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
-
-  std::shared_ptr<ReplicatedLogMetricsMock> _logMetricsMock =
-      std::make_shared<ReplicatedLogMetricsMock>();
-  std::shared_ptr<ReplicatedLogGlobalSettings> _optionsMock =
-      std::make_shared<ReplicatedLogGlobalSettings>();
   std::shared_ptr<State::FactoryType> factory =
       std::make_shared<State::FactoryType>();
   std::unique_ptr<ReplicatedStateCore> core =
       std::make_unique<ReplicatedStateCore>();
 };
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
-#include "Replication2/Mocks/FakeFollower.h"
 
-TEST_F(FollowerSnapshotTest, check_acquire_snapshot) {
+TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   auto follower =
       std::make_shared<test::FakeFollower>("follower", "leader", LogTerm{1});
   follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "A", .value = "a"});
@@ -120,9 +68,8 @@ TEST_F(FollowerSnapshotTest, check_acquire_snapshot) {
       nullptr, follower, std::move(core), factory);
   manager->run();
   {
-    auto status = manager->getStatus().asFollowerStatus();
-    ASSERT_NE(status, nullptr);
-    EXPECT_EQ(status->state.state,
+    auto status = *manager->getStatus().asFollowerStatus();
+    EXPECT_EQ(status.state.state,
               FollowerInternalState::kWaitForLeaderConfirmation);
   }
 
@@ -132,9 +79,8 @@ TEST_F(FollowerSnapshotTest, check_acquire_snapshot) {
   // we expect a snapshot to be requested, because the snapshot state was
   // uninitialized
   {
-    auto status = manager->getStatus().asFollowerStatus();
-    ASSERT_NE(status, nullptr);
-    EXPECT_EQ(status->state.state, FollowerInternalState::kTransferSnapshot);
+    auto status = *manager->getStatus().asFollowerStatus();
+    EXPECT_EQ(status.state.state, FollowerInternalState::kTransferSnapshot);
   }
 
   // now here we expect that the state is internally created
@@ -156,9 +102,8 @@ TEST_F(FollowerSnapshotTest, check_acquire_snapshot) {
 
   // since the log is empty, we should be good
   {
-    auto status = manager->getStatus().asFollowerStatus();
-    ASSERT_NE(status, nullptr);
-    EXPECT_EQ(status->state.state, FollowerInternalState::kNothingToApply);
+    auto status = *manager->getStatus().asFollowerStatus();
+    EXPECT_EQ(status.state.state, FollowerInternalState::kNothingToApply);
   }
   ASSERT_NO_THROW(manager->getFollowerState())
       << "follower state should be available";
@@ -166,11 +111,37 @@ TEST_F(FollowerSnapshotTest, check_acquire_snapshot) {
 
   follower->updateCommitIndex(LogIndex{3});
   {
-    auto status = manager->getStatus().asFollowerStatus();
-    ASSERT_NE(status, nullptr);
-    EXPECT_EQ(status->state.state, FollowerInternalState::kApplyRecentEntries);
+    auto status = *manager->getStatus().asFollowerStatus();
+    EXPECT_EQ(status.state.state, FollowerInternalState::kApplyRecentEntries);
   }
   EXPECT_TRUE(state->apply.wasTriggered());
   EXPECT_EQ(state->apply.inspectValue()->range(),
             LogRange(LogIndex{1}, LogIndex{4}));
+
+  state->apply.resolveWith(Result{}); // resolve with ok
+  {
+    auto status = *manager->getStatus().asFollowerStatus();
+    EXPECT_EQ(status.state.state, FollowerInternalState::kNothingToApply);
+  }
+}
+
+TEST_F(FollowerSnapshotTest, follower_resign_before_leadership_acked) {
+  auto follower =
+      std::make_shared<test::FakeFollower>("follower", "leader", LogTerm{1});
+  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "A", .value = "a"});
+  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "B", .value = "b"});
+  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "C", .value = "c"});
+  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "D", .value = "d"});
+
+  auto manager = std::make_shared<FollowerStateManager<State>>(
+      nullptr, follower, std::move(core), factory);
+  manager->run();
+  {
+    auto status = *manager->getStatus().asFollowerStatus();
+    EXPECT_EQ(status.state.state,
+              FollowerInternalState::kWaitForLeaderConfirmation);
+  }
+
+  // follower resign
+  follower->resign();
 }

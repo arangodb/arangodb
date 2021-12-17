@@ -40,6 +40,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto getStatus() const -> replicated_log::LogStatus override;
   auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>,
                                  DeferredAction> override;
+  void resign() &;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
   auto getCommitIndex() const noexcept -> LogIndex override;

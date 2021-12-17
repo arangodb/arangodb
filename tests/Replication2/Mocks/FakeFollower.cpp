@@ -55,12 +55,7 @@ auto FakeFollower::getCommitIndex() const noexcept -> LogIndex {
 
 auto FakeFollower::resign() && -> std::tuple<
     std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
-  waitForQueue.resolveAll(
-      futures::Try<replicated_log::WaitForResult>(std::make_exception_ptr(
-          basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE, ADB_HERE))));
-  waitForLeaderAckedQueue.resolveAll(
-      futures::Try<replicated_log::WaitForResult>(std::make_exception_ptr(
-          basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE, ADB_HERE))));
+  resign();
   return std::make_tuple(nullptr, DeferredAction{});
 }
 
@@ -125,4 +120,13 @@ auto FakeFollower::waitForIterator(LogIndex index)
 void FakeFollower::updateCommitIndex(LogIndex index) {
   guarded.getLockedGuard()->commitIndex = index;
   waitForQueue.resolve(index, replicated_log::WaitForResult{index, nullptr});
+}
+
+void FakeFollower::resign() & {
+  waitForQueue.resolveAll(
+      futures::Try<replicated_log::WaitForResult>(std::make_exception_ptr(
+          basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE, ADB_HERE))));
+  waitForLeaderAckedQueue.resolveAll(
+      futures::Try<replicated_log::WaitForResult>(std::make_exception_ptr(
+          basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE, ADB_HERE))));
 }
