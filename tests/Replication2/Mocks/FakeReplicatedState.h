@@ -35,9 +35,9 @@ namespace test {
  * @tparam S state description
  */
 template<typename S>
-struct EmptyFollowerType : replicated_state::ReplicatedFollowerState<S> {
+struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
   using EntryIterator =
-      typename replicated_state::ReplicatedFollowerState<S>::EntryIterator;
+      typename replicated_state::IReplicatedFollowerState<S>::EntryIterator;
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
@@ -55,9 +55,9 @@ struct EmptyFollowerType : replicated_state::ReplicatedFollowerState<S> {
  * @tparam S
  */
 template<typename S>
-struct EmptyLeaderType : replicated_state::ReplicatedLeaderState<S> {
+struct EmptyLeaderType : replicated_state::IReplicatedLeaderState<S> {
   using EntryIterator =
-      typename replicated_state::ReplicatedLeaderState<S>::EntryIterator;
+      typename replicated_state::IReplicatedLeaderState<S>::EntryIterator;
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
@@ -98,9 +98,9 @@ struct AsyncOperationMarker {
 };
 
 template<typename S>
-struct FakeLeaderType : replicated_state::ReplicatedLeaderState<S> {
+struct FakeLeaderType : replicated_state::IReplicatedLeaderState<S> {
   using EntryIterator =
-      typename replicated_state::ReplicatedLeaderState<S>::EntryIterator;
+      typename replicated_state::IReplicatedLeaderState<S>::EntryIterator;
 
   [[nodiscard]] auto hasReceivedRecovery() const noexcept -> bool {
     return recovery.wasTriggered();
@@ -121,9 +121,9 @@ struct FakeLeaderType : replicated_state::ReplicatedLeaderState<S> {
 };
 
 template<typename S>
-struct FakeFollowerType : replicated_state::ReplicatedFollowerState<S> {
+struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
   using EntryIterator =
-      typename replicated_state::ReplicatedFollowerState<S>::EntryIterator;
+      typename replicated_state::IReplicatedFollowerState<S>::EntryIterator;
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
   AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;

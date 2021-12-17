@@ -62,10 +62,10 @@ struct InMemoryLog {
 
  private:
   log_type _log{};
-  LogIndex _first{0};
+  LogIndex _first{1};
 
  public:
-  InMemoryLog() = delete;
+  InMemoryLog() = default;
   explicit InMemoryLog(log_type log);
 
   InMemoryLog(InMemoryLog&& other) noexcept;

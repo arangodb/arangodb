@@ -50,7 +50,7 @@ struct MyHelperState {
   using FollowerType = EmptyFollowerType<MyHelperState>;
 };
 
-struct MyHelperLeaderState : ReplicatedLeaderState<MyHelperState> {
+struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override {
     TRI_ASSERT(recoveryTriggered == false);

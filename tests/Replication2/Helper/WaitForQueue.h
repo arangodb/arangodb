@@ -40,13 +40,18 @@ struct WaitForQueue {
     std::unique_lock guard(mutex);
     if (index <= resolvedIndex) {
       TRI_ASSERT(lastResult.has_value());
-      return futures::Future<ResultType>{std::in_place, *lastResult};
+      return futures::Future<ResultType>{*lastResult};
     }
 
-    return queue.emplace(index)->second.getFuture();
+    return queue.emplace(index, futures::Promise<ResultType>{})
+        ->second.getFuture();
   }
 
-  auto resolve(IndexType upTo, ResultType withValue) {
+  void resolve(IndexType upTo, ResultType withValue) {
+    resolve(upTo, futures::Try<ResultType>{withValue});
+  }
+
+  void resolve(IndexType upTo, futures::Try<ResultType> withTry) {
     auto resolveSet = QueueType{};
     {
       std::unique_lock guard(mutex);
@@ -55,26 +60,29 @@ struct WaitForQueue {
           break;
         }
         auto node = queue.extract(it++);
-        resolveSet.insert(node);
+        resolveSet.insert(std::move(node));
       }
 
       resolvedIndex = upTo;
-      lastResult = withValue;
+      lastResult = withTry;
     }
 
-    for (auto [index, promise] : resolveSet) {
-      promise.setValue(withValue);
+    for (auto& [index, promise] : resolveSet) {
+      promise.setTry(std::move(withTry));
     }
   }
 
-  auto resolveAll(ResultType withValue) {
+  void resolveAll(ResultType withValue) {
+    resolveAll(futures::Try<ResultType>(withValue));
+  }
+  void resolveAll(futures::Try<ResultType> withTry) {
     auto resolveSet = QueueType{};
     {
       std::unique_lock guard(mutex);
       std::swap(resolveSet, queue);
     }
-    for (auto [index, promise] : resolveSet) {
-      promise.setValue(withValue);
+    for (auto& [index, promise] : resolveSet) {
+      promise.setTry(std::move(withTry));
     }
   }
 
@@ -83,7 +91,7 @@ struct WaitForQueue {
 
   std::mutex mutex;
   std::optional<IndexType> resolvedIndex;
-  std::optional<ResultType> lastResult;
+  std::optional<futures::Try<ResultType>> lastResult;
   QueueType queue;
 };
 

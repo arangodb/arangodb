@@ -51,7 +51,7 @@ struct MyStateBase {
   void applyIterator(TypedLogRangeIterator<streams::StreamEntryView<MyEntryType>>& iter);
 };
 
-struct MyLeaderState : MyStateBase, replicated_state::ReplicatedLeaderState<MyState> {
+struct MyLeaderState : MyStateBase, replicated_state::IReplicatedLeaderState<MyState> {
   void set(std::string key, std::string value);
   auto wasRecoveryRun() -> bool { return recoveryRan; }
  protected:
@@ -60,7 +60,7 @@ struct MyLeaderState : MyStateBase, replicated_state::ReplicatedLeaderState<MySt
   bool recoveryRan = false;
 };
 
-struct MyFollowerState : MyStateBase, replicated_state::ReplicatedFollowerState<MyState> {
+struct MyFollowerState : MyStateBase, replicated_state::IReplicatedFollowerState<MyState> {
  protected:
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> override;

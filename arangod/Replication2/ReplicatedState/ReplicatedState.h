@@ -44,9 +44,9 @@ struct ILogLeader;
 namespace replicated_state {
 
 template <typename S>
-struct ReplicatedFollowerState;
+struct IReplicatedFollowerState;
 template <typename S>
-struct ReplicatedLeaderState;
+struct IReplicatedLeaderState;
 
 struct ReplicatedLeaderStateBase {
   virtual ~ReplicatedLeaderStateBase() = default;
@@ -116,8 +116,8 @@ struct ReplicatedState final : ReplicatedStateBase,
     return getFollower();
   }
 
-  friend struct ReplicatedFollowerState<S>;
-  friend struct ReplicatedLeaderState<S>;
+  friend struct IReplicatedFollowerState<S>;
+  friend struct IReplicatedLeaderState<S>;
 
   struct StateBase {
     virtual ~StateBase() = default;
@@ -140,11 +140,11 @@ struct ReplicatedState final : ReplicatedStateBase,
 };
 
 template <typename S>
-struct ReplicatedLeaderState : ReplicatedLeaderStateBase {
+struct IReplicatedLeaderState : ReplicatedLeaderStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Stream = streams::ProducerStream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
-  virtual ~ReplicatedLeaderState() = default;
+  virtual ~IReplicatedLeaderState() = default;
 
  protected:
   /**
@@ -167,12 +167,12 @@ struct ReplicatedLeaderState : ReplicatedLeaderStateBase {
 };
 
 template <typename S>
-struct ReplicatedFollowerState : ReplicatedFollowerStateBase {
+struct IReplicatedFollowerState : ReplicatedFollowerStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Stream = streams::Stream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
 
-  virtual ~ReplicatedFollowerState() = default;
+  virtual ~IReplicatedFollowerState() = default;
 
  protected:
   /**

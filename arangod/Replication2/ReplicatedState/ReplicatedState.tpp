@@ -57,7 +57,7 @@ struct ReplicatedState<S>::LeaderState
   void run();
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
-  std::shared_ptr<ReplicatedLeaderState<S>> state;
+  std::shared_ptr<IReplicatedLeaderState<S>> state;
   std::shared_ptr<Stream> stream;
   std::weak_ptr<ReplicatedState> parent;
   std::shared_ptr<replicated_log::ILogLeader> logLeader;
@@ -111,7 +111,7 @@ struct ReplicatedState<S>::FollowerState
   // TODO locking
 
   std::shared_ptr<Stream> stream;
-  std::shared_ptr<ReplicatedFollowerState<S>> state;
+  std::shared_ptr<IReplicatedFollowerState<S>> state;
   std::weak_ptr<ReplicatedState> parent;
   std::shared_ptr<replicated_log::ILogFollower> logFollower;
 
@@ -163,7 +163,7 @@ void ReplicatedState<S>::LeaderState::run() {
                     << "creating leader instance and starting recovery";
                 self->updateInternalState(
                     LeaderInternalState::kRecoveryInProgress, result->range());
-                std::shared_ptr<ReplicatedLeaderState<S>> machine =
+                std::shared_ptr<IReplicatedLeaderState<S>> machine =
                     parent->factory->constructLeader();
                 return machine->recoverEntries(std::move(result))
                     .then([self,
@@ -486,7 +486,7 @@ void ReplicatedState<S>::runLeader(
 }
 
 template<typename S>
-auto ReplicatedLeaderState<S>::getStream() const
+auto IReplicatedLeaderState<S>::getStream() const
     -> std::shared_ptr<Stream> const& {
   if (_stream) {
     return _stream;
@@ -496,7 +496,7 @@ auto ReplicatedLeaderState<S>::getStream() const
 }
 
 template<typename S>
-auto ReplicatedFollowerState<S>::getStream() const
+auto IReplicatedFollowerState<S>::getStream() const
     -> std::shared_ptr<Stream> const& {
   if (_stream) {
     return _stream;

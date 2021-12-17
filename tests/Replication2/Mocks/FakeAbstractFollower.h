@@ -31,14 +31,21 @@
 
 namespace arangodb::replication2::test {
 
-struct RecordingFollower : AbstractFollower {
-  RecordingFollower(ParticipantId id) : participantId(std::move(id)) {}
+/**
+ * This class queue all append entries requests and allows to expect them.
+ * You can then define a custom response to those append entries requests.
+ *
+ * It only models an AbstractFollower. If you want to have full control,
+ * consider using the FakeFollower.
+ */
+struct FakeAbstractFollower : AbstractFollower {
+  explicit FakeAbstractFollower(ParticipantId id) : participantId(std::move(id)) {}
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override {
     return participantId;
   };
 
-  virtual auto appendEntries(AppendEntriesRequest request)
+  auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> override {
     return requests.emplace_back(std::move(request)).promise.getFuture();
   }
@@ -59,11 +66,11 @@ struct RecordingFollower : AbstractFollower {
     requests.pop_front();
   }
 
-  auto currentRequest() const -> AppendEntriesRequest const& {
+  [[nodiscard]] auto currentRequest() const -> AppendEntriesRequest const& {
     return requests.front().request;
   }
 
-  auto hasPendingRequests() const -> bool { return !requests.empty(); }
+  [[nodiscard]] auto hasPendingRequests() const -> bool { return !requests.empty(); }
 
   void handleAllRequestsWithOk() {
     while (hasPendingRequests()) {
