@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 2.7.0.
+
 * Updated Enterprise license behaviour: now there will be a one hour period for
   a new deployment to provide the license. After that period, the read-only mode
   will be enforced.
