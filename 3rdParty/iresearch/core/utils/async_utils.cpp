@@ -326,62 +326,41 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
   lock.lock();
 
   while (State::ABORT != state.load() && threads_.load() <= max_threads_) {
+    assert(lock.owns_lock());
     if (!queue_.empty()) {
-      auto& top = queue_.top();
-
-      if (top.at <= clock_t::now()) {
+      if (const auto& top = queue_.top(); top.at <= clock_t::now()) {
         func_t fn;
-
-        try {
-          // std::function<...> move ctor isn't marked "noexcept" until c++20
-          fn = std::move(top.fn);
-        } catch (const std::bad_alloc&) {
-          fprintf(stderr, "Failed to pop task from queue, skipping it");
-          queue_.pop();
-          continue;
-        } catch (...) {
-          IR_FRMT_WARN("Failed to pop task from queue, skipping it");
-          queue_.pop();
-          continue;
-        }
-
+        fn.swap(const_cast<func_t&>(top.fn));
         queue_.pop();
+
         ++active_;
-
-        {
-          auto dec = make_finally([this]()noexcept{ --active_; });
-
-          // if have more tasks but no idle thread and can grow pool
-          try {
-            maybe_spawn_worker();
-          } catch (const std::bad_alloc&) {
-            fprintf(stderr, "Failed to allocate memory while spawning a worker");
-          } catch (const std::exception& e) {
-            IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
-          } catch (...) {
-            IR_FRMT_ERROR("Failed to grow pool");
-          }
-
-          lock.unlock();
-
-          try {
-            fn();
-          } catch (const std::bad_alloc&) {
-            fprintf(stderr, "Failed to allocate memory while executing task");
-          } catch (const std::exception& e) {
-            IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
-          } catch (...) {
-            IR_FRMT_ERROR("Failed to execute task");
-          }
-
-          lock.lock();
+        auto decrement = make_finally([this]() noexcept { --active_; });
+        // if have more tasks but no idle thread and can grow pool
+        try {
+          maybe_spawn_worker();
+        } catch (const std::bad_alloc&) {
+          fprintf(stderr, "Failed to allocate memory while spawning a worker");
+        } catch (const std::exception& e) {
+          IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
+        } catch (...) {
+          IR_FRMT_ERROR("Failed to grow pool");
         }
 
+        lock.unlock();
+        try {
+          fn();
+          fn = {};
+        } catch (const std::bad_alloc&) {
+          fprintf(stderr, "Failed to allocate memory while executing task");
+        } catch (const std::exception& e) {
+          IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
+        } catch (...) {
+          IR_FRMT_ERROR("Failed to execute task");
+        }
+        lock.lock();
         continue;
       }
     }
-
-    assert(lock.owns_lock());
     assert(active_ <= threads_.load());
 
     if (const auto idle = threads_.load() - active_;
@@ -400,8 +379,6 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
     } else {
       return; // too many idle threads
     }
-
-    assert(lock.owns_lock());
   }
 }
 
