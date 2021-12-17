@@ -27,42 +27,52 @@
 #include <thread>
 #include <vector>
 
+#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 
 namespace arangodb::replication2::test {
+/**
+ * Resolves promises in a separate thread.
+ */
 
-struct AsyncFollower : replicated_log::ILogFollower {
-  explicit AsyncFollower(std::shared_ptr<replicated_log::LogFollower> follower);
-  ~AsyncFollower() noexcept override;
+struct AsyncLeader : replicated_log::ILogLeader, std::enable_shared_from_this<AsyncLeader> {
+  explicit AsyncLeader(std::shared_ptr<replicated_log::ILogLeader> leader);
+  ~AsyncLeader();
   [[nodiscard]] auto getStatus() const -> replicated_log::LogStatus override;
   auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> override;
   auto waitFor(LogIndex index) -> WaitForFuture override;
-  auto release(LogIndex doneWithIdx) -> Result override;
-  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
-  auto appendEntries(replicated_log::AppendEntriesRequest request)
-      -> futures::Future<replicated_log::AppendEntriesResult> override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
+  auto release(LogIndex doneWithIdx) -> Result override;
+  auto insert(LogPayload payload, bool waitForSync) -> LogIndex override;
+  auto insert(LogPayload payload, bool waitForSync,
+              DoNotTriggerAsyncReplication replication) -> LogIndex override;
+  void triggerAsyncReplication() override;
+  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool override;
+  auto waitForLeadership() -> WaitForFuture override;
+  [[nodiscard]] auto copyInMemoryLog() const -> replicated_log::InMemoryLog override;
+
   void stop() noexcept;
 
-  auto waitForLeaderAcked() -> WaitForFuture override;
-
  private:
+  template <typename T>
+  auto resolveFutureAsync(futures::Future<T> f) -> futures::Future<T>;
+  template<typename T>
+  void resolvePromiseAsync(futures::Promise<T>, futures::Try<T>) noexcept;
+
   void runWorker();
 
-  struct AsyncRequest {
-    AsyncRequest(replicated_log::AppendEntriesRequest  request);
-    replicated_log::AppendEntriesRequest request;
-    futures::Promise<replicated_log::AppendEntriesResult> promise;
+  struct Action {
+    virtual ~Action() = default;
+    virtual void execute() noexcept = 0;
   };
 
   std::mutex _mutex;
   std::condition_variable _cv;
-  std::vector<AsyncRequest> _requests;
-  std::shared_ptr<replicated_log::LogFollower> const _follower;
+  std::vector<std::unique_ptr<Action>> _queue;
   bool _stopping{false};
 
-  std::thread _asyncWorker;
+  std::shared_ptr<replicated_log::ILogLeader> _leader;
+  std::thread _asyncResolver;
 };
-
 }  // namespace arangodb::replication2::test

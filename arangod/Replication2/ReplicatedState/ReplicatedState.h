@@ -36,8 +36,8 @@ class Result;
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;
-class LogFollower;
-class LogLeader;
+struct ILogFollower;
+struct ILogLeader;
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_state {
@@ -122,8 +122,8 @@ struct ReplicatedState final : ReplicatedStateBase,
   struct LeaderState;
   struct FollowerState;
 
-  void runLeader(std::shared_ptr<replicated_log::LogLeader> logLeader);
-  void runFollower(std::shared_ptr<replicated_log::LogFollower> logFollower);
+  void runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader);
+  void runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower);
 
   std::shared_ptr<StateBase> currentState;
   StateGeneration generation{0};

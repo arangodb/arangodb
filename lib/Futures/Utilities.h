@@ -151,7 +151,7 @@ Future<std::vector<Try<typename std::iterator_traits<InputIterator>::value_type:
 
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
   for (size_t i = 0; first != last; ++first, ++i) {
-    first->thenFinal([i, ctx](auto&& t) { ctx->results[i] = std::move(t); });
+    std::move(*first).thenFinal([i, ctx](auto&& t) { ctx->results[i] = std::move(t); });
   }
 
   return ctx->p.getFuture();
