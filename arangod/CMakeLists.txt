@@ -565,7 +565,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/StateStatus.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/ReplicatedStateCore.cpp
-)
+        Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp

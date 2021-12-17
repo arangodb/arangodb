@@ -28,7 +28,7 @@
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 namespace arangodb {
@@ -63,13 +63,16 @@ struct ReplicatedStateBase {
   virtual auto getSnapshotStatus() const -> SnapshotStatus = 0;
 
  private:
-  virtual auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> = 0;
-  virtual auto getFollowerBase() -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
+  virtual auto getLeaderBase()
+      -> std::shared_ptr<IReplicatedLeaderStateBase> = 0;
+  virtual auto getFollowerBase()
+      -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
 };
 
-template <typename S>
-struct ReplicatedState final : ReplicatedStateBase,
-                               std::enable_shared_from_this<ReplicatedState<S>> {
+template<typename S>
+struct ReplicatedState final
+    : ReplicatedStateBase,
+      std::enable_shared_from_this<ReplicatedState<S>> {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
@@ -81,7 +84,8 @@ struct ReplicatedState final : ReplicatedStateBase,
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
    */
-  void flush(std::unique_ptr<ReplicatedStateCore> = std::make_unique<ReplicatedStateCore>()) override;
+  void flush(std::unique_ptr<ReplicatedStateCore> =
+                 std::make_unique<ReplicatedStateCore>()) override;
 
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
@@ -98,38 +102,39 @@ struct ReplicatedState final : ReplicatedStateBase,
 
   auto getSnapshotStatus() const -> SnapshotStatus override;
 
- private:
-  auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
-    return getLeader();
-  }
-  auto getFollowerBase() -> std::shared_ptr<IReplicatedFollowerStateBase> final {
-    return getFollower();
-  }
-
-  struct StateBase {
-    virtual ~StateBase() = default;
+  struct StateManagerBase {
+    virtual ~StateManagerBase() = default;
     virtual auto getStatus() const -> StateStatus = 0;
     virtual auto getSnapshotStatus() const -> SnapshotStatus = 0;
   };
 
-  struct LeaderState;
-  struct FollowerState;
+  std::shared_ptr<Factory> const factory;
+
+ private:
+  auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
+    return getLeader();
+  }
+  auto getFollowerBase()
+      -> std::shared_ptr<IReplicatedFollowerStateBase> final {
+    return getFollower();
+  }
 
   void runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
                  std::unique_ptr<ReplicatedStateCore>);
   void runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
                    std::unique_ptr<ReplicatedStateCore>);
 
-  std::shared_ptr<StateBase> currentState;
+  std::shared_ptr<StateManagerBase> currentManager;
   StateGeneration generation{0};
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
-  std::shared_ptr<Factory> const factory;
 };
 
-
-template <typename S>
-using ReplicatedStateStreamSpec = streams::stream_descriptor_set<streams::stream_descriptor<
-    streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
-    streams::tag_descriptor_set<streams::tag_descriptor<1, typename ReplicatedStateTraits<S>::Deserializer, typename ReplicatedStateTraits<S>::Serializer>>>>;
+template<typename S>
+using ReplicatedStateStreamSpec =
+    streams::stream_descriptor_set<streams::stream_descriptor<
+        streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
+        streams::tag_descriptor_set<streams::tag_descriptor<
+            1, typename ReplicatedStateTraits<S>::Deserializer,
+            typename ReplicatedStateTraits<S>::Serializer>>>>;
 }  // namespace replicated_state
 }  // namespace arangodb::replication2
