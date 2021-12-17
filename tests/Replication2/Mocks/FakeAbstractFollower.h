@@ -31,8 +31,8 @@
 
 namespace arangodb::replication2::test {
 
-struct FakeFollower : AbstractFollower {
-  FakeFollower(ParticipantId id) : participantId(std::move(id)) {}
+struct RecordingFollower : AbstractFollower {
+  RecordingFollower(ParticipantId id) : participantId(std::move(id)) {}
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override {
     return participantId;

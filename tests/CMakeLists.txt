@@ -309,7 +309,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.cpp
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/AsyncLeader.cpp
-  Replication2/Mocks/FakeFollower.h
+        Replication2/Mocks/RecordingFollower.h
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
@@ -352,7 +352,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
-        Replication2/ReplicatedState/FollowerSnapshotTest.cpp)
+        Replication2/ReplicatedState/FollowerSnapshotTest.cpp Replication2/Helper/WaitForQueue.cpp Replication2/Helper/WaitForQueue.h)
 
 
 if (LINUX)
