@@ -1,6 +1,9 @@
 devel
 -----
 
+* Set a limit for ArangoSearch segment size to 256MB during recovery to avoid OOM kill in rare 
+  cases.
+
 * Updated arangosync to 2.7.0.
 
 * Updated Enterprise license behaviour: now there will be a one hour period for
