@@ -101,15 +101,6 @@ using KPathRefactored =
 using KPathRefactoredTracer =
     arangodb::graph::TracedKPathEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using DFSRefactoredNoneNone =
-    arangodb::graph::DFSEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>, arangodb::graph::VertexUniquenessLevel::NONE, arangodb::graph::EdgeUniquenessLevel::NONE>;
-using DFSRefactoredNonePath =
-    arangodb::graph::DFSEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>, arangodb::graph::VertexUniquenessLevel::NONE, arangodb::graph::EdgeUniquenessLevel::PATH>;
-using DFSRefactoredGlobal =
-    arangodb::graph::DFSEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, arangodb::graph::EdgeUniquenessLevel::PATH>;
-using DFSRefactoredPath =
-    arangodb::graph::DFSEnumerator<arangodb::graph::SingleServerProvider<SingleServerProviderStep>, arangodb::graph::VertexUniquenessLevel::PATH, arangodb::graph::EdgeUniquenessLevel::PATH>;
-
 /* ClusterProvider Section */
 using KPathRefactoredCluster =
     arangodb::graph::KPathEnumerator<arangodb::graph::ClusterProvider>;
