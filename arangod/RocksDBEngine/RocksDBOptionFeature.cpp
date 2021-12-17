@@ -363,12 +363,24 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--rocksdb.level0-stop-trigger",
                      "number of level-0 files that triggers a full write stop",
                      new Int64Parameter(&_level0StopTrigger));
-  options->addOption("--rocksdb.pending-compactions-slowdown-trigger",
-                     "number of pending compaction bytes that triggers a write slowdown",
-                     new UInt64Parameter(&_pendingCompactionBytesSlowdownTrigger));
-  options->addOption("--rocksdb.pending-compactions-stop-trigger",
-                     "number of pending compaction bytes that triggers a full write stop",
-                     new UInt64Parameter(&_pendingCompactionBytesStopTrigger));
+  options
+      ->addOption(
+          "--rocksdb.pending-compactions-slowdown-trigger",
+          "number of pending compaction bytes that triggers a write slowdown",
+          new UInt64Parameter(&_pendingCompactionBytesSlowdownTrigger),
+          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30805);
+  options
+      ->addOption(
+          "--rocksdb.pending-compactions-stop-trigger",
+          "number of pending compaction bytes that triggers a full write stop",
+          new UInt64Parameter(&_pendingCompactionBytesStopTrigger),
+          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30805);
 
   options->addOption(
       "--rocksdb.num-threads-priority-high",

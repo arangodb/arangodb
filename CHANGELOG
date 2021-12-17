@@ -10,6 +10,8 @@ v3.8.5 (XXXX-XX-XX)
   - `--rocksdb.pending-compactions-bytes-stop-trigger` controls RocksDB's
     setting `hard_pending_compaction_bytes_limit`, which controls how many
     pending compaction bytes RocksDB tolerates before it stops writes entirely.
+  - `--rocksdb.throttle-lower-bound-bps`, which controls a lower bound for the
+    bandwidth restriction on RocksDB writes the throttle imposes
 
 * Added startup options to adjust previously hard-coded parameters for the
   RocksDB throttle:

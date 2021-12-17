@@ -403,6 +403,12 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
 
+  options->addOption("--rocksdb.throttle-lower-bound-bps", "lower bound for throttle's "
+                     "write bandwidth in bytes per second",
+                     new UInt64Parameter(&_throttleLowerBoundBps),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
                      "enable generation of sha256 files for each .sst file",
@@ -747,7 +753,7 @@ void RocksDBEngine::start() {
 
   if (_useThrottle) {
     _throttleListener = std::make_shared<RocksDBThrottle>(_throttleSlots, _throttleFrequency, _throttleScalingFactor,
-                                                          _throttleMaxWriteRate, _throttleSlowdownWritesTrigger);
+                                                          _throttleMaxWriteRate, _throttleSlowdownWritesTrigger, _throttleLowerBoundBps);
     _options.listeners.push_back(_throttleListener);
   }
 
