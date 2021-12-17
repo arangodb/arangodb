@@ -3322,11 +3322,13 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
 
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
-            auto newNode =
-                condition.removeIndexCondition(plan.get(), indexNode->outVariable(),
-                                               indexCondition->root(),
-                                               indexesUsed[0].get());
-
+            AstNode* newNode{nullptr};
+            if (!indexNode->isAllCoveredByOneIndex()) {
+              newNode =
+                  condition.removeIndexCondition(plan.get(), indexNode->outVariable(),
+                                                 indexCondition->root(),
+                                                 indexesUsed[0].get());
+            }
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed

@@ -119,6 +119,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   bool isDeterministic() override final { return canReadOwnWrites() == ReadOwnWrites::no; }
 
+  bool isAllCoveredByOneIndex() const noexcept {
+    return _allCoveredByOneIndex;
+  }
+
   struct IndexVariable {
     size_t indexFieldNum;
     Variable const* var;

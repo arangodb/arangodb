@@ -139,6 +139,20 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
+AnalyzerProvider makeAnalyzerProvider(InvertedIndexFieldMeta const& meta) {
+  static FieldMeta::Analyzer defaultAnalyzer = FieldMeta::Analyzer();
+  AnalyzerProvider analyzerProvider = [&meta, 
+                           &defaultAnalyzer = std::as_const(defaultAnalyzer)](std::string_view ex)
+                           -> FieldMeta::Analyzer const& {
+    for (auto const& field : meta._fields) {
+      if (field.toString() == ex) {
+        return field.analyzer;
+      }
+    }
+    return defaultAnalyzer;
+  };
+  return analyzerProvider;
+}
 irs::bytes_ref refFromSlice(VPackSlice slice) {
   return {slice.startAs<irs::byte_type>(), slice.byteSize()};
 }
@@ -182,7 +196,8 @@ struct CheckFieldsAccess {
 bool supportsFilterNode(arangodb::IndexId id,
                         std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
                         arangodb::aql::AstNode const* node,
-                        arangodb::aql::Variable const* reference) {
+                        arangodb::aql::Variable const* reference,
+                        arangodb::iresearch::AnalyzerProvider const* provider) {
   // We don`t want byExpression filters
   // and can`t apply index if we are not sure what attribute is
   // accessed so we provide QueryContext which is unable to
@@ -199,7 +214,7 @@ bool supportsFilterNode(arangodb::IndexId id,
     return false;
   }
 
-  auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false);
+  auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false, provider);
   LOG_TOPIC_IF("ee0f7", TRACE, arangodb::iresearch::TOPIC, rv.fail())
       << "Failed to build filter with error'" << rv.errorMessage()
       << "' Skipping index " << id.id();
@@ -451,12 +466,14 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator  {
     QueryContext const queryCtx = {_trx,    nullptr, nullptr,
                                    nullptr, _reader, _variable};
 
+    AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_index->meta());
+
     irs::Or root;
     if (condition) {
       if (_mutableConditionIdx == -1 ||
           (condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
-        auto rv = FilterFactory::filter(&root, queryCtx, *condition, false);
+        auto rv = FilterFactory::filter(&root, queryCtx, *condition, false, &analyzerProvider);
         if (rv.fail()) {
           arangodb::velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
@@ -490,7 +507,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator  {
         }
         auto& mutable_root = conditionJoiner->add<irs::Or>();
         auto rv = FilterFactory::filter(&mutable_root, queryCtx,
-                                        *condition->getMember(_mutableConditionIdx), false);
+                                        *condition->getMember(_mutableConditionIdx), false,
+                                        &analyzerProvider);
         if (rv.fail()) {
           arangodb::velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
@@ -506,7 +524,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator  {
           if (i != _mutableConditionIdx) {
             auto& tmp_root = immutableRoot->add<irs::Or>();
             auto rv = FilterFactory::filter(&tmp_root, queryCtx,
-                                            *condition->getMember(i), false);
+                                            *condition->getMember(i), false,
+                                            &analyzerProvider);
             if (rv.fail()) {
               arangodb::velocypack::Builder builder;
               condition->toVelocyPack(builder, true);
@@ -1104,9 +1123,10 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
              << "Found non-deterministic condition. Skipping index " << id.id();
     return  filterCosts;
   }
+  AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_meta);
 
   // at first try to cover whole node
-  if (supportsFilterNode(id, fields, node, reference)) {
+  if (supportsFilterNode(id, fields, node, reference, &analyzerProvider)) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = node->numMembers();
     filterCosts.estimatedCosts = static_cast<double>(itemsInIndex);
@@ -1115,7 +1135,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     size_t const n = node->numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto part = node->getMemberUnchecked(i);
-      if (supportsFilterNode(id, fields, part, reference)) {
+      if (supportsFilterNode(id, fields, part, reference, &analyzerProvider)) {
         filterCosts.supportsCondition = true;
         ++filterCosts.coveredAttributes;
         filterCosts.estimatedCosts = static_cast<double>(itemsInIndex);
@@ -1133,13 +1153,16 @@ void IResearchInvertedIndex::invalidateQueryCache(TRI_vocbase_t* vocbase) {
 aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,
                                                           aql::Variable const* reference) const {
   auto  indexedFields = fields(_meta);
-  if (!supportsFilterNode(id(), indexedFields, node, reference)) {
+
+  AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_meta);
+
+  if (!supportsFilterNode(id(), indexedFields, node, reference, &analyzerProvider)) {
     TRI_ASSERT(node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
     std::vector<arangodb::aql::AstNode const*> children;
     size_t const n = node->numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto part = node->getMemberUnchecked(i);
-      if (supportsFilterNode(id(), indexedFields, part, reference)) {
+      if (supportsFilterNode(id(), indexedFields, part, reference, &analyzerProvider)) {
         children.push_back(part);
       }
     }
