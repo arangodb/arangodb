@@ -50,7 +50,7 @@ void ReplicatedState<S>::runFollower(
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE)
       << "create follower state";
   auto manager = std::make_shared<FollowerStateManager<S>>(this->shared_from_this(),
-                                                 logFollower, std::move(core));
+                                                 logFollower, std::move(core), factory);
   manager->run();
   currentManager = manager;
 }
@@ -61,7 +61,7 @@ void ReplicatedState<S>::runLeader(
     std::unique_ptr<ReplicatedStateCore> core) {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
   auto manager = std::make_shared<LeaderStateManager<S>>(this->shared_from_this(),
-                                               logLeader, std::move(core));
+                                               logLeader, std::move(core), factory);
   manager->run();
   currentManager = manager;
 }
@@ -114,7 +114,7 @@ template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
   if (auto machine = std::dynamic_pointer_cast<FollowerStateManager<S>>(currentManager);
       machine) {
-    return std::static_pointer_cast<FollowerType>(machine->state);
+    return std::static_pointer_cast<FollowerType>(machine->getFollowerState());
   }
   return nullptr;
 }

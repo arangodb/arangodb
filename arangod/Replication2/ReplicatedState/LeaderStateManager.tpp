@@ -53,46 +53,42 @@ void LeaderStateManager<S>::run() {
         //    not published.
         return self->stream->waitForIterator(LogIndex{0})
             .thenValue([self](std::unique_ptr<Iterator>&& result) {
-              if (auto parent = self->parent.lock(); parent) {
-                LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
-                    << "creating leader instance and starting recovery";
-                self->updateInternalState(
-                    LeaderInternalState::kRecoveryInProgress, result->range());
-                std::shared_ptr<IReplicatedLeaderState<S>> machine =
-                    parent->factory->constructLeader();
-                return machine->recoverEntries(std::move(result))
-                    .then([self,
-                           machine](futures::Try<Result>&& tryResult) mutable {
-                      try {
-                        if (auto result = tryResult.get(); result.ok()) {
-                          LOG_TOPIC("1a375", DEBUG, Logger::REPLICATED_STATE)
-                              << "recovery on leader completed";
-                          self->state = machine;
-                          self->core->snapshot.updateStatus(
-                              SnapshotStatus::kCompleted);
-                          self->updateInternalState(
-                              LeaderInternalState::kServiceAvailable);
-                          self->state->_stream = self->stream;
-                          return result;
-                        } else {
-                          LOG_TOPIC("3fd49", FATAL, Logger::REPLICATED_STATE)
-                              << "recovery failed with error: "
-                              << result.errorMessage();
-                          FATAL_ERROR_EXIT();
-                        }
-                      } catch (std::exception const& e) {
-                        LOG_TOPIC("3aaf8", FATAL, Logger::REPLICATED_STATE)
-                            << "recovery failed with exception: " << e.what();
-                        FATAL_ERROR_EXIT();
-                      } catch (...) {
-                        LOG_TOPIC("a207d", FATAL, Logger::REPLICATED_STATE)
-                            << "recovery failed with unknown exception";
+              LOG_TOPIC("53ba0", TRACE, Logger::REPLICATED_STATE)
+                  << "creating leader instance and starting recovery";
+              self->updateInternalState(
+                  LeaderInternalState::kRecoveryInProgress, result->range());
+              std::shared_ptr<IReplicatedLeaderState<S>> machine =
+                  self->factory->constructLeader();
+              return machine->recoverEntries(std::move(result))
+                  .then([self,
+                         machine](futures::Try<Result>&& tryResult) mutable {
+                    try {
+                      if (auto result = tryResult.get(); result.ok()) {
+                        LOG_TOPIC("1a375", DEBUG, Logger::REPLICATED_STATE)
+                            << "recovery on leader completed";
+                        self->state = machine;
+                        self->core->snapshot.updateStatus(
+                            SnapshotStatus::kCompleted);
+                        self->updateInternalState(
+                            LeaderInternalState::kServiceAvailable);
+                        self->state->_stream = self->stream;
+                        return result;
+                      } else {
+                        LOG_TOPIC("3fd49", FATAL, Logger::REPLICATED_STATE)
+                            << "recovery failed with error: "
+                            << result.errorMessage();
                         FATAL_ERROR_EXIT();
                       }
-                    });
-              }
-              return futures::Future<Result>{
-                  TRI_ERROR_REPLICATION_LEADER_CHANGE};
+                    } catch (std::exception const& e) {
+                      LOG_TOPIC("3aaf8", FATAL, Logger::REPLICATED_STATE)
+                          << "recovery failed with exception: " << e.what();
+                      FATAL_ERROR_EXIT();
+                    } catch (...) {
+                      LOG_TOPIC("a207d", FATAL, Logger::REPLICATED_STATE)
+                          << "recovery failed with unknown exception";
+                      FATAL_ERROR_EXIT();
+                    }
+                  });
             });
       })
       .thenFinal(
@@ -117,11 +113,13 @@ template<typename S>
 LeaderStateManager<S>::LeaderStateManager(
     std::shared_ptr<ReplicatedState<S>> const& parent,
     std::shared_ptr<replicated_log::ILogLeader> leader,
-    std::unique_ptr<ReplicatedStateCore> core) noexcept
+    std::unique_ptr<ReplicatedStateCore> core,
+    std::shared_ptr<Factory> factory) noexcept
     : parent(parent),
       logLeader(std::move(leader)),
       internalState(LeaderInternalState::kWaitingForLeadershipEstablished),
-      core(std::move(core)) {}
+      core(std::move(core)),
+      factory(std::move(factory)) {}
 
 template<typename S>
 auto LeaderStateManager<S>::getStatus() const -> StateStatus {
@@ -140,8 +138,7 @@ auto LeaderStateManager<S>::getStatus() const -> StateStatus {
 }
 
 template<typename S>
-auto LeaderStateManager<S>::getSnapshotStatus() const
-    -> SnapshotStatus {
+auto LeaderStateManager<S>::getSnapshotStatus() const -> SnapshotStatus {
   return core->snapshot;
 }
-}
+}  // namespace arangodb::replication2::replicated_state

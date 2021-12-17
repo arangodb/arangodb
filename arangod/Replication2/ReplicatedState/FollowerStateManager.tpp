@@ -34,6 +34,8 @@ void FollowerStateManager<S>::applyEntries(
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(iter != nullptr);
   auto range = iter->range();
+  LOG_TOPIC("3678e", TRACE, Logger::REPLICATED_STATE)
+      << "apply entries in range " << range;
   updateInternalState(FollowerInternalState::kApplyRecentEntries, range);
   state->applyEntries(std::move(iter))
       .thenFinal([self = this->shared_from_this(),
@@ -70,6 +72,8 @@ void FollowerStateManager<S>::applyEntries(
 template<typename S>
 void FollowerStateManager<S>::pollNewEntries() {
   TRI_ASSERT(stream != nullptr);
+  LOG_TOPIC("a1462", TRACE, Logger::REPLICATED_STATE)
+      << "polling for new entries nextEntry = " << nextEntry;
   updateInternalState(FollowerInternalState::kNothingToApply);
   stream->waitForIterator(nextEntry).thenFinal(
       [self = this->shared_from_this()](
@@ -95,30 +99,32 @@ void FollowerStateManager<S>::pollNewEntries() {
 }
 
 template<typename S>
-void FollowerStateManager<S>::tryTransferSnapshot() {
+void FollowerStateManager<S>::tryTransferSnapshot(
+    std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
   auto& leader = logFollower->getLeader();
   TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
                                     "has to be a leader in the current term";
-  auto f = state->acquireSnapshot(*leader, logFollower->getCommitIndex());
-  std::move(f).thenFinal(
-      [self = this->shared_from_this()](futures::Try<Result>&& tryResult) {
-        try {
-          auto& result = tryResult.get();
-          if (result.ok()) {
-            LOG_TOPIC("44d58", INFO, Logger::REPLICATED_STATE)
-                << "snapshot transfer successfully completed";
-            self->core->snapshot.updateStatus(SnapshotStatus::kCompleted);
-            return self->startService();
-          }
-        } catch (...) {
-        }
-        TRI_ASSERT(false) << "error handling not implemented";
-        FATAL_ERROR_EXIT();
-      });
+  auto f = hiddenState->acquireSnapshot(*leader, logFollower->getCommitIndex());
+  std::move(f).thenFinal([self = this->shared_from_this(),
+                          hiddenState](futures::Try<Result>&& tryResult) {
+    try {
+      auto& result = tryResult.get();
+      if (result.ok()) {
+        LOG_TOPIC("44d58", INFO, Logger::REPLICATED_STATE)
+            << "snapshot transfer successfully completed";
+        self->core->snapshot.updateStatus(SnapshotStatus::kCompleted);
+        return self->startService(hiddenState);
+      }
+    } catch (...) {
+    }
+    TRI_ASSERT(false) << "error handling not implemented";
+    FATAL_ERROR_EXIT();
+  });
 }
 
 template<typename S>
-void FollowerStateManager<S>::checkSnapshot() {
+void FollowerStateManager<S>::checkSnapshot(
+    std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
   LOG_TOPIC("aee5b", DEBUG, Logger::REPLICATED_STATE)
       << "snapshot status is " << core->snapshot << ", planned generation is "
       << core->plannedGeneration;
@@ -127,41 +133,38 @@ void FollowerStateManager<S>::checkSnapshot() {
   if (needsSnapshot) {
     LOG_TOPIC("3d0fc", INFO, Logger::REPLICATED_STATE)
         << "new snapshot is required";
-    tryTransferSnapshot();
+    tryTransferSnapshot(hiddenState);
   } else {
     LOG_TOPIC("9cd75", DEBUG, Logger::REPLICATED_STATE)
         << "no snapshot transfer required";
-    startService();
+    startService(hiddenState);
   }
 }
 
 template<typename S>
-void FollowerStateManager<S>::startService() {
+void FollowerStateManager<S>::startService(
+    std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
   LOG_TOPIC("26c55", DEBUG, Logger::REPLICATED_STATE)
       << "starting service as follower";
+  state = hiddenState;
   state->_stream = stream;
   pollNewEntries();
 }
 
 template<typename S>
 void FollowerStateManager<S>::ingestLogData() {
-  if (auto locked = parent.lock(); locked) {
-    updateInternalState(FollowerInternalState::kTransferSnapshot);
-    auto demux = Demultiplexer::construct(logFollower);
-    demux->listen();
-    stream = demux->template getStreamById<1>();
+  updateInternalState(FollowerInternalState::kTransferSnapshot);
+  auto demux = Demultiplexer::construct(logFollower);
+  demux->listen();
+  stream = demux->template getStreamById<1>();
 
-    LOG_TOPIC("1d843", TRACE, Logger::REPLICATED_STATE)
-        << "creating follower state instance";
-    state = locked->factory->constructFollower();
+  LOG_TOPIC("1d843", TRACE, Logger::REPLICATED_STATE)
+      << "creating follower state instance";
+  auto hiddenState = factory->constructFollower();
 
-    LOG_TOPIC("ea777", TRACE, Logger::REPLICATED_STATE)
-        << "check if new snapshot is required";
-    checkSnapshot();
-  } else {
-    LOG_TOPIC("3237c", DEBUG, Logger::REPLICATED_STATE)
-        << "Parent state already gone";
-  }
+  LOG_TOPIC("ea777", TRACE, Logger::REPLICATED_STATE)
+      << "check if new snapshot is required";
+  checkSnapshot(hiddenState);
 }
 
 template<typename S>
@@ -218,20 +221,20 @@ template<typename S>
 FollowerStateManager<S>::FollowerStateManager(
     std::shared_ptr<ReplicatedState<S>> const& parent,
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
-    std::unique_ptr<ReplicatedStateCore> core) noexcept
+    std::unique_ptr<ReplicatedStateCore> core,
+    std::shared_ptr<Factory> factory) noexcept
     : parent(parent),
       logFollower(std::move(logFollower)),
-      core(std::move(core)) {}
+      core(std::move(core)),
+      factory(std::move(factory)) {}
 
 template<typename S>
-auto FollowerStateManager<S>::getSnapshotStatus() const
-    -> SnapshotStatus {
+auto FollowerStateManager<S>::getSnapshotStatus() const -> SnapshotStatus {
   return core->snapshot;
 }
 
 template<typename S>
-auto FollowerStateManager<S>::getStatus() const
-    -> StateStatus {
+auto FollowerStateManager<S>::getStatus() const -> StateStatus {
   FollowerStatus status;
   status.log = std::get<replicated_log::FollowerStatus>(
       logFollower->getStatus().getVariant());
@@ -240,4 +243,14 @@ auto FollowerStateManager<S>::getStatus() const
   status.state.detail = std::nullopt;
   return StateStatus{.variant = std::move(status)};
 }
+
+template<typename S>
+auto FollowerStateManager<S>::getFollowerState()
+    -> std::shared_ptr<IReplicatedFollowerState<S>> {
+  if (state == nullptr) {
+    // TODO better error code
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+  }
+  return state;
 }
+}  // namespace arangodb::replication2::replicated_state

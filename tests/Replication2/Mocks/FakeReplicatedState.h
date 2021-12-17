@@ -72,6 +72,7 @@ struct AsyncOperationMarker {
   auto trigger(Input inValue) -> futures::Future<Result> {
     TRI_ASSERT(in.has_value() == false);
     in.emplace(std::move(inValue));
+    triggered = true;
     return promise.emplace().getFuture();
   }
 
@@ -153,6 +154,44 @@ struct DefaultFactory {
   auto constructFollower() -> std::shared_ptr<FollowerType> {
     return std::make_shared<FollowerType>();
   }
+};
+
+/**
+ * By design the replicated state manager do not make the state implementations
+ * leader and follower available to the outside world until a certain stage in
+ * startup procedure is reached.
+ *
+ * This recording factory keeps track of all created instances and allow a tester
+ * to access them immediately after creation. It only stores weak pointer,
+ * otherwise constructors might not run until the factory is destroyed.
+ * @tparam LeaderType
+ * @tparam FollowerType
+ */
+template<typename LeaderType, typename FollowerType>
+struct RecordingFactory {
+  auto constructLeader() -> std::shared_ptr<LeaderType> {
+    auto ptr = std::make_shared<LeaderType>();
+    leaders.push_back(ptr);
+    return ptr;
+  }
+  auto constructFollower() -> std::shared_ptr<FollowerType> {
+    auto ptr = std::make_shared<FollowerType>();
+    followers.push_back(ptr);
+    return ptr;
+  }
+
+  auto getLatestLeader() -> std::shared_ptr<LeaderType> {
+    TRI_ASSERT(!leaders.empty());
+    return leaders.back().lock();
+  }
+
+  auto getLatestFollower() -> std::shared_ptr<FollowerType> {
+    TRI_ASSERT(!followers.empty());
+    return followers.back().lock();
+  }
+
+  std::vector<std::weak_ptr<LeaderType>> leaders;
+  std::vector<std::weak_ptr<FollowerType>> followers;
 };
 
 /**

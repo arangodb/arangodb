@@ -42,25 +42,28 @@ struct FollowerStateManager
 
   FollowerStateManager(std::shared_ptr<ReplicatedState<S>> const& parent,
                        std::shared_ptr<replicated_log::ILogFollower> logFollower,
-                       std::unique_ptr<ReplicatedStateCore> core) noexcept;
+                       std::unique_ptr<ReplicatedStateCore> core,
+                       std::shared_ptr<Factory> factory) noexcept;
 
   void run();
   auto getStatus() const -> StateStatus final;
   auto getSnapshotStatus() const -> SnapshotStatus final;
 
+  auto getFollowerState() -> std::shared_ptr<IReplicatedFollowerState<S>>;
 
+ private:
   void awaitLeaderShip();
   void ingestLogData();
   void pollNewEntries();
-  void checkSnapshot();
-  void tryTransferSnapshot();
-  void startService();
+  void checkSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
+  void tryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
+  void startService(std::shared_ptr<IReplicatedFollowerState<S>>);
 
 
   void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
 
   using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
-  LogIndex nextEntry{0};
+  LogIndex nextEntry{1};
 
   // TODO locking
 
@@ -75,6 +78,7 @@ struct FollowerStateManager
   std::optional<LogRange> ingestionRange;
 
   std::unique_ptr<ReplicatedStateCore> core;
+  std::shared_ptr<Factory> const factory;
 
  private:
   void updateInternalState(FollowerInternalState newState,

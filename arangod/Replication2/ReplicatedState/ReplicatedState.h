@@ -108,7 +108,7 @@ struct ReplicatedState final
     virtual auto getSnapshotStatus() const -> SnapshotStatus = 0;
   };
 
-  std::shared_ptr<Factory> const factory;
+
 
  private:
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
@@ -124,6 +124,8 @@ struct ReplicatedState final
   void runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
                    std::unique_ptr<ReplicatedStateCore>);
 
+
+  std::shared_ptr<Factory> const factory;
   std::shared_ptr<StateManagerBase> currentManager;
   StateGeneration generation{0};
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};

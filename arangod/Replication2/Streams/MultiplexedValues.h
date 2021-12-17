@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/Streams/Streams.h"
+
 namespace arangodb::replication2::streams {
 
 template <typename Descriptor, typename Type = stream_descriptor_type_t<Descriptor>>

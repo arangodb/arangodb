@@ -65,8 +65,9 @@ auto FakeFollower::resign() && -> std::tuple<
 }
 
 FakeFollower::FakeFollower(ParticipantId id,
-                           std::optional<ParticipantId> leader)
-    : id(std::move(id)), leaderId(std::move(leader)) {}
+                           std::optional<ParticipantId> leader,
+                           LogTerm term)
+    : id(std::move(id)), leaderId(std::move(leader)), term(term) {}
 
 auto FakeFollower::getStatus() const -> replicated_log::LogStatus {
   auto guard = guarded.getLockedGuard();
@@ -87,7 +88,7 @@ auto FakeFollower::waitForLeaderAcked() -> WaitForFuture {
   return waitForLeaderAckedQueue.waitFor({});
 }
 
-auto FakeFollower::addCommittedEntry(LogPayload payload) -> LogIndex {
+auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
   auto index = guarded.doUnderLock([&](GuardedFollowerData& data) {
     auto index = data.log.getNextIndex();
     auto memtry = InMemoryLogEntry(PersistingLogEntry(term, index, payload));
@@ -96,7 +97,7 @@ auto FakeFollower::addCommittedEntry(LogPayload payload) -> LogIndex {
     return index;
   });
 
-  waitForQueue.resolve(index, replicated_log::WaitForResult{index, nullptr});
+
   return index;
 }
 auto FakeFollower::appendEntries(replicated_log::AppendEntriesRequest request)
@@ -119,4 +120,9 @@ auto FakeFollower::waitForIterator(LogIndex index)
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
       });
+}
+
+void FakeFollower::updateCommitIndex(LogIndex index) {
+  guarded.getLockedGuard()->commitIndex = index;
+  waitForQueue.resolve(index, replicated_log::WaitForResult{index, nullptr});
 }

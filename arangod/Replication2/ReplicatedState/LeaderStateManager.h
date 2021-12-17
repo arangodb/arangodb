@@ -41,7 +41,8 @@ struct LeaderStateManager
 
   explicit LeaderStateManager(std::shared_ptr<ReplicatedState<S>> const& parent,
                               std::shared_ptr<replicated_log::ILogLeader> leader,
-                              std::unique_ptr<ReplicatedStateCore> core) noexcept;
+                              std::unique_ptr<ReplicatedStateCore> core,
+                              std::shared_ptr<Factory> factory) noexcept;
 
   using Stream = streams::ProducerStream<EntryType>;
   using Iterator = typename Stream::Iterator;
@@ -63,6 +64,7 @@ struct LeaderStateManager
   std::optional<LogRange> recoveryRange;
 
   std::unique_ptr<ReplicatedStateCore> core;
+  std::shared_ptr<Factory> const factory;
 
  private:
   void updateInternalState(LeaderInternalState newState,
