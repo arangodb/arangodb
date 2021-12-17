@@ -137,7 +137,15 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::lastVertexToVe
   if (_vertices.empty()) {
     populatePath();
   }
-  _provider.addVertexToBuilder(_vertices[_vertices.size() - 1], builder);
+
+  // TODO [GraphRefactor]: Check for a more elegant solution here
+  if (_vertices.empty()) {
+    // We can never hand out invalid ids.
+    // For production just be sure to add something sensible.
+    builder.add(VPackSlice::nullSlice());
+  } else {
+    _provider.addVertexToBuilder(_vertices[_vertices.size() - 1], builder);
+  }
 }
 
 template <class ProviderType, class PathStoreType, class Step>
@@ -146,7 +154,15 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::lastEdgeToVelo
   if (_edges.empty()) {
     populatePath();
   }
-  _provider.addEdgeToBuilder(_edges[_edges.size() - 1], builder);
+
+  // TODO [GraphRefactor]: Check for a more elegant solution here
+  if (_edges.empty()) {
+    // We can never hand out invalid ids.
+    // For production just be sure to add something sensible.
+    builder.add(VPackSlice::nullSlice());
+  } else {
+    _provider.addEdgeToBuilder(_edges[_edges.size() - 1], builder);
+  }
 }
 
 template <class ProviderType, class PathStoreType, class Step>
