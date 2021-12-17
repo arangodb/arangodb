@@ -3428,7 +3428,7 @@ Result fromFuncPhrase(
   // last odd argument defines an analyzer
   // ...........................................................................
 
-  arangodb::iresearch::FieldMeta::Analyzer analyzerPool;
+  arangodb::iresearch::FieldMeta::Analyzer analyzerPool(nullptr, "");
 
   if (0 != (argc & 1)) {  // override analyzer
     --argc;
