@@ -761,6 +761,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      * Default SingleServer Traverser
      */
 
+    opts->setRefactor(true);
     LOG_DEVEL << "[GraphRefactor] Refactor enabled: " << std::boolalpha
               << opts->refactor();
 

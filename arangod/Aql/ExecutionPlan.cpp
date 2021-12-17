@@ -273,6 +273,9 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
         } else {
           ExecutionPlan::invalidOptionAttribute(ast->query(), "TRAVERSAL", name.data(), name.size());
         }
+
+        // TODO [GraphRefactor]: Remove me!
+        options->setRefactor(true);
       }
     }
   }

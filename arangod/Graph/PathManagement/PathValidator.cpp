@@ -75,10 +75,15 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
           auto const& [unusedV, addedVertex] =
               _uniqueVertices.emplace(step.getVertexIdentifier());
 
-          auto const& [unusedE, addedEdge] =
-              _uniqueEdges.emplace(step.getEdgeIdentifier());
+          if (!step.isFirst()) {
+            auto const& [unusedE, addedEdge] =
+                _uniqueEdges.emplace(step.getEdgeIdentifier());
+            // If this add fails, we need to exclude this path
+            return addedVertex && addedEdge;
+          }
+
           // If this add fails, we need to exclude this path
-          return addedVertex && addedEdge;
+          return addedVertex;
         });
     if (!success) {
       res.combine(ValidationResult::Type::FILTER);
@@ -89,21 +94,30 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
     auto const& [unusedV, addedVertex] =
         _uniqueVertices.emplace(step.getVertexIdentifier());
 
-    auto const& [unusedE, addedEdge] =
-        _uniqueEdges.emplace(step.getEdgeIdentifier());
-    // If this add fails, we need to exclude this path
-    if (!addedVertex || !addedEdge) {
-      res.combine(ValidationResult::Type::FILTER);
+    if (!step.isFirst()) {
+      auto const& [unusedE, addedEdge] =
+          _uniqueEdges.emplace(step.getEdgeIdentifier());
+      // If this add fails, we need to exclude this path
+      if (!addedVertex || !addedEdge) {
+        res.combine(ValidationResult::Type::FILTER);
+      }
+    } else {
+      // If this add fails, we need to exclude this path
+      if (!addedVertex) {
+        res.combine(ValidationResult::Type::FILTER);
+      }
     }
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE && edgeUniqueness == EdgeUniquenessLevel::PATH) {
     _uniqueEdges.clear();
 
-    auto const& [unusedE, addedEdge] =
-        _uniqueEdges.emplace(step.getEdgeIdentifier());
-    // If this add fails, we need to exclude this path
-    if (!addedEdge) {
-      res.combine(ValidationResult::Type::FILTER);
+    if (!step.isFirst()) {
+      auto const& [unusedE, addedEdge] =
+          _uniqueEdges.emplace(step.getEdgeIdentifier());
+      // If this add fails, we need to exclude this path
+      if (!addedEdge) {
+        res.combine(ValidationResult::Type::FILTER);
+      }
     }
   }
   return res;

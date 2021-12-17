@@ -41,7 +41,7 @@
 namespace arangodb {
 
 namespace futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 
@@ -82,11 +82,12 @@ class MockGraphProvider {
 
  public:
   using Options = MockGraphProviderOptions;
-  using LooseEndBehaviour = typename MockGraphProviderOptions::LooseEndBehaviour;
+  using LooseEndBehaviour =
+      typename MockGraphProviderOptions::LooseEndBehaviour;
 
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
-    using StepType = EdgeType;
+    using StepType = arangodb::velocypack::HashedStringRef;
 
     class Vertex {
      public:
@@ -109,14 +110,19 @@ class MockGraphProvider {
 
     class Edge {
      public:
-      Edge(EdgeType e) : _edge(e){};
+      Edge(EdgeType e) : _edge(e) {
+        auto stringLength =
+            static_cast<uint32_t>(std::to_string(_edge._id).length());
+        _id = arangodb::velocypack::HashedStringRef{
+            std::to_string(_edge._id).c_str(), stringLength};
+      };
 
       std::string toString() const {
         return "Edge - _from: " + _edge._from + ", _to: " + _edge._to;
       }
 
       EdgeType getEdge() const { return _edge; }
-      EdgeType const& getID() const;
+      StepType const& getID() const { return _id; };
       bool isValid() const {
         if (_edge._from.empty() && _edge._to.empty()) {
           return false;
@@ -126,12 +132,14 @@ class MockGraphProvider {
 
      private:
       EdgeType _edge;
+      StepType _id;
     };
 
     Step(VertexType v, bool isProcessable);
     Step(size_t prev, VertexType v, EdgeType e, bool isProcessable);
     Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
-    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable, size_t depth);
+    Step(size_t prev, VertexType v, EdgeType e, bool isProcessable,
+         size_t depth);
     ~Step() = default;
 
     bool operator<(Step const& other) const noexcept {
@@ -154,7 +162,8 @@ class MockGraphProvider {
     Vertex getVertex() const {
       /*if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Accessing vertex (" + _vertex.data().toString() +
+                                       "Accessing vertex (" +
+      _vertex.data().toString() +
                                            "), before fetching it");
       }*/
       return _vertex;
@@ -170,9 +179,7 @@ class MockGraphProvider {
     }
 
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
-    StepType getEdgeIdentifier() const {
-      return _edge.getID();
-    }
+    StepType getEdgeIdentifier() const { return _edge.getID(); }
 
     std::string getCollectionName() const {
       auto collectionNameResult = extractCollectionName(_vertex.getID());
@@ -203,7 +210,8 @@ class MockGraphProvider {
       _isProcessable = true;
     }
 
-    friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
+    friend auto operator<<(std::ostream& out, Step const& step)
+        -> std::ostream&;
 
    private:
     Vertex _vertex;
@@ -216,7 +224,8 @@ class MockGraphProvider {
   MockGraphProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                     arangodb::ResourceMonitor& resourceMonitor);
 
-  MockGraphProvider(MockGraphProvider const&) = delete;  // TODO: check "Rule of 5"
+  MockGraphProvider(MockGraphProvider const&) =
+      delete;  // TODO: check "Rule of 5"
   MockGraphProvider(MockGraphProvider&&) = default;
   ~MockGraphProvider();
 
@@ -224,14 +233,19 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
   void destroyEngines(){};
-  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
-  auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
+      -> Step;
+  auto fetch(std::vector<Step*> const& looseEnds)
+      -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void;
+  auto expand(Step const& from, size_t previous,
+              std::function<void(Step)> callback) -> void;
   auto clear() -> void;
 
-  void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
-  void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
+  void addVertexToBuilder(Step::Vertex const& vertex,
+                          arangodb::velocypack::Builder& builder);
+  void addEdgeToBuilder(Step::Edge const& edge,
+                        arangodb::velocypack::Builder& builder);
 
   void prepareIndexExpressions(aql::Ast* ast);
 

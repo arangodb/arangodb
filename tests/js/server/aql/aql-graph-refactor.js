@@ -115,6 +115,18 @@ function dfsSingleServerDevelopmedgeNametSuite() {
       console.warn(result.toArray());
     },
 
+    testBFSTraversalNewWithUniqueVerticesGlobal: function () {
+      const startVertex = vertices.A;
+      const refactorEnabled = `OPTIONS {"refactor": true, "order": "bfs", "uniqueVertices": "global"} `;
+      let q = `
+        FOR v, e, p IN 1..3 OUTBOUND "${startVertex}" GRAPH ${graphName}
+        ${refactorEnabled}
+        RETURN [v, e, p]
+      `;
+      let result = db._query(q);
+      console.warn(result.toArray());
+    },
+
     testCompareDFSTraverals: function () {
       const startVertex = vertices.A;
       let q1 = `

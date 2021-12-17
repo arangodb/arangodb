@@ -50,10 +50,16 @@ namespace graph {
 class MockGraph {
  public:
   struct EdgeDef {
-    EdgeDef() : _from(""), _to(""), _weight(0.0), _eCol(""){};
+    EdgeDef() : _id(0), _from(""), _to(""), _weight(0.0), _eCol(""){};
 
-    EdgeDef(std::string from, std::string to, double weight, std::string eCol)
-        : _from(from), _to(to), _weight(weight), _eCol(eCol){};
+    EdgeDef(size_t uniqueEdgeId, std::string from, std::string to,
+            double weight, std::string eCol)
+        : _id(uniqueEdgeId),
+          _from(from),
+          _to(to),
+          _weight(weight),
+          _eCol(eCol){};
+    size_t _id;
     std::string _from;
     std::string _to;
     double _weight;
@@ -86,7 +92,7 @@ class MockGraph {
   MockGraph() {}
   ~MockGraph() {}
 
-  EdgeDef addEdge(std::string from, std::string to, double weight = 1.0);
+  EdgeDef addEdge(size_t uniqueEdgeId, std::string from, std::string to, double weight = 1.0);
   EdgeDef addEdge(size_t from, size_t to, double weight = 1.0);
 
   auto edges() const -> std::vector<EdgeDef> const& { return _edges; }
