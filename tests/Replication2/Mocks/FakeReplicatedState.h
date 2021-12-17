@@ -25,6 +25,7 @@
 #include "Futures/Future.h"
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::replication2 {

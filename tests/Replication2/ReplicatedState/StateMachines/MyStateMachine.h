@@ -25,6 +25,7 @@
 #include <unordered_map>
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/ReplicatedState/StateInterfaces.h"
 
 namespace arangodb::replication2::test {
 

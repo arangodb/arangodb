@@ -43,18 +43,8 @@ struct ILogLeader;
 
 namespace replicated_state {
 
-template <typename S>
-struct IReplicatedFollowerState;
-template <typename S>
-struct IReplicatedLeaderState;
-
-struct ReplicatedLeaderStateBase {
-  virtual ~ReplicatedLeaderStateBase() = default;
-};
-
-struct ReplicatedFollowerStateBase {
-  virtual ~ReplicatedFollowerStateBase() = default;
-};
+struct IReplicatedLeaderStateBase;
+struct IReplicatedFollowerStateBase;
 
 /**
  * Common base class for all ReplicatedStates, hiding the type information.
@@ -64,17 +54,17 @@ struct ReplicatedStateBase {
 
   virtual void flush(std::unique_ptr<ReplicatedStateCore>) = 0;
   virtual auto getStatus() -> StateStatus = 0;
-  auto getLeader() -> std::shared_ptr<ReplicatedLeaderStateBase> {
+  auto getLeader() -> std::shared_ptr<IReplicatedLeaderStateBase> {
     return getLeaderBase();
   }
-  auto getFollower() -> std::shared_ptr<ReplicatedFollowerStateBase> {
+  auto getFollower() -> std::shared_ptr<IReplicatedFollowerStateBase> {
     return getFollowerBase();
   }
   virtual auto getSnapshotStatus() const -> SnapshotStatus = 0;
 
  private:
-  virtual auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> = 0;
-  virtual auto getFollowerBase() -> std::shared_ptr<ReplicatedFollowerStateBase> = 0;
+  virtual auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> = 0;
+  virtual auto getFollowerBase() -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
 };
 
 template <typename S>
@@ -109,15 +99,12 @@ struct ReplicatedState final : ReplicatedStateBase,
   auto getSnapshotStatus() const -> SnapshotStatus override;
 
  private:
-  auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> final {
+  auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
     return getLeader();
   }
-  auto getFollowerBase() -> std::shared_ptr<ReplicatedFollowerStateBase> final {
+  auto getFollowerBase() -> std::shared_ptr<IReplicatedFollowerStateBase> final {
     return getFollower();
   }
-
-  friend struct IReplicatedFollowerState<S>;
-  friend struct IReplicatedLeaderState<S>;
 
   struct StateBase {
     virtual ~StateBase() = default;
@@ -139,73 +126,6 @@ struct ReplicatedState final : ReplicatedStateBase,
   std::shared_ptr<Factory> const factory;
 };
 
-template <typename S>
-struct IReplicatedLeaderState : ReplicatedLeaderStateBase {
-  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
-  using Stream = streams::ProducerStream<EntryType>;
-  using EntryIterator = typename Stream::Iterator;
-  virtual ~IReplicatedLeaderState() = default;
-
- protected:
-  /**
-   * This function is called once on a leader instance. The iterator contains
-   * all log entries currently present in the replicated log. The state machine
-   * manager awaits the return value. If the result is ok, the leader instance
-   * is made available to the outside world.
-   *
-   * If the recovery fails, the server aborts.
-   * @return Future to be fulfilled when recovery is done.
-   */
-  virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
-      -> futures::Future<Result> = 0;
-
-  auto getStream() const -> std::shared_ptr<Stream> const&;
-
- private:
-  friend struct ReplicatedState<S>::LeaderState;
-  std::shared_ptr<Stream> _stream;
-};
-
-template <typename S>
-struct IReplicatedFollowerState : ReplicatedFollowerStateBase {
-  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
-  using Stream = streams::Stream<EntryType>;
-  using EntryIterator = typename Stream::Iterator;
-
-  virtual ~IReplicatedFollowerState() = default;
-
- protected:
-  /**
-   * Called by the state machine manager if new log entries have been committed
-   * and are ready to be applied to the state machine. The implementation ensures
-   * that this function not called again until the future returned is fulfilled.
-   *
-   * Entries are not released after they are consumed by this function. Its the
-   * state machines implementations responsibility to call release on the stream.
-   *
-   * @return Future with Result value. If the result contains an error, the
-   *    operation is retried.
-   */
-  virtual auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
-      -> futures::Future<Result> = 0;
-
-  /**
-   * Called by the state machine manager if a follower is requested to pull
-   * data from the leader in order to transfer the snapshot.
-   * @param leader
-   * @param localCommitIndex
-   * @return Future with Result value. If the result contains an error,
-   *    the operation is eventually retried.
-   */
-  virtual auto acquireSnapshot(ParticipantId const& leader, LogIndex localCommitIndex) noexcept
-      -> futures::Future<Result> = 0;
-
-  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;
-
- private:
-  friend struct ReplicatedState<S>::FollowerState;
-  std::shared_ptr<Stream> _stream;
-};
 
 template <typename S>
 using ReplicatedStateStreamSpec = streams::stream_descriptor_set<streams::stream_descriptor<
