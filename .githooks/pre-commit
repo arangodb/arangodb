@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Configure this hook by running `git config core.hooksPath .githooks` in the root directory of this repo
+# pre-requisite: Docker
+# pre-requisite: Git 2.9+
+
 adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )"
 
 echo "ArangoDB directory: $adb_path"

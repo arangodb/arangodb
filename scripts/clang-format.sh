@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# pre-requisite: Docker
+
 [[ -z "$1" ]] && adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/.." &> /dev/null && pwd )" || adb_path=$(echo "$1" | sed 's:/*$::') # Get root directory of repo (can be passed as argument)
 [[ -z "$2" ]] && ent_dir="enterprise" || ent_dir=$(echo "$2" | sed 's:/*$::') # Get enterprise directory (can be passed as argument)
 
