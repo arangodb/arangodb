@@ -33,13 +33,15 @@ using namespace replication2::replicated_log;
 auto test::AsyncLeader::getStatus() const -> LogStatus {
   return _leader->getStatus();
 }
-auto test::AsyncLeader::resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
+auto test::AsyncLeader::resign() && -> std::tuple<
+    std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
   return std::move(*_leader).resign();
 }
 auto test::AsyncLeader::waitFor(LogIndex index) -> WaitForFuture {
   return resolveFutureAsync(_leader->waitFor(index));
 }
-auto test::AsyncLeader::waitForIterator(replication2::LogIndex index) -> WaitForIteratorFuture {
+auto test::AsyncLeader::waitForIterator(replication2::LogIndex index)
+    -> WaitForIteratorFuture {
   return resolveFutureAsync(_leader->waitForIterator(index));
 }
 replication2::LogIndex test::AsyncLeader::getCommitIndex() const noexcept {
@@ -48,8 +50,8 @@ replication2::LogIndex test::AsyncLeader::getCommitIndex() const noexcept {
 Result test::AsyncLeader::release(replication2::LogIndex doneWithIdx) {
   return _leader->release(doneWithIdx);
 }
-replication2::LogIndex test::AsyncLeader::insert(replication2::LogPayload payload,
-                                                 bool waitForSync) {
+replication2::LogIndex test::AsyncLeader::insert(
+    replication2::LogPayload payload, bool waitForSync) {
   return _leader->insert(payload, waitForSync);
 }
 replication2::LogIndex test::AsyncLeader::insert(
@@ -65,31 +67,37 @@ void test::AsyncLeader::triggerAsyncReplication() {
 bool test::AsyncLeader::isLeadershipEstablished() const noexcept {
   return _leader->isLeadershipEstablished();
 }
-replication2::replicated_log::ILogParticipant::WaitForFuture test::AsyncLeader::waitForLeadership() {
+replication2::replicated_log::ILogParticipant::WaitForFuture
+test::AsyncLeader::waitForLeadership() {
   return resolveFutureAsync(_leader->waitForLeadership());
 }
-replication2::replicated_log::InMemoryLog test::AsyncLeader::copyInMemoryLog() const {
+replication2::replicated_log::InMemoryLog test::AsyncLeader::copyInMemoryLog()
+    const {
   return _leader->copyInMemoryLog();
 }
 
-test::AsyncLeader::AsyncLeader(std::shared_ptr<replicated_log::ILogLeader> _leader)
-    : _leader(std::move(_leader)), _asyncResolver([this] { this->runWorker(); }) {}
+test::AsyncLeader::AsyncLeader(
+    std::shared_ptr<replicated_log::ILogLeader> _leader)
+    : _leader(std::move(_leader)),
+      _asyncResolver([this] { this->runWorker(); }) {}
 
-template <typename T>
+template<typename T>
 auto test::AsyncLeader::resolveFutureAsync(futures::Future<T> f)
     -> futures::Future<T> {
   futures::Promise<T> promise;
   auto future = promise.getFuture();
-  std::move(f).thenFinal([self = shared_from_this(), promise = std::move(promise)](
-                             futures::Try<T>&& result) mutable noexcept {
-    self->resolvePromiseAsync(std::move(promise), std::move(result));
-  });
+  std::move(f).thenFinal(
+      [self = shared_from_this(), promise = std::move(promise)](
+          futures::Try<T>&& result) mutable noexcept {
+        self->resolvePromiseAsync(std::move(promise), std::move(result));
+      });
 
   return future;
 }
 
-template <typename T>
-void test::AsyncLeader::resolvePromiseAsync(futures::Promise<T> p, futures::Try<T> t) noexcept {
+template<typename T>
+void test::AsyncLeader::resolvePromiseAsync(futures::Promise<T> p,
+                                            futures::Try<T> t) noexcept {
   struct PromiseResolveAction : Action {
     PromiseResolveAction(futures::Promise<T> p, futures::Try<T> t)
         : p(std::move(p)), t(std::move(t)) {}
@@ -99,7 +107,8 @@ void test::AsyncLeader::resolvePromiseAsync(futures::Promise<T> p, futures::Try<
   };
 
   std::unique_lock guard(_mutex);
-  _queue.emplace_back(std::make_unique<PromiseResolveAction>(std::move(p), std::move(t)));
+  _queue.emplace_back(
+      std::make_unique<PromiseResolveAction>(std::move(p), std::move(t)));
   _cv.notify_all();
 }
 

@@ -43,13 +43,15 @@
 namespace arangodb::greenspun {
 
 using VariableBindings =
-    ::immer::map<std::string, VPackSlice, std::hash<std::string>, std::equal_to<>, arangodb::immer::arango_memory_policy>;
+    ::immer::map<std::string, VPackSlice, std::hash<std::string>,
+                 std::equal_to<>, arangodb::immer::arango_memory_policy>;
 
 struct StackFrame {
   VariableBindings bindings;
 
   StackFrame() = default;
-  explicit StackFrame(VariableBindings bindings) : bindings(std::move(bindings)) {}
+  explicit StackFrame(VariableBindings bindings)
+      : bindings(std::move(bindings)) {}
 
   EvalResult getVariable(std::string const& name, VPackBuilder& result) const;
   EvalResult setVariable(std::string const& name, VPackSlice value);
@@ -64,29 +66,33 @@ struct Machine {
   EvalResult setVariable(std::string const& name, VPackSlice value);
   EvalResult getVariable(std::string const& name, VPackBuilder& result);
 
-  using function_type =
-      std::function<EvalResult(Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
+  using function_type = std::function<EvalResult(Machine& ctx, VPackSlice slice,
+                                                 VPackBuilder& result)>;
 
   EvalResult setFunction(std::string_view name, function_type&& f);
 
-  EvalResult applyFunction(std::string name, VPackSlice slice, VPackBuilder& result);
+  EvalResult applyFunction(std::string name, VPackSlice slice,
+                           VPackBuilder& result);
 
-  template <typename T>
-  using member_function_type =
-      std::function<EvalResult(T*, Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
+  template<typename T>
+  using member_function_type = std::function<EvalResult(
+      T*, Machine& ctx, VPackSlice slice, VPackBuilder& result)>;
 
-  template <typename T, typename F>
+  template<typename T, typename F>
   EvalResult setFunctionMember(std::string_view name, F&& f, T* ptr) {
-    static_assert(!(std::is_move_constructible_v<T> || std::is_move_assignable_v<T> ||
-                    std::is_copy_constructible_v<T> || std::is_copy_assignable_v<T>),
-                  "please make sure that `this` is a stable pointer.");
-    return setFunction(name, [f, ptr](Machine& ctx, VPackSlice slice, VPackBuilder& result) -> EvalResult {
-      return (ptr->*f)(ctx, slice, result);
-    });
+    static_assert(
+        !(std::is_move_constructible_v<T> || std::is_move_assignable_v<T> ||
+          std::is_copy_constructible_v<T> || std::is_copy_assignable_v<T>),
+        "please make sure that `this` is a stable pointer.");
+    return setFunction(name,
+                       [f, ptr](Machine& ctx, VPackSlice slice,
+                                VPackBuilder& result) -> EvalResult {
+                         return (ptr->*f)(ctx, slice, result);
+                       });
   }
 
   using print_callback_type = std::function<void(std::string)>;
-  template <typename F>
+  template<typename F>
   void setPrintCallback(F&& f) {
     printCallback = std::forward<F>(f);
   }
@@ -103,15 +109,18 @@ struct Machine {
 
 enum class StackFrameGuardMode { KEEP_SCOPE, NEW_SCOPE, NEW_SCOPE_HIDE_PARENT };
 
-template <StackFrameGuardMode mode>
+template<StackFrameGuardMode mode>
 struct StackFrameGuard {
-  template <StackFrameGuardMode U>
+  template<StackFrameGuardMode U>
   static constexpr bool isNewScope =
-      U == StackFrameGuardMode::NEW_SCOPE || U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
-  template <StackFrameGuardMode U>
-  static constexpr bool noParentScope = U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
+      U == StackFrameGuardMode::NEW_SCOPE ||
+      U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
+  template<StackFrameGuardMode U>
+  static constexpr bool noParentScope =
+      U == StackFrameGuardMode::NEW_SCOPE_HIDE_PARENT;
 
-  template <StackFrameGuardMode U = mode, std::enable_if_t<isNewScope<U>, int> = 0>
+  template<StackFrameGuardMode U = mode,
+           std::enable_if_t<isNewScope<U>, int> = 0>
   StackFrameGuard(Machine& ctx, StackFrame sf) : _ctx(ctx) {
     ctx.emplaceStack(std::move(sf));
   }
@@ -136,11 +145,11 @@ bool ValueConsideredFalse(VPackSlice value);
 
 EvalResult Evaluate(Machine& ctx, VPackSlice slice, VPackBuilder& result);
 void InitMachine(Machine& ctx);
-EvalResult EvaluateApply(Machine& ctx, VPackSlice functionSlice, VPackArrayIterator paramIterator,
-                         VPackBuilder& result, bool isEvaluateParameter);
+EvalResult EvaluateApply(Machine& ctx, VPackSlice functionSlice,
+                         VPackArrayIterator paramIterator, VPackBuilder& result,
+                         bool isEvaluateParameter);
 
 std::string paramsToString(VPackArrayIterator iter);
 std::string paramsToString(VPackSlice params);
 
 }  // namespace arangodb::greenspun
-

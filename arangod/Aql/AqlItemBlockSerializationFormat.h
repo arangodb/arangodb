@@ -32,7 +32,8 @@ namespace aql {
 enum class SerializationFormat {
   // Format used in 3.5 and early. Not containing shadow rows
   CLASSIC = 0,
-  // Use a hidden register for shadow rows. In classic versions all entries would be off by one.
+  // Use a hidden register for shadow rows. In classic versions all entries
+  // would be off by one.
   SHADOWROWS = 1
 };
 

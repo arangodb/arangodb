@@ -35,11 +35,13 @@ namespace arangodb::replication2::test {
  * Resolves promises in a separate thread.
  */
 
-struct AsyncLeader : replicated_log::ILogLeader, std::enable_shared_from_this<AsyncLeader> {
+struct AsyncLeader : replicated_log::ILogLeader,
+                     std::enable_shared_from_this<AsyncLeader> {
   explicit AsyncLeader(std::shared_ptr<replicated_log::ILogLeader> leader);
   ~AsyncLeader();
   [[nodiscard]] auto getStatus() const -> replicated_log::LogStatus override;
-  auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> override;
+  auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>,
+                                 DeferredAction> override;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
@@ -50,12 +52,13 @@ struct AsyncLeader : replicated_log::ILogLeader, std::enable_shared_from_this<As
   void triggerAsyncReplication() override;
   [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool override;
   auto waitForLeadership() -> WaitForFuture override;
-  [[nodiscard]] auto copyInMemoryLog() const -> replicated_log::InMemoryLog override;
+  [[nodiscard]] auto copyInMemoryLog() const
+      -> replicated_log::InMemoryLog override;
 
   void stop() noexcept;
 
  private:
-  template <typename T>
+  template<typename T>
   auto resolveFutureAsync(futures::Future<T> f) -> futures::Future<T>;
   template<typename T>
   void resolvePromiseAsync(futures::Promise<T>, futures::Try<T>) noexcept;

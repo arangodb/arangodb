@@ -31,14 +31,15 @@
 
 using namespace arangodb;
 
-SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(TRI_vocbase_t& vocbase,
-                                                             TransactionId tid,
-                                                             transaction::Options const& options)
+SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
+    TRI_vocbase_t& vocbase, TransactionId tid,
+    transaction::Options const& options)
     : RocksDBTransactionState(vocbase, tid, options) {}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 
-Result SimpleRocksDBTransactionState::beginTransaction(transaction::Hints hints) {
+Result SimpleRocksDBTransactionState::beginTransaction(
+    transaction::Hints hints) {
   auto res = RocksDBTransactionState::beginTransaction(hints);
   if (!res.ok()) {
     return res;
@@ -50,23 +51,25 @@ Result SimpleRocksDBTransactionState::beginTransaction(transaction::Hints hints)
 
   if (isReadOnlyTransaction()) {
     if (isSingleOperation()) {
-      _rocksMethods = std::make_unique<RocksDBSingleOperationReadOnlyMethods>(this, db);
+      _rocksMethods =
+          std::make_unique<RocksDBSingleOperationReadOnlyMethods>(this, db);
     } else {
       _rocksMethods = std::make_unique<RocksDBReadOnlyMethods>(this, db);
     }
   } else {
     if (isSingleOperation()) {
-      _rocksMethods = std::make_unique<RocksDBSingleOperationTrxMethods>(this, db);
+      _rocksMethods =
+          std::make_unique<RocksDBSingleOperationTrxMethods>(this, db);
     } else {
       _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
     }
   }
-  
+
   res = _rocksMethods->beginTransaction();
   if (res.ok()) {
     maybeDisableIndexing();
   }
-  
+
   return res;
 }
 
@@ -74,7 +77,7 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
   if (!hasHint(transaction::Hints::Hint::NO_INDEXING)) {
     return;
   }
-  
+
   TRI_ASSERT(!isReadOnlyTransaction());
   // do not track our own writes... we can only use this in very
   // specific scenarios, i.e. when we are sure that we will have a
@@ -114,7 +117,7 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
 
 /// @brief commit a transaction
 Result SimpleRocksDBTransactionState::doCommit() {
-  return _rocksMethods->commitTransaction();  
+  return _rocksMethods->commitTransaction();
 }
 
 /// @brief abort and rollback a transaction
@@ -129,17 +132,19 @@ void SimpleRocksDBTransactionState::beginQuery(bool isModificationQuery) {
   }
 }
 
-void SimpleRocksDBTransactionState::endQuery(bool isModificationQuery) noexcept {
+void SimpleRocksDBTransactionState::endQuery(
+    bool isModificationQuery) noexcept {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
     trxMethods->endQuery(isModificationQuery);
   }
 }
 
-TRI_voc_tick_t SimpleRocksDBTransactionState::lastOperationTick() const noexcept {
+TRI_voc_tick_t SimpleRocksDBTransactionState::lastOperationTick()
+    const noexcept {
   return _rocksMethods->lastOperationTick();
 }
-  
+
 uint64_t SimpleRocksDBTransactionState::numCommits() const {
   return _rocksMethods->numCommits();
 }
@@ -160,7 +165,8 @@ rocksdb::SequenceNumber SimpleRocksDBTransactionState::beginSeq() const {
   return _rocksMethods->GetSequenceNumber();
 }
 
-std::unique_ptr<TransactionCollection> SimpleRocksDBTransactionState::createTransactionCollection(
+std::unique_ptr<TransactionCollection>
+SimpleRocksDBTransactionState::createTransactionCollection(
     DataSourceId cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
       new RocksDBTransactionCollection(this, cid, accessType));

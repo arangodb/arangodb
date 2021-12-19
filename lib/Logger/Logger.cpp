@@ -80,9 +80,9 @@ class DefaultLogGroup final : public LogGroup {
 DefaultLogGroup defaultLogGroupInstance;
 
 }  // namespace
-  
+
 LogMessage::LogMessage(char const* function, char const* file, int line,
-                       LogLevel level, size_t topicId, std::string&& message, 
+                       LogLevel level, size_t topicId, std::string&& message,
                        uint32_t offset, bool shrunk) noexcept
     : _function(function),
       _file(file),
@@ -92,7 +92,7 @@ LogMessage::LogMessage(char const* function, char const* file, int line,
       _message(std::move(message)),
       _offset(offset),
       _shrunk(shrunk) {}
-  
+
 void LogMessage::shrink(std::size_t maxLength) {
   // no need to shrink an already shrunk message
   if (!_shrunk && _message.size() > maxLength) {
@@ -111,11 +111,11 @@ void LogMessage::shrink(std::size_t maxLength) {
   }
 }
 
-
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
-LogTimeFormats::TimeFormat Logger::_timeFormat(LogTimeFormats::TimeFormat::UTCDateString);
+LogTimeFormats::TimeFormat Logger::_timeFormat(
+    LogTimeFormats::TimeFormat::UTCDateString);
 bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
@@ -149,7 +149,7 @@ Logger::ThreadRef::~ThreadRef() {
   //       headed by (5)
   Logger::_loggingThreadRefs.fetch_sub(1, std::memory_order_relaxed);
 }
-  
+
 LogGroup& Logger::defaultLogGroup() { return ::defaultLogGroupInstance; }
 
 LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
@@ -158,9 +158,7 @@ std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
   return LogTopic::logLevelTopics();
 }
 
-void Logger::setShowIds(bool show) {
-  _showIds = show;
-}
+void Logger::setShowIds(bool show) { _showIds = show; }
 
 void Logger::setLogLevel(LogLevel level) {
   _level.store(level, std::memory_order_relaxed);
@@ -191,7 +189,8 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (!isValid) {
     if (!isGeneral) {
-      LOG_TOPIC("05367", WARN, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
+      LOG_TOPIC("05367", WARN, arangodb::Logger::FIXME)
+          << "strange log level '" << levelName << "'";
       return;
     }
     level = LogLevel::INFO;
@@ -316,18 +315,17 @@ void Logger::setUseControlEscaped(bool value) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
-    }
-    _useControlEscaped = value;
   }
-  // NOTE: this function should not be called if the logging is active.
-  void Logger::setUseUnicodeEscaped(bool value) {
+  _useControlEscaped = value;
+}
+// NOTE: this function should not be called if the logging is active.
+void Logger::setUseUnicodeEscaped(bool value) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
-    }
-    _useUnicodeEscaped = value;
   }
-
+  _useUnicodeEscaped = value;
+}
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowRole(bool show) {
@@ -379,7 +377,8 @@ void Logger::setUseJson(bool value) {
   _useJson = value;
 }
 
-bool Logger::translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept {
+bool Logger::translateLogLevel(std::string const& l, bool isGeneral,
+                               LogLevel& level) noexcept {
   if (l == "fatal") {
     level = LogLevel::FATAL;
   } else if (l == "error" || l == "err") {
@@ -422,8 +421,9 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
   return UNKNOWN;
 }
 
-void Logger::log(char const* logid, char const* function, char const* file, int line,
-                 LogLevel level, size_t topicId, std::string const& message) try {
+void Logger::log(char const* logid, char const* function, char const* file,
+                 int line, LogLevel level, size_t topicId,
+                 std::string const& message) try {
   TRI_ASSERT(logid != nullptr);
   LogContext& logContext = LogContext::current();
 
@@ -456,7 +456,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
         out.push_back('"');
       }
       // value of date/time is always safe to print
-      LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
+      LogTimeFormats::writeTime(out, _timeFormat,
+                                std::chrono::system_clock::now());
       if (LogTimeFormats::isStringFormat(_timeFormat)) {
         out.push_back('"');
       }
@@ -551,25 +552,28 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append(",\"hostname\":");
       dumper.appendString(_hostname.data(), _hostname.size());
     }
-  
+
     // meta data from log context
-    LogContext::OverloadVisitor visitor([&out, &dumper](std::string_view const& key, auto&& value) {
-      out.push_back(',');
-      dumper.appendString(key.data(), key.size());
-      out.push_back(':');
-      if constexpr (std::is_same_v<std::string_view, std::remove_cv_t<std::remove_reference_t<decltype(value)>>>) {
-        dumper.appendString(value.data(), key.size());
-      } else {
-        out.append(std::to_string(value));
-      }
-    });
+    LogContext::OverloadVisitor visitor(
+        [&out, &dumper](std::string_view const& key, auto&& value) {
+          out.push_back(',');
+          dumper.appendString(key.data(), key.size());
+          out.push_back(':');
+          if constexpr (std::is_same_v<std::string_view,
+                                       std::remove_cv_t<std::remove_reference_t<
+                                           decltype(value)>>>) {
+            dumper.appendString(value.data(), key.size());
+          } else {
+            out.append(std::to_string(value));
+          }
+        });
     logContext.visit(visitor);
-    
+
     // the message itself
     {
       out.append(",\"message\":");
-  
-      // the log message can be really large, and it can lead to 
+
+      // the log message can be really large, and it can lead to
       // truncation of the log message further down the road.
       // however, as we are supposed to produce valid JSON log
       // entries even with the truncation in place, we need to make
@@ -584,7 +588,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
         maxMessageLength = message.size();
       }
       dumper.appendString(message.c_str(), maxMessageLength);
-  
+
       // this tells the logger to not shrink our (potentially already
       // shrunk) message once more - if it would shrink the message again,
       // it may produce invalid JSON
@@ -602,7 +606,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     }
 
     // human readable format
-    LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
+    LogTimeFormats::writeTime(out, _timeFormat,
+                              std::chrono::system_clock::now());
     out.push_back(' ');
 
     // output prefix
@@ -672,9 +677,9 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append("] ", 2);
     }
 
-    // the offset is used by the in-memory logger, and it cuts off everything from the start
-    // of the concatenated log string until the offset. only what's after the offset gets
-    // displayed in the web UI
+    // the offset is used by the in-memory logger, and it cuts off everything
+    // from the start of the concatenated log string until the offset. only
+    // what's after the offset gets displayed in the web UI
     TRI_ASSERT(out.size() < static_cast<size_t>(UINT32_MAX));
     offset = static_cast<uint32_t>(out.size());
 
@@ -690,48 +695,53 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append("} ", 2);
     }
 
-    // meta data from log 
-    LogContext::OverloadVisitor visitor([&out](std::string_view const& key, auto&& value) {
-      out.push_back('[');
-      out.append(key).append(": ", 2);
-      if constexpr (std::is_same_v<std::string_view, std::remove_cv_t<std::remove_reference_t<decltype(value)>>>) {
-        out.append(value);
-      } else {
-        out.append(std::to_string(value));
-      }
-      out.append("] ", 2);
-    });
+    // meta data from log
+    LogContext::OverloadVisitor visitor(
+        [&out](std::string_view const& key, auto&& value) {
+          out.push_back('[');
+          out.append(key).append(": ", 2);
+          if constexpr (std::is_same_v<std::string_view,
+                                       std::remove_cv_t<std::remove_reference_t<
+                                           decltype(value)>>>) {
+            out.append(value);
+          } else {
+            out.append(std::to_string(value));
+          }
+          out.append("] ", 2);
+        });
     logContext.visit(visitor);
-    
+
     // generate the complete message
     out.append(message);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);
 
-  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset, shrunk);
+  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId,
+                                          std::move(out), offset, shrunk);
 
-  append(defaultLogGroup(), msg, false, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, topicId, msg->_message.data(),
-                                          msg->_message.size(), true);
-  });
+  append(defaultLogGroup(), msg, false,
+         [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
+           LogAppenderStdStream::writeLogMessage(
+               STDERR_FILENO, (isatty(STDERR_FILENO) == 1), level, topicId,
+               msg->_message.data(), msg->_message.size(), true);
+         });
 } catch (...) {
   // logging itself must never cause an exeption to escape
 }
 
-void Logger::append(LogGroup& group, 
-                    std::unique_ptr<LogMessage>& msg,
-                    bool forceDirect,
-                    std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
+void Logger::append(
+    LogGroup& group, std::unique_ptr<LogMessage>& msg, bool forceDirect,
+    std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
   // check if we need to shrink the message here
   if (!msg->shrunk()) {
     msg->shrink(group.maxLogEntryLength());
   }
 
-  // first log to all "global" appenders, which are the in-memory ring buffer logger plus
-  // some Windows-specifc appenders for the debug output window and the Windows event log.
-  // note that these loggers do not require any configuration so we can always and safely invoke them.
+  // first log to all "global" appenders, which are the in-memory ring buffer
+  // logger plus some Windows-specifc appenders for the debug output window and
+  // the Windows event log. note that these loggers do not require any
+  // configuration so we can always and safely invoke them.
   LogAppender::logGlobal(group, *msg);
 
   if (!_active.load(std::memory_order_acquire)) {
@@ -766,7 +776,8 @@ void Logger::append(LogGroup& group,
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
+void Logger::initialize(application_features::ApplicationServer& server,
+                        bool threaded) {
   if (_active.exchange(true, std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Logger already initialized");
@@ -780,7 +791,7 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
           << "could not start logging thread";
       FATAL_ERROR_EXIT();
     }
-  
+
     // (4) - this release-store synchronizes with the acquire-load (2)
     _loggingThread.store(loggingThread.release(), std::memory_order_release);
   }
@@ -798,22 +809,23 @@ void Logger::shutdown() {
   // logging is now inactive
 
   // reset the instance variable in Logger, so that others won't see it anymore
-  std::unique_ptr<LogThread> loggingThread(_loggingThread.exchange(nullptr, std::memory_order_relaxed));
-  
+  std::unique_ptr<LogThread> loggingThread(
+      _loggingThread.exchange(nullptr, std::memory_order_relaxed));
+
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
   if (loggingThread != nullptr) {
     // (5) - this release-fetch-add synchronizes with the acquire-fetch-add (1)
-    // Even though a fetch-add with 0 is essentially a noop, this is necessary to
-    // ensure that threads which try to get a reference to the _loggingThread
+    // Even though a fetch-add with 0 is essentially a noop, this is necessary
+    // to ensure that threads which try to get a reference to the _loggingThread
     // actually see the new nullptr value.
     _loggingThreadRefs.fetch_add(0, std::memory_order_release);
-    
+
     // wait until all threads have dropped their reference to the logging thread
     while (_loggingThreadRefs.load(std::memory_order_relaxed)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
-    
+
     char const* currentThreadName = Thread::currentThreadName();
     if (currentThreadName != nullptr && ::LogThreadName == currentThreadName) {
       // oops, the LogThread itself crashed...
@@ -850,7 +862,7 @@ void Logger::flush() noexcept {
     // logging not (or not yet) initialized
     return;
   }
-  
+
   ThreadRef loggingThread;
   if (loggingThread) {
     loggingThread->flush();

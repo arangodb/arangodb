@@ -40,12 +40,16 @@ struct FollowerStatistics : LogStatistics {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
 
-  friend auto operator==(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
-  friend auto operator!=(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
+  friend auto operator==(FollowerStatistics const& left,
+                         FollowerStatistics const& right) noexcept -> bool;
+  friend auto operator!=(FollowerStatistics const& left,
+                         FollowerStatistics const& right) noexcept -> bool;
 };
 
-[[nodiscard]] auto operator==(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator==(FollowerStatistics const& left,
+                              FollowerStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(FollowerStatistics const& left,
+                              FollowerStatistics const& right) noexcept -> bool;
 
 struct LeaderStatus {
   LogStatistics local;
@@ -62,7 +66,8 @@ struct LeaderStatus {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
 
-  friend auto operator==(LeaderStatus const& left, LeaderStatus const& right) noexcept -> bool = default;
+  friend auto operator==(LeaderStatus const& left,
+                         LeaderStatus const& right) noexcept -> bool = default;
 };
 
 struct FollowerStatus {
@@ -81,7 +86,8 @@ struct UnconfiguredStatus {
 };
 
 struct LogStatus {
-  using VariantType = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
+  using VariantType =
+      std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
   // default constructs as unconfigured status
   LogStatus() = default;
@@ -92,14 +98,16 @@ struct LogStatus {
   [[nodiscard]] auto getVariant() const noexcept -> VariantType const&;
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
-  [[nodiscard]] auto getLocalStatistics() const noexcept -> std::optional<LogStatistics>;
+  [[nodiscard]] auto getLocalStatistics() const noexcept
+      -> std::optional<LogStatistics>;
 
   [[nodiscard]] auto asLeaderStatus() const noexcept -> LeaderStatus const*;
 
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
+
  private:
   VariantType _variant;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_log

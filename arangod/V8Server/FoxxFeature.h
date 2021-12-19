@@ -52,4 +52,3 @@ class FoxxFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

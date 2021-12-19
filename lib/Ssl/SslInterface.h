@@ -51,7 +51,8 @@ std::string sslMD5(std::string const&);
 /// @brief md5 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslMD5(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen);
+void sslMD5(char const* inputStr, size_t length, char*& outputStr,
+            size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief md5 hash
@@ -70,7 +71,8 @@ void sslMD5(char const* input1, size_t length1, char const* input2,
 /// @brief sha1 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA1(char const* inputStr, size_t const length, char*& outputStr, size_t& outputLen);
+void sslSHA1(char const* inputStr, size_t const length, char*& outputStr,
+             size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha1 hash
@@ -82,7 +84,8 @@ void sslSHA1(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief sha224 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA224(char const* inputStr, size_t const length, char*& outputStr, size_t& outputLen);
+void sslSHA224(char const* inputStr, size_t const length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha224 hash
@@ -94,7 +97,8 @@ void sslSHA224(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief sha256 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA256(char const* inputStr, size_t const length, char*& outputStr, size_t& outputLen);
+void sslSHA256(char const* inputStr, size_t const length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha256 hash
@@ -106,7 +110,8 @@ void sslSHA256(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief sha384 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA384(char const* inputStr, size_t const length, char*& outputStr, size_t& outputLen);
+void sslSHA384(char const* inputStr, size_t const length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha384 hash
@@ -118,7 +123,8 @@ void sslSHA384(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief sha512 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA512(char const* inputStr, size_t const length, char*& outputStr, size_t& outputLen);
+void sslSHA512(char const* inputStr, size_t const length, char*& outputStr,
+               size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief sha512 hash
@@ -130,7 +136,8 @@ void sslSHA512(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief HEX
 //////////////////////////////////////////////////////////////////////////
 
-void sslHEX(char const* inputStr, size_t const length, char*& outputStr, size_t& outputLen);
+void sslHEX(char const* inputStr, size_t const length, char*& outputStr,
+            size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HEX
@@ -150,7 +157,8 @@ std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
 //////////////////////////////////////////////////////////////////////////
 
 std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
-                      size_t passLength, int iter, int keyLength, Algorithm algorithm);
+                      size_t passLength, int iter, int keyLength,
+                      Algorithm algorithm);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HMAC
@@ -197,8 +205,8 @@ int sslRand(int32_t*);
 /// Will return 0 on sucess non-zero else
 //////////////////////////////////////////////////////////////////////////
 
-int rsaPrivSign (std::string const& pem, std::string const& msg,
-                 std::string& sign, std::string& error);
+int rsaPrivSign(std::string const& pem, std::string const& msg,
+                std::string& sign, std::string& error);
 
 }  // namespace SslInterface
 }  // namespace rest

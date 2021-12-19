@@ -35,7 +35,7 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class Scale {
  public:
   using Value = T;
@@ -93,7 +93,7 @@ class Scale {
   T _high;
 };
 
-template <typename T>
+template<typename T>
 std::ostream& operator<<(std::ostream& o, Scale<T> const& s) {
   return s.print(o);
 }

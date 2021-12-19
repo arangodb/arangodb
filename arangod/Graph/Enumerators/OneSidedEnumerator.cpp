@@ -47,26 +47,26 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <class Configuration>
-OneSidedEnumerator<Configuration>::OneSidedEnumerator(Provider&& forwardProvider,
-                                                      OneSidedEnumeratorOptions&& options,
-                                                      PathValidatorOptions validatorOptions,
-                                                      arangodb::ResourceMonitor& resourceMonitor)
+template<class Configuration>
+OneSidedEnumerator<Configuration>::OneSidedEnumerator(
+    Provider&& forwardProvider, OneSidedEnumeratorOptions&& options,
+    PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
       _queue(resourceMonitor),
       _provider(std::move(forwardProvider)),
       _interior(resourceMonitor),
       _validator(_provider, _interior, std::move(validatorOptions)) {}
 
-template <class Configuration>
+template<class Configuration>
 OneSidedEnumerator<Configuration>::~OneSidedEnumerator() = default;
 
-template <class Configuration>
+template<class Configuration>
 auto OneSidedEnumerator<Configuration>::destroyEngines() -> void {
   _provider.destroyEngines();
 }
 
-template <class Configuration>
+template<class Configuration>
 void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
   if (!keepPathStore) {
     _interior.reset();
@@ -76,31 +76,32 @@ void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
 
   if (!keepPathStore) {
     _interior.reset();
-    clearProvider(); // TODO: Check usage of keepPathStore (if necessary)
+    clearProvider();  // TODO: Check usage of keepPathStore (if necessary)
   }
 }
 
-template <class Configuration>
+template<class Configuration>
 void OneSidedEnumerator<Configuration>::clearProvider() {
-  // Guarantee that the used Queue is empty and we do not hold any reference to PathStore.
-  // Info: Steps do contain VertexRefs which are hold in PathStore.
+  // Guarantee that the used Queue is empty and we do not hold any reference to
+  // PathStore. Info: Steps do contain VertexRefs which are hold in PathStore.
   TRI_ASSERT(_queue.isEmpty());
 
-  // Guarantee that _results is empty. Steps are contained in _results and do contain
-  // Steps which do contain VertexRefs which are hold in PathStore.
+  // Guarantee that _results is empty. Steps are contained in _results and do
+  // contain Steps which do contain VertexRefs which are hold in PathStore.
   TRI_ASSERT(_results.empty());
 
   // Guarantee that the used PathStore is cleared, before we clear the Provider.
   // The Provider does hold the StringHeap cache.
   TRI_ASSERT(_interior.size() == 0);
 
-  // ProviderStore must be cleared as last (!), as we do have multiple places holding
-  // references to contained VertexRefs there.
-  _provider.clear(); // PathStore
+  // ProviderStore must be cleared as last (!), as we do have multiple places
+  // holding references to contained VertexRefs there.
+  _provider.clear();  // PathStore
 }
 
-template <class Configuration>
-auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> void {
+template<class Configuration>
+auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
+    -> void {
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
@@ -131,7 +132,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
 
   // TODO: Adjust log output
   LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
-      << std::boolalpha << "<Traverser> Validated Vertex: " << step.getVertex().getID()
+      << std::boolalpha
+      << "<Traverser> Validated Vertex: " << step.getVertex().getID()
       << " filtered " << res.isFiltered() << " pruned " << res.isPruned()
       << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
       << "<= " << _options.getMaxDepth();
@@ -143,7 +145,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-    _provider.expand(step, posPrevious, [&](Step n) -> void { _queue.append(n); });
+    _provider.expand(step, posPrevious,
+                     [&](Step n) -> void { _queue.append(n); });
   }
 }
 
@@ -153,7 +156,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() -> vo
  * @return true There will be no further path.
  * @return false There is a chance that there is more data available.
  */
-template <class Configuration>
+template<class Configuration>
 bool OneSidedEnumerator<Configuration>::isDone() const {
   return _results.empty() && searchDone();
 }
@@ -167,9 +170,10 @@ bool OneSidedEnumerator<Configuration>::isDone() const {
  *
  * @param source The source vertex to start the paths
  */
-template <class Configuration>
+template<class Configuration>
 void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth,
-                                              double weight, bool keepPathStore) {
+                                              double weight,
+                                              bool keepPathStore) {
   clear(keepPathStore);
   auto firstStep = _provider.startVertex(source, depth, weight);
   _queue.append(std::move(firstStep));
@@ -188,7 +192,7 @@ void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth,
  * @return true Found and written a path, result is modified.
  * @return false No path found, result has not been changed.
  */
-template <class Configuration>
+template<class Configuration>
 auto OneSidedEnumerator<Configuration>::getNextPath()
     -> std::unique_ptr<PathResultInterface> {
   while (!isDone()) {
@@ -203,9 +207,10 @@ auto OneSidedEnumerator<Configuration>::getNextPath()
   return nullptr;
 }
 
-template <class Configuration>
+template<class Configuration>
 void OneSidedEnumerator<Configuration>::searchMoreResults() {
-  while (_results.empty() && !searchDone()) {  // TODO: check && !_queue.isEmpty()
+  while (_results.empty() &&
+         !searchDone()) {  // TODO: check && !_queue.isEmpty()
     _resultsFetched = false;
     computeNeighbourhoodOfNextVertex();
   }
@@ -220,7 +225,7 @@ void OneSidedEnumerator<Configuration>::searchMoreResults() {
  * @return false No path found.
  */
 
-template <class Configuration>
+template<class Configuration>
 bool OneSidedEnumerator<Configuration>::skipPath() {
   while (!isDone()) {
     searchMoreResults();
@@ -234,12 +239,12 @@ bool OneSidedEnumerator<Configuration>::skipPath() {
   return false;
 }
 
-template <class Configuration>
+template<class Configuration>
 auto OneSidedEnumerator<Configuration>::searchDone() const -> bool {
   return _queue.isEmpty();
 }
 
-template <class Configuration>
+template<class Configuration>
 auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
   if (!_resultsFetched && !_results.empty()) {
     std::vector<Step*> looseEnds{};
@@ -252,7 +257,8 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
 
     if (!looseEnds.empty()) {
       // Will throw all network errors here
-      futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+      futures::Future<std::vector<Step*>> futureEnds =
+          _provider.fetch(looseEnds);
       futureEnds.get();
       // Notes for the future:
       // Vertices are now fetched. Think about other less-blocking and
@@ -267,12 +273,13 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
   _resultsFetched = true;
 }
 
-template <class Configuration>
-auto OneSidedEnumerator<Configuration>::prepareIndexExpressions(aql::Ast* ast) -> void {
+template<class Configuration>
+auto OneSidedEnumerator<Configuration>::prepareIndexExpressions(aql::Ast* ast)
+    -> void {
   _provider.prepareIndexExpressions(ast);
 }
 
-template <class Configuration>
+template<class Configuration>
 auto OneSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
   _stats += _provider.stealStats();
 
@@ -288,78 +295,126 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 // Breadth First Search
 template class ::arangodb::graph::OneSidedEnumerator<
-    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH, false>>;
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::PATH, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH, true>>;
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::PATH, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, false>>;
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::NONE, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, true>>;
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::NONE, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL, false>>;
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::GLOBAL, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL, true>>;
+    BFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::GLOBAL, true>>;
 
 // Depth First Search
 template class ::arangodb::graph::OneSidedEnumerator<
-    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH, false>>;
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::PATH, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::PATH, true>>;
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::PATH, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, false>>;
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::NONE, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::NONE, true>>;
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::NONE, true>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL, false>>;
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::GLOBAL, false>>;
 template class ::arangodb::graph::OneSidedEnumerator<
-    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL, true>>;
+    DFSConfiguration<SingleServerProvider<SingleServerProviderStep>,
+                     VertexUniquenessLevel::GLOBAL, true>>;
 
 #ifdef USE_ENTERPRISE
 // Depth First Search
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::DFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::DFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::DFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
 
 // DFS Tracing
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::DFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::DFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::DFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::DFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
 
 // Breath First Search
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::BFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::BFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::BFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
 
 // BFS Tracing
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::BFSConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::BFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::BFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::BFSConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
 
 // Weighted Search
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, false>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::WeightedConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::PATH, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::WeightedConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::NONE, false>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::WeightedConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::GLOBAL, false>>;
 
 // Weighted Tracing
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::PATH, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::NONE, true>>;
-template class ::arangodb::graph::OneSidedEnumerator<arangodb::graph::enterprise::WeightedConfigurationEE<
-    SingleServerProvider<enterprise::SmartGraphStep>, arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::WeightedConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::PATH, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::WeightedConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::NONE, true>>;
+template class ::arangodb::graph::OneSidedEnumerator<
+    arangodb::graph::enterprise::WeightedConfigurationEE<
+        SingleServerProvider<enterprise::SmartGraphStep>,
+        arangodb::graph::VertexUniquenessLevel::GLOBAL, true>>;
 #endif

@@ -31,7 +31,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class V8ContextGuard;
 class V8LineEditor;
-}
+}  // namespace arangodb
 
 namespace arangodb {
 namespace application_features {
@@ -66,4 +66,3 @@ class ConsoleThread final : public Thread {
   std::atomic<bool> _userAborted;
 };
 }  // namespace arangodb
-

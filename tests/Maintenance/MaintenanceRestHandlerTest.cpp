@@ -67,15 +67,18 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
     body.add("collection", VPackValue("a"));
   }
 
-  auto* dummyRequest = new arangodb::HttpRequest(arangodb::ConnectionInfo(), 1, false);
-  dummyRequest->setDefaultContentType(); // JSON
+  auto* dummyRequest =
+      new arangodb::HttpRequest(arangodb::ConnectionInfo(), 1, false);
+  dummyRequest->setDefaultContentType();  // JSON
   dummyRequest->setPayload(buffer);
   dummyRequest->setRequestType(arangodb::rest::RequestType::PUT);
 
-  auto* dummyResponse = new arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, 1, nullptr);
-  arangodb::application_features::ApplicationServer dummyServer{nullptr, nullptr};
+  auto* dummyResponse =
+      new arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, 1, nullptr);
+  arangodb::application_features::ApplicationServer dummyServer{nullptr,
+                                                                nullptr};
   TestHandler dummyHandler(dummyServer, dummyRequest, dummyResponse);
-  
+
   ASSERT_TRUE(dummyHandler.test_parsePutBody(body.slice()));
   ASSERT_TRUE(dummyHandler.getActionDesc().has("name"));
   ASSERT_EQ(dummyHandler.getActionDesc().get("name"), "CreateCollection");

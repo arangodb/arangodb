@@ -53,4 +53,3 @@ class TraversalConditionFinder final
 };
 }  // namespace aql
 }  // namespace arangodb
-

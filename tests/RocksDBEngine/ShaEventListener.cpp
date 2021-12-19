@@ -51,14 +51,16 @@ struct CFilesSetup {
 
     if (!Initialized) {
       Initialized = true;
-      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+      arangodb::RandomGenerator::initialize(
+          arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
     _directory = TRI_GetTempPath();
     _directory += TRI_DIR_SEPARATOR_CHAR;
     _directory += "arangotest-";
     _directory += std::to_string(static_cast<uint64_t>(TRI_microtime()));
-    _directory += std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
+    _directory +=
+        std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
 
     TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
   }
@@ -108,7 +110,8 @@ struct CFilesSetup {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        action tests
+// --SECTION--                                                        action
+// tests
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +121,8 @@ struct CFilesSetup {
 TEST(RocksDBShaFileHandlerTest, sha_a_new_file) {
   CFilesSetup s;
 
-  auto shaFileManager = std::make_shared<arangodb::RocksDBShaFileManager>(s._directory);
+  auto shaFileManager =
+      std::make_shared<arangodb::RocksDBShaFileManager>(s._directory);
 
   std::string filePath = s._directory;
   filePath += TRI_DIR_SEPARATOR_CHAR;
@@ -128,10 +132,11 @@ TEST(RocksDBShaFileHandlerTest, sha_a_new_file) {
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
   arangodb::RocksDBSha256Checksum checksumGenerator(new_sst, shaFileManager);
-  if (TRI_ProcessFile(new_sst.c_str(), [&checksumGenerator](char const* buffer, size_t n) {
-        checksumGenerator.Update(buffer, n);
-        return true;
-      })) {
+  if (TRI_ProcessFile(new_sst.c_str(),
+                      [&checksumGenerator](char const* buffer, size_t n) {
+                        checksumGenerator.Update(buffer, n);
+                        return true;
+                      })) {
     checksumGenerator.Finalize();
   }
 
@@ -191,9 +196,7 @@ class RocksDBShaFileHandlerEnvGenerator {
 
   CFilesSetup setup;
 
-  std::string getServerPath() {
-    return setup._directory;
-  }
+  std::string getServerPath() { return setup._directory; }
 
   std::string getFilePath(const char* name) {
     std::string retpath = setup._directory;
@@ -207,12 +210,13 @@ TEST(CheckMissingShaFilesTest, verify_common_situations) {
   arangodb::application_features::ApplicationServer server{nullptr, nullptr};
 
   RocksDBShaFileHandlerEnvGenerator envGenerator;
-  auto shaFileManager =
-      std::make_shared<arangodb::RocksDBShaFileManager>(envGenerator.getServerPath());
+  auto shaFileManager = std::make_shared<arangodb::RocksDBShaFileManager>(
+      envGenerator.getServerPath());
 
   shaFileManager->checkMissingShaFiles();
 
-  EXPECT_TRUE(TRI_ExistsFile(envGenerator.getFilePath("MANIFEST-000004").c_str()));
+  EXPECT_TRUE(
+      TRI_ExistsFile(envGenerator.getFilePath("MANIFEST-000004").c_str()));
   EXPECT_TRUE(TRI_ExistsFile(envGenerator.getFilePath("CURRENT").c_str()));
   EXPECT_TRUE(TRI_ExistsFile(envGenerator.getFilePath("IDENTITY").c_str()));
   EXPECT_TRUE(TRI_ExistsFile(envGenerator.getFilePath("037793.sst").c_str()));
@@ -249,8 +253,8 @@ TEST(RocksDBShaFileHandlerTest, delete_sha_file_direct) {
   arangodb::application_features::ApplicationServer server{nullptr, nullptr};
 
   RocksDBShaFileHandlerEnvGenerator envGenerator;
-  auto shaFileManager =
-      std::make_shared<arangodb::RocksDBShaFileManager>(envGenerator.getServerPath());
+  auto shaFileManager = std::make_shared<arangodb::RocksDBShaFileManager>(
+      envGenerator.getServerPath());
 
   shaFileManager->checkMissingShaFiles();
 
@@ -275,8 +279,8 @@ TEST(RocksDBShaFileHandlerTest, delete_sha_file_indirect) {
 
   RocksDBShaFileHandlerEnvGenerator envGenerator;
 
-  auto shaFileManager =
-      std::make_shared<arangodb::RocksDBShaFileManager>(envGenerator.getServerPath());
+  auto shaFileManager = std::make_shared<arangodb::RocksDBShaFileManager>(
+      envGenerator.getServerPath());
   shaFileManager->checkMissingShaFiles();
 
   rocksdb::TableFileDeletionInfo info;

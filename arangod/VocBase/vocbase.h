@@ -102,7 +102,7 @@ struct TRI_vocbase_t {
 
   TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
-  
+
  private:
   // explicitly document implicit behavior (due to presence of locks)
   TRI_vocbase_t(TRI_vocbase_t&&) = delete;
@@ -128,45 +128,61 @@ struct TRI_vocbase_t {
   std::atomic<uint64_t> _refCount;
   bool _isOwnAppsDirectory;
 
-  std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
-  std::vector<std::shared_ptr<arangodb::LogicalCollection>> _deadCollections;  // collections dropped that can be removed later
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>>
+      _collections;  // ALL collections
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>>
+      _deadCollections;  // collections dropped that can be removed later
 
   std::unordered_map<arangodb::DataSourceId,
                      std::shared_ptr<arangodb::LogicalDataSource>>
       _dataSourceById;  // data-source by id
-  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>> _dataSourceByName;  // data-source by name
-  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>> _dataSourceByUuid;  // data-source by uuid
-  mutable arangodb::basics::ReadWriteLock _dataSourceLock;  // data-source iterator lock
-  mutable std::atomic<std::thread::id> _dataSourceLockWriteOwner;  // current thread owning '_dataSourceLock'
-                                                                   // write lock (workaround for non-recusrive
-                                                                   // ReadWriteLock)
+  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>>
+      _dataSourceByName;  // data-source by name
+  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>>
+      _dataSourceByUuid;  // data-source by uuid
+  mutable arangodb::basics::ReadWriteLock
+      _dataSourceLock;  // data-source iterator lock
+  mutable std::atomic<std::thread::id>
+      _dataSourceLockWriteOwner;  // current thread owning '_dataSourceLock'
+                                  // write lock (workaround for non-recusrive
+                                  // ReadWriteLock)
 
   std::unique_ptr<arangodb::aql::QueryList> _queries;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
 
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
-  std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
+  std::unique_ptr<arangodb::ReplicationClientsProgressTracker>
+      _replicationClients;
 
  public:
   std::shared_ptr<arangodb::VocBaseLogManager> _logManager;
-  [[nodiscard]] auto getReplicatedLogById(arangodb::replication2::LogId id) const
+  [[nodiscard]] auto getReplicatedLogById(
+      arangodb::replication2::LogId id) const
       -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
-  [[nodiscard]] auto getReplicatedLogLeaderById(arangodb::replication2::LogId id) const
+  [[nodiscard]] auto getReplicatedLogLeaderById(
+      arangodb::replication2::LogId id) const
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
-  [[nodiscard]] auto getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
+  [[nodiscard]] auto getReplicatedLogFollowerById(
+      arangodb::replication2::LogId id) const
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
   [[nodiscard]] auto getReplicatedLogs() const
-      -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
-  [[nodiscard]] auto createReplicatedLog(arangodb::replication2::LogId id,
-                                         std::optional<std::string> const& collectionName)
-      -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>>;
-  [[nodiscard]] auto dropReplicatedLog(arangodb::replication2::LogId id) -> arangodb::Result;
+      -> std::unordered_map<arangodb::replication2::LogId,
+                            arangodb::replication2::replicated_log::LogStatus>;
+  [[nodiscard]] auto createReplicatedLog(
+      arangodb::replication2::LogId id,
+      std::optional<std::string> const& collectionName)
+      -> arangodb::ResultT<std::shared_ptr<
+          arangodb::replication2::replicated_log::ReplicatedLog>>;
+  [[nodiscard]] auto dropReplicatedLog(arangodb::replication2::LogId id)
+      -> arangodb::Result;
   auto ensureReplicatedLog(arangodb::replication2::LogId id,
                            std::optional<std::string> const& collectionName)
       -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
 
  public:
-  arangodb::basics::DeadlockDetector<arangodb::TransactionId, arangodb::LogicalCollection> _deadlockDetector;
+  arangodb::basics::DeadlockDetector<arangodb::TransactionId,
+                                     arangodb::LogicalCollection>
+      _deadlockDetector;
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
@@ -240,7 +256,7 @@ struct TRI_vocbase_t {
 
   /// @brief gets prototype collection for sharding (_users or _graphs)
   ShardingPrototype shardingPrototype() const;
- 
+
   /// @brief gets name of prototype collection for sharding (_users or _graphs)
   std::string const& shardingPrototypeName() const;
 
@@ -248,17 +264,21 @@ struct TRI_vocbase_t {
   std::vector<std::shared_ptr<arangodb::LogicalView>> views();
 
   /// @brief returns all known collections
-  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections(bool includeDeleted);
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections(
+      bool includeDeleted);
 
-  void processCollectionsOnShutdown(std::function<void(arangodb::LogicalCollection*)> const& cb);
+  void processCollectionsOnShutdown(
+      std::function<void(arangodb::LogicalCollection*)> const& cb);
 
-  void processCollections(std::function<void(arangodb::LogicalCollection*)> const& cb);
+  void processCollections(
+      std::function<void(arangodb::LogicalCollection*)> const& cb);
 
   /// @brief returns names of all known collections
   std::vector<std::string> collectionNames();
 
   /// @brief creates a new view from parameter set
-  std::shared_ptr<arangodb::LogicalView> createView(arangodb::velocypack::Slice parameters);
+  std::shared_ptr<arangodb::LogicalView> createView(
+      arangodb::velocypack::Slice parameters);
 
   /// @brief drops a view
   arangodb::Result dropView(arangodb::DataSourceId cid, bool allowDropSystem);
@@ -267,50 +287,56 @@ struct TRI_vocbase_t {
   /// and optionally indexes
   /// the result is sorted by type and name (vertices before edges)
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
-                 std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
+                 std::function<bool(arangodb::LogicalCollection const*)> const&
+                     nameFilter);
 
   /// @brief looks up a collection by identifier
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(arangodb::DataSourceId id) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
+      arangodb::DataSourceId id) const noexcept;
 
   /// @brief looks up a collection by name or stringified cid or uuid
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(std::string const& nameOrId) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
+      std::string const& nameOrId) const noexcept;
 
   /// @brief looks up a collection by uuid
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(std::string const& uuid) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
+      std::string const& uuid) const noexcept;
 
   /// @brief looks up a data-source by identifier
-  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(arangodb::DataSourceId id) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(
+      arangodb::DataSourceId id) const noexcept;
 
   /// @brief looks up a data-source by name or stringified cid or uuid
-  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(std::string const& nameOrId) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(
+      std::string const& nameOrId) const noexcept;
 
   /// @brief looks up a replicated log by identifier
-  std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant> lookupLog(
-      arangodb::replication2::LogId id) const noexcept;
+  std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant>
+  lookupLog(arangodb::replication2::LogId id) const noexcept;
 
   /// @brief looks up a view by identifier
-  std::shared_ptr<arangodb::LogicalView> lookupView(arangodb::DataSourceId id) const;
+  std::shared_ptr<arangodb::LogicalView> lookupView(
+      arangodb::DataSourceId id) const;
 
   /// @brief looks up a view by name or stringified cid or uuid
-  std::shared_ptr<arangodb::LogicalView> lookupView(std::string const& nameOrId) const;
+  std::shared_ptr<arangodb::LogicalView> lookupView(
+      std::string const& nameOrId) const;
 
   /// @brief renames a collection
-  arangodb::Result renameCollection(arangodb::DataSourceId cid, std::string const& newName);
+  arangodb::Result renameCollection(arangodb::DataSourceId cid,
+                                    std::string const& newName);
 
   /// @brief renames a view
-  arangodb::Result renameView(arangodb::DataSourceId cid, std::string const& oldName);
+  arangodb::Result renameView(arangodb::DataSourceId cid,
+                              std::string const& oldName);
 
   /// @brief creates a new collection from parameter set
   /// collection id ("cid") is normally passed with a value of 0
   /// this means that the system will assign a new collection id automatically
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
-  std::shared_ptr<arangodb::LogicalCollection> createCollection(arangodb::velocypack::Slice parameters);
+  std::shared_ptr<arangodb::LogicalCollection> createCollection(
+      arangodb::velocypack::Slice parameters);
 
   /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise
   /// timeout is in seconds. Essentially, the timeout counts to acquire the
@@ -322,14 +348,15 @@ struct TRI_vocbase_t {
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(arangodb::DataSourceId cid,
-                                                             bool checkPermissions);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(
+      arangodb::DataSourceId cid, bool checkPermissions);
 
   /// @brief locks a collection for usage by name
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name, bool checkPermissions);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(
+      std::string const& name, bool checkPermissions);
 
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection) noexcept;
@@ -338,10 +365,12 @@ struct TRI_vocbase_t {
   /// @param visitor returns if visitation should continue
   /// @param lockWrite acquire write lock (if 'visitor' will modify vocbase)
   /// @return visitation compleated successfully
-  typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
+  typedef std::function<bool(arangodb::LogicalDataSource& dataSource)>
+      dataSourceVisitor;
   bool visitDataSources(dataSourceVisitor const& visitor);
 
-  std::shared_ptr<arangodb::LogicalCollection> persistCollection(std::shared_ptr<arangodb::LogicalCollection>& collection);
+  std::shared_ptr<arangodb::LogicalCollection> persistCollection(
+      std::shared_ptr<arangodb::LogicalCollection>& collection);
 
  private:
   /// @brief callback for collection dropping
@@ -351,21 +380,25 @@ struct TRI_vocbase_t {
   void checkCollectionInvariants() const;
 
   std::shared_ptr<arangodb::LogicalCollection> useCollectionInternal(
-      std::shared_ptr<arangodb::LogicalCollection> const&, bool checkPermissions);
+      std::shared_ptr<arangodb::LogicalCollection> const&,
+      bool checkPermissions);
 
   arangodb::Result loadCollection(arangodb::LogicalCollection& collection,
                                   bool checkPermissions);
 
   /// @brief adds a new collection
   /// caller must hold _dataSourceLock in write mode or set doLock
-  void registerCollection(bool doLock, std::shared_ptr<arangodb::LogicalCollection> const& collection);
+  void registerCollection(
+      bool doLock,
+      std::shared_ptr<arangodb::LogicalCollection> const& collection);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
   void unregisterCollection(arangodb::LogicalCollection& collection);
 
   /// @brief creates a new collection, worker function
-  std::shared_ptr<arangodb::LogicalCollection> createCollectionWorker(arangodb::velocypack::Slice parameters);
+  std::shared_ptr<arangodb::LogicalCollection> createCollectionWorker(
+      arangodb::velocypack::Slice parameters);
 
   /// @brief drops a collection, worker function
   ErrorCode dropCollectionWorker(arangodb::LogicalCollection* collection,
@@ -373,14 +406,17 @@ struct TRI_vocbase_t {
 
   /// @brief adds a new view
   /// caller must hold _dataSourceLock in write mode or set doLock
-  void registerView(bool doLock, std::shared_ptr<arangodb::LogicalView> const& view);
+  void registerView(bool doLock,
+                    std::shared_ptr<arangodb::LogicalView> const& view);
 
   /// @brief removes a view from the global list of views
   /// This function is called when a view is dropped.
   bool unregisterView(arangodb::LogicalView const& view);
 
   /// @brief adds a new replicated log with given log id
-  void registerReplicatedLog(arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
+  void registerReplicatedLog(
+      arangodb::replication2::LogId,
+      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
 
   /// @brief removes the replicated log with the given id
   void unregisterReplicatedLog(arangodb::replication2::LogId);
@@ -392,4 +428,3 @@ void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
                         arangodb::velocypack::Builder& builder);
 void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
                                  arangodb::velocypack::Builder& builder);
-

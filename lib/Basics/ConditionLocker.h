@@ -37,8 +37,7 @@
 
 #else
 
-#define CONDITION_LOCKER(a, b) \
-  ::arangodb::basics::ConditionLocker a(&(b))
+#define CONDITION_LOCKER(a, b) ::arangodb::basics::ConditionLocker a(&(b))
 
 #endif
 
@@ -52,8 +51,8 @@ class ConditionVariable;
 /// is released or to broadcast an event.
 class ConditionLocker {
  public:
-    ConditionLocker(ConditionLocker const&) = delete;
-    ConditionLocker& operator=(ConditionLocker const&) = delete;
+  ConditionLocker(ConditionLocker const&) = delete;
+  ConditionLocker& operator=(ConditionLocker const&) = delete;
 
 /// @brief locks the condition variable
 ///

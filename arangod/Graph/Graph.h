@@ -45,8 +45,8 @@ struct ServerDefaults;
 namespace graph {
 
 class EdgeDefinition {
-  /// @brief In-memory representation of a document that describes for a relation
-  /// the set of "verticesFrom" and the set "verticesTo" in a graph.
+  /// @brief In-memory representation of a document that describes for a
+  /// relation the set of "verticesFrom" and the set "verticesTo" in a graph.
   /// The description of a relation set in a graph.
  public:
   enum EdgeDefinitionType {
@@ -81,7 +81,8 @@ class EdgeDefinition {
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
-  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition);
+  static ResultT<EdgeDefinition> createFromVelocypack(
+      velocypack::Slice edgeDefinition);
 
   void toVelocyPack(velocypack::Builder&) const;
 
@@ -102,10 +103,12 @@ class EdgeDefinition {
 class Graph {
  public:
   /**
-   * @brief Read the graph definition from persistence and create a graph object in memory.
+   * @brief Read the graph definition from persistence and create a graph object
+   * in memory.
    *
    * @param vocbase Access to the interface of the database we're currently at.
-   * @param document The stored document (graph definition which is stored in the system _graphs collection)
+   * @param document The stored document (graph definition which is stored in
+   * the system _graphs collection)
    *
    * @return A graph object corresponding to this document
    */
@@ -123,15 +126,14 @@ class Graph {
    *
    * @return A graph object corresponding to the user input
    */
-  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
-                                              velocypack::Slice collectionInformation,
-                                              velocypack::Slice options);
+  static std::unique_ptr<Graph> fromUserInput(
+      TRI_vocbase_t& vocbase, std::string&& name,
+      velocypack::Slice collectionInformation, velocypack::Slice options);
 
   // Wrapper for Move constructor
-  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase,
-                                              std::string const& name,
-                                              velocypack::Slice collectionInformation,
-                                              velocypack::Slice options);
+  static std::unique_ptr<Graph> fromUserInput(
+      TRI_vocbase_t& vocbase, std::string const& name,
+      velocypack::Slice collectionInformation, velocypack::Slice options);
 
  protected:
   /**
@@ -139,13 +141,15 @@ class Graph {
    *
    * @param slice The stored document
    */
-  explicit Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefaults);
+  explicit Graph(velocypack::Slice const& slice,
+                 ServerDefaults const& serverDefaults);
 
   /**
    * @brief Create graph from user input.
    *
    * @param graphName The name of the graph
-   * @param info Collection information, including relations and orphans (set of collections)
+   * @param info Collection information, including relations and orphans (set of
+   * collections)
    * @param options The options to be used for collections
    */
   Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
@@ -159,19 +163,23 @@ class Graph {
  public:
   virtual ~Graph() = default;
 
-  [[nodiscard]] static Result validateOrphanCollection(velocypack::Slice const& orphanDefinition);
+  [[nodiscard]] static Result validateOrphanCollection(
+      velocypack::Slice const& orphanDefinition);
 
   /*
-   * Creates a document in the builder containing all relevant options for the creation collection process
-   * (e.g. replicationFactor, numberOfShards, ...)
+   * Creates a document in the builder containing all relevant options for the
+   * creation collection process (e.g. replicationFactor, numberOfShards, ...)
    */
-  virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
+  virtual void createCollectionOptions(VPackBuilder& builder,
+                                       bool waitForSync) const;
 
   /*
- * Creates a document in the builder containing all relevant options for the creation satellite collection process
- * (e.g. replicationFactor, numberOfShards, ...)
- */
-  virtual void createSatelliteCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
+   * Creates a document in the builder containing all relevant options for the
+   * creation satellite collection process (e.g. replicationFactor,
+   * numberOfShards, ...)
+   */
+  virtual void createSatelliteCollectionOptions(VPackBuilder& builder,
+                                                bool waitForSync) const;
 
  public:
   /// @brief get the cids of all vertexCollections
@@ -195,7 +203,8 @@ class Graph {
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
-  bool renameCollections(std::string const& oldName, std::string const& newName);
+  bool renameCollections(std::string const& oldName,
+                         std::string const& newName);
 
   std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(
       std::string const& collectionName) const;
@@ -251,11 +260,13 @@ class Graph {
 
   /// @brief adds one edge definition. Returns an error if the edgeDefinition
   ///        is already added to this graph.
-  ResultT<EdgeDefinition const*> addEdgeDefinition(velocypack::Slice const& edgeDefinitionSlice);
+  ResultT<EdgeDefinition const*> addEdgeDefinition(
+      velocypack::Slice const& edgeDefinitionSlice);
 
   /// @brief adds one edge definition. Returns an error if the edgeDefinition
   ///        is already added to this graph.
-  ResultT<EdgeDefinition const*> addEdgeDefinition(EdgeDefinition const& edgeDefinition);
+  ResultT<EdgeDefinition const*> addEdgeDefinition(
+      EdgeDefinition const& edgeDefinition);
 
   /// @brief removes one edge definition. Returns an error if the edgeDefinition
   ///        is not included in this graph.
@@ -344,7 +355,7 @@ class Graph {
 };
 
 // helper functions
-template <class T, class C>
+template<class T, class C>
 void setUnion(std::set<T>& set, C const& container) {
   for (auto const& it : container) {
     set.insert(it);
@@ -353,4 +364,3 @@ void setUnion(std::set<T>& set, C const& container) {
 
 }  // namespace graph
 }  // namespace arangodb
-
