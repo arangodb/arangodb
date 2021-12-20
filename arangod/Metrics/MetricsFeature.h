@@ -76,10 +76,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   bool _export;
   bool _exportReadWriteMetrics;
-
-  std::unordered_map<std::string, std::string> nameVersionTable;  // TODO(MBkkt) abseil hash map
-  std::unordered_set<std::string> v2suppressions;  // TODO(MBkkt) abseil hash set
-  std::unordered_set<std::string> v1suppressions;  // TODO(MBkkt) abseil hash set
 };
 
 }  // namespace arangodb::metrics
