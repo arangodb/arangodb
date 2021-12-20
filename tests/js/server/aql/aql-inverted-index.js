@@ -28,10 +28,11 @@ const arangodb = require("@arangodb");
 const analyzers = require("@arangodb/analyzers");
 const db = arangodb.db;
 const aql = arangodb.aql;
-const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
+const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
+const useIndexForSort = "use-index-for-sort";
 const sleep = require('internal').sleep;
 
 function optimizerRuleInvertedIndexTestSuite() {
@@ -42,11 +43,17 @@ function optimizerRuleInvertedIndexTestSuite() {
     setUpAll: function () {
       col = db._create(colName);
       analyzers.save("my_geo", "geojson",{type: 'point'}, ["frequency", "norm", "position"]);
-      let indexRes = col.ensureIndex({type: 'inverted',
-                                      name: 'InvertedIndexUnsorted',
-                                      fields: [{name:'data_field'},
-                                               {name:'geo_field', analyzer:'my_geo'},
-                                               {name:'custom_field', analyzer:'text_en'}]});
+      col.ensureIndex({type: 'inverted',
+                       name: 'InvertedIndexUnsorted',
+                       fields: [{name:'data_field'},
+                                {name:'geo_field', analyzer:'my_geo'},
+                                {name:'custom_field', analyzer:'text_en'}]});
+      col.ensureIndex({type: 'inverted',
+                       name: 'InvertedIndexSorted',
+                       fields: [{name:'data_field'},
+                                {name:'geo_field', analyzer:'my_geo'},
+                                {name:'custom_field', analyzer:'text_en'}],
+                       primarySort:[{field: "count", direction:"desc"}]});
       let data = [];
       for (let i = 0; i < docs; i++) {
         if (i % 10 == 0) {
@@ -58,7 +65,7 @@ function optimizerRuleInvertedIndexTestSuite() {
           data.push({count:i,
                      data_field:'value' + i % 100,
                      custom_field: i,
-                     geo_field:{type: 'Point', coordinates: [37.615895, 55.7039]}});  
+                     geo_field:{type: 'Point', coordinates: [27.615895, 15.7039]}});  
         }
       }
       col.insert(data);
@@ -99,6 +106,19 @@ function optimizerRuleInvertedIndexTestSuite() {
       let executeRes = db._query(query.query, query.bindVars);
       assertEqual(docs / 100, executeRes.toArray().length);
     },
+    testIndexHintedUnsortedPartial: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER d.data_field == 'value1' AND d.count == 1
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertTrue(appliedRules.includes(moveFiltersIntoEnumerate));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(1, executeRes.toArray().length);
+    },
     testIndexGeo: function () {
       const query = aql`
         FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
@@ -110,7 +130,58 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars);
-      assertEqual(docs, executeRes.toArray()[0]);
+      assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexHintedSorted: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER d.data_field == 'value1'
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertTrue(appliedRules.includes(useIndexForSort));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs / 100, executeRes.length);
+      for(let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i-1].count > executeRes[i].count);
+      }
+    },
+    testIndexHintedSortedWrongOrder: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER d.data_field == 'value1'
+          SORT d.count ASC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertFalse(appliedRules.includes(useIndexForSort));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs / 100, executeRes.length);
+      for(let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i-1].count < executeRes[i].count);
+      }
+    },
+    testIndexHintedUnsortedWithSort: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER d.data_field == 'value1'
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertFalse(appliedRules.includes(useIndexForSort));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs / 100, executeRes.length);
+      for(let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i-1].count > executeRes[i].count);
+      }
     },
   };
 }
