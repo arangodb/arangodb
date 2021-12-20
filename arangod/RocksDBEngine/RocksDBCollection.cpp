@@ -143,71 +143,59 @@ struct TimeTracker {
   TimeTracker(TimeTracker const&) = delete;
   TimeTracker& operator=(TimeTracker const&) = delete;
 
-  explicit TimeTracker(arangodb::TransactionStatistics const& statistics, 
-                       std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram) noexcept
-      : statistics(statistics),
-        histogram(histogram) {
-    if (statistics._exportReadWriteMetrics) {
+  using Metrics = arangodb::TransactionStatistics::ReadWriteMetrics;
+  using Count = void (*)(Metrics& metrics, float time) noexcept;
+
+  explicit TimeTracker(std::optional<Metrics>& metrics, Count count) noexcept
+      : metrics{metrics}, count{count} {
+    if (metrics) {
       // time measurement is not free. only do it if metrics are enabled
-      start = getTime();
+      start = std::chrono::steady_clock::now();
     }
   }
 
   ~TimeTracker() {
-    if (statistics._exportReadWriteMetrics) {
-      // metrics collection is not free. only do it if metrics are enabled
-      // unit is seconds here
-      TRI_ASSERT(histogram.has_value());
-      histogram->get().count(std::chrono::duration<float>(getTime() - start).count());
+    if (metrics) {
+      // metrics gathering is not free. only do it if metrics are enabled. Unit is seconds here
+      count(*metrics, std::chrono::duration<float>(std::chrono::steady_clock::now() - start)
+                          .count());
     }
   }
 
-  std::chrono::time_point<std::chrono::steady_clock> getTime() const noexcept {
-    TRI_ASSERT(statistics._exportReadWriteMetrics);
-    return std::chrono::steady_clock::now();
-  }
-  
-  arangodb::TransactionStatistics const& statistics;
-  std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram;
+ private:
+  std::optional<arangodb::TransactionStatistics::ReadWriteMetrics>& metrics;
+  Count count;
   std::chrono::time_point<std::chrono::steady_clock> start;
 };
 
 /// @brief helper RAII class to count and time-track a CRUD read operation
-struct ReadTimeTracker : public TimeTracker {
-  ReadTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
-                  arangodb::TransactionStatistics& statistics) noexcept
-      : TimeTracker(statistics, histogram) {}
-};
+using ReadTimeTracker = TimeTracker;
 
 /// @brief helper RAII class to count and time-track CRUD write operations
-struct WriteTimeTracker : public TimeTracker {
-  WriteTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
-                   arangodb::TransactionStatistics& statistics,
-                   arangodb::OperationOptions const& options) noexcept
-      : TimeTracker(statistics, histogram) {
-    if (statistics._exportReadWriteMetrics) {
-      // metrics collection is not free. only track writes if metrics are enabled
+struct WriteTimeTracker final : public TimeTracker {
+  explicit WriteTimeTracker(std::optional<Metrics>& metrics,
+                            arangodb::OperationOptions const& options, Count count) noexcept
+      : TimeTracker{metrics, count} {
+    if (metrics) {  // metrics collection is not free. only track writes if metrics are enabled
       if (options.isSynchronousReplicationFrom.empty()) {
-        ++(statistics._numWrites->get());
+        metrics->numWrites.count();
       } else {
-        ++(statistics._numWritesReplication->get());
+        metrics->numWritesReplication.count();
       }
     }
   }
 };
 
 /// @brief helper RAII class to count and time-track truncate operations
-struct TruncateTimeTracker : public TimeTracker {
-  TruncateTimeTracker(std::optional<std::reference_wrapper<arangodb::metrics::Histogram<arangodb::metrics::LogScale<float>>>>& histogram,
-                      arangodb::TransactionStatistics& statistics,
-                      arangodb::OperationOptions const& options) noexcept
-      : TimeTracker(statistics, histogram) {
-    if (statistics._exportReadWriteMetrics) {
-      // metrics collection is not free. only track truncates if metrics are enabled
+struct TruncateTimeTracker final : public TimeTracker {
+  explicit TruncateTimeTracker(std::optional<Metrics>& metrics,
+                               arangodb::OperationOptions const& options, Count count) noexcept
+      : TimeTracker{metrics, count} {
+    if (metrics) {  // metrics collection is not free. only track truncates if metrics are enabled
       if (options.isSynchronousReplicationFrom.empty()) {
-        ++(statistics._numTruncates->get());
+        metrics->numTruncates.count();
       } else {
-        ++(statistics._numTruncatesReplication->get());
+        metrics->numTruncatesReplication.count();
       }
     }
   }
@@ -215,7 +203,7 @@ struct TruncateTimeTracker : public TimeTracker {
 
 void reportPrimaryIndexInconsistency(
     arangodb::Result const& res,
-    arangodb::velocypack::StringRef const& key,
+    std::string_view key,
     arangodb::LocalDocumentId const& rev) {
 
   if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -707,7 +695,10 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
 Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
   TRI_ASSERT(!RocksDBTransactionState::toState(&trx)->isReadOnlyTransaction());
 
-  ::TruncateTimeTracker timeTracker(_statistics._rocksdb_truncate_sec, _statistics, options);
+  ::TruncateTimeTracker timeTracker(_statistics._readWriteMetrics, options,
+                                    [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept {
+                                      metrics.rocksdb_truncate_sec.count(time);
+                                    });
 
   TRI_ASSERT(objectId() != 0);
   auto state = RocksDBTransactionState::toState(&trx);
@@ -891,7 +882,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   return {};
 }
 
-Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
+Result RocksDBCollection::lookupKey(transaction::Methods* trx, std::string_view key,
                                     std::pair<LocalDocumentId, RevisionId>& result, ReadOwnWrites readOwnWrites) const {
   result.first = LocalDocumentId::none();
   result.second = RevisionId::none();
@@ -917,7 +908,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   LocalDocumentId documentId;
   revisionId = RevisionId::none();
   // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key),
+  if (!primaryIndex()->lookupRevision(trx, key.stringView(),
                                       documentId, revisionId, readOwnWrites)) {
     // document not found
     TRI_ASSERT(revisionId.empty());
@@ -931,12 +922,15 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::StringRef const& key,
+                               std::string_view key,
                                IndexIterator::DocumentCallback const& cb,
                                ReadOwnWrites readOwnWrites) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
 
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+  ::ReadTimeTracker timeTracker(_statistics._readWriteMetrics,
+                                [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept {
+                                  metrics.rocksdb_read_sec.count(time);
+                                });
 
   rocksdb::PinnableSlice ps;
   Result res;
@@ -967,7 +961,10 @@ Result RocksDBCollection::read(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb,
                              ReadOwnWrites readOwnWrites) const {
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+  ::ReadTimeTracker timeTracker(_statistics._readWriteMetrics,
+                                [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept {
+                                  metrics.rocksdb_read_sec.count(time);
+                                });
 
   if (!documentId.isSet()) {
     return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "invalid local document id"};
@@ -981,7 +978,10 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result,
                                      ReadOwnWrites readOwnWrites) const {
-  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+  ::ReadTimeTracker timeTracker(_statistics._readWriteMetrics,
+                                [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept {
+                                  metrics.rocksdb_read_sec.count(time);
+                                });
 
   bool ret = false;
 
@@ -1008,7 +1008,10 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   TRI_ASSERT(!RocksDBTransactionState::toState(trx)->isReadOnlyTransaction());
 
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._readWriteMetrics, options,
+                                 [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept {
+                                   metrics.rocksdb_insert_sec.count(time);
+                                 });
 
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
@@ -1072,7 +1075,10 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._readWriteMetrics, options,
+                                 [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept  {
+                                   metrics.rocksdb_update_sec.count(time);
+                                 });
   return performUpdateOrReplace(trx, newSlice, resultMdr, options, previousMdr, true);
 }
 
@@ -1080,7 +1086,10 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._readWriteMetrics, options,
+                                 [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept {
+                                   metrics.rocksdb_replace_sec.count(time);
+                                 });
   return performUpdateOrReplace(trx, newSlice, resultMdr, options, previousMdr, false);
 }
 
@@ -1100,7 +1109,7 @@ Result RocksDBCollection::performUpdateOrReplace(transaction::Methods* trx,
   } else if (!keySlice.isString()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  auto keyStr = VPackStringRef(keySlice);
+  std::string_view keyStr = keySlice.stringView();
   if (keyStr.empty()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
@@ -1212,7 +1221,10 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 
   TRI_ASSERT(!RocksDBTransactionState::toState(&trx)->isReadOnlyTransaction());
   
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
+  ::WriteTimeTracker timeTracker(_statistics._readWriteMetrics, options,
+                                 [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept {
+                                   metrics.rocksdb_remove_sec.count(time);
+                                 });
 
   VPackSlice keySlice;
 
@@ -1225,7 +1237,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   if (!keySlice.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
-  auto keyStr = VPackStringRef(keySlice);
+  std::string_view keyStr = keySlice.stringView();
   if (keyStr.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
@@ -1250,8 +1262,10 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
-  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
-
+  ::WriteTimeTracker timeTracker(_statistics._readWriteMetrics, options,
+                                 [](TransactionStatistics::ReadWriteMetrics& metrics, float time) noexcept {
+                                   metrics.rocksdb_remove_sec.count(time);
+                                 });
   return remove(trx, documentId, /*expectedRev*/ RevisionId::none(), previousMdr, options);
 }
 

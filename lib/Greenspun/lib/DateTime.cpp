@@ -51,7 +51,7 @@ EvalResult DateTime_dateStringToUnix(Machine& ctx, VPackSlice const paramsList, 
   tp_sys_clock_ms tp;
   // Here it shows that implementing this parser ourselves would
   // allow for better error messages from the datetime parser...
-  if(!basics::parseDateTime(dateString.stringRef(), tp)) {
+  if(!basics::parseDateTime(dateString.stringView(), tp)) {
     return EvalError("string did not parse as date");
   }
 

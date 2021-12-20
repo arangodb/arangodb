@@ -52,7 +52,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <v8.h>
@@ -510,7 +509,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(AstNode const* node,
 
   return result.get(
       *resolver, 
-      arangodb::velocypack::StringRef(static_cast<char const*>(node->getData()), node->getStringLength()), 
+      std::string_view(static_cast<char const*>(node->getData()), node->getStringLength()), 
       mustDestroy, 
       true
   );
@@ -580,7 +579,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(AstNode const* node,
       char const* p = indexResult.slice().getStringUnchecked(l);
       auto* resolver = _expressionContext->trx().resolver();
       TRI_ASSERT(resolver != nullptr);
-      return result.get(*resolver, arangodb::velocypack::StringRef(p, l), mustDestroy, true);
+      return result.get(*resolver, std::string_view(p, l), mustDestroy, true);
     }
 
     // fall-through to returning null

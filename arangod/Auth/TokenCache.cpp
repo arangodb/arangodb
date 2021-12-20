@@ -41,7 +41,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -50,8 +49,8 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
   
 namespace {
-velocypack::StringRef const hs256String("HS256");
-velocypack::StringRef const jwtString("JWT");
+constexpr std::string_view hs256String("HS256");
+constexpr std::string_view jwtString("JWT");
 }
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
@@ -307,7 +306,7 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  if (!issSlice.isEqualString(velocypack::StringRef("arangodb"))) {
+  if (!issSlice.isEqualString(std::string_view("arangodb"))) {
     LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION) << "invalid iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }

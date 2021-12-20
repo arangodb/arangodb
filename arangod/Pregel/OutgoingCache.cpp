@@ -61,7 +61,7 @@ void ArrayOutCache<M>::_removeContainedMessages() {
 
 template <typename M>
 void ArrayOutCache<M>::appendMessage(PregelShard shard,
-                                     VPackStringRef const& key, M const& data) {
+                                     std::string_view const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {  // I use the global cache, we need locking
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -71,7 +71,7 @@ void ArrayOutCache<M>::appendMessage(PregelShard shard,
       this->_sendCount++;
     }
   } else {
-    _shardMap[shard][key.toString()].push_back(data);
+    _shardMap[shard][std::string(key)].push_back(data);
     if (++(this->_containedMessages) >= this->_batchSize) {
       flushMessages();
     }
@@ -167,7 +167,7 @@ void CombiningOutCache<M>::_removeContainedMessages() {
 
 template <typename M>
 void CombiningOutCache<M>::appendMessage(PregelShard shard,
-                                         VPackStringRef const& key, M const& data) {
+                                         std::string_view const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -177,7 +177,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
       this->_sendCount++;
     }
   } else {
-    std::unordered_map<VPackStringRef, M>& vertexMap = _shardMap[shard];
+    std::unordered_map<std::string_view, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
       auto& ref = (*it).second; // will be modified by combine(...)
@@ -214,7 +214,7 @@ void CombiningOutCache<M>::flushMessages() {
   std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<VPackStringRef, M> const& vertexMessageMap = it.second;
+    std::unordered_map<std::string_view, M> const& vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }

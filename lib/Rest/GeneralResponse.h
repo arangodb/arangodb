@@ -35,6 +35,8 @@
 
 #include <velocypack/Options.h>
 
+#include <string_view>
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -145,12 +147,12 @@ class GeneralResponse {
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
-  virtual void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
+  virtual void addPayload(velocypack::Slice slice, arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
   virtual void addPayload(velocypack::Buffer<uint8_t>&&,
                           arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
-  virtual void addRawPayload(velocypack::StringRef payload) = 0;
+  virtual void addRawPayload(std::string_view payload) = 0;
   virtual ErrorCode reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
 
   /// used for head

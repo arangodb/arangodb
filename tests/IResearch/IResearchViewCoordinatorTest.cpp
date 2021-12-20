@@ -114,7 +114,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchViewCoordinatorTest, test_type) {
-  EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
+  EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(std::string_view(
                    "arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
 
@@ -6885,7 +6885,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
 
     // dummy query
     auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                               arangodb::aql::QueryString("RETURN 1"), nullptr);
+                               arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr);
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
     arangodb::aql::SingletonNode singleton(query->plan(), arangodb::aql::ExecutionNodeId{0});

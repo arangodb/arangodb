@@ -26,7 +26,6 @@
 
 #include <date/date.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -58,8 +57,11 @@ namespace {
 
 /// @brief the _key attribute, which, when used in an index, will implictly make it unique
 /// (note that we must not refer to StaticStrings::KeyString here to avoid an init-order-fiasco
+/// TODO FIXME
+constexpr std::string_view keyAttribute("_key");
+
 std::vector<arangodb::basics::AttributeName> const KeyAttribute{
-    arangodb::basics::AttributeName("_key", false)};
+    arangodb::basics::AttributeName(keyAttribute, false)};
 
 bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
   for (auto const& it : fields) {
@@ -105,7 +107,7 @@ bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* a
     // a.b
     // now check if the accessed attribute is _key, _rev or _id.
     // all of these cannot be null
-    auto attributeName = access->getStringRef();
+    auto attributeName = access->getStringView();
     if (attributeName == arangodb::StaticStrings::KeyString ||
         attributeName == arangodb::StaticStrings::IdString ||
         attributeName == arangodb::StaticStrings::RevString) {
@@ -397,7 +399,7 @@ bool Index::validateId(std::string_view id) {
 }
 
 /// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept {
+bool Index::validateHandle(bool extendedNames, std::string_view handle) noexcept {
   std::size_t pos = handle.find('/');
   if (pos == std::string::npos) {
     // no prefix
@@ -413,7 +415,7 @@ bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef h
 }
 
 /// @brief validate an index handle (collection name + / + index name)
-bool Index::validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept {
+bool Index::validateHandleName(bool extendedNames, std::string_view name) noexcept {
   std::size_t pos = name.find('/');
   if (pos == std::string::npos) {
     // no prefix
@@ -542,8 +544,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  arangodb::velocypack::StringRef typeStr(typeSlice);
-  TRI_ASSERT(typeStr == oldtypeName());
+  TRI_ASSERT(typeSlice.stringView() == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
 
@@ -554,8 +555,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid.id());
+    return value.stringView() == std::to_string(_iid.id());
   }
 
   value = info.get(arangodb::StaticStrings::IndexFields);
@@ -588,8 +588,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::velocypack::StringRef in(f);
-    TRI_ParseAttributeString(in, translate, true);
+    TRI_ParseAttributeString(f.stringView(), translate, true);
     if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
     }
@@ -598,7 +597,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double Index::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
+double Index::selectivityEstimate(std::string_view) const {
   if (_unique) {
     return 1.0;
   }
@@ -1023,7 +1022,7 @@ double Index::getTimestamp(arangodb::velocypack::Slice const& doc,
   if (value.isString()) {
     // string value. we expect it to be YYYY-MM-DD etc.
     tp_sys_clock_ms tp;
-    if (basics::parseDateTime(value.stringRef(), tp)) {
+    if (basics::parseDateTime(value.stringView(), tp)) {
       return static_cast<double>(
           std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch())
               .count());

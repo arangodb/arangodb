@@ -96,8 +96,8 @@ Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefault
                                             serverDefaults.replicationFactor)),
       _writeConcern(::getWriteConcern(slice, serverDefaults)),
       _rev(Helper::getStringValue(slice, StaticStrings::RevString, "")),
-      _isSatellite(Helper::getStringRef(slice, StaticStrings::ReplicationFactor,
-                                        velocypack::StringRef("")) == StaticStrings::Satellite) {
+      _isSatellite(Helper::getStringView(slice, StaticStrings::ReplicationFactor,
+                                         std::string_view()) == StaticStrings::Satellite) {
   // If this happens we have a document without a _key attribute.
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -178,8 +178,8 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
   if (options.isObject()) {
     _numberOfShards =
         Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
-    if (Helper::getStringRef(options.get(StaticStrings::ReplicationFactor),
-                             velocypack::StringRef("")) == StaticStrings::Satellite) {
+    if (Helper::getStringView(options.get(StaticStrings::ReplicationFactor),
+                              std::string_view()) == StaticStrings::Satellite) {
       _isSatellite = true;
       setReplicationFactor(0);
     } else {

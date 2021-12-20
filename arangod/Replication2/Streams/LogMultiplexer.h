@@ -3,7 +3,7 @@
 
 #include <Futures/Future.h>
 
-#include <Replication2/ReplicatedLog/ILogParticipant.h>
+#include <Replication2/ReplicatedLog/ILogInterfaces.h>
 #include <Replication2/ReplicatedLog/LogCommon.h>
 #include <Replication2/ReplicatedLog/types.h>
 
@@ -11,8 +11,8 @@
 #include <Replication2/Streams/Streams.h>
 
 namespace arangodb::replication2::replicated_log {
-class LogFollower;
-class LogLeader;
+struct ILogFollower;
+struct ILogLeader;
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::streams {
@@ -54,7 +54,12 @@ struct LogMultiplexerStreamDispatcher : std::enable_shared_from_this<Self>,
 template <typename Spec>
 struct LogDemultiplexer
     : LogMultiplexerStreamDispatcher<LogDemultiplexer<Spec>, Spec, Stream> {
-  virtual auto digestIterator(LogRangeIterator& iter) -> void = 0;
+  virtual auto digestIterator(LogIterator& iter) -> void = 0;
+
+  /*
+   * After construction the demultiplexer is not yet in a listen state. You have
+   * to call `listen` once.
+   */
   virtual auto listen() -> void = 0;
 
   static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant>)
@@ -71,9 +76,14 @@ struct LogDemultiplexer
 template <typename Spec>
 struct LogMultiplexer
     : LogMultiplexerStreamDispatcher<LogMultiplexer<Spec>, Spec, ProducerStream> {
-  static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::LogLeader> leader)
+  static auto construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader> leader)
       -> std::shared_ptr<LogMultiplexer>;
 
+  /*
+   * After construction the multiplexer has an empty internal state. To populate
+   * it with the existing state in the replicated log, call `digestAvailableEntries`.
+   */
+  virtual void digestAvailableEntries() = 0;
  protected:
   LogMultiplexer() = default;
 };

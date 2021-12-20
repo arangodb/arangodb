@@ -36,7 +36,7 @@ AttributeTranslator::AttributeTranslator()
 
 AttributeTranslator::~AttributeTranslator() {}
 
-void AttributeTranslator::add(std::string const& key, uint64_t id) {
+void AttributeTranslator::add(std::string_view key, uint64_t id) {
   if (_builder == nullptr) {
     _builder = std::make_unique<Builder>();
     _builder->add(Value(ValueType::Object));
@@ -62,7 +62,7 @@ void AttributeTranslator::seal() {
     VELOCYPACK_ASSERT(key.isString());
 
     // insert into string and char lookup maps
-    _keyToId.emplace(key.stringRef(), it.value().begin());
+    _keyToId.emplace(key.stringView(), it.value().begin());
     // insert into id to slice lookup map
     _idToKey.emplace(it.value().getUInt(), key.begin());
     it.next();

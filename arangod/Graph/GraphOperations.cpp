@@ -958,10 +958,10 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
   {
     aql::QueryString const queryString{
-        "/*removeEdgeOrVertex*/ FOR e IN @@collection "
+      std::string_view("/*removeEdgeOrVertex*/ FOR e IN @@collection "
         "FILTER e._from == @toDeleteId "
         "OR e._to == @toDeleteId "
-        "REMOVE e IN @@collection"};
+        "REMOVE e IN @@collection")};
 
     std::string const toDeleteId = collectionName + "/" + key;
 

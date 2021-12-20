@@ -64,30 +64,30 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
 }
 
 /// @brief extract the _key attribute from a slice
-arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
+std::string_view transaction::helpers::extractKeyPart(VPackSlice slice) {
   slice = slice.resolveExternal();
 
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return arangodb::velocypack::StringRef();  // fail
+      return std::string_view();  // fail
     }
-    return arangodb::velocypack::StringRef(k);
+    return k.stringView();
   }
   if (slice.isString()) {
-    arangodb::velocypack::StringRef key(slice);
+    std::string_view key = slice.stringView();
     size_t pos = key.find('/');
     if (pos == std::string::npos) {
       return key;
     }
     return key.substr(pos + 1);
   }
-  return arangodb::velocypack::StringRef();
+  return std::string_view();
 }
 
-/// @brief extract the _key attribute from a StringRef
-arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(velocypack::StringRef key) {
+/// @brief extract the _key attribute from a string view
+std::string_view transaction::helpers::extractKeyPart(std::string_view key) {
   size_t pos = key.find('/');
   if (pos == std::string::npos) {
     return key;
@@ -349,13 +349,13 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
-velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::StringRef id) {
+std::string_view transaction::helpers::extractCollectionFromId(std::string_view id) {
   std::size_t index = id.find('/');
   if (index == std::string::npos) {
     // can't find the '/' to split, bail out with only logical response
     return id;
   }
-  return velocypack::StringRef(id.data(), index);
+  return std::string_view(id.data(), index);
 }
 
 OperationResult transaction::helpers::buildCountResult(

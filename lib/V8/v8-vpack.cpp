@@ -26,7 +26,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
@@ -35,6 +34,8 @@
 #include "Basics/debugging.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+
+#include <string_view>
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
@@ -260,7 +261,7 @@ struct BuilderContext {
 /// @brief adds a VPackValue to either an array or an object
 template <typename T, bool inObject>
 static inline void AddValue(BuilderContext& context,
-                            arangodb::velocypack::StringRef const& attributeName, T const& value) {
+                            std::string_view attributeName, T const& value) {
   if (inObject) {
     context.builder.addUnchecked(attributeName.data(), attributeName.size(), value);
   } else {
@@ -271,7 +272,7 @@ static inline void AddValue(BuilderContext& context,
 /// @brief convert a V8 value to a VPack value
 template <bool inObject>
 static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
-                      arangodb::velocypack::StringRef const& attributeName, bool convertFunctionsToNull) {
+                      std::string_view attributeName, bool convertFunctionsToNull) {
   if (parameter->IsNullOrUndefined() ||
       (convertFunctionsToNull && parameter->IsFunction())) {
     AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
@@ -341,8 +342,7 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
         continue;
       }
 
-      V8ToVPack<false>(context, value, arangodb::velocypack::StringRef(),
-                       convertFunctionsToNull);
+      V8ToVPack<false>(context, value, std::string_view(), convertFunctionsToNull);
     }
       
     --context.level;
@@ -445,7 +445,7 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
       }
 
       V8ToVPack<true>(context, value,
-                      arangodb::velocypack::StringRef(*str, str.length()),
+                      std::string_view(*str, str.length()),
                       convertFunctionsToNull);
     }
     
@@ -469,5 +469,5 @@ void TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(ToJsonKey);
   context.toJsonKey = ToJsonKey;
-  V8ToVPack<false>(context, value, arangodb::velocypack::StringRef(), convertFunctionsToNull);
+  V8ToVPack<false>(context, value, std::string_view(), convertFunctionsToNull);
 }

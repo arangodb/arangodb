@@ -64,7 +64,7 @@ class ClusterTraverserEdgeCursor final : public ClusterEdgeCursor {
 
   explicit ClusterTraverserEdgeCursor(traverser::TraverserOptions const* opts);
   
-  void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+  void rearm(std::string_view vid, uint64_t depth) override;
 
   traverser::TraverserOptions const* traverserOptions() const;
 };
@@ -74,7 +74,7 @@ class ClusterShortestPathEdgeCursor final : public ClusterEdgeCursor {
 
   explicit ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts, bool backward);
   
-  void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+  void rearm(std::string_view vid, uint64_t depth) override;
 
  private:
   bool const _backward;

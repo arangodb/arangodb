@@ -25,15 +25,13 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 
-#include <velocypack/StringRef.h>
-
 using namespace arangodb;
 
 static_assert(auth::Level::UNDEFINED < auth::Level::NONE, "undefined < none");
 static_assert(auth::Level::NONE < auth::Level::RO, "none < ro");
 static_assert(auth::Level::RO < auth::Level::RW, "none < ro");
 
-static auth::Level _convertToAuthLevel(arangodb::velocypack::StringRef ref) {
+static auth::Level _convertToAuthLevel(std::string_view ref) {
   if (ref.compare("rw") == 0) {
     return auth::Level::RW;
   } else if (ref.compare("ro") == 0) {
@@ -46,11 +44,11 @@ static auth::Level _convertToAuthLevel(arangodb::velocypack::StringRef ref) {
 }
 
 auth::Level arangodb::auth::convertToAuthLevel(velocypack::Slice grants) {
-  return _convertToAuthLevel(arangodb::velocypack::StringRef(grants));
+  return _convertToAuthLevel(grants.stringView());
 }
 
 auth::Level arangodb::auth::convertToAuthLevel(std::string const& grants) {
-  return _convertToAuthLevel(arangodb::velocypack::StringRef(grants));
+  return _convertToAuthLevel(grants);
 }
 
 std::string arangodb::auth::convertFromAuthLevel(auth::Level lvl) {

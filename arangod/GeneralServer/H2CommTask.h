@@ -27,7 +27,6 @@
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <nghttp2/nghttp2.h>
-#include <velocypack/StringRef.h>
 #include <boost/lockfree/queue.hpp>
 #include <memory>
 #include <map>

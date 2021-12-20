@@ -67,7 +67,7 @@ namespace {
 static bool arrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
   for (VPackSlice it : VPackArrayIterator(array)) {
-    if (it.stringRef() == colName) {
+    if (it.stringView() == colName) {
       return true;
     }
   }
@@ -992,7 +992,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(std::string const& colName,
       // Short circuit
       break;
     }
-    if (graph.get(StaticStrings::KeyString).stringRef() == graphName) {
+    if (graph.get(StaticStrings::KeyString).stringView() == graphName) {
       continue;
     }
 
@@ -1001,7 +1001,7 @@ Result GraphManager::pushCollectionIfMayBeDropped(std::string const& colName,
     if (edgeDefinitions.isArray()) {
       for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
         // edge collection
-        if (edgeDefinition.get("collection").stringRef() == colName) {
+        if (edgeDefinition.get("collection").stringView() == colName) {
           collectionUnused = false;
           break;
         }
@@ -1128,7 +1128,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
                           "invalid combination of '" + errParameter +
                               "' and 'replicationFactor'"};
           } else if (replicationFactor.isString() &&
-                     replicationFactor.stringRef() == "satellite") {
+                     replicationFactor.stringView() == "satellite") {
             return Result{TRI_ERROR_BAD_PARAMETER, "invalid combination of '" + errParameter +
                                                        "' and 'satellite' "};
           }

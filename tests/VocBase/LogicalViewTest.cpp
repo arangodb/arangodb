@@ -135,7 +135,7 @@ class LogicalViewTest
     }
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
-    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
+    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(std::string_view(
                                  "testViewType")),
                              viewFactory);
   }

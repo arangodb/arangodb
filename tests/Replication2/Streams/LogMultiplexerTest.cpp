@@ -46,8 +46,8 @@ TEST_F(LogMultiplexerTest, leader_follower_test) {
   auto followerLog = createReplicatedLog();
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
 
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
   auto demux = LogDemultiplexer<MyTestSpecification>::construct(follower);
@@ -107,7 +107,7 @@ TEST_F(LogMultiplexerTest, leader_wait_for) {
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
+      leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{1}, {follower});
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
 
   auto stream = mux->getStreamById<my_int_stream_id>();
@@ -133,8 +133,8 @@ TEST_F(LogMultiplexerTest, leader_wait_for_multiple) {
   auto followerLog = createFakeReplicatedLog();
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
 
   auto streamA = mux->getStreamById<my_int_stream_id>();
@@ -174,8 +174,8 @@ TEST_F(LogMultiplexerTest, follower_wait_for) {
   auto followerLog = createFakeReplicatedLog(LogId{2});
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
   // handle first leader log entry (empty)
   leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {
@@ -202,4 +202,118 @@ TEST_F(LogMultiplexerTest, follower_wait_for) {
   // Receive commit update
   follower->runAsyncAppendEntries();
   EXPECT_TRUE(f.isReady());
+}
+
+TEST_F(LogMultiplexerTest, leader_digest_existing_entries) {
+  auto leaderLog = createReplicatedLog(LogId{1});
+  auto followerLog = createFakeReplicatedLog(LogId{2});
+  {
+    // create a leader and follower in term 1
+    auto follower =
+        followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+    auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                          LogTerm{1}, {follower});
+    auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
+    auto stream = mux->getStreamById<my_int_stream_id>();
+
+    // Write multiple entries
+    for (int i = 0; i < 20; i++) {
+      stream->insert(i);
+    }
+
+    // handle first leader log entry (empty)
+    leader->triggerAsyncReplication();
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+  }
+  // now everything in memory state is gone
+  // wake up in new term
+  {
+    auto follower =
+        followerLog->becomeFollower("follower", LogTerm{2}, "leader");
+    auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                          LogTerm{2}, {follower});
+    // handle first leader log entry (empty)
+    leader->triggerAsyncReplication();
+    while (follower->hasPendingAppendEntries()) {
+      follower->runAsyncAppendEntries();
+    }
+    TRI_ASSERT(leader->isLeadershipEstablished());
+    auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
+    mux->digestAvailableEntries();
+
+    // now read the stream and check if all entries are available
+    auto stream = mux->getStreamById<my_int_stream_id>();
+    auto f = stream->waitForIterator(LogIndex{0});
+    ASSERT_TRUE(f.isReady());
+    auto iter = std::move(f).get();
+
+    int i = 0;
+    while (auto entry = iter->next()) {
+      EXPECT_EQ(entry->second, i);
+      i += 1;
+    }
+  }
+}
+
+TEST_F(LogMultiplexerTest, leader_resign_stream) {
+  auto leaderLog = createReplicatedLog(LogId{1});
+  auto followerLog = createFakeReplicatedLog(LogId{2});
+
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
+  auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
+  auto stream = mux->getStreamById<my_int_stream_id>();
+  mux->digestAvailableEntries();
+
+  // handle first leader log entry (empty)
+  leader->triggerAsyncReplication();
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
+
+  // wait for some random log index
+  auto f = leader->waitFor(LogIndex{10});
+  ASSERT_FALSE(f.isReady());
+  auto fs = stream->waitFor(LogIndex{10});
+  ASSERT_FALSE(fs.isReady());
+
+  // become leader in new term, this should trigger an exception
+  leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{2}, {follower});
+
+  // leader should have resolved this promise
+  ASSERT_TRUE(f.isReady());
+  EXPECT_TRUE(f.hasException());
+
+  // multiplexer should have resolved this promise
+  ASSERT_TRUE(fs.isReady());
+  EXPECT_TRUE(fs.hasException());
+}
+
+TEST_F(LogMultiplexerTest, follower_resign_stream) {
+  auto followerLog = createFakeReplicatedLog(LogId{2});
+
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+  auto demux = LogDemultiplexer<MyTestSpecification>::construct(follower);
+  demux->listen();
+  auto stream = demux->getStreamById<my_int_stream_id>();
+
+  // wait for some random log index
+  auto f = follower->waitFor(LogIndex{10});
+  ASSERT_FALSE(f.isReady());
+  auto fs = stream->waitFor(LogIndex{10});
+  ASSERT_FALSE(fs.isReady());
+
+  // become leader in new term, this should trigger an exception
+  follower = followerLog->becomeFollower("follower", LogTerm{2}, "leader");
+
+  // leader should have resolved this promise
+  ASSERT_TRUE(f.isReady());
+  EXPECT_TRUE(f.hasException());
+
+  // multiplexer should have resolved this promise
+  ASSERT_TRUE(fs.isReady());
+  EXPECT_TRUE(fs.hasException());
 }
