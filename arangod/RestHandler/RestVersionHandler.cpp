@@ -35,57 +35,60 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+static void addVersionDetails(application_features::ApplicationServer& server, VPackBuilder& result) {
+  result.add("details", VPackValue(VPackValueType::Object));
+  Version::getVPack(result);
+
+  auto& serverFeature = server.getFeature<ServerFeature>();
+  result.add("mode", VPackValue(serverFeature.operationModeString()));
+  auto serverState = ServerState::instance();
+  if (serverState != nullptr) {
+    result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+  }
+
+  std::string host = ServerState::instance()->getHost();
+  if (!host.empty()) {
+    result.add("host", VPackValue(host));
+  }
+  result.close();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestVersionHandler::RestVersionHandler(application_features::ApplicationServer& server,
+                                       GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-RestStatus RestVersionHandler::execute() {
-  VPackBuilder result;
-
-  ServerSecurityFeature& security =
-      server().getFeature<ServerSecurityFeature>();
-
-  bool const allowInfo = security.canAccessHardenedApi();
-
+void RestVersionHandler::getVersion(application_features::ApplicationServer& server, bool allowInfo, bool includeDetails, VPackBuilder& result) {
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE
-  result.add("license", VPackValue("enterprise"));
+    result.add("license", VPackValue("enterprise"));
 #else
-  result.add("license", VPackValue("community"));
+    result.add("license", VPackValue("community"));
 #endif
 
   if (allowInfo) {
     result.add("version", VPackValue(ARANGODB_VERSION));
 
-    bool found;
-    std::string const& detailsStr = _request->value("details", found);
-    if (found && StringUtils::boolean(detailsStr)) {
-      result.add("details", VPackValue(VPackValueType::Object));
-      Version::getVPack(result);
-
-      auto& serverFeature = server().getFeature<ServerFeature>();
-      result.add("mode", VPackValue(serverFeature.operationModeString()));
-      auto serverState = ServerState::instance();
-      if (serverState != nullptr) {
-        result.add(
-            "role",
-            VPackValue(ServerState::roleToString(serverState->getRole())));
-      }
-
-      std::string host = ServerState::instance()->getHost();
-      if (!host.empty()) {
-        result.add("host", VPackValue(host));
-      }
-      result.close();
-    }  // found
-  }    // allowInfo
+    if (includeDetails) {
+      addVersionDetails(server, result);
+    }
+  }
   result.close();
+}
+
+RestStatus RestVersionHandler::execute() {
+  VPackBuilder result;
+
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+
+  bool const allowInfo = security.canAccessHardenedApi();
+  bool const includeDetails = _request->parsedValue("details", false);
+  getVersion(server(), allowInfo, includeDetails, result);
+  
   response()->setAllowCompression(true);
 
   generateResult(rest::ResponseCode::OK, result.slice());
