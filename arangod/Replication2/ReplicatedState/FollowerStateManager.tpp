@@ -219,11 +219,11 @@ void FollowerStateManager<S>::run() {
 
 template<typename S>
 FollowerStateManager<S>::FollowerStateManager(
-    std::shared_ptr<ReplicatedState<S>> const& parent,
+    std::shared_ptr<ReplicatedState<S>> parent,
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
     std::unique_ptr<ReplicatedStateCore> core,
     std::shared_ptr<Factory> factory) noexcept
-    : parent(parent),
+    : parent(std::move(parent)),
       logFollower(std::move(logFollower)),
       core(std::move(core)),
       factory(std::move(factory)) {}
