@@ -40,7 +40,6 @@
 #endif
 
 #ifdef TRI_HAVE_UNISTD_H
-#include <sys/syscall.h>
 #include <unistd.h>
 #endif
 
@@ -55,52 +54,6 @@
 using namespace rocksdb;
 
 namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// AdjustThreadPriority() below uses the Linux setpriority() function to
-/// dynamically
-///  lower and raise a given thread's scheduling priority.  The Linux default is
-///  to only allow a thread to lower its priority, not to raise it.  Even if the
-///  raise would be to a previous priority.
-///
-/// Servers with 4 cores or less REALLY need the full benefit of
-/// AdjustThreadPriority().
-///
-/// To get full performance benefit of this code, the server needs three
-/// settings:
-///
-///  1. /etc/pam.d/login must contain the line "auth   require    pam_cap.so"
-///  2. /etc/security/capability.conf must contain "cap_sys_nice      arangodb"
-///  3. root must execute this command "setcap cap_sys_nice+ie arangod" on
-///      the arangodb binary executable
-///
-/// The above settings allow the code to vary the threads across 3 priorities
-/// based upon
-///  the current compaction's level.  Without the settings, threads eventual
-///  lock into only 2 different priorities (which is still far better having
-///  everything at same priority).
-///
-/// Setting 3 above must be applied to the arangod binary after every build or
-/// installation.
-///
-/// The code does not (yet) support Windows.
-////////////////////////////////////////////////////////////////////////////////
-
-// code will dynamically change a thread's priority based upon the compaction's
-// level:
-//  base +1 : flush mem buffer to level 0
-//  base +2 : level 0 compaction to level 1
-//  base +3 : all other compactions
-struct sPriorityInfo {
-  // cppcheck-suppress unusedStructMember
-  bool _baseSet;
-  // cppcheck-suppress unusedStructMember
-  int _basePriority;
-  // cppcheck-suppress unusedStructMember
-  int _currentPriority;
-};
-
-thread_local sPriorityInfo gThreadPriority = {false, 0, 0};
 
 // rocksdb flushes and compactions start and stop within same thread, no
 // overlapping
@@ -171,8 +124,6 @@ void RocksDBThrottle::stopThread() {
 void RocksDBThrottle::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
   // save start time in thread local storage
   flushStart = std::chrono::steady_clock::now();
-
-  AdjustThreadPriority(1);
 } 
 
 void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db,
@@ -206,16 +157,7 @@ void RocksDBThrottle::OnCompactionCompleted(rocksdb::DB* db,
   std::chrono::microseconds elapsed(ci.stats.elapsed_micros);
   SetThrottleWriteRate(elapsed, ci.stats.num_output_records,
                        ci.stats.total_output_bytes, false);
-
-  // rocksdb 5.6 had an API call for when a standard compaction started.  5.14
-  // has no such thing.
-  //  this line fakes "compaction start" by making the wild assumption that the
-  //  next level compacting is likely similar to the previous.  This is only for
-  //  thread priority manipulation, approximate is fine. (and you must have used
-  //  "setcap" on the arangod binary for it to even matter, see comments at top)
-  RocksDBThrottle::AdjustThreadPriority((0 == ci.base_input_level) ? 2 : 3);
-
-}  // RocksDBThrottle::OnCompactionCompleted
+}
 
 void RocksDBThrottle::startup(rocksdb::DB* db) {
   CONDITION_LOCKER(guard, _threadCondvar);
@@ -514,38 +456,5 @@ int64_t RocksDBThrottle::ComputeBacklog() {
 
   return compaction_backlog;
 }  // RocksDBThrottle::Computebacklog
-
-/// @brief Adjust the active thread's priority to match the work
-///  it is performing.  The routine is called HEAVILY.
-void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
-#ifndef _WIN32
-  // initialize thread info if this the first time the thread has ever called
-  if (!gThreadPriority._baseSet) {
-    pid_t tid = syscall(SYS_gettid);
-    if (-1 != (int)tid) {
-      errno = 0;
-      int ret_val = getpriority(PRIO_PROCESS, tid);
-      // ret_val could be -1 legally, so double test
-      if (-1 != ret_val || 0 == errno) {
-        gThreadPriority._baseSet = true;
-        gThreadPriority._basePriority = ret_val;
-        gThreadPriority._currentPriority = ret_val;
-      }  // if
-    }    // if
-  }      // if
-
-  // only change priorities if we succeeded
-  if (gThreadPriority._baseSet && (gThreadPriority._basePriority + Adjustment) !=
-                                      gThreadPriority._currentPriority) {
-    pid_t tid;
-    tid = syscall(SYS_gettid);
-    if (-1 != (int)tid) {
-      gThreadPriority._currentPriority = gThreadPriority._basePriority + Adjustment;
-      setpriority(PRIO_PROCESS, tid, gThreadPriority._currentPriority);
-    }  // if
-  }    // if
-
-#endif  // WIN32
-}  // RocksDBThrottle::AdjustThreadPriority
 
 }  // namespace arangodb
