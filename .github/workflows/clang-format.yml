@@ -14,6 +14,7 @@ jobs:
             **/*.cc
             **/*.c
             **/*.h
-      - uses: arangodb/clang-format-action@v1.0.0
+      - name: arangodb-clang-format
+        uses: arangodb/clang-format-action@1.0.0
         with:
           sources: "${{ steps.gcf.outputs.added_modified }}"
