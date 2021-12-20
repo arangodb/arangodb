@@ -567,8 +567,8 @@ void arangodb::maintenance::diffReplicatedLogs(
           }
 
           // check if participants generation has changed (in case we are the leader)
-          if (auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
-            if (leaderStatus->activeParticipantConfig.generation <
+          if (status.role == replicated_log::ParticipantRole::kLeader) {
+            if (status.activeParticipantConfig->generation <
                 spec.participantsConfig.generation) {
               return true;
             }
@@ -1213,7 +1213,7 @@ static VPackBuilder assembleLocalDatabaseInfo(DatabaseFeature& df, std::string c
   }
 }
 
-static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::LogStatus const& status,
+static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::QuickLogStatus const& status,
                                            replication2::agency::LogCurrentLocalState const* currentLocal)
     -> std::optional<replication2::agency::LogCurrentLocalState> {
   // Check if there is term locally (i.e. in status)
@@ -1231,20 +1231,20 @@ static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::LogSta
   return std::nullopt;
 }
 
-static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::LeaderStatus const& status,
+static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::QuickLogStatus const& status,
                                              replication2::agency::LogCurrent::Leader const* currentLeader)
     -> std::optional<replication2::agency::LogCurrent::Leader> {
   if (status.leadershipEstablished) {
     // check if either there is no entry in current yet, the term has changed or
     // the participant config generation has changed.
-    bool requiresUpdate = currentLeader == nullptr || currentLeader->term != status.term ||
+    bool requiresUpdate = currentLeader == nullptr || currentLeader->term != status.getCurrentTerm() ||
                           currentLeader->committedParticipantsConfig.generation !=
-                              status.committedParticipantConfig.generation;
+                              status.committedParticipantConfig->generation;
 
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
-      leader.term = status.term;
-      leader.committedParticipantsConfig = status.activeParticipantConfig;
+      leader.term = *status.getCurrentTerm();
+      leader.committedParticipantsConfig = *status.activeParticipantConfig;
       return leader;
     }
   }
@@ -1327,12 +1327,13 @@ static void writeUpdateReplicatedLogLocal(
   }
 }
 
-static void reportCurrentReplicatedLog(VPackBuilder& report,
-                                     replication2::replicated_log::LogStatus const& status,
-                                     VPackSlice cur, replication2::LogId id,
-                                     std::string const& dbName, std::string const& serverId) {
-
-  auto logContext = LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
+static void reportCurrentReplicatedLog(
+    VPackBuilder& report,
+    replication2::replicated_log::QuickLogStatus const& status, VPackSlice cur,
+    replication2::LogId id, std::string const& dbName,
+    std::string const& serverId) {
+  auto logContext =
+      LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
   auto localTerm = status.getCurrentTerm();
   LOG_CTX("11dbd", TRACE, logContext)
       << "checking replicated log " << id
@@ -1354,20 +1355,24 @@ static void reportCurrentReplicatedLog(VPackBuilder& report,
   auto current = replication2::agency::LogCurrent::fromVelocyPack(currentSlice);
 
   {
-    auto localState = std::invoke([&]() -> replication2::agency::LogCurrentLocalState const* {
-      if (auto iter = current.localState.find(serverId); iter != std::end(current.localState)) {
-        return &iter->second;
-      }
-      return nullptr;
-    });
+    auto localState =
+        std::invoke([&]() -> replication2::agency::LogCurrentLocalState const* {
+          if (auto iter = current.localState.find(serverId);
+              iter != std::end(current.localState)) {
+            return &iter->second;
+          }
+          return nullptr;
+        });
 
-    if (auto result = reportCurrentReplicatedLogLocal(status, localState); result.has_value()) {
-      writeUpdateReplicatedLogLocal(report, id, dbName, serverId, *localTerm, *result);
+    if (auto result = reportCurrentReplicatedLogLocal(status, localState);
+        result.has_value()) {
+      writeUpdateReplicatedLogLocal(report, id, dbName, serverId, *localTerm,
+                                    *result);
     }
   }
 
   {
-    if(auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
+    if (status.role == replication2::replicated_log::ParticipantRole::kLeader) {
       auto currentLeader =
           std::invoke([&]() -> replication2::agency::LogCurrent::Leader const* {
             if (current.leader.has_value()) {
@@ -1375,7 +1380,8 @@ static void reportCurrentReplicatedLog(VPackBuilder& report,
             }
             return nullptr;
           });
-      if (auto result = reportCurrentReplicatedLogLeader(*leaderStatus, currentLeader); result.has_value()) {
+      if (auto result = reportCurrentReplicatedLogLeader(status, currentLeader);
+          result.has_value()) {
         writeUpdateReplicatedLogLeader(report, id, dbName, *localTerm, *result);
       }
     }

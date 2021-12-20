@@ -35,7 +35,7 @@ class ApplicationServer;
 
 namespace replication2 {
 namespace replicated_log {
-struct LogStatus;
+struct QuickLogStatus;
 }
 class LogId;
 }
@@ -70,7 +70,7 @@ class DBServerAgencySync {
  public:
   void work();
 
-  using LocalLogsMap = std::unordered_map<std::string, std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>>;
+  using LocalLogsMap = std::unordered_map<std::string, std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::QuickLogStatus>>;
 
   /**
    * @brief Get copy of current local state
