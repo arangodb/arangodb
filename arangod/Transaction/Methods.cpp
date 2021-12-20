@@ -1036,7 +1036,6 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
                                 bool& excludeFromReplication) -> Result {
     excludeFromReplication = false;
-    value = value.resolveExternal();
 
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
