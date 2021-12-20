@@ -22,8 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_ASM_H
-#define VELOCYPACK_ASM_H 1
+#pragma once
 
 #include <cstdint>
 
@@ -38,13 +37,9 @@ extern std::size_t (*JSONSkipWhiteSpace)(uint8_t const*, std::size_t);
 // check string for invalid utf-8 sequences
 extern bool (*ValidateUtf8String)(uint8_t const*, std::size_t);
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 
 void enableNativeStringFunctions();
 void enableBuiltinStringFunctions();
 
-}
-}
-
-#endif
+}  // namespace arangodb::velocypack

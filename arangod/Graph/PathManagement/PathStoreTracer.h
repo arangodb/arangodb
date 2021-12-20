@@ -31,6 +31,8 @@
 
 #include "Basics/ResourceUsage.h"
 
+#include "Containers/FlatHashMap.h"
+
 #include <unordered_map>
 #include <vector>
 
@@ -83,7 +85,7 @@ class PathStoreTracer {
 
   // Mapping MethodName => Statistics
   // We make this mutable to not violate the captured API
-  mutable std::unordered_map<std::string, TraceEntry> _stats;
+  mutable containers::FlatHashMap<std::string, TraceEntry> _stats;
 };
 
 }  // namespace graph

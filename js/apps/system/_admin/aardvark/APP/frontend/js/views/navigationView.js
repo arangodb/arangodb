@@ -161,24 +161,40 @@
         let daysInfo = '';
         let alertClasses = 'alert alert-license';
         switch (status) {
-          case 'expiring':
-            daysInfo = Math.floor((expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
-            infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently.';
-            this.appendLicenseInfoToUi(infotext, alertClasses);
-            break;
-          case 'expired':
-            daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - expires) / (3600*24));
-            infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
-            alertClasses += ' alert-danger';
-            this.appendLicenseInfoToUi(infotext, alertClasses);
-            break;
-          case 'read-only':
-            infotext = 'Your license expired over 14 days ago. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
-            alertClasses += ' alert-danger';
-            this.appendLicenseInfoToUi(infotext, alertClasses);
-            break;
-          default:
-            break;
+        case 'expiring':
+          let remains = expires - Math.round(new Date().getTime() / 1000);
+          let daysInfo = Math.ceil(remains / (3600*24));
+          let hoursInfo = '';
+          let minutesInfo = '';
+          infotext = 'Your license is expiring in under ';
+          if (daysInfo > 1) {
+            infotext += daysInfo + ' days';
+          } else {
+            hoursInfo = Math.ceil(remains / 3600);
+            if (hoursInfo > 1) {
+              infotext += hoursInfo + ' hours';
+            } else {
+              minutesInfo = Math.ceil(remains / 60);
+              infotext += minutesInfo + ' minutes';
+            }
+
+          }
+          infotext += '. Please contact ArangoDB sales to extend your license urgently.';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        case 'expired':
+          daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - expires) / (3600*24));
+          infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
+          alertClasses += ' alert-danger';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        case 'read-only':
+          infotext = 'Your license has expired. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
+          alertClasses += ' alert-danger';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        default:
+          break;
         }
       }
     },

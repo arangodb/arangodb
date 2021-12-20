@@ -24,7 +24,6 @@
 #include "OperationOptions.h"
 
 #include "Basics/debugging.h"
-#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 
@@ -111,7 +110,7 @@ char const* OperationOptions::stringifyOverwriteMode(OperationOptions::Overwrite
   return "unknown";
 }
   
-OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(velocypack::StringRef value) {
+OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(std::string_view value) {
   if (value == "conflict") {
     return OverwriteMode::Conflict;
   }

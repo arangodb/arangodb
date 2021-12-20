@@ -34,6 +34,7 @@ export type TierConsolidationPolicy = {
     segmentsMax?: number;
     segmentsBytesMax?: number;
     segmentsBytesFloor?: number;
+    minScore?: number;
   }
 };
 
@@ -288,6 +289,13 @@ export const formSchema: JSONSchemaType<FormState> = {
               nullable: false,
               minimum: 0,
               default: 2097152
+            },
+            minScore: {
+              type: 'number',
+              nullable: false,
+              minimum: 0,
+              maximum: 1,
+              default: 0
             }
           },
           additionalProperties: false

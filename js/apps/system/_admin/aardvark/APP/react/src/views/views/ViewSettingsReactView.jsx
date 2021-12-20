@@ -93,6 +93,17 @@ const ViewSettingsReactView = ({ name }) => {
                 </th>
               </tr>
 
+              <tr className="tableRow" id="row_change-view-consolidationIntervalMsec">
+                <th className="collectionTh">
+                  Consolidation Interval (msec):
+                </th>
+                <th className="collectionTh">
+                  <Textbox type={'number'} disabled={!isAdminUser}
+                           value={getNumericFieldValue(formState.consolidationIntervalMsec)}
+                           onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
+                </th>
+              </tr>
+
               <tr className="tableRow" id="row_change-view-id">
                 <th className="collectionTh">
                   ID:

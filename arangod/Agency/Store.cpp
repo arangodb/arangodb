@@ -40,7 +40,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <ctime>
@@ -517,7 +516,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           // the lock is write locked by the given entity, if node and the value
           // are strings and both are equal.
           if (found && op.value.isString() && node->slice().isString()) {
-            if (node->slice().isEqualString(op.value.stringRef())) {
+            if (node->slice().isEqualString(op.value.stringView())) {
               continue;
             }
           }
@@ -536,7 +535,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
                 isValid = false;
                 break;  // invalid, only strings allowed
               }
-              if (i.isEqualString(op.value.stringRef())) {
+              if (i.isEqualString(op.value.stringView())) {
                 isValid = true;
               }
             }
@@ -554,7 +553,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (!op.value.isString() || !node->isReadLockable(op.value.stringRef())) {
+          if (!op.value.isString() || !node->isReadLockable(op.value.stringView())) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -566,7 +565,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (!op.value.isString() || !node->isWriteLockable(op.value.stringRef())) {
+          if (!op.value.isString() || !node->isWriteLockable(op.value.stringView())) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -813,7 +812,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
   size_t counter = 0;
   while (it.valid()) {
-    VPackStringRef key = it.key().stringRef();
+    std::string_view key = it.key().stringView();
 
     // push back an empty string first, so we can avoid a later move
     abskeys.emplace_back();
@@ -1041,7 +1040,7 @@ void Store::removeTTL(std::string const& uri) {
 }
 
 std::string Store::normalize(char const* key, size_t length) {
-  VPackStringRef const path(key, length);
+  std::string_view const path(key, length);
 
   std::string normalized;
   normalized.reserve(path.size() + 1);

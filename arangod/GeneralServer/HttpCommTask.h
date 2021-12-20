@@ -26,7 +26,6 @@
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <llhttp.h>
-#include <velocypack/StringRef.h>
 #include <memory>
 
 namespace arangodb {

@@ -136,7 +136,7 @@ class Utils {
 
   static ErrorCode resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                                 std::string const& collectionName, std::string const& shardKey,
-                                arangodb::velocypack::StringRef vertexKey,
+                                std::string_view vertexKey,
                                 std::string& responsibleShard);
 };
 }  // namespace pregel

@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"

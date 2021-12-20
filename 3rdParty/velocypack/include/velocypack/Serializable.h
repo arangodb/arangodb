@@ -21,15 +21,13 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_SERIALIZABLE_H
-#define VELOCYPACK_SERIALIZABLE_H 1
+#pragma once
 
 #include <memory>
 
 #include "velocypack/velocypack-common.h"
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 class Builder;
 
 class Serializable {
@@ -47,7 +45,7 @@ struct Serialize {
   Serializable const& _sable;
 };
 
-}
-}
+} // namespace arangodb::velocypack
 
-#endif
+using VPackSerializable = arangodb::velocypack::Serializable;
+using VPackSerialize = arangodb::velocypack::Serialize;

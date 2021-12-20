@@ -34,7 +34,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
@@ -68,7 +67,7 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -1833,7 +1832,7 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    arangodb::velocypack::StringRef key(it.key());
+    std::string_view key(it.key().stringView());
     // _id, _key, _rev. minimum size here is 3
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
@@ -1850,7 +1849,7 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice, true);
   while (it.valid()) {
-    arangodb::velocypack::StringRef key(it.key());
+    std::string_view key(it.key().stringView());
     // _id, _key, _rev, _from, _to. minimum size here is 3
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-exec python \
+exec python3 \
   `pwd`/utils/generateSwagger.py \
   `pwd` \
   `pwd`/js/apps/system/_admin/aardvark/APP/api-docs \
