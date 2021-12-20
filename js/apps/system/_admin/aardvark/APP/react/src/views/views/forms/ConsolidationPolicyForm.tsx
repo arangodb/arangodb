@@ -4,7 +4,7 @@ import React, { ChangeEvent } from "react";
 import { get } from "lodash";
 import Select from "../../../components/pure-css/form/Select";
 import Textbox from "../../../components/pure-css/form/Textbox";
-import { getNumericFieldSetter, getNumericFieldValue } from "../../../utils/helpers";
+import { getNumericFieldSetter } from "../../../utils/helpers";
 
 const BytesAccumConsolidationPolicyForm = ({
                                              formState,
@@ -91,20 +91,9 @@ const ConsolidationPolicyForm = ({ formState, dispatch, disabled }: FormProps<Vi
 
   return <table>
     <tbody>
-    <tr className="tableRow" id="row_change-view-consolidationIntervalMsec">
-      <th className="collectionTh">
-        Consolidation Interval (msec):
-      </th>
-      <th className="collectionTh">
-        <Textbox type={'number'} disabled={disabled}
-                 value={getNumericFieldValue(formState.consolidationIntervalMsec)}
-                 onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
-      </th>
-    </tr>
-
     <tr className="tableRow" id="row_change-view-policyType">
       <th className="collectionTh">
-        Consolidation Policy Type:
+        Policy Type:
       </th>
       <th className="collectionTh">
         <Select disabled={disabled} value={policyType} onChange={updateConsolidationPolicyType}>

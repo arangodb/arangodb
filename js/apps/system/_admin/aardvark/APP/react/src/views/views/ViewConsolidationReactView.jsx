@@ -26,7 +26,7 @@ const ViewConsolidationReactView = ({ name }) => {
   }, [view, name]);
 
   useEffect(() => {
-    const observer = buildSubNav(isAdminUser, name, 'Consolidation');
+    const observer = buildSubNav(isAdminUser, name, 'Consolidation Policy');
 
     return () => observer.disconnect();
   }, [isAdminUser, name]);
