@@ -21,8 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/debugging.h>
+#include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
 #include <Basics/overload.h>
+#include <Basics/application-exit.h>
+#include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -32,15 +35,47 @@
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
+constexpr static std::string_view kUnconfiguredString = "unconfigured";
+
+auto replicated_log::to_string(ParticipantRole role) noexcept
+    -> std::string_view {
+  switch (role) {
+    case ParticipantRole::kLeader:
+      return StaticStrings::Leader;
+    case ParticipantRole::kFollower:
+      return StaticStrings::Follower;
+    case ParticipantRole::kUnconfigured:
+      return kUnconfiguredString;
+  }
+  LOG_TOPIC("ff22c", FATAL, Logger::REPLICATION2)
+      << "Invalid ParticipantRole "
+      << static_cast<std::underlying_type_t<decltype(role)>>(role);
+  FATAL_ERROR_ABORT();
+}
 
 void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue("unconfigured"));
+  builder.add("role", VPackValue(kUnconfiguredString));
 }
 
 auto UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus {
-  TRI_ASSERT(slice.get("role").isEqualString("unconfigured"));
+  TRI_ASSERT(slice.get("role").isEqualString(kUnconfiguredString));
   return {};
+}
+
+auto QuickLogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
+  if (role == ParticipantRole::kUnconfigured) {
+    return std::nullopt;
+  }
+  return term;
+}
+
+auto QuickLogStatus::getLocalStatistics() const noexcept
+    -> std::optional<LogStatistics> {
+  if (role == ParticipantRole::kUnconfigured) {
+    return std::nullopt;
+  }
+  return local;
 }
 
 void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
@@ -151,29 +186,30 @@ auto replicated_log::operator!=(FollowerStatistics const& left,
 
 auto LogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
   return std::visit(
-      overload{[&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
-                 return std::nullopt;
-               },
-               [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
-                 return s.term;
-               },
-               [&](replicated_log::FollowerStatus const& s) -> std::optional<LogTerm> {
-                 return s.term;
-               }},
+      overload{
+          [&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
+            return std::nullopt;
+          },
+          [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
+            return s.term;
+          },
+          [&](replicated_log::FollowerStatus const& s)
+              -> std::optional<LogTerm> { return s.term; },
+      },
       _variant);
 }
 
-auto LogStatus::getLocalStatistics() const noexcept -> std::optional<LogStatistics> {
+auto LogStatus::getLocalStatistics() const noexcept
+    -> std::optional<LogStatistics> {
   return std::visit(
-      overload{[&](replicated_log::UnconfiguredStatus const& s) -> std::optional<LogStatistics> {
-                 return std::nullopt;
-               },
-               [&](replicated_log::LeaderStatus const& s) -> std::optional<LogStatistics> {
-                 return s.local;
-               },
-               [&](replicated_log::FollowerStatus const& s) -> std::optional<LogStatistics> {
-                 return s.local;
-               }},
+      overload{
+          [&](replicated_log::UnconfiguredStatus const& s)
+              -> std::optional<LogStatistics> { return std::nullopt; },
+          [&](replicated_log::LeaderStatus const& s)
+              -> std::optional<LogStatistics> { return s.local; },
+          [&](replicated_log::FollowerStatus const& s)
+              -> std::optional<LogStatistics> { return s.local; },
+      },
       _variant);
 }
 
