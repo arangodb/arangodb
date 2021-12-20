@@ -91,13 +91,14 @@ replicated_log::LogLeader::LogLeader(LoggerContext logContext,
                                      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                                      std::shared_ptr<ReplicatedLogGlobalSettings const> options,
                                      LogConfig config, ParticipantId id,
-                                     LogTerm term, InMemoryLog inMemoryLog)
+                                     LogTerm term, LogIndex firstIndex, InMemoryLog inMemoryLog)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
       _config(config),
       _id(std::move(id)),
       _currentTerm(term),
+      _firstIndexOfCurrentTerm(firstIndex),
       _guardedLeaderData(*this, std::move(inMemoryLog)) {
   _logMetrics->replicatedLogLeaderNumber->fetch_add(1);
 }
@@ -294,13 +295,18 @@ auto replicated_log::LogLeader::construct(
     MakeSharedLogLeader(LoggerContext logContext,
                         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
                         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-                        LogConfig config, ParticipantId id, LogTerm term, InMemoryLog inMemoryLog)
-        : LogLeader(std::move(logContext), std::move(logMetrics), std::move(options),
-                    config, std::move(id), term, std::move(inMemoryLog)) {}
+                        LogConfig config, ParticipantId id, LogTerm term,
+                        LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog)
+        : LogLeader(std::move(logContext), std::move(logMetrics),
+                    std::move(options), config, std::move(id), term,
+                    firstIndexOfCurrentTerm, std::move(inMemoryLog)) {}
   };
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
   auto const lastIndex = log.getLastTermIndexPair();
+  // if this assertion triggers there is an entry present in the log
+  // that has the current term. Did create a different leader with the same term
+  // in your test?
   TRI_ASSERT(lastIndex.term != term);
 
   // Note that although we add an entry to establish our leadership
@@ -314,8 +320,8 @@ auto replicated_log::LogLeader::construct(
       logContext.with<logContextKeyTerm>(term).with<logContextKeyLeaderId>(id);
 
   auto leader = std::make_shared<MakeSharedLogLeader>(
-      commonLogContext.with<logContextKeyLogComponent>("leader"),
-      std::move(logMetrics), std::move(options), config, std::move(id), term, log);
+      commonLogContext.with<logContextKeyLogComponent>("leader"), std::move(logMetrics),
+      std::move(options), config, std::move(id), term, lastIndex.index + 1u, log);
   auto localFollower = std::make_shared<LocalFollower>(
       *leader, commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore), lastIndex);
@@ -1090,6 +1096,7 @@ void replicated_log::LogLeader::establishLeadership() {
     return firstIndex;
   });
 
+  TRI_ASSERT(waitForIndex == _firstIndexOfCurrentTerm);
   waitFor(waitForIndex).thenFinal([weak = weak_from_this()](futures::Try<WaitForResult>&& result) noexcept {
     if (auto self = weak.lock(); self) {
       try {
@@ -1105,6 +1112,11 @@ void replicated_log::LogLeader::establishLeadership() {
           << "leader is already gone, no leadership was established";
     }
   });
+}
+
+auto replicated_log::LogLeader::waitForLeadership()
+    -> replicated_log::ILogParticipant::WaitForFuture {
+  return waitFor(_firstIndexOfCurrentTerm);
 }
 
 void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config) {

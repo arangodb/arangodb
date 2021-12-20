@@ -37,7 +37,7 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -79,7 +79,7 @@ namespace arangodb::replication2::replicated_log {
 /**
  * @brief Leader instance of a replicated log.
  */
-class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogParticipant {
+class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogLeader {
  public:
   ~LogLeader() override;
 
@@ -106,10 +106,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader>;
 
-  struct DoNotTriggerAsyncReplication {};
-  constexpr static auto doNotTriggerAsyncReplication = DoNotTriggerAsyncReplication{};
 
-  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
+  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex override;
 
   // As opposed to the above insert methods, this one does not trigger the async
   // replication automatically, i.e. does not call triggerAsyncReplication after
@@ -120,7 +118,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // This method will however not prevent the resulting log entry from being
   // replicated, if async replication is running in the background already, or
   // if it is triggered by someone else.
-  auto insert(LogPayload payload, bool waitForSync, DoNotTriggerAsyncReplication) -> LogIndex;
+  auto insert(LogPayload payload, bool waitForSync, DoNotTriggerAsyncReplication) -> LogIndex override;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 
@@ -135,7 +133,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // until all participants are perfectly in sync, and will then stop.
   // Is usually called automatically after an insert, but can be called manually
   // from test code.
-  auto triggerAsyncReplication() -> void;
+  auto triggerAsyncReplication() -> void override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
 
@@ -145,15 +143,17 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
-  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog;
+  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
 
   // Returns true if the leader has established its leadership: at least one
   // entry within its term has been committed.
-  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
+  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool override;
+
+  auto waitForLeadership() -> WaitForFuture override;
 
   // This function returns the current commit index. Do NOT poll this function,
   // use waitFor(idx) instead. This function is used in tests.
-  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex;
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
   // Updates the flags of the participants.
   void updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config);
@@ -166,7 +166,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options, LogConfig config,
-            ParticipantId id, LogTerm term, InMemoryLog inMemoryLog);
+            ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog);
 
  private:
   struct GuardedLeaderData;
@@ -315,6 +315,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   LogConfig const _config;
   ParticipantId const _id;
   LogTerm const _currentTerm;
+  LogIndex const _firstIndexOfCurrentTerm;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
   // make this thread safe in the most simple way possible, wrap everything in
