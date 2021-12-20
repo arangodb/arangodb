@@ -319,6 +319,18 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   });
 }
 
+auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
+  return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
+    if (followerData._logCore == nullptr) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    }
+    return QuickLogStatus{.role = ParticipantRole::kLeader,
+                          .term = _currentTerm,
+                          .local = followerData.getLocalStatistics()};
+  });
+}
+
 auto replicated_log::LogFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return _participantId;
 }

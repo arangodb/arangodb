@@ -443,6 +443,23 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   });
 }
 
+auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
+  return _guardedLeaderData.doUnderLock(
+      [term = _currentTerm](GuardedLeaderData const& leaderData) {
+        if (leaderData._didResign) {
+          THROW_ARANGO_EXCEPTION(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+        }
+        return QuickLogStatus{
+            .role = ParticipantRole::kLeader,
+            .term = term,
+            .local = leaderData.getLocalStatistics(),
+            .activeParticipantConfig = leaderData.activeParticipantConfig,
+            .committedParticipantConfig = leaderData.committedParticipantConfig,
+            .leadershipEstablished = leaderData._leadershipEstablished};
+      });
+}
+
 auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync) -> LogIndex {
   auto index = insert(std::move(payload), waitForSync, doNotTriggerAsyncReplication);
   triggerAsyncReplication();
