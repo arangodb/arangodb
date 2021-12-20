@@ -62,7 +62,7 @@ function proxyLocal (method, url, qs, body, headers = {}) {
     headers,
     body
   };
-  if (require('internal').db._version(true)['maintainer-mode'] === 'true') {
+  if (require('internal').db._version(true).details['maintainer-mode'] === 'true') {
     req.timeout = 300;
   }
   const res = request(req);
