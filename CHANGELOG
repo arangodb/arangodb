@@ -5,6 +5,8 @@ v3.9.0 (XXXX-XX-XX)
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
 
+* Cancel ongoing RocksDB compactions on server shutdown.
+
 * Updated Enterprise license behavior: now there will be a one hour period for
   a new deployment to provide the license. After that period, the read-only mode
   will be enforced.
