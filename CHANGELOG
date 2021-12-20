@@ -1,6 +1,9 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
+  OOM kill in rare cases.
+
 * Added startup options to adjust previously hard-coded parameters for the
   RocksDB throttle:
   - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
