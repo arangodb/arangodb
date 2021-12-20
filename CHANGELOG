@@ -1,6 +1,9 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
+  OOM kill in rare cases.
+
 * Cancel ongoing RocksDB compactions on server shutdown.
 
 * Updated Enterprise license behavior: now there will be a one hour period for
