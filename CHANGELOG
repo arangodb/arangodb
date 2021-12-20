@@ -1,6 +1,15 @@
 devel
 -----
 
+* Set a limit for ArangoSearch segment size to 256MB during recovery to avoid OOM kill in rare 
+  cases.
+
+* Updated arangosync to 2.7.0.
+
+* Updated Enterprise license behaviour: now there will be a one hour period for
+  a new deployment to provide the license. After that period, the read-only mode
+  will be enforced.
+
 * Added startup security option `--foxx.allow-install-from-remote` to allow 
   installing Foxx apps from remote URLs other than Github. The option is turned 
   off by default.
