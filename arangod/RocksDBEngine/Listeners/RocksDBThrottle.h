@@ -84,8 +84,6 @@ class RocksDBThrottle : public rocksdb::EventListener {
     _families = Families;
   }
 
-  static void AdjustThreadPriority(int Adjustment);
-
   void stopThread();
 
   uint64_t GetThrottle() const { return _throttleBps; }
