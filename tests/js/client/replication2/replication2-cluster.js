@@ -25,126 +25,15 @@
 
 const jsunity = require('jsunity');
 const console = require('console');
-const request = require('@arangodb/request');
 const _ = require('lodash');
 const db = require('@arangodb').db;
-const {checkRequestResult} = require('@arangodb/arangosh');
 const {
-  assertEqual,
   assertFalse,
-  assertNotNull,
   assertNotUndefined,
-  assertTypeOf,
   assertIdentical,
 } = jsunity.jsUnity.assertions;
 
-// The RestLogHandler is only available in maintainer mode.
-const isInMaintainerMode = require('internal').db._version(true)['maintainer-mode'] === 'true';
-const replication2Enabled = require('internal').db._version(true)['replication2-enabled'] === 'true';
-
-const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-
-const replicationApi = {
-  createLog: (id, server) => {
-    const res = request.post({
-      url: getUrl(server.endpoint) + `/_api/log`,
-      // Note that `targetConfig` is deserialized by the RestHandler, but ignored (on a DBServer, as is the case here).
-      // Just the `id` is needed. We might want to change this if the API is kept, i.e. make passing `targetConfig`
-      // obsolete.
-      body: JSON.stringify({id, targetConfig: {waitForSync: false, writeConcern: 2}}),
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-  },
-
-  becomeLeader: (id, server, {term, writeConcern, follower}) => {
-    const res = request.post({
-      url: getUrl(server.endpoint) + `/_api/log/${id}/becomeLeader`,
-      body: JSON.stringify({term, writeConcern, follower: follower.map(server => server.id)}),
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-  },
-
-  becomeFollower: (id, server, {term, leader}) => {
-    const res = request.post({
-      url: getUrl(server.endpoint) + `/_api/log/${id}/becomeFollower`,
-      body: JSON.stringify({term, leader: leader.id}),
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-  },
-
-  insert: (id, server, data) => {
-    const res = request.post({
-      url: getUrl(server.endpoint) + `/_api/log/${id}/insert`,
-      body: JSON.stringify(data),
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-    const result = res.json.result;
-    assertTypeOf('object', result, JSON.stringify(res.json));
-    assertEqual(["index", "term", "quorum"].sort(), Object.keys(result).sort());
-    return result;
-  },
-
-  readEntry: (id, server, entry) => {
-    const res = request.get({
-      url: getUrl(server.endpoint) + `/_api/log/${id}/readEntry/${entry}`,
-    });
-    checkRequestResult(res);
-    assertTypeOf('object', res.json);
-    assertIdentical(false, res.json.error, JSON.stringify(res.json));
-    const result = res.json.result;
-    assertEqual(["logIndex", "payload", "logTerm"].sort(), Object.keys(result).sort());
-    return result;
-  },
-
-};
-
-function dbServerApiSuite() {
-  const instanceInfo = global.instanceInfo;
-  let serverA;
-  let serverB;
-  let serverC;
-  const servers = [];
-
-  return {
-    setUpAll: function () {
-      const isDBServer = (d) => (_.toLower(d.role) === 'dbserver');
-      servers.push(...
-        [serverA, serverB, serverC] = instanceInfo.arangods.filter(isDBServer)
-      );
-      assertEqual(3, servers.length);
-      assertNotUndefined(serverA);
-      assertNotUndefined(serverB);
-      assertNotUndefined(serverC);
-      assertNotNull(serverA);
-      assertNotNull(serverB);
-      assertNotNull(serverC);
-    },
-
-    testReplicationMinimalInsert: function () {
-      const id = 12;
-      const term = 1;
-      const writeConcern = 2;
-      servers.forEach(server => replicationApi.createLog(id, server));
-      replicationApi.becomeLeader(id, serverA, {term, writeConcern, follower: [serverB, serverC]});
-      replicationApi.becomeFollower(id, serverB, {term, leader: serverA});
-      replicationApi.becomeFollower(id, serverC, {term, leader: serverA});
-      const entry = {foo: "bar"};
-      const insertRes = replicationApi.insert(id, serverA, entry);
-      const index = insertRes.index;
-      assertEqual(1, index);
-      const readRes = replicationApi.readEntry(id, serverA, index);
-      assertEqual(entry, readRes.payload);
-    }
-  };
-}
+const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
 
 const runInDb = (name, callback) => {
   const oldDbName = db._name();
@@ -307,9 +196,6 @@ function ddlSuite() {
   };
 }
 
-if (isInMaintainerMode) {
-  jsunity.run(dbServerApiSuite);
-}
 if (replication2Enabled) {
   jsunity.run(ddlSuite);
 }

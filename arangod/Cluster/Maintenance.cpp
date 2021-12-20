@@ -1057,8 +1057,10 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
   auto end = std::chrono::steady_clock::now();
   uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  feature._phase1_runtime_msec->get().count(total_ms);
-  feature._phase1_accum_runtime_msec->get().count(total_ms);
+  TRI_ASSERT(feature._phase1_runtime_msec != nullptr);
+  feature._phase1_runtime_msec->count(total_ms);
+  TRI_ASSERT(feature._phase1_accum_runtime_msec != nullptr);
+  feature._phase1_accum_runtime_msec->count(total_ms);
 
   return result;
 }
@@ -2029,13 +2031,19 @@ arangodb::Result arangodb::maintenance::phaseTwo(
 
   auto end = std::chrono::steady_clock::now();
   uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  feature._phase2_runtime_msec->get().count(total_ms);
-  feature._phase2_accum_runtime_msec->get().count(total_ms);
+  TRI_ASSERT(feature._phase2_runtime_msec != nullptr);
+  feature._phase2_runtime_msec->count(total_ms);
+  TRI_ASSERT(feature._phase2_accum_runtime_msec != nullptr);
+  feature._phase2_accum_runtime_msec->count(total_ms);
 
-  feature._shards_out_of_sync->get().operator=(shardStats.numOutOfSyncShards);
-  feature._shards_total_count->get().operator=(shardStats.numShards);
-  feature._shards_leader_count->get().operator=(shardStats.numLeaderShards);
-  feature._shards_not_replicated_count->get().operator=(shardStats.numNotReplicated);
+  TRI_ASSERT(feature._shards_out_of_sync != nullptr);
+  feature._shards_out_of_sync->store(shardStats.numOutOfSyncShards, std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_total_count != nullptr);
+  feature._shards_total_count->store(shardStats.numShards, std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_leader_count != nullptr);
+  feature._shards_leader_count->store(shardStats.numLeaderShards, std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_not_replicated_count != nullptr);
+  feature._shards_not_replicated_count->store(shardStats.numNotReplicated, std::memory_order_relaxed);
 
   return result;
 }

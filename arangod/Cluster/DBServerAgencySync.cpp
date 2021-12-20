@@ -404,8 +404,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto end = clock::now();
   auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  mfeature._agency_sync_total_runtime_msec->get().count(total_ms);
-  mfeature._agency_sync_total_accum_runtime_msec->get().count(total_ms);
+  TRI_ASSERT(mfeature._agency_sync_total_runtime_msec != nullptr);
+  mfeature._agency_sync_total_runtime_msec->count(total_ms);
+  TRI_ASSERT(mfeature._agency_sync_total_accum_runtime_msec != nullptr);
+  mfeature._agency_sync_total_accum_runtime_msec->count(total_ms);
   auto took = duration<double>(end - start).count();
   if (took > 30.0) {
     LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE)
