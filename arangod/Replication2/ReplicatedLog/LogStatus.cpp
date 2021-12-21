@@ -37,22 +37,6 @@ using namespace arangodb::replication2::replicated_log;
 
 constexpr static std::string_view kUnconfiguredString = "unconfigured";
 
-auto replicated_log::to_string(ParticipantRole role) noexcept
-    -> std::string_view {
-  switch (role) {
-    case ParticipantRole::kLeader:
-      return StaticStrings::Leader;
-    case ParticipantRole::kFollower:
-      return StaticStrings::Follower;
-    case ParticipantRole::kUnconfigured:
-      return kUnconfiguredString;
-  }
-  LOG_TOPIC("ff22c", FATAL, Logger::REPLICATION2)
-      << "Invalid ParticipantRole "
-      << static_cast<std::underlying_type_t<decltype(role)>>(role);
-  FATAL_ERROR_ABORT();
-}
-
 void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add("role", VPackValue(kUnconfiguredString));

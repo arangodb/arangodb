@@ -39,8 +39,6 @@ enum class ParticipantRole {
   kFollower
 };
 
-[[nodiscard]] auto to_string(ParticipantRole role) noexcept -> std::string_view;
-
 /**
  * @brief A minimalist variant of LogStatus, designed to replace FollowerStatus
  * and LeaderStatus where only basic information is needed.
