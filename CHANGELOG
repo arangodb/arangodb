@@ -10,7 +10,7 @@ devel
   This is now unified so that the result structure in the server console is
   consistent with arangosh, but strictly speaking this is a breaking change.
 
-* Set a limit for ArangoSearch segment size to 256MB during recovery to avoid 
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
   OOM kill in rare cases.
 
 * Updated arangosync to 2.7.0.
