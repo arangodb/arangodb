@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow initial, full dump shard synchronization to abort prematurely if it 
+  turns out that the follower was removed from the plan as a follower (e.g. if 
+  there are enough other in-sync followers).
+
 * Make per-server values "numberOfCores" and "physicalMemory" available to
   agency to improve quality of potential future shard rebalancing algorithms.
 
