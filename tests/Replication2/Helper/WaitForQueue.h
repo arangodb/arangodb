@@ -25,6 +25,7 @@
 #include <optional>
 #include <mutex>
 #include <variant>
+#include <concepts>
 
 #include "Futures/Future.h"
 
