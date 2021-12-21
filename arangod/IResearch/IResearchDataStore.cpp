@@ -1015,6 +1015,9 @@ Result IResearchDataStore::initDataStore(InitCallback const& initCallback,
       std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTick);
 
   irs::index_writer::init_options options;
+  // Set 256MB limit during recovery. Actual "operational" limit will be set later
+  // when this link will be added to the view.
+  options.segment_memory_max = 256 * (size_t(1) << 20);
   options.lock_repository = false;  // do not lock index, ArangoDB has its own lock
   options.comparator = sorted ? &_comparer : nullptr;  // set comparator if requested
   options.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
