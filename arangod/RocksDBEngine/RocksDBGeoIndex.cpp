@@ -44,6 +44,105 @@
 
 using namespace arangodb;
 
+// Here are some explanations on how this all works together (reverse
+// engineered from the code):
+//
+// The class RDBNearIterator does the actual work. It gets told what
+// to look for by the geo::QueryParams, and it gets access to a (read)
+// transaction trx and a logical collection and a geo index to use.
+// There are essentially three types of query:
+//  (1) Find everything within a radius (assuming a geo index on the `geo`
+//      attribute of our collection `coll`:
+//      FOR d IN coll
+//        FILTER GEO_DISTANCE(obj, d.geo) <= @radius
+//        RETURN d
+//      This might or might not be sorted by distance from the target.
+//  (2) Find everything in the database, which intersects a given object:
+//      FOR d IN coll
+//        FILTER GEO_INTERSECTS(obj, d.geo)
+//        RETURN d
+//  (3) Find everything in the database, which is contained in a given object:
+//      FOR d IN coll
+//        FILTER GEO_CONTAINS(obj, d.geo)
+//        RETURN d
+// In principle, there could also be:
+//  (4) Find everything in the database, which contains a given object:
+//      FOR d IN coll
+//        FILTER GEO_CONTAINS(d.geo, obj)
+//        RETURN d
+//      but we do not support this. It will be executed by steam without
+//      using the geo index.
+//
+// All of these can get a LIMIT clause and we can take advantage of this
+// knowledge when the LIMIT is given in the QueryParams. Furthermore,
+// they can get a lower and upper GEO_DISTANCE bound (centroid distance),
+// which are detected by FILTER statements like:
+//
+//   FILTER GEO_DISTANCE(d.geo, obj) <= X
+//
+// and
+//
+//   FILTER GEO_DISTANCE(d.geo, obj) >= Y
+//
+// Finally, each such query can also observe a SORT clause like this:
+//
+//   SORT GEO_DISTANCE(d.geo, obj) ASC
+//
+// where ASC can also be DESC, and the ASC sorting is implicitly always
+// present. Currently it does not seem to be possible to do an unsorted
+// query, because ASC is implied if no sort is given.
+//
+// Note that (1) only uses the centroid of `obj`, which is a rather
+// unconventional and unintuitive definition of distance. In this case,
+// there could be an additional SORT clause to sort by distance.
+//
+// Finally, the algorithms can take into account as to whether it is known that
+// all objects indexed in the geo index are known to be points. In this case
+// a number of optimizations are possible, which are in general not valid for
+// the general GeoJSON case.
+//
+// Altogether, this amounts to a total of 60 possible combinations (12
+// near query types, since they always have to have an upper bound for
+// the GEO_DISTANCE, 24 contains query types and 24 intersects query types.
+//
+// This `RDBNearIterator` object is supposed to be an `IndexIterator`,
+// this means, once the query is set up, it supports the
+// next/nextDocument/nextExtra methods by implementing the
+// nextImpl/nextDocumentImpl/nextExtraImpl virtual methods. Furthermore,
+// it needs to support skip and friends.
+//
+// This class is in turn used by the `RocksDBGeoIndex` class, which implements
+// the geo index, but delegates its work to `RDBNearIterator` in all cases.
+// It uses the `RocksDBGeoIndex::iteratorForCondition` method below, which
+// inspects the query and builds the `RDBNearIterator` object.
+//
+// All of the following is templated on the sorting direction, which can
+// be arangodb::geo_index::DocumentsAscending or `...::DocumentsDescending`,
+// which means the sorting order by the distance to the query point/object.
+// In case of an object, the distance to the centroid of the object is meant.
+//
+// The `RDBNearIterator` object does not do all the work on its own. Rather,
+// it employs the help of a `geo_index::NearUtils` object. The `NearUtils`
+// object is responsible for maintaining a priority queue `GeoDocumentsQueue`
+// which is supposed to return the "closest" (in case of ascending) or
+// "furthest" (in case of descending) solutions first. Furthermore, the
+// `NearUtils` object can do some filtering with `contains` or `intersects`.
+//
+// The `NearUtils` object uses the following parameters:
+//  - `minDistanceRad` and `maxDistanceRad` to limit search to a ring
+//  - `origin` as the center of the search
+//  - the information about ascending or descending search
+//  - the flag `pointsOnly` which indicates that only points are indexed
+//  - a filtering object and a filtering type (NONE, CONTAINS or INTERSECTS)
+// 
+// The `NearUtils` object then has to organize the search either ascending
+// or descending, and to this end produces a list of intervals to scan in 
+// the index. This is then done in the `RDBNearIterator` object in
+// `performScan`. Whatever is found in the index is then reported back
+// to the `NearUtils` object via `reportFound` and that calls the callback
+// we got from the outside.
+
+
 template <typename CMP = geo_index::DocumentsAscending>
 class RDBNearIterator final : public IndexIterator {
  public:
@@ -360,9 +459,18 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 
   // FIXME: <Optimize away>
   params.sorted = true;
-  if (params.filterType != geo::FilterType::NONE) {
+  if (params.filterType == geo::FilterType::CONTAINS ||
+      (params.filterType == geo::FilterType::INTERSECTS && params.pointsOnly)) {
+    // This updates the maximal distance. We can only do this for a CONTAINS
+    // query or for the INTERSECTS query, if the database contains only points.
+    // Otherwise, there could be an object which intersects us but whose
+    // centroid is not in the circumcircle of our bounding box.
     TRI_ASSERT(!params.filterShape.empty());
     params.filterShape.updateBounds(params);
+  } else if (params.filterType == geo::FilterType::INTERSECTS) {
+    // We need to set the origin still:   
+    S2LatLng ll(params.filterShape.centroid());
+    params.origin = ll;
   }
   //        </Optimize away>
 
