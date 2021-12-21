@@ -53,8 +53,17 @@ function DatabaseSuite () {
 /// @brief test whether the expected keys are present in db._version(true)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testVersionDetails : function () {
+    testVersion : function () {
       let result = internal.db._version(true);
+
+      assertEqual(result.server, "arango");
+      assertEqual(result.license, (internal.isEnterprise() ? "enterprise" : "community"));
+      assertEqual(result.version, internal.db._version());
+      assertTrue(result.hasOwnProperty("details"));
+    },
+    
+    testVersionDetails : function () {
+      let result = internal.db._version(true).details;
 
       let keys = [
         "architecture",
@@ -91,7 +100,7 @@ function DatabaseSuite () {
     },
 
     testVersionBooleans : function () {
-      let result = internal.db._version(true);
+      let result = internal.db._version(true).details;
 
       let keys = [
         "asan",
@@ -111,7 +120,7 @@ function DatabaseSuite () {
     },
 
     testVersionNumbers : function () {
-      let result = internal.db._version(true);
+      let result = internal.db._version(true).details;
 
       let keys = [
         "boost-version",

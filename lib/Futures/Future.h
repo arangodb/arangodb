@@ -145,7 +145,7 @@ void waitImpl(Future<T>& f) {
 
   Promise<T> p;
   Future<T> ret = p.getFuture();
-  f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
+  std::move(f).thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
     // We need to hold this mutex, while sending the notify.
     // Otherwise the future ret may be ready and thereby leaving this function
     // which would free the condtion variable, before sending notify.
@@ -171,7 +171,7 @@ void waitImpl(Future<T>& f, std::chrono::time_point<Clock, Duration> const& tp) 
 
   Promise<T> p;
   Future<T> ret = p.getFuture();
-  f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
+  std::move(f).thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
     // We need to hold this mutex, while sending the notify.
     // Otherwise the future ret may be ready and thereby leaving this function
     // which would free the condtion variable, before sending notify.
@@ -450,7 +450,7 @@ class Future {
   /// When this Future has completed, execute func which is a function that
   /// can be called with either `T&&` or `Try<T>&&`.
   template <typename F, typename R = typename std::invoke_result<F&&, Try<T>&&>::type>
-  typename std::enable_if<std::is_same<R, void>::value>::type thenFinal(F&& fn) {
+  typename std::enable_if<std::is_same<R, void>::value>::type thenFinal(F&& fn) && {
     getState().setCallback(std::forward<detail::decay_t<F>>(fn));
   }
 
