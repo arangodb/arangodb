@@ -618,7 +618,7 @@ void RocksDBEngine::start() {
   }
 
   _options.max_background_jobs = static_cast<int>(opts._maxBackgroundJobs);
-  _options.max_subcompactions = static_cast<int>(opts._maxSubcompactions);
+  _options.max_subcompactions = opts._maxSubcompactions;
   _options.use_fsync = opts._useFSync;
 
   // only compress levels >= 2
