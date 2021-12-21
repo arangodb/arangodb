@@ -29,53 +29,47 @@
 namespace arangodb {
 namespace iresearch {
 
-class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, public RocksDBIndex {
+class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
+                                            public RocksDBIndex {
  public:
-  IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection, uint64_t objectId,
-                                std::string const& name, InvertedIndexFieldMeta&& meta);
+  IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
+                                uint64_t objectId, std::string const& name,
+                                InvertedIndexFieldMeta&& meta);
 
   virtual ~IResearchRocksDBInvertedIndex();
 
-  Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_INVERTED_INDEX; }
+  Index::IndexType type() const override {
+    return Index::TRI_IDX_TYPE_INVERTED_INDEX;
+  }
 
-  void toVelocyPack(VPackBuilder& builder,
-                    std::underlying_type<Index::Serialize>::type flags) const override;
+  void toVelocyPack(
+      VPackBuilder& builder,
+      std::underlying_type<Index::Serialize>::type flags) const override;
 
   size_t memory() const override {
     // FIXME return in memory size
-    //return stats().indexSize;
+    // return stats().indexSize;
     return 0;
   }
 
-  bool isHidden() const override {
-    return false;
-  }
+  bool isHidden() const override { return false; }
 
-  char const* typeName() const override {
-    return oldtypeName();
-  }
+  char const* typeName() const override { return oldtypeName(); }
 
-  bool canBeDropped() const override {
-    return true;
-  }
+  bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override {
-    return  IResearchInvertedIndex::isSorted();
-  }
+  bool isSorted() const override { return IResearchInvertedIndex::isSorted(); }
 
-  bool hasSelectivityEstimate() const override {
-    return false;
-  }
+  bool hasSelectivityEstimate() const override { return false; }
 
   bool inProgress() const override {
     return IResearchInvertedIndex::inProgress();
   }
 
   bool covers(arangodb::aql::Projections& projections) const override {
-    return  IResearchInvertedIndex::covers(projections);
+    return IResearchInvertedIndex::covers(projections);
   }
 
-  
   bool hasCoveringIterator() const override {
     return !meta()._storedValues.empty() || !meta()._sort.empty();
   }
@@ -83,63 +77,62 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex, publi
   Result drop() override;
 
   void load() override {}
-  void unload() override {
-    shutdownDataStore();
+  void unload() override { shutdownDataStore(); }
+
+  bool matchesDefinition(
+      arangodb::velocypack::Slice const& other) const override;
+
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, aql::AstNode const* node,
+      aql::Variable const* reference, IndexIteratorOptions const& opts,
+      ReadOwnWrites readOwnWrites, int mutableConditionIdx) override {
+    TRI_ASSERT(readOwnWrites ==
+               ReadOwnWrites::no);  // FIXME: check - should we ever care?
+    return IResearchInvertedIndex::iteratorForCondition(
+        &IResearchDataStore::collection(), trx, node, reference, opts,
+        mutableConditionIdx);
   }
 
-  bool matchesDefinition(arangodb::velocypack::Slice const& other) const override;
-
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
-                                                    aql::AstNode const* node,
-                                                    aql::Variable const* reference,
-                                                    IndexIteratorOptions const& opts,
-                                                    ReadOwnWrites readOwnWrites,
-                                                    int mutableConditionIdx) override {
-    TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // FIXME: check - should we ever care?
-    return IResearchInvertedIndex::iteratorForCondition(&IResearchDataStore::collection(), trx, node,
-                                                        reference, opts, mutableConditionIdx);
+  Index::SortCosts supportsSortCondition(
+      aql::SortCondition const* sortCondition, aql::Variable const* reference,
+      size_t itemsInIndex) const override {
+    return IResearchInvertedIndex::supportsSortCondition(
+        sortCondition, reference, itemsInIndex);
   }
 
-  Index::SortCosts supportsSortCondition(aql::SortCondition const* sortCondition,
-                                         aql::Variable const* reference,
-                                         size_t itemsInIndex) const override {
-     return IResearchInvertedIndex::supportsSortCondition(sortCondition, reference, itemsInIndex);
+  Index::FilterCosts supportsFilterCondition(
+      std::vector<std::shared_ptr<Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
+      size_t itemsInIndex) const override {
+    return IResearchInvertedIndex::supportsFilterCondition(
+        IResearchDataStore::id(), RocksDBIndex::fields(), allIndexes, node,
+        reference, itemsInIndex);
   }
 
-  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<Index>> const& allIndexes,
-                                             aql::AstNode const* node,
-                                             aql::Variable const* reference,
-                                             size_t itemsInIndex) const override {
-     return IResearchInvertedIndex::supportsFilterCondition(IResearchDataStore::id(), RocksDBIndex::fields(), allIndexes,
-                                                            node, reference, itemsInIndex);
-  }
-
-  aql::AstNode* specializeCondition(aql::AstNode* node,
-                                    aql::Variable const* reference) const override {
+  aql::AstNode* specializeCondition(
+      aql::AstNode* node, aql::Variable const* reference) const override {
     return IResearchInvertedIndex::specializeCondition(node, reference);
   }
 
-  Result insert(transaction::Methods& trx,
-                RocksDBMethods* /*methods*/,
-                LocalDocumentId const& documentId,
-                VPackSlice doc,
+  Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
+                LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return IResearchDataStore::insert<InvertedIndexFieldIterator, 
-                                      InvertedIndexFieldMeta>(trx, documentId, doc, meta());
+    return IResearchDataStore::insert<InvertedIndexFieldIterator,
+                                      InvertedIndexFieldMeta>(trx, documentId,
+                                                              doc, meta());
   }
 
-  Result remove(transaction::Methods& trx,
-                RocksDBMethods*,
-                LocalDocumentId const& documentId,
-                VPackSlice doc) override {
+  Result remove(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId, VPackSlice doc) override {
     return IResearchDataStore::remove(trx, documentId, doc);
   }
 };
 
 class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
  public:
-  explicit IResearchRocksDBInvertedIndexFactory(application_features::ApplicationServer& server);
+  explicit IResearchRocksDBInvertedIndexFactory(
+      application_features::ApplicationServer& server);
   virtual ~IResearchRocksDBInvertedIndexFactory() = default;
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -151,16 +144,12 @@ class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
                                      bool isClusterConstructor) const override;
 
   /// @brief normalize an Index definition prior to instantiation/persistence
-  Result normalize(
-    velocypack::Builder& normalized,
-    velocypack::Slice definition,
-    bool isCreation,
-    TRI_vocbase_t const& vocbase) const override;
+  Result normalize(velocypack::Builder& normalized,
+                   velocypack::Slice definition, bool isCreation,
+                   TRI_vocbase_t const& vocbase) const override;
 
-  bool attributeOrderMatters() const override {
-    return false;
-  }
+  bool attributeOrderMatters() const override { return false; }
 };
 
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb
