@@ -5,6 +5,10 @@ devel
   documents instead of one document at a time and also not retrieving the
   document revision field when not needed.
 
+* Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
+  to 2. This allows compactions jobs to be broken up into disjoint ranges which
+  can be processed in parallel.
+
 * Allow initial, full dump shard synchronization to abort prematurely if it 
   turns out that the follower was removed from the plan as a follower (e.g. if 
   there are enough other in-sync followers).
