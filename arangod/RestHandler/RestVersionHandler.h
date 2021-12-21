@@ -25,6 +25,8 @@
 
 #include "RestHandler/RestBaseHandler.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
@@ -32,6 +34,8 @@ class RestVersionHandler : public arangodb::RestBaseHandler {
                      GeneralResponse*);
 
  public:
+  static void getVersion(application_features::ApplicationServer& server, bool allowInfo, bool includeDetails, VPackBuilder& result);
+  
   char const* name() const override final { return "RestVersionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;

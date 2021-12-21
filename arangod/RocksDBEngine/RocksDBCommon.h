@@ -40,6 +40,8 @@
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction_db.h>
 
+#include <atomic>
+
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
@@ -83,7 +85,8 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 /// @brief compacts the entire key range of the database.
 /// warning: may cause a full rewrite of the entire database, which will
 /// take long for large databases - use with care!
-Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLeve);
+Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel,
+                  std::atomic<bool>* canceled = nullptr);
 
 // optional switch to std::function to reduce amount of includes and
 // to avoid template

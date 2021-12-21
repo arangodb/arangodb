@@ -620,13 +620,13 @@ void ClusterFeature::start() {
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
     _followersDroppedCounter =
-      server().getFeature<metrics::MetricsFeature>().add(arangodb_dropped_followers_total{});
+      &server().getFeature<metrics::MetricsFeature>().add(arangodb_dropped_followers_total{});
     _followersRefusedCounter =
-      server().getFeature<metrics::MetricsFeature>().add(arangodb_refused_followers_total{});
+      &server().getFeature<metrics::MetricsFeature>().add(arangodb_refused_followers_total{});
     _followersWrongChecksumCounter =
-      server().getFeature<metrics::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
+      &server().getFeature<metrics::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
-      server().getFeature<metrics::MetricsFeature>().add(arangodb_sync_rebuilds_total{});
+      &server().getFeature<metrics::MetricsFeature>().add(arangodb_sync_rebuilds_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
