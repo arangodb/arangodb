@@ -1,8 +1,8 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
-* Added startup options to adjust previously hard-coded parameters for
-  RocksDB's behaviour:
+* Added startup options to adjust previously hard-coded parameters for RocksDB's
+  behaviour:
 
   - `--rocksdb.pending-compactions-bytes-slowdown-trigger` controls RocksDB's
     setting `soft_pending_compaction_bytes_limit`, which controls how many
@@ -11,7 +11,10 @@ v3.8.5 (XXXX-XX-XX)
     setting `hard_pending_compaction_bytes_limit`, which controls how many
     pending compaction bytes RocksDB tolerates before it stops writes entirely.
   - `--rocksdb.throttle-lower-bound-bps`, which controls a lower bound for the
-    bandwidth restriction on RocksDB writes the throttle imposes
+    bandwidth restriction on RocksDB writes the throttle imposes.
+
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
+  OOM kill in rare cases.
 
 * Added startup options to adjust previously hard-coded parameters for the
   RocksDB throttle:
