@@ -95,9 +95,12 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
       cells = shape.covering(&coverer);
       LOG_DEVEL << "Cell covering in geo index for geo shape: " << loc.toJson();
+      std::string s;
       for (auto const& c : cells) {
-        LOG_DEVEL << "Cell token: " << c.ToToken();
+        s.push_back(',');
+        s.append(c.ToToken());
       }
+      LOG_DEVEL << "Cell token: " << s;
       centroid = shape.centroid();
       S2LatLng guck(centroid);
       LOG_DEVEL << "Centroid: " << guck.lat().radians() << ", " << guck.lng().radians();
