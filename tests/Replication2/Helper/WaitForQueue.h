@@ -25,13 +25,12 @@
 #include <optional>
 #include <mutex>
 #include <variant>
-#include <compare>
 
 #include "Futures/Future.h"
 
 namespace arangodb::replication2::test {
 
-template<std::totally_ordered IndexType, typename ResultType>
+template<typename IndexType, typename ResultType>
 struct WaitForQueue {
   WaitForQueue() = default;
 
