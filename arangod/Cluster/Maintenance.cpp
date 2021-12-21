@@ -1233,15 +1233,21 @@ static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::QuickL
   return std::nullopt;
 }
 
-static auto reportCurrentReplicatedLogLeader(replication2::replicated_log::QuickLogStatus const& status,
-                                             replication2::agency::LogCurrent::Leader const* currentLeader)
+static auto reportCurrentReplicatedLogLeader(
+    replication2::replicated_log::QuickLogStatus const& status,
+    replication2::agency::LogCurrent::Leader const* currentLeader)
     -> std::optional<replication2::agency::LogCurrent::Leader> {
+  TRI_ASSERT(status.role ==
+             replication2::replicated_log::ParticipantRole::kLeader)
+      << "expected participant with leader role";
   if (status.leadershipEstablished) {
     // check if either there is no entry in current yet, the term has changed or
     // the participant config generation has changed.
-    bool requiresUpdate = currentLeader == nullptr || currentLeader->term != status.getCurrentTerm() ||
-                          currentLeader->committedParticipantsConfig.generation !=
-                              status.committedParticipantConfig->generation;
+    bool requiresUpdate =
+        currentLeader == nullptr ||
+        currentLeader->term != status.getCurrentTerm() ||
+        currentLeader->committedParticipantsConfig.generation !=
+            status.committedParticipantConfig->generation;
 
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
