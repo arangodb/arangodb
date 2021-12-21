@@ -314,7 +314,7 @@ class ImportHelper {
   bool checkCreateCollection();
   bool truncateCollection();
 
-  void sendCsvBuffer();
+  void handleCsvBuffer(uint64_t bufferSizeThreshold);
   void sendJsonBuffer(char const* str, size_t len, bool isObject);
   SenderThread* findIdleSender();
   void waitForSenders();
