@@ -72,7 +72,7 @@ function recoverySuite () {
         return;
       }
 
-      let versionDetails = internal.db._version(true);
+      let versionDetails = internal.db._version(true).details;
       assertTrue(versionDetails.hasOwnProperty("asan"));
       const asan = versionDetails.asan === "true";
 

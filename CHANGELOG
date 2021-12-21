@@ -1,12 +1,18 @@
 devel
 -----
 
-* Set a limit for ArangoSearch segment size to 256MB during recovery to avoid OOM kill in rare 
-  cases.
+* Unify the result structure of `db._version(true)` calls for arangosh and
+  server console. Previously such a call in the server console would return
+  a different structure that only consisted of the `details` subobject.
+  This is now unified so that the result structure in the server console is
+  consistent with arangosh, but strictly speaking this is a breaking change.
+
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
+  OOM kill in rare cases.
 
 * Updated arangosync to 2.7.0.
 
-* Updated Enterprise license behaviour: now there will be a one hour period for
+* Updated Enterprise license behavior: now there will be a one hour period for
   a new deployment to provide the license. After that period, the read-only mode
   will be enforced.
 
