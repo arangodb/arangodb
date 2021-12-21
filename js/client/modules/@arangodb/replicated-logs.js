@@ -33,6 +33,8 @@ function ArangoReplicatedLog(database, id) {
 
 exports.ArangoReplicatedLog = ArangoReplicatedLog;
 
+ArangoReplicatedLog.prototype.defaultLimit = 10;
+
 ArangoReplicatedLog.prototype.id = function () {
   return this._id;
 };
@@ -69,25 +71,25 @@ ArangoReplicatedLog.prototype.status = function() {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.head = function(limit = 100) {
+ArangoReplicatedLog.prototype.head = function(limit = this.defaultLimit) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/head?limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.tail = function(limit = 100) {
+ArangoReplicatedLog.prototype.tail = function(limit = this.defaultLimit) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/tail?limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.slice = function(start, stop) {
+ArangoReplicatedLog.prototype.slice = function(start = 0, stop = start + this.defaultLimit + 1) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/slice?start=${start}&stop=${stop}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.poll = function(first, limit = 100) {
+ArangoReplicatedLog.prototype.poll = function(first = 0, limit = this.defaultLimit) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/poll?first=${first}&limit=${limit}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
