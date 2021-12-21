@@ -1,6 +1,9 @@
 devel
 -----
 
+* Make per-server values "numberOfCores" and "physicalMemory" available to
+  agency to improve quality of potential future shard rebalancing algorithms.
+
 * Unify the result structure of `db._version(true)` calls for arangosh and
   server console. Previously such a call in the server console would return
   a different structure that only consisted of the `details` subobject.
