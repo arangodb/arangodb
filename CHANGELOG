@@ -7,6 +7,10 @@ v3.9.0 (XXXX-XX-XX)
   also batches would contain the documents equivalent to the csv rows in them, 
   but not the header, which should be sent togheter with the documents. 
 
+* Allow initial, full dump shard synchronization to abort prematurely if it
+  turns out that the follower was removed from the plan as a follower (e.g. if
+  there are enough other in-sync followers).
+
 * Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
   OOM kill in rare cases.
 
