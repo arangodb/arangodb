@@ -80,6 +80,15 @@ function optimizerRuleInvertedIndexTestSuite() {
         sleep(1);
         count  = db._query(syncQuery).toArray()[0];
       }
+      syncWait = 100;
+      const syncQuerySorted = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER STARTS_WITH(d.data_field, 'value') COLLECT WITH COUNT INTO c  RETURN c`;
+      count  = db._query(syncQuerySorted).toArray()[0];
+      while (count < docs && (--syncWait) > 0) {
+        sleep(1);
+        count  = db._query(syncQuerySorted).toArray()[0];
+      }
     },
     tearDownAll: function () {
       col.drop();

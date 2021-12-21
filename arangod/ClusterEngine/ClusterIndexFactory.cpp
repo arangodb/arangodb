@@ -29,6 +29,8 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -45,6 +47,7 @@
 namespace {
 
 using namespace arangodb;
+using namespace arangodb::iresearch;
 
 struct DefaultIndexFactory : public IndexTypeFactory {
   std::string const _type;
@@ -148,6 +151,59 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
+struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
+  explicit IResearchInvertedIndexFactory (application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data()) {}
+
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition, IndexId id,
+                                     bool isClusterConstructor) const override {
+    IResearchViewMeta indexMeta;
+    std::string errField;
+    if (!indexMeta.init(definition, errField)) {
+      LOG_TOPIC("a9cce", ERR, arangodb::iresearch::TOPIC)
+          << (errField.empty()
+                  ? (std::string(
+                         "failed to initialize index meta from definition: ") +
+                     definition.toString())
+                  : (std::string("failed to initialize index meta from definition, "
+                                 "error in attribute '") +
+                     errField + "': " + definition.toString()));
+      return nullptr;
+    }
+    InvertedIndexFieldMeta fieldsMeta;
+    if (!fieldsMeta.init(_server, definition, true, errField,
+                         collection.vocbase().name())) {
+      LOG_TOPIC("18c18", ERR, arangodb::iresearch::TOPIC)
+          << (errField.empty()
+                  ? (std::string(
+                         "failed to initialize index fields from definition: ") +
+                     definition.toString())
+                  : (std::string("failed to initialize index fields from definition, "
+                                 "error in attribute '") +
+                     errField + "': " + definition.toString()));
+      return nullptr;
+    }
+    auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
+    std::string indexName;
+    if (!nameSlice.isNone()) {
+      if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+        LOG_TOPIC("91ebe", ERR, arangodb::iresearch::TOPIC)
+            << "failed to initialize index from definition, error in attribute "
+               "'" +
+                   arangodb::StaticStrings::IndexName +
+                   "': " + definition.toString();
+        return nullptr;
+      }
+      indexName = nameSlice.copyString();
+    }
+    auto objectId = basics::VelocyPackHelper::stringUInt64(
+        definition, arangodb::StaticStrings::ObjectId);
+    return std::make_shared<IResearchInvertedClusterIndex>(
+        id, objectId, collection, indexName, std::move(fieldsMeta));
+  }
+};
+
 }  // namespace
 
 namespace arangodb {
@@ -165,6 +221,7 @@ void ClusterIndexFactory::linkIndexFactories(application_features::ApplicationSe
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
   static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
+  static const IResearchInvertedIndexFactory invertedIndexFactory(server);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -177,6 +234,7 @@ void ClusterIndexFactory::linkIndexFactories(application_features::ApplicationSe
   factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
   factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
   factory.emplace(zkdIndexFactory._type, zkdIndexFactory);
+  factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
 }
 
 ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)

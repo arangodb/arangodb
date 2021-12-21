@@ -346,6 +346,10 @@ struct InvertedIndexFieldMeta {
 
   using Fields = std::vector<FieldRecord>;
 
+  bool operator==(InvertedIndexFieldMeta const& other) const noexcept;
+
+  static bool matchesFieldsDefinition(InvertedIndexFieldMeta const& meta, VPackSlice other);
+
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   Fields _fields;
   IResearchViewSort _sort; // sort condition associated with the link

@@ -1210,28 +1210,6 @@ bool  InvertedIndexFieldMeta::json(arangodb::application_features::ApplicationSe
     return false;
   }
 
-  if (writeAnalyzerDefinition) {
-    velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
-    if (!_sort.toVelocyPack(builder)) {
-      return false;
-    }
-  }
-
-  if (writeAnalyzerDefinition) {
-    velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
-    if (!_storedValues.toVelocyPack(builder)) {
-      return false;
-    }
-  }
-
-  if (writeAnalyzerDefinition) {
-    builder.add("version", VPackValue(_version));
-  }
-
-  if (writeAnalyzerDefinition && _sortCompression) {
-    addStringRef(builder, "primarySortCompression", columnCompressionToString(_sortCompression));
-  }
-
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition) {
@@ -1277,6 +1255,90 @@ size_t InvertedIndexFieldMeta::extraFieldsIdx() const noexcept {
     }
   }
   return std::numeric_limits<size_t>::max();
+}
+
+bool InvertedIndexFieldMeta::operator==(InvertedIndexFieldMeta const& other) const noexcept {
+  if (_sort != other._sort) {
+    return false;
+  }
+
+  if (_storedValues != other._storedValues) {
+    return false;
+  }
+
+  if (_sortCompression != other._sortCompression) {
+    return false;
+  }
+
+  if (_version != other._version) {
+    return false;
+  }
+
+  if (_fields.size() != other._fields.size()) {
+    return false;
+  }
+
+  size_t matched{0};
+  for (auto const& thisField : _fields) {
+    for (auto const& otherField : _fields) {
+      TRI_ASSERT(thisField.analyzer._pool);
+      TRI_ASSERT(otherField.analyzer._pool);
+      if (thisField.analyzer._pool->name() ==
+          otherField.analyzer._pool->name() && 
+          basics::AttributeName::namesMatch(thisField.attribute, otherField.attribute) &&
+          basics::AttributeName::namesMatch(thisField.expansion, otherField.expansion)) {
+        matched++;
+        break;
+      }
+    }
+  }
+  return matched == _fields.size();
+}
+
+bool InvertedIndexFieldMeta::matchesFieldsDefinition(
+    InvertedIndexFieldMeta const& meta, VPackSlice other) {
+  auto value = other.get(arangodb::StaticStrings::IndexFields);
+
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  auto const count = meta._fields.size();
+  if (n != count) {
+    return false;
+  }
+
+  // Order of fields does not matter
+  std::vector<arangodb::basics::AttributeName> translate;
+  size_t matched{0};
+  for (auto fieldSlice : VPackArrayIterator(value)) {
+    TRI_ASSERT(fieldSlice.isObject()); // We expect only normalized definitions here.
+                                       // Otherwise we will need vocbase to properly match analyzers.
+    if (ADB_UNLIKELY(!fieldSlice.isObject())) {
+      return false;
+    }
+
+    auto name = fieldSlice.get("name");
+    auto analyzer = fieldSlice.get("analyzer");
+    TRI_ASSERT(name.isString() &&  // We expect only normalized definitions here.
+               analyzer.isString()); // Otherwise we will need vocbase to properly match analyzers.
+    if (ADB_UNLIKELY(!name.isString() || !analyzer.isString())) {
+      return false;
+    }
+
+    auto in = name.stringRef();
+    irs::string_ref analyzerName = analyzer.stringView();
+    TRI_ParseAttributeString(in, translate, true);
+    for (auto const& f : meta._fields) {
+      if (f.isIdentical(translate, analyzerName)) {
+        matched++;
+        break;
+      }
+    }
+    translate.clear();
+  }
+  return matched == count;
 }
 
 InvertedIndexFieldMeta::FieldRecord::FieldRecord(std::vector<basics::AttributeName> const& path,
@@ -1335,6 +1397,5 @@ bool InvertedIndexFieldMeta::FieldRecord::isIdentical(std::vector<basics::Attrib
   }
   return false;
 }
-
 }  // namespace iresearch
 }  // namespace arangodb

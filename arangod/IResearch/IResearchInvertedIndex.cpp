@@ -875,9 +875,7 @@ void IResearchInvertedIndex::toVelocyPack(
     TRI_vocbase_t const* defaultVocbase,
     velocypack::Builder& builder,
     bool forPersistence) const {
-  if (_dataStore._meta.json(builder, nullptr, nullptr)) {
-    //_meta.json(server, builder, forPersistence, nullptr, defaultVocbase, nullptr, true)) {
-  } else {
+  if (!_dataStore._meta.json(builder, nullptr, nullptr)) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
         std::string("Failed to generate inverted index store definition")));
@@ -991,48 +989,7 @@ bool IResearchInvertedIndex::covers(arangodb::aql::Projections& projections) con
 }
 
 bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
-  auto value = other.get(arangodb::StaticStrings::IndexFields);
-
-  if (!value.isArray()) {
-    return false;
-  }
-
-  size_t const n = static_cast<size_t>(value.length());
-  auto const count = _meta._fields.size();
-  if (n != count) {
-    return false;
-  }
-
-  // Order of fields does not matter
-  std::vector<arangodb::basics::AttributeName> translate;
-  size_t matched{0};
-  for (auto fieldSlice : VPackArrayIterator(value)) {
-    TRI_ASSERT(fieldSlice.isObject()); // We expect only normalized definitions here.
-                              // Otherwise we will need vocbase to properly match analyzers.
-    if (ADB_UNLIKELY(!fieldSlice.isObject())) {
-      return false;
-    }
-
-    auto name = fieldSlice.get("name");
-    auto analyzer = fieldSlice.get("analyzer");
-    TRI_ASSERT(name.isString() &&  // We expect only normalized definitions here.
-               analyzer.isString()); // Otherwise we will need vocbase to properly match analyzers.
-    if (ADB_UNLIKELY(!name.isString() || !analyzer.isString())) {
-      return false;
-    }
-
-    auto in = name.stringRef();
-    irs::string_ref analyzerName = analyzer.stringView();
-    TRI_ParseAttributeString(in, translate, true);
-    for (auto const& f : _meta._fields) {
-      if (f.isIdentical(translate, analyzerName)) {  // FIXME check case custom1 <> _system::custom1
-        matched++;
-        break;
-      }
-    }
-    translate.clear();
-  }
-  return matched == count;
+ return InvertedIndexFieldMeta::matchesFieldsDefinition(_meta, other);
 }
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
@@ -1176,5 +1133,56 @@ aql::AstNode* IResearchInvertedIndex::specializeCondition(aql::AstNode* node,
   }
   return node;
 }
+
+void IResearchInvertedClusterIndex::toVelocyPack(
+    VPackBuilder& builder,
+    std::underlying_type<Index::Serialize>::type flags) const {
+  auto const forPersistence =
+      Index::hasFlag(flags, Index::Serialize::Internals);
+  VPackObjectBuilder objectBuilder(&builder);
+  IResearchInvertedIndex::toVelocyPack(
+      IResearchDataStore::collection().vocbase().server(),
+      &IResearchDataStore::collection().vocbase(), builder, forPersistence);
+  if (forPersistence) {
+    TRI_ASSERT(_objectId != 0);  // If we store it, it cannot be 0
+    builder.add(arangodb::StaticStrings::ObjectId,
+                VPackValue(std::to_string(_objectId)));
+  }
+  // can't use Index::toVelocyPack as it will try to output 'fields'
+  // but we have custom storage format
+  builder.add(arangodb::StaticStrings::IndexId,
+              arangodb::velocypack::Value(std::to_string(_iid.id())));
+  builder.add(arangodb::StaticStrings::IndexType,
+              arangodb::velocypack::Value(oldtypeName(type())));
+  builder.add(arangodb::StaticStrings::IndexName,
+              arangodb::velocypack::Value(name()));
+  builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
+  builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+}
+
+bool IResearchInvertedClusterIndex::matchesDefinition(
+    arangodb::velocypack::Slice const& other) const {
+  TRI_ASSERT(other.isObject());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto typeSlice = other.get(arangodb::StaticStrings::IndexType);
+  TRI_ASSERT(typeSlice.isString());
+  std::string_view typeStr = typeSlice.stringView();
+  TRI_ASSERT(typeStr == oldtypeName());
+#endif
+  auto value = other.get(arangodb::StaticStrings::IndexId);
+
+  if (!value.isNone()) {
+    // We already have an id.
+    if (!value.isString()) {
+      // Invalid ID
+      return false;
+    }
+    // Short circuit. If id is correct the index is identical.
+    std::string_view idRef = value.stringView();
+    return idRef == std::to_string(IResearchDataStore::id().id());
+  }
+  return IResearchInvertedIndex::matchesFieldsDefinition(other);
+}
+
 } // namespace iresearch
 } // namespace arangodb

@@ -229,5 +229,94 @@ class IResearchInvertedIndex  : public IResearchDataStore {
  private:
   InvertedIndexFieldMeta _meta;
 };
+
+class IResearchInvertedClusterIndex : public IResearchInvertedIndex, public Index {
+ public:
+  IResearchInvertedClusterIndex(IndexId iid, uint64_t objectId, LogicalCollection& collection,
+                                std::string const& name,
+                                InvertedIndexFieldMeta&& m)
+      : IResearchInvertedIndex(iid, collection, std::forward<InvertedIndexFieldMeta>(m)),
+        Index(iid, collection, name, IResearchInvertedIndex::fields(meta()), false, true),
+        _objectId(objectId) {}
+
+    Index::IndexType type() const override { return  Index::TRI_IDX_TYPE_INVERTED_INDEX; }
+
+    void toVelocyPack(
+        VPackBuilder& builder,
+        std::underlying_type<Index::Serialize>::type flags) const override;
+
+    size_t memory() const override {
+      // FIXME return in memory size
+      // return stats().indexSize;
+      return 0;
+    }
+
+    bool isHidden() const override { return false; }
+
+    char const* typeName() const override { return oldtypeName(); }
+
+    bool canBeDropped() const override { return true; }
+
+    bool isSorted() const override {
+      return IResearchInvertedIndex::isSorted();
+    }
+
+    bool hasSelectivityEstimate() const override { return false; }
+
+    bool inProgress() const override {
+      return IResearchInvertedIndex::inProgress();
+    }
+
+    bool covers(arangodb::aql::Projections& projections) const override {
+      return IResearchInvertedIndex::covers(projections);
+    }
+
+    bool hasCoveringIterator() const override {
+      return !meta()._storedValues.empty() || !meta()._sort.empty();
+    }
+
+    Result drop() override { return {}; }
+    void load() override {}
+    void unload() override {}
+
+    bool matchesDefinition(
+        arangodb::velocypack::Slice const& other) const override;
+
+    std::unique_ptr<IndexIterator> iteratorForCondition(
+        transaction::Methods* trx, aql::AstNode const* node,
+        aql::Variable const* reference, IndexIteratorOptions const& opts,
+        ReadOwnWrites readOwnWrites, int mutableConditionIdx) override {
+      TRI_ASSERT(readOwnWrites ==
+                 ReadOwnWrites::no);  // FIXME: check - should we ever care?
+      return IResearchInvertedIndex::iteratorForCondition(
+          &IResearchDataStore::collection(), trx, node, reference, opts,
+          mutableConditionIdx);
+    }
+
+    Index::SortCosts supportsSortCondition(
+        aql::SortCondition const* sortCondition, aql::Variable const* reference,
+        size_t itemsInIndex) const override {
+      return IResearchInvertedIndex::supportsSortCondition(
+          sortCondition, reference, itemsInIndex);
+    }
+
+    Index::FilterCosts supportsFilterCondition(
+        std::vector<std::shared_ptr<Index>> const& allIndexes,
+        aql::AstNode const* node, aql::Variable const* reference,
+        size_t itemsInIndex) const override {
+      return IResearchInvertedIndex::supportsFilterCondition(
+          IResearchDataStore::id(), Index::fields(), allIndexes, node,
+          reference, itemsInIndex);
+    }
+
+    aql::AstNode* specializeCondition(
+        aql::AstNode* node, aql::Variable const* reference) const override {
+      return IResearchInvertedIndex::specializeCondition(node, reference);
+    }
+
+ private:
+  uint64_t _objectId;
+};
+
 } // namespace iresearch
 } // namespace arangodb
