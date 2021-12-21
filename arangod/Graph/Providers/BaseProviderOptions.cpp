@@ -109,7 +109,7 @@ double BaseProviderOptions::weightEdge(double prefixWeight,
                                        arangodb::velocypack::Slice edge) const {
   if (!hasWeightMethod()) {
     // We do not have a weight. Hardcode.
-    return 1.0;
+    return prefixWeight + 1;
   }
   return _weightCallback.value()(prefixWeight, edge);
 }

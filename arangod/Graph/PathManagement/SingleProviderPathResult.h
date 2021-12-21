@@ -50,6 +50,7 @@ class SingleProviderPathResult : public PathResultInterface {
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;
+  auto prependWeight(double) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
 
@@ -57,6 +58,7 @@ class SingleProviderPathResult : public PathResultInterface {
   auto populatePath() -> void;
   auto verticesToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
   auto edgesToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
+  auto weightsToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
 
   // Writing the full path to VelocyPack
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
@@ -77,6 +79,7 @@ class SingleProviderPathResult : public PathResultInterface {
 
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
+  std::vector<double> _weights;
 
   // Provider for the path
   ProviderType& _provider;

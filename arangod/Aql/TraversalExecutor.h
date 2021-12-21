@@ -68,6 +68,7 @@ class TraversalExecutorInfos {
       Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
       traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
       traverser::TraverserOptions::Order order, bool refactor,
+      double defaultWeight, std::string const& weightAttribute,
       transaction::Methods* trx, arangodb::aql::QueryContext& query,
       arangodb::graph::BaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
@@ -115,6 +116,8 @@ class TraversalExecutorInfos {
   auto parseTraversalEnumerator(traverser::TraverserOptions::Order order,
                                 traverser::TraverserOptions::UniquenessLevel uniqueVertices,
                                 traverser::TraverserOptions::UniquenessLevel uniqueEdges,
+                                double defaultWeight,
+                                std::string const& weightAttribute,
                                 arangodb::aql::QueryContext& query,
                                 arangodb::graph::BaseProviderOptions&& baseProviderOptions,
                                 arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
@@ -145,6 +148,8 @@ class TraversalExecutorInfos {
   traverser::TraverserOptions::UniquenessLevel _uniqueEdges;
   traverser::TraverserOptions::Order _order;
   bool _refactor;
+  double _defaultWeight;
+  std::string _weightAttribute;
   transaction::Methods* _trx;
 };
 

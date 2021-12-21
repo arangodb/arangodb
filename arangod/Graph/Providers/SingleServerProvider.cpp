@@ -148,12 +148,8 @@ auto SingleServerProvider<Step>::expand(Step const& step, size_t previous,
     // TODO: Adjust log output
     LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
         << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
-    if (_opts.hasWeightMethod()) {
-      callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
-                    _opts.weightEdge(step.getWeight(), edge), cursorID});
-    } else {
-      callback(Step{id, std::move(eid), previous, step.getDepth() + 1, 1.0, cursorID});
-    }
+
+    callback(Step{id, std::move(eid), previous, step.getDepth() + 1, _opts.weightEdge(step.getWeight(), edge), cursorID});
   });
 }
 

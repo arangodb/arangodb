@@ -69,6 +69,11 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependVertex(
   _vertices.insert(_vertices.begin(), std::move(v));
 }
 
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependWeight(double weight) -> void {
+  _weights.insert(_weights.begin(), weight);
+}
+
 template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendEdge(typename Step::Edge e)
     -> void {
@@ -87,7 +92,10 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::populatePath()
     prependVertex(s.getVertex());
     if (s.getEdge().isValid()) {
       prependEdge(s.getEdge());
-    }
+      prependWeight(s.getWeight());
+    } else {
+      prependWeight(0);
+    };
     return true;
   });
 }
@@ -120,6 +128,20 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::edgesToVelocyP
   }
 }
 
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
+    weightsToVelocyPack(velocypack::Builder& builder) -> void {
+  TRI_ASSERT(builder.isOpenObject());
+  {
+    builder.add(VPackValue(StaticStrings::GraphQueryWeights));
+    VPackArrayBuilder weights(&builder);
+    // Write first part of the Path
+    for (size_t i = 0; i < _weights.size(); i++) {
+      builder.add(VPackValue(_weights[i]));
+    }
+  }
+}
+
 template <class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
     arangodb::velocypack::Builder& builder) -> void {
@@ -129,6 +151,7 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
   VPackObjectBuilder path{&builder};
   verticesToVelocyPack(builder);
   edgesToVelocyPack(builder);
+  weightsToVelocyPack(builder);
 }
 
 template <class ProviderType, class PathStoreType, class Step>

@@ -806,15 +806,16 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         validatorOptions.setVertexExpression(depth, std::move(expression));
       }
 
-      auto executorInfos =
-          TraversalExecutorInfos(nullptr, outputRegisterMapping,
-                                 getStartVertex(), inputRegister,
-                                 std::move(filterConditionVariables),
-                                 plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges,
-                                 opts->mode, opts->refactor(), opts->trx(), opts->query(),
-                                 std::move(baseProviderOptions), std::move(validatorOptions),
-//                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth, opts->maxDepth});
-                                 std::move(options));
+      auto executorInfos = TraversalExecutorInfos(
+          nullptr, outputRegisterMapping, getStartVertex(), inputRegister,
+          std::move(filterConditionVariables), plan()->getAst(),
+          opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+          opts->defaultWeight, opts->weightAttribute, opts->trx(),
+          opts->query(), std::move(baseProviderOptions),
+          std::move(validatorOptions),
+          //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+          //                                 opts->maxDepth});
+          std::move(options));
 
       return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -830,14 +831,15 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
       opts->collectionToShard()};
   PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx()};
-  auto executorInfos =
-      TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
-                             getStartVertex(), inputRegister,
-                             std::move(filterConditionVariables),
-                             plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges,
-                             opts->mode, opts->refactor(), opts->trx(), opts->query(),
-                             std::move(baseProviderOptions), std::move(validatorOptions),
-                             arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth, opts->maxDepth});
+  auto executorInfos = TraversalExecutorInfos(
+      std::move(traverser), outputRegisterMapping, getStartVertex(),
+      inputRegister, std::move(filterConditionVariables), plan()->getAst(),
+      opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
+      opts->defaultWeight, opts->weightAttribute,
+      opts->trx(), opts->query(), std::move(baseProviderOptions),
+      std::move(validatorOptions),
+      arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
+                                                 opts->maxDepth});
 
   return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

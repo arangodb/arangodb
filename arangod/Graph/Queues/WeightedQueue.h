@@ -112,8 +112,11 @@ class WeightedQueue {
   struct WeightedComparator {
     bool operator()(Step const& a, Step const& b) {
       if (a.getWeight() == b.getWeight()) {
-        // Only false if A is not processable but B is.
-        return !a.isProcessable() || b.isProcessable();
+        if (a.getDepth() == b.getDepth()) {
+          // Only false if A is not processable but B is.
+          return !a.isProcessable() || b.isProcessable();
+        }
+        return a.getDepth() > b.getDepth();
       }
       return a.getWeight() > b.getWeight();
     }

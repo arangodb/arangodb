@@ -58,6 +58,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     Ast* ast, traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
     traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
     traverser::TraverserOptions::Order order, bool refactor,
+    double defaultWeight, std::string const& weightAttribute,
     transaction::Methods* trx, arangodb::aql::QueryContext& query,
     arangodb::graph::BaseProviderOptions&& baseProviderOptions,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
@@ -72,6 +73,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _uniqueEdges(edgeUniqueness),
       _order(order),
       _refactor(refactor),
+      _defaultWeight(defaultWeight),
+      _weightAttribute(weightAttribute),
       _trx(trx) {
   if (!refactor) {
     TRI_ASSERT(_traverser != nullptr);
@@ -92,6 +95,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _traversalEnumerator->clear(false);  // TODO [GraphRefactor]: check - potentially call reset instead
     }
     parseTraversalEnumerator(getOrder(), getUniqueVertices(), getUniqueEdges(),
+                             _defaultWeight, _weightAttribute,
                              query, std::move(baseProviderOptions),
                              std::move(pathValidatorOptions),
                              std::move(enumeratorOptions));
@@ -234,7 +238,9 @@ TraversalExecutorInfos::convertUniquenessLevels() const {
 // TODO [GraphRefactor]: Add a parameter to toggle tracing variants of enumerators.
 auto TraversalExecutorInfos::parseTraversalEnumerator(
     TraverserOptions::Order order, TraverserOptions::UniquenessLevel uniqueVertices,
-    TraverserOptions::UniquenessLevel uniqueEdges, arangodb::aql::QueryContext& query,
+    TraverserOptions::UniquenessLevel uniqueEdges,
+    double defaultWeight, std::string const& weightAttribute,
+    arangodb::aql::QueryContext& query,
     arangodb::graph::BaseProviderOptions&& baseProviderOptions,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void {
@@ -353,6 +359,27 @@ auto TraversalExecutorInfos::parseTraversalEnumerator(
     }
   } else {
     TRI_ASSERT(order == TraverserOptions::Order::WEIGHTED);
+    // It is valid to not have set a weightAttribute.
+    // TRI_ASSERT(_opts->hasWeightAttribute());
+    if (weightAttribute.empty()) {
+      baseProviderOptions.setWeightEdgeCallback(
+          [defaultWeight](double previousWeight, VPackSlice edge) -> double {
+            return previousWeight + defaultWeight;
+          });
+    } else {
+      baseProviderOptions.setWeightEdgeCallback(
+          [weightAttribute = weightAttribute, defaultWeight](double previousWeight, VPackSlice edge) -> double {
+            auto const weight =
+                arangodb::basics::VelocyPackHelper::getNumericValue<double>(edge, weightAttribute,
+                                                                            defaultWeight);
+            if (weight < 0.) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+            }
+
+            return previousWeight + weight;
+          });
+    }
+
     switch (uniqueVertices) {
       case TraverserOptions::UniquenessLevel::NONE:
         switch(uniqueEdges) {
@@ -618,9 +645,6 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItem
       return {ExecutorState::HASMORE, stats(), AqlCall{}};
     }
   }
-
-  TRI_ASSERT(false);
-  return {state, oldStats, AqlCall{}};
 }
 
 auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -820,9 +844,6 @@ if (variableSlice.isArray()) {
     }
     return false;
   }
-
-  TRI_ASSERT(false);
-  return false;
 }
 
 [[nodiscard]] auto TraversalExecutor::stats() -> Stats {
