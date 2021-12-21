@@ -325,9 +325,11 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
       THROW_ARANGO_EXCEPTION(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
     }
+    constexpr auto kBaseIndex = LogIndex{0};
     return QuickLogStatus{.role = ParticipantRole::kFollower,
                           .term = _currentTerm,
-                          .local = followerData.getLocalStatistics()};
+                          .local = followerData.getLocalStatistics(),
+                          .leadershipEstablished = followerData._commitIndex > kBaseIndex};
   });
 }
 

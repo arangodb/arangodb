@@ -454,9 +454,9 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
             .role = ParticipantRole::kLeader,
             .term = term,
             .local = leaderData.getLocalStatistics(),
+            .leadershipEstablished = leaderData._leadershipEstablished,
             .activeParticipantConfig = leaderData.activeParticipantConfig,
-            .committedParticipantConfig = leaderData.committedParticipantConfig,
-            .leadershipEstablished = leaderData._leadershipEstablished};
+            .committedParticipantConfig = leaderData.committedParticipantConfig};
       });
 }
 

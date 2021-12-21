@@ -234,11 +234,11 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_generation
       .role = replicated_log::ParticipantRole::kLeader,
       .term = LogTerm{3},
       .local = {},
+      .leadershipEstablished = true,
       .activeParticipantConfig =
           std::make_shared<ParticipantsConfig const>(participantsConfig),
       .committedParticipantConfig =
-          std::make_shared<ParticipantsConfig const>(participantsConfig),
-      .leadershipEstablished = true};
+          std::make_shared<ParticipantsConfig const>(participantsConfig)};
 
   auto localLogs = ReplicatedLogStatusMap{
       {logId, replicated_log::QuickLogStatus{std::move(leaderStatus)}},

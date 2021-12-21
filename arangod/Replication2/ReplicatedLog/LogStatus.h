@@ -47,11 +47,11 @@ struct QuickLogStatus {
   ParticipantRole role{ParticipantRole::kUnconfigured};
   std::optional<LogTerm> term{};
   std::optional<LogStatistics> local{};
+  bool leadershipEstablished{false};
 
   // The following make sense only for a leader.
   std::shared_ptr<ParticipantsConfig const> activeParticipantConfig{};
   std::shared_ptr<ParticipantsConfig const> committedParticipantConfig{};
-  bool leadershipEstablished{false};
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept

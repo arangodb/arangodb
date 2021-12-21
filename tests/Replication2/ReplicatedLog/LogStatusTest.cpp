@@ -47,7 +47,9 @@ TEST_F(ReplicatedLogTest, quick_status_compare) {
       std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
 
   leader->triggerAsyncReplication();
-  follower->runAsyncAppendEntries();
+  while (follower->hasPendingAppendEntries()) {
+    follower->runAsyncAppendEntries();
+  }
 
   {
     auto quickStatus = leader->getQuickStatus();
@@ -71,6 +73,6 @@ TEST_F(ReplicatedLogTest, quick_status_compare) {
 
     EXPECT_EQ(quickStatus.activeParticipantConfig, nullptr);
     EXPECT_EQ(quickStatus.committedParticipantConfig, nullptr);
-    EXPECT_FALSE(quickStatus.leadershipEstablished);
+    EXPECT_TRUE(quickStatus.leadershipEstablished);
   }
 }
