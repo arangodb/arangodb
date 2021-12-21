@@ -1,6 +1,12 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
+
+* Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen 
+  that a buffer containing only the header would be sent to the server, and 
+  also batches would contain the documents equivalent to the csv rows in them, 
+  but not the header, which should be sent togheter with the documents. 
+
 * Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
   OOM kill in rare cases.
 

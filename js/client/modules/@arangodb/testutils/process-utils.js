@@ -1095,6 +1095,10 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }
 
+  if (what.batchSize !== undefined) {
+    args['batch-size'] = what.batchSize;
+  }
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangodump or arangorestore based on config object
