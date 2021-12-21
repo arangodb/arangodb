@@ -36,6 +36,8 @@
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
@@ -917,6 +919,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
       builder.add("endpoint", VPackValue(_myEndpoint));
       builder.add("advertisedEndpoint", VPackValue(_advertisedEndpoint));
       builder.add("host", VPackValue(getHost()));
+      builder.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
+      builder.add("numberOfCores", VPackValue(NumberOfCores::getValue()));
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine",

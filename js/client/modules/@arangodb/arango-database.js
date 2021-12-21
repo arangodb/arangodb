@@ -300,7 +300,7 @@ ArangoDatabase.prototype._setLicense = function (data, options) {
         "License body must be a string. It is however " + (typeof data) + "."});
   }
 
-  var requestResult = this._connection.PUT(url, data);
+  var requestResult = this._connection.PUT(url, JSON.stringify(data));
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.result;
