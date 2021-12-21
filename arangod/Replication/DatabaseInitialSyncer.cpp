@@ -879,11 +879,14 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       !_config.isChild() &&
       _config.applier._skipCreateDrop &&
       _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
-      _config.applier._restrictCollections.size() == 1) {
+      _config.applier._restrictCollections.size() == 1 &&
+      !hasDocuments(*coll)) {
     // DB server doing shard synchronization. now try to fetch everything in a single VPack array.
     // note: only servers >= 3.10 will honor this URL parameter. servers that are not capable of
     // this format will simply ignore it and send the old format.
     // the syncer has code to tell the two formats apart.
+    // note: we can only add this flag if we are sure there are no documents present locally.
+    // everything else is not safe.
     baseUrl += "&single=true";
   }
 
