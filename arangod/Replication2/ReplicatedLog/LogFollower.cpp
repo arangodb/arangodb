@@ -325,7 +325,7 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
       THROW_ARANGO_EXCEPTION(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
     }
-    return QuickLogStatus{.role = ParticipantRole::kLeader,
+    return QuickLogStatus{.role = ParticipantRole::kFollower,
                           .term = _currentTerm,
                           .local = followerData.getLocalStatistics()};
   });
