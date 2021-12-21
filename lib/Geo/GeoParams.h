@@ -154,6 +154,25 @@ struct QueryParams {
   static constexpr int queryMaxCoverCells = 20;
   static constexpr int queryWorstLevel = 4;
   static constexpr int queryBestLevel = 23;  // about 1m
+
+  std::string toString() const {
+    auto t = [](bool x) -> std::string {
+      return x ? std::string("true") : std::string("false");
+    };
+    std::string res = "minDistance: " + std::to_string(minDistance)
+      + " incl: " + t(minInclusive)
+      + " maxDistance: " + std::to_string(maxDistance)
+      + " incl: " + t(maxInclusive)
+      + " sorted: " + t(sorted)
+      + " ascending: " + t(ascending)
+      + " origin: " + std::to_string(origin.lng().degrees())
+      + " , " + std::to_string(origin.lat().degrees())
+      + " pointsOnly: " + t(pointsOnly)
+      + " limit: " + std::to_string(limit)
+      + " filterType: " + std::to_string((int) filterType)
+      + " filterShape: " + std::to_string((int) filterShape.type());
+    return res;
+  }
 };
 
 }  // namespace geo

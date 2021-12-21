@@ -40,6 +40,7 @@
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 namespace geo_index {
@@ -62,6 +63,8 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
   static_assert(isAscending() || isDescending(), "Invalid template");
   TRI_ASSERT(!isAscending() || _params.ascending);
   TRI_ASSERT(!isDescending() || !_params.ascending);
+
+  LOG_DEVEL << _params.toString();
 
   /*LOG_TOPIC("f2eed", ERR, Logger::FIXME)
       << "--------------------------------------------------------";
