@@ -368,6 +368,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(configuration, [this](std::string const& msg) -> void { setProgress(msg); }),
       _config{_state.applier, _batch, _state.connection, false, _state.leader, _progress, _state, vocbase},
+      _lastAbortionCheck(std::chrono::steady_clock::now()),
       _isClusterRole(ServerState::instance()->isClusterRole()),
       _quickKeysNumDocsLimit(vocbase.server().getFeature<ReplicationFeature>().quickKeysLimit()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -477,7 +478,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
       }
       views = inventoryResponse.slice().get("views");
     }
-
+   
     // strip eventual objectIDs and then dump the collections
     auto pair = rocksutils::stripObjectIds(collections);
     r = handleCollectionsAndViews(pair.first, views, incremental);
@@ -538,6 +539,18 @@ bool DatabaseInitialSyncer::isAborted() const {
     GlobalReplicationApplier* applier = replication.globalReplicationApplier();
     if (applier != nullptr && applier->stopInitialSynchronization()) {
       return true;
+    }
+  }
+
+  if (_checkAbortion) {
+    // execute custom check for abortion only every few seconds, in case
+    // it is expensive
+    auto now = std::chrono::steady_clock::now();
+    if (now - _lastAbortionCheck >= std::chrono::seconds(5)) {
+      _lastAbortionCheck = now;
+      if (_checkAbortion()) {
+        return true;
+      }
     }
   }
 
