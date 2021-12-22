@@ -22,7 +22,7 @@ v3.8.5 (XXXX-XX-XX)
   data ingestion or lead to cluster internal timeouts.
 
 * Added startup options to adjust previously hard-coded parameters for RocksDB's
-  behaviour:
+  behavior:
 
   - `--rocksdb.pending-compactions-bytes-slowdown-trigger` controls RocksDB's
     setting `soft_pending_compaction_bytes_limit`, which controls how many
