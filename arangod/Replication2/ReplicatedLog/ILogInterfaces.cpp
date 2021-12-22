@@ -40,6 +40,11 @@ auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus 
   return LogStatus{UnconfiguredStatus{}};
 }
 
+auto replicated_log::LogUnconfiguredParticipant::getQuickStatus() const
+    -> QuickLogStatus {
+  return QuickLogStatus{.role = ParticipantRole::kUnconfigured};
+}
+
 replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(
     std::unique_ptr<LogCore> logCore, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
     : _logCore(std::move(logCore)), _logMetrics(std::move(logMetrics)) {
@@ -66,7 +71,7 @@ auto replicated_log::LogUnconfiguredParticipant::waitForIterator(LogIndex index)
 }
 
 auto replicated_log::ILogParticipant::getTerm() const noexcept -> std::optional<LogTerm> {
-  return getStatus().getCurrentTerm();
+  return getQuickStatus().getCurrentTerm();
 }
 
 auto replicated_log::LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
