@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improved performance in replication dump protocol by inserting arrays of 
+  documents instead of one document at a time and also not retrieving the
+  document revision field when not needed.
+
 * Changed various default values for RocksDB to tune operations for different
   typical scenarios like gp2 type volumes and gp3 type volumes and locally
   attached SSDs with RAID0:

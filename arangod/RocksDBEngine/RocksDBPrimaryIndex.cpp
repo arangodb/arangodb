@@ -639,11 +639,9 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
   TRI_ASSERT(keySlice.isString());
 
   bool const lock = !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
-  IndexOperationMode mode = options.indexOperationMode;
   
   transaction::StringLeaser leased(&trx);
   rocksdb::PinnableSlice ps(leased.get());
-  Result res;
   rocksdb::Status s;
   if (lock) {
     s = mthd->GetForUpdate(_cf, key->string(), &ps);
@@ -652,9 +650,11 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
     s = mthd->Get(_cf, key->string(), &ps, ReadOwnWrites::yes);
   }
 
+  Result res;
   if (insert) {
     // INSERT case
     if (s.ok()) {  // detected conflicting primary key
+      IndexOperationMode mode = options.indexOperationMode;
       if (mode == IndexOperationMode::internal) {
       // in this error mode, we return the conflicting document's key
       // inside the error message string (and nothing else)!
@@ -682,9 +682,7 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         LocalDocumentId const& documentId,
                                         velocypack::Slice slice,
                                         OperationOptions const& options) {
-  VPackSlice keySlice;
-  RevisionId revision;
-  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
+  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   TRI_ASSERT(keySlice.isString());
 
   RocksDBKeyLeaser key(&trx);
@@ -698,9 +696,7 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
                                          LocalDocumentId const& documentId,
                                          velocypack::Slice slice,
                                          OperationOptions const& options) {
-  VPackSlice keySlice;
-  RevisionId revision;
-  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
+  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   TRI_ASSERT(keySlice.isString());
 
   RocksDBKeyLeaser key(&trx);
