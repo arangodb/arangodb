@@ -32,7 +32,7 @@
 ################################################################################
 
 from __future__ import print_function # py2 compat
-import re, sys, string, os, re, io
+import re, sys, string, os, re, io, json
 from pprint import pprint
 
 ################################################################################
@@ -524,8 +524,22 @@ def generateArangoshRun(testName):
 def generateAQL(testName):
     value = RunTests[testName]
     startLineNo = RunTests[testName][LINE_NO]
+    bv_parse_error = None
     if not AQLBV in value:
         value[AQLBV] = "{}"
+    else:
+        try:
+            json.loads(value[AQLBV])
+        except json.decoder.JSONDecodeError as ex:
+            bv_parse_error = '''
+  allErrors += '\\nRUN FAILED TO JSON PARSE BIND VALUES IN EXAMPLE {testName} in {filename}\\nError: {err}\\nUnparseable JSON:\\n {no_json}';
+'''.format(**{
+    "testName": testName,
+    "filename": MapSourceFiles[testName],
+    "err": ex.msg,
+    "no_json": value[AQLBV].encode('unicode_escape').decode("utf-8").replace("'", "\\'")
+})
+            value[AQLBV] = "{}"
 
     if not AQLDS in value:
         value[AQLDS] = ""
@@ -554,11 +568,15 @@ def generateAQL(testName):
         escapeBS.sub(doubleBS, OutputDir),
         escapeBS.sub(doubleBS, MapSourceFiles[testName])
     ))
-    print("  const query = `" + value[AQL] + "`;")
-    print("  const bv = " + value[AQLBV] + ";")
-    print("  const ds = '" + value[AQLDS] + "';")
-    print("  const explainAql = " + value[AQLEXPLAIN].lower() + ";")
-    print('''
+    if bv_parse_error:
+        print(bv_parse_error)
+        print('\n})();\n')
+    else:
+        print("  const query = `" + value[AQL] + "`;")
+        print("  const bv = " + value[AQLBV] + ";")
+        print("  const ds = '" + value[AQLDS] + "';")
+        print("  const explainAql = " + value[AQLEXPLAIN].lower() + ";")
+        print('''
   if (ds !== '') {
     exds[ds].removeDS();
     exds[ds].createDS();
@@ -573,11 +591,19 @@ def generateAQL(testName):
   output += "\\n@R\\n";
 
   if (explainAql) {
-    const explainResult =  require('@arangodb/aql/explainer').explain({bindVars:bv, query:query}, {}, false);
-    ansiAppender(explainResult);
+    try {
+      const explainResult =  require('@arangodb/aql/explainer').explain({bindVars:bv, query:query}, {}, false);
+      ansiAppender(explainResult);
+    } catch (err) {
+      allErrors += '\\nRUN FAILED: ' + testName + ', ' + err + '\\n' + err.stack + '\\n';
+    }
   } else {
-    const result = db._query(query, bv).toArray();
-    jsonAppender(JSON.stringify(result, null, 2));
+    try {
+      const result = db._query(query, bv).toArray();
+      jsonAppender(JSON.stringify(result, null, 2));
+    } catch (err) {
+      allErrors += '\\nRUN FAILED: ' + testName + ', ' + err + '\\n' + err.stack + '\\n';
+    }
   }
 
   if (ds !== '') {

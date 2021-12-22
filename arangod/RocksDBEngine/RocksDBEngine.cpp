@@ -135,6 +135,9 @@ DECLARE_COUNTER(arangodb_revision_tree_resurrections_total, "Number of revision 
 std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
+// global flag to cancel all compactions. will be flipped to true on shutdown
+static std::atomic<bool> cancelCompactions{false};
+
 // minimum value for --rocksdb.sync-interval (in ms)
 // a value of 0 however means turning off the syncing altogether!
 static constexpr uint64_t minSyncInterval = 5;
@@ -1015,6 +1018,11 @@ void RocksDBEngine::beginShutdown() {
   if (_createShaFiles && _shaListener != nullptr) {
     _shaListener->beginShutdown();
   } 
+
+  // from now on, all started compactions can be canceled.
+  // note that this is only a best-effort hint to RocksDB and
+  // may not be followed immediately.
+  ::cancelCompactions.store(true, std::memory_order_release);
 }
 
 void RocksDBEngine::stop() {
@@ -1681,6 +1689,7 @@ void RocksDBEngine::processCompactions() {
         double start = TRI_microtime();
         try {
           rocksdb::CompactRangeOptions opts;
+          opts.canceled = &::cancelCompactions;
           rocksdb::Slice b = bounds.start(), e = bounds.end();
           _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
         } catch (std::exception const& ex) {
@@ -2002,7 +2011,8 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
 }
 
 Result RocksDBEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
-  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel);
+  return rocksutils::compactAll(_db->GetRootDB(), changeLevel, compactBottomMostLevel, 
+                                &::cancelCompactions);
 }
 
 /// @brief Add engine-specific optimizer rules

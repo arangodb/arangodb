@@ -88,6 +88,10 @@ function recoverySuite () {
           // intentionally ignore "This is an unlicensed ArangoDB instance...
           return false;
         }
+        if (line.match(/\[d72fb\].*Your license will expire/)) {
+          // intentionally ignore "This is an unlicensed ArangoDB instance...
+          return false;
+        }
 
         return true;
       });

@@ -5,6 +5,19 @@ v3.9.0 (XXXX-XX-XX)
   to 2. This allows compactions jobs to be broken up into disjoint ranges which
   can be processed in parallel.
 
+* Allow initial, full dump shard synchronization to abort prematurely if it
+  turns out that the follower was removed from the plan as a follower (e.g. if
+  there are enough other in-sync followers).
+
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
+  OOM kill in rare cases.
+
+* Cancel ongoing RocksDB compactions on server shutdown.
+
+* Updated Enterprise license behavior: now there will be a one hour period for
+  a new deployment to provide the license. After that period, the read-only mode
+  will be enforced.
+
 * Added startup options to adjust previously hard-coded parameters for the 
   RocksDB throttle:
   - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
