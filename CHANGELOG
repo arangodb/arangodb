@@ -25,7 +25,7 @@ v3.9.0 (XXXX-XX-XX)
   can be processed in parallel.
 
 * Added startup options to adjust previously hard-coded parameters for RocksDB's
-  behaviour:
+  behavior:
 
   - `--rocksdb.pending-compactions-bytes-slowdown-trigger` controls RocksDB's
     setting `soft_pending_compaction_bytes_limit`, which controls how many
