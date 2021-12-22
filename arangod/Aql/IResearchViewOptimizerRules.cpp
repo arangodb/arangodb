@@ -598,6 +598,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       // this node could be appended with materializer
       auto stopSearch = false;
       auto stickToSortNode = false;
+      auto haveRemoteBreaker = false;
       auto const& var = viewNode.outVariable();
       std::vector<aql::CalculationNode*> calcNodes; // nodes variables can be replaced
       auto& viewNodeState = viewNode.state();
@@ -617,6 +618,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             } else {
               stickToSortNode = true;
             }
+            haveRemoteBreaker = true;
             break;
           default: // make clang happy
             break;
@@ -720,8 +722,23 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         TRI_ASSERT(materializeDependency);
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
-        dependencyParent->replaceDependency(materializeDependency, materializeNode);
-        materializeDependency->addParent(materializeNode);
+        if (stickToSortNode) {
+          auto& mainLimiNode = *ExecutionNode::castTo<LimitNode*>(limitNode);
+          auto* auxLimitNode = plan->registerNode(std::make_unique<LimitNode>(
+              plan.get(), plan->nextId(), 
+            haveRemoteBreaker ? 0 : mainLimiNode.offset(), 
+            haveRemoteBreaker ? mainLimiNode.offset() + mainLimiNode.limit() : mainLimiNode.limit()));
+          TRI_ASSERT(auxLimitNode);
+          dependencyParent->replaceDependency(materializeDependency, materializeNode);
+          auxLimitNode->addParent(materializeNode);
+          materializeDependency->addParent(auxLimitNode);
+          if (!haveRemoteBreaker) {
+            plan->unlinkNode(limitNode);
+          }
+        } else {
+          dependencyParent->replaceDependency(materializeDependency, materializeNode);
+          materializeDependency->addParent(materializeNode);
+        }
         modified = true;
       }
     }
