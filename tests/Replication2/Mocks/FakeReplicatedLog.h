@@ -110,6 +110,10 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
     return _follower->getStatus();
   }
 
+  auto getQuickStatus() const -> replicated_log::QuickLogStatus override {
+    return _follower->getQuickStatus();
+  }
+
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> override {
     return std::move(*_follower).resign();
   }
