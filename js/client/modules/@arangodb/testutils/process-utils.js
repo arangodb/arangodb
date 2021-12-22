@@ -1092,12 +1092,12 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['remove-attribute'] = what.removeAttribute;
   }
 
-  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
-}
-
   if (what.batchSize !== undefined) {
     args['batch-size'] = what.batchSize;
   }
+
+  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
+}
 
 
 // //////////////////////////////////////////////////////////////////////////////
