@@ -87,8 +87,7 @@ struct Log {
   };
 
   struct Plan {
-    struct Term {
-      using TermId = size_t;
+    struct TermSpecification {
       struct Leader {
         ParticipantId serverId;
         RebootId rebootId;
@@ -99,7 +98,7 @@ struct Log {
         size_t softWriteConcern;
       };
 
-      TermId id;
+      LogTerm term;
       std::optional<Leader> leader;
       Config config;
     };
@@ -117,13 +116,15 @@ struct Log {
       Set set;
     };
 
-    Term term;
+    TermSpecification termSpec;
     Participants participants;
   };
 
   struct Current {
 
     struct LocalState {
+      LogTerm term;
+      TermIndexPair spearhead;
     };
     using LocalStates = std::unordered_map<ParticipantId, LocalState>;
 
@@ -228,7 +229,22 @@ struct ParticipantHealth {
   bool isHealthy;
 };
 
-using ParticipantsHealth = std::unordered_map<ParticipantId, ParticipantHealth>;
+struct ParticipantsHealth {
+  auto isHealthy(ParticipantId participant) const -> bool {
+    if (auto it = _health.find(participant); it != std::end(_health))  {
+      return it->second.isHealthy;
+    }
+    return false;
+  };
+  auto validRebootId(ParticipantId participant, RebootId rebootId) const -> bool {
+    if (auto it = _health.find(participant); it != std::end(_health)) {
+      return it->second.rebootId == rebootId;
+    }
+    return false;
+  };
+
+  std::unordered_map<ParticipantId, ParticipantHealth> _health;
+};
 
 
 
@@ -238,11 +254,43 @@ struct Action {
 };
 
 struct UpdateTermAction : Action {
-  UpdateTermAction(Log::Plan::Term const& newTerm) : _newTerm(newTerm) {};
+  UpdateTermAction(Log::Plan::TermSpecification const& newTerm) : _newTerm(newTerm) {};
   void execute() override {};
 
-  Log::Plan::Term _newTerm;
+  Log::Plan::TermSpecification _newTerm;
 };
+
+struct LeaderElectionCampaign {
+  enum class Reason {
+    ServerIll, TermNotConfirmed, OK };
+
+    std::unordered_map<ParticipantId, Reason> reasons;
+    size_t numberOKParticipants{0};
+    replication2::TermIndexPair bestTermIndex;
+    std::vector<ParticipantId> electibleLeaderSet;
+};
+
+struct SuccessfulLeaderElectionAction : Action {
+  SuccessfulLeaderElectionAction() {};
+  void execute() override {};
+
+  LeaderElectionCampaign _campaign;
+  ParticipantId _newLeader;
+  Log::Plan::TermSpecification _newTerm;
+};
+
+struct FailedLeaderElectionAction : Action {
+  FailedLeaderElectionAction() {};
+  void execute() override {};
+
+  LeaderElectionCampaign _campaign;
+  ParticipantId _newLeader;
+  Log::Plan::TermSpecification _newTerm;
+};
+
+
+
+
 
 auto replicatedLogAction(Log const&, ParticipantsHealth const&) -> std::unique_ptr<Action>;
 

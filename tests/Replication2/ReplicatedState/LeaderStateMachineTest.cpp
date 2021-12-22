@@ -27,58 +27,99 @@
 
 using namespace arangodb::replication2::replicated_state;
 
-struct LeaderStateMachineTest : ::testing::Test {
-};
+struct LeaderStateMachineTest : ::testing::Test {};
 
 TEST_F(LeaderStateMachineTest, test_log_no_leader) {
-    auto log = Log {
-      .target = Log::Target { },
-      .plan = Log::Plan {
-      .term = Log::Plan::Term {
-      .id = 1,
-      .leader = std::nullopt,
-      .config = Log::Plan::Term::Config { .waitForSync = true, .writeConcern = 3, .softWriteConcern = 3}
-    }
-      },
-      .current = Log::Current {
-      }
-    };
+  auto log =
+      Log{.target = Log::Target{},
+          .plan =
+              Log::Plan{
+                  .termSpec =
+                      Log::Plan::TermSpecification{
+                          .term = LogTerm{1},
+                          .leader = std::nullopt,
+                          .config =
+                              Log::Plan::TermSpecification::Config{
+                                  .waitForSync = true,
+                                  .writeConcern = 3,
+                                  .softWriteConcern = 3}},
+                  .participants =
+                      Log::Plan::Participants{.generation = 1, .set = {}},
+              },
+          .current = Log::Current{}};
 
-    auto health = ParticipantsHealth{
-    {"A", ParticipantHealth { .rebootId = 0, .isHealthy = true } },
-    {"B", ParticipantHealth { .rebootId = 0, .isHealthy = true } },
-    {"C", ParticipantHealth { .rebootId = 0, .isHealthy = true } } };
+  auto health = ParticipantsHealth{
+      ._health = {{"A", ParticipantHealth{.rebootId = 0, .isHealthy = true}},
+                  {"B", ParticipantHealth{.rebootId = 0, .isHealthy = true}},
+                  {"C", ParticipantHealth{.rebootId = 0, .isHealthy = true}}}};
 
-    auto r = replicatedLogAction(log, health);
-    EXPECT_EQ(r, nullptr);
+  auto r = replicatedLogAction(log, health);
+  EXPECT_EQ(r, nullptr);
 }
 
 TEST_F(LeaderStateMachineTest, test_log_with_dead_leader) {
-    auto log = Log {
-      .target = Log::Target { },
-      .plan = Log::Plan {
-      .term = Log::Plan::Term {
-      .id = 1,
-      .leader = Log::Plan::Term::Leader{ .serverId = "A", .rebootId = 42 },
-      .config = Log::Plan::Term::Config { .waitForSync = true, .writeConcern = 3, .softWriteConcern = 3}
-    }
+  auto log = Log{
+      .target = Log::Target{},
+      .plan = Log::Plan{.termSpec =
+                            Log::Plan::TermSpecification{
+                                .term = LogTerm{1},
+                                .leader =
+                                    Log::Plan::TermSpecification::Leader{
+                                        .serverId = "A", .rebootId = 42},
+                                .config =
+                                    Log::Plan::TermSpecification::Config{
+                                        .waitForSync = true,
+                                        .writeConcern = 3,
+                                        .softWriteConcern = 3}},
+                        .participants =
+                            Log::Plan::Participants{.generation = 1, .set = {}}
+
       },
-      .current = Log::Current {
-      }
-    };
+      .current = Log::Current{}};
 
-    auto health = ParticipantsHealth{
-    {"A", ParticipantHealth { .rebootId = 43, .isHealthy = true } },
-    {"B", ParticipantHealth { .rebootId = 14, .isHealthy = true } },
-    {"C", ParticipantHealth { .rebootId = 14, .isHealthy = true } } };
+  auto health = ParticipantsHealth{
+      ._health = {{"A", ParticipantHealth{.rebootId = 43, .isHealthy = true}},
+                  {"B", ParticipantHealth{.rebootId = 14, .isHealthy = true}},
+                  {"C", ParticipantHealth{.rebootId = 14, .isHealthy = true}}}};
 
-    auto r = replicatedLogAction(log, health);
+  auto r = replicatedLogAction(log, health);
 
-    ASSERT_NE(r, nullptr);
+  ASSERT_NE(r, nullptr);
 
-    auto& action = dynamic_cast<UpdateTermAction&>(*r);
+  auto& action = dynamic_cast<UpdateTermAction&>(*r);
 
-    //TODO: Friend op == for newTerm
-    EXPECT_EQ(action._newTerm.id, log.plan.term.id + 1);
-    EXPECT_EQ(action._newTerm.leader, std::nullopt);
+  // TODO: Friend op == for newTerm
+  EXPECT_EQ(action._newTerm.term, LogTerm{log.plan.termSpec.term.value + 1});
+  EXPECT_EQ(action._newTerm.leader, std::nullopt);
+}
+
+TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
+  auto log = Log{
+      .target = Log::Target{},
+      .plan = Log::Plan{.termSpec =
+                            Log::Plan::TermSpecification{
+                                .term = LogTerm{1},
+                                .leader = std::nullopt,
+                                .config =
+                                    Log::Plan::TermSpecification::Config{
+                                        .waitForSync = true,
+                                        .writeConcern = 3,
+                                        .softWriteConcern = 3}},
+                        .participants = Log::Plan::Participants{.generation = 1,
+                                                                .set = {}}},
+      .current = Log::Current{}};
+
+  auto health = ParticipantsHealth{
+      ._health = {{"A", ParticipantHealth{.rebootId = 43, .isHealthy = true}},
+                  {"B", ParticipantHealth{.rebootId = 14, .isHealthy = true}},
+                  {"C", ParticipantHealth{.rebootId = 14, .isHealthy = true}}}};
+
+  auto r = replicatedLogAction(log, health);
+
+  ASSERT_NE(r, nullptr);
+
+  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
+
+  // TODO: Test
+  EXPECT_EQ(action._newLeader, "A");
 }
