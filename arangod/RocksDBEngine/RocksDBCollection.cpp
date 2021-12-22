@@ -1440,7 +1440,8 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     
   TRI_ASSERT(!options.checkUniqueConstraintsInPreflight || state->isOnlyExclusiveTransaction());
   
-  bool const performPreflightChecks = (options.checkUniqueConstraintsInPreflight || state->numOperations() >= ::preflightThreshold);
+  bool const performPreflightChecks =
+      (options.checkUniqueConstraintsInPreflight || state->numOperations() >= ::preflightThreshold);
   
   if (performPreflightChecks) {
     // do a round of checks for all indexes, to verify that the insertion

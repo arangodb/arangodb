@@ -1036,7 +1036,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  auto workForOneDocument = [&](VPackSlice const value, bool isBabies, bool& excludeFromReplication) -> Result {
+  auto workForOneDocument = [&](VPackSlice value, bool isBabies,
+                                bool& excludeFromReplication) -> Result {
     excludeFromReplication = false;
 
     if (!value.isObject()) {
