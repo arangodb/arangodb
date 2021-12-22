@@ -35,6 +35,7 @@ struct AsyncFollower : replicated_log::ILogFollower {
   explicit AsyncFollower(std::shared_ptr<replicated_log::LogFollower> follower);
   ~AsyncFollower() noexcept override;
   [[nodiscard]] auto getStatus() const -> replicated_log::LogStatus override;
+  [[nodiscard]] auto getQuickStatus() const -> replicated_log::QuickLogStatus override;
   auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> override;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto release(LogIndex doneWithIdx) -> Result override;

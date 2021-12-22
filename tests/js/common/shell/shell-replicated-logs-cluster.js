@@ -139,12 +139,18 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let head = log.head(11);  // skip first entry
+      let head = log.head();
+      assertEqual(head.length, 10);
+      assertEqual(head[9].logIndex, 10);
+      head = log.head(11);  // skip first entry
       assertEqual(head.length, 11);
       for (let i = 0; i < 10; i++) {
         assertEqual(head[i+1].payload.foo, i);
       }
-      let tail = log.tail(10);
+      let tail = log.tail();
+      assertEqual(tail.length, 10);
+      assertEqual(tail[9].logIndex, 101);
+      tail = log.tail(10);
       assertEqual(tail.length, 10);
       for (let i = 0; i < 10; i++) {
         assertEqual(tail[i].payload.foo, 100 + i - 10);
@@ -159,7 +165,11 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let s = log.slice(50, 60);
+      let s = log.slice();
+      assertEqual(s.length, 10);
+      assertEqual(s[0].logIndex, 1);
+      assertEqual(s[9].logIndex, 10);
+      s = log.slice(50, 60);
       assertEqual(s.length, 10);
       for (let i = 0; i < 10; i++) {
         assertEqual(s[i].logIndex, 50 + i);
@@ -194,7 +204,11 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let s = log.poll(50, 10);
+      let s = log.poll();
+      assertEqual(s.length, 9);
+      assertEqual(s[0].logIndex, 1);
+      assertEqual(s[8].logIndex, 9);
+      s = log.poll(50, 10);
       assertEqual(s.length, 10);
       for (let i = 0; i < 10; i++) {
         assertEqual(s[i].logIndex, 50 + i);
