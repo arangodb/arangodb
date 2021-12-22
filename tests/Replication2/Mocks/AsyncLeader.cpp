@@ -33,6 +33,9 @@ using namespace replication2::replicated_log;
 auto test::AsyncLeader::getStatus() const -> LogStatus {
   return _leader->getStatus();
 }
+auto test::AsyncLeader::getQuickStatus() const -> QuickLogStatus {
+  return _leader->getQuickStatus();
+}
 auto test::AsyncLeader::resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
   return std::move(*_leader).resign();
 }
