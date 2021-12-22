@@ -9,7 +9,6 @@
 #include <string>
 #include <unordered_map>
 
-
 // We have
 //  - ReplicatedLog
 //  - ReplicatedState
@@ -61,7 +60,6 @@ using namespace arangodb::replication2;
 
 struct Log {
   struct Target {
-
     struct Participant {
       bool forced;
     };
@@ -76,7 +74,7 @@ struct Log {
     using Leader = std::optional<ParticipantId>;
 
     struct Properties {
-     // ...
+      // ...
     };
 
     LogId id;
@@ -121,7 +119,6 @@ struct Log {
   };
 
   struct Current {
-
     struct LocalState {
       LogTerm term;
       TermIndexPair spearhead;
@@ -158,7 +155,6 @@ struct Log {
 
 struct State {
   struct Target {
-
     using StateId = size_t;
     struct Properties {
       enum class Hash { Crc32 };
@@ -202,7 +198,7 @@ struct State {
       struct Snapshot {
         enum class Status { Completed, InProgreess, Failed };
         struct Timestamp {
-        // TODO std::chrono?
+          // TODO std::chrono?
         };
 
         Status status;
@@ -223,7 +219,6 @@ struct State {
   Current current;
 };
 
-
 struct ParticipantHealth {
   RebootId rebootId;
   bool isHealthy;
@@ -231,12 +226,13 @@ struct ParticipantHealth {
 
 struct ParticipantsHealth {
   auto isHealthy(ParticipantId participant) const -> bool {
-    if (auto it = _health.find(participant); it != std::end(_health))  {
+    if (auto it = _health.find(participant); it != std::end(_health)) {
       return it->second.isHealthy;
     }
     return false;
   };
-  auto validRebootId(ParticipantId participant, RebootId rebootId) const -> bool {
+  auto validRebootId(ParticipantId participant, RebootId rebootId) const
+      -> bool {
     if (auto it = _health.find(participant); it != std::end(_health)) {
       return it->second.rebootId == rebootId;
     }
@@ -246,33 +242,31 @@ struct ParticipantsHealth {
   std::unordered_map<ParticipantId, ParticipantHealth> _health;
 };
 
-
-
 struct Action {
   virtual void execute() = 0;
   virtual ~Action() = default;
 };
 
 struct UpdateTermAction : Action {
-  UpdateTermAction(Log::Plan::TermSpecification const& newTerm) : _newTerm(newTerm) {};
-  void execute() override {};
+  UpdateTermAction(Log::Plan::TermSpecification const& newTerm)
+      : _newTerm(newTerm){};
+  void execute() override{};
 
   Log::Plan::TermSpecification _newTerm;
 };
 
 struct LeaderElectionCampaign {
-  enum class Reason {
-    ServerIll, TermNotConfirmed, OK };
+  enum class Reason { ServerIll, TermNotConfirmed, OK };
 
-    std::unordered_map<ParticipantId, Reason> reasons;
-    size_t numberOKParticipants{0};
-    replication2::TermIndexPair bestTermIndex;
-    std::vector<ParticipantId> electibleLeaderSet;
+  std::unordered_map<ParticipantId, Reason> reasons;
+  size_t numberOKParticipants{0};
+  replication2::TermIndexPair bestTermIndex;
+  std::vector<ParticipantId> electibleLeaderSet;
 };
 
 struct SuccessfulLeaderElectionAction : Action {
-  SuccessfulLeaderElectionAction() {};
-  void execute() override {};
+  SuccessfulLeaderElectionAction(){};
+  void execute() override{};
 
   LeaderElectionCampaign _campaign;
   ParticipantId _newLeader;
@@ -280,18 +274,23 @@ struct SuccessfulLeaderElectionAction : Action {
 };
 
 struct FailedLeaderElectionAction : Action {
-  FailedLeaderElectionAction() {};
-  void execute() override {};
+  FailedLeaderElectionAction(){};
+  void execute() override{};
 
   LeaderElectionCampaign _campaign;
   ParticipantId _newLeader;
   Log::Plan::TermSpecification _newTerm;
 };
 
+auto to_string(LeaderElectionCampaign::Reason const& reason) -> std::string;
+auto computeReason(Log::Current::LocalState const& status, bool healthy,
+                   LogTerm term) -> LeaderElectionCampaign::Reason;
 
+auto runElectionCampaign(Log::Current::LocalStates const& states,
+                         ParticipantsHealth const& health, LogTerm term)
+    -> LeaderElectionCampaign;
 
+auto replicatedLogAction(Log const&, ParticipantsHealth const&)
+    -> std::unique_ptr<Action>;
 
-
-auto replicatedLogAction(Log const&, ParticipantsHealth const&) -> std::unique_ptr<Action>;
-
-}
+}  // namespace arangodb::replication2::replicated_state

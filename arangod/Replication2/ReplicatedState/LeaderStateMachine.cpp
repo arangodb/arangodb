@@ -12,9 +12,22 @@
 
 namespace arangodb::replication2::replicated_state {
 
-auto computeReason(ParticipantId, Log::Current::LocalState const& status,
-                   bool healthy, LogTerm term)
-    -> LeaderElectionCampaign::Reason {
+auto to_string(LeaderElectionCampaign::Reason const& reason) -> std::string {
+  switch (reason) {
+    case LeaderElectionCampaign::Reason::OK: {
+      return "OK";
+    } break;
+    case LeaderElectionCampaign::Reason::ServerIll: {
+      return "ServerIll";
+    } break;
+    case LeaderElectionCampaign::Reason::TermNotConfirmed: {
+      return "TermNotConfirmed";
+    } break;
+  }
+}
+
+auto computeReason(Log::Current::LocalState const& status, bool healthy,
+                   LogTerm term) -> LeaderElectionCampaign::Reason {
   if (!healthy) {
     return LeaderElectionCampaign::Reason::ServerIll;
   } else if (term != status.term) {
@@ -30,8 +43,7 @@ auto runElectionCampaign(Log::Current::LocalStates const& states,
   auto campaign = LeaderElectionCampaign{};
 
   for (auto const& [participant, status] : states) {
-    auto reason =
-        computeReason(participant, status, health.isHealthy(participant), term);
+    auto reason = computeReason(status, health.isHealthy(participant), term);
     campaign.reasons.emplace(participant, reason);
 
     if (reason == LeaderElectionCampaign::Reason::OK) {
@@ -114,13 +126,13 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
       // Not enough participants were available to form a quorum, so
       // we can't elect a leader
 
-        /*
-      LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
-          << "replicated log " << database << "/" << spec.id
-          << " not enough participants available for leader election "
-          << campaign.numberOKParticipants << " < "
-          << requiredNumberOfOKParticipants;
-*/
+      /*
+    LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
+        << "replicated log " << database << "/" << spec.id
+        << " not enough participants available for leader election "
+        << campaign.numberOKParticipants << " < "
+        << requiredNumberOfOKParticipants;
+      */
       auto action = std::make_unique<FailedLeaderElectionAction>();
       action->_campaign = campaign;
       return action;
