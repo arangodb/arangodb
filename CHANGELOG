@@ -1,7 +1,6 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
-
 * Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen 
   that a buffer containing only the header would be sent to the server, and 
   also batches would contain the documents equivalent to the csv rows in them, 
