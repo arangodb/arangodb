@@ -68,7 +68,8 @@ namespace arangodb {
 class RocksDBThrottle : public rocksdb::EventListener {
  public:
   RocksDBThrottle(uint64_t numSlots, uint64_t frequency, uint64_t scalingFactor, 
-                  uint64_t maxWriteRate, uint64_t slowdownWritesTrigger);
+                  uint64_t maxWriteRate, uint64_t slowdownWritesTrigger,
+                  uint64_t lowerBoundBps);
   virtual ~RocksDBThrottle();
 
   void OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
@@ -151,6 +152,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
   uint64_t const _scalingFactor;
   uint64_t const _maxWriteRate;
   uint64_t const _slowdownWritesTrigger;
+  uint64_t const _lowerBoundThrottleBps;
 }; 
 
 }  // namespace arangodb
