@@ -521,60 +521,67 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
 void arangodb::maintenance::diffReplicatedLogs(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
     ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
-    MaintenanceFeature::errors_t& errors, std::unordered_set<DatabaseID>& makeDirty,
-    bool& callNotify, std::vector<std::shared_ptr<ActionDescription>>& actions) {
+    MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions) {
   using namespace arangodb::replication2;
 
-  auto const createReplicatedLogAction = [&](LogId id, agency::LogPlanSpecification const* spec) {
-    auto specStr = std::invoke([&] {
-      VPackBuilder builder;
-      auto slice = VPackSlice::noneSlice();
-      if (spec != nullptr) {
-        spec->toVelocyPack(builder);
-        slice = builder.slice();
-      }
-      return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
-    });
+  auto const createReplicatedLogAction =
+      [&](LogId id, agency::LogPlanSpecification const* spec) {
+        auto specStr = std::invoke([&] {
+          VPackBuilder builder;
+          auto slice = VPackSlice::noneSlice();
+          if (spec != nullptr) {
+            spec->toVelocyPack(builder);
+            slice = builder.slice();
+          }
+          return StringUtils::encodeBase64(slice.startAs<char>(),
+                                           slice.byteSize());
+        });
 
-    auto description = std::make_shared<ActionDescription>(
-        std::map<std::string, std::string>{
-            {std::string(NAME), std::string(UPDATE_REPLICATED_LOG)},
-            {std::string(DATABASE), database},
-            {REPLICATED_LOG_ID, std::to_string(id.id())},
-            {REPLICATED_LOG_SPEC, specStr},
-        },
-        NORMAL_PRIORITY, false);
+        auto description = std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>{
+                {std::string(NAME), std::string(UPDATE_REPLICATED_LOG)},
+                {std::string(DATABASE), database},
+                {REPLICATED_LOG_ID, std::to_string(id.id())},
+                {REPLICATED_LOG_SPEC, specStr},
+            },
+            NORMAL_PRIORITY, false);
 
-    makeDirty.insert(database);
-    callNotify = true;
-    actions.emplace_back(std::move(description));
-  };
+        makeDirty.insert(database);
+        callNotify = true;
+        actions.emplace_back(std::move(description));
+      };
 
   // check all plan log entries
   for (auto const& [logId, spec] : planLogs) {
     if (spec.currentTerm && spec.currentTerm->participants.find(serverId) !=
                                 spec.currentTerm->participants.end()) {
       // check if there are logs that do not exist locally
-      if (auto localIt = localLogs.find(spec.id); localIt == std::end(localLogs)) {
+      if (auto localIt = localLogs.find(spec.id);
+          localIt == std::end(localLogs)) {
         createReplicatedLogAction(spec.id, &spec);
       } else {
         // check if the term is the same
-        bool const requiresUpdate = std::invoke([&, &status = localIt->second, &spec = spec] {
-          // check if term has changed
-          auto currentTerm = status.getCurrentTerm();
-          if (!currentTerm.has_value() || *currentTerm != spec.currentTerm->term) {
-            return true;
-          }
+        bool const requiresUpdate =
+            std::invoke([&, &status = localIt->second, &spec = spec] {
+              // check if term has changed
+              auto currentTerm = status.getCurrentTerm();
+              if (!currentTerm.has_value() ||
+                  *currentTerm != spec.currentTerm->term) {
+                return true;
+              }
 
-          // check if participants generation has changed (in case we are the leader)
-          if (status.role == replicated_log::ParticipantRole::kLeader) {
-            if (status.activeParticipantConfig->generation <
-                spec.participantsConfig.generation) {
-              return true;
-            }
-          }
-          return false;
-        });
+              // check if participants generation has changed (in case we are
+              // the leader)
+              if (status.role == replicated_log::ParticipantRole::kLeader) {
+                if (status.activeParticipantConfig->generation <
+                    spec.participantsConfig.generation) {
+                  return true;
+                }
+              }
+              return false;
+            });
 
         // Create UpdateLogAction
         if (requiresUpdate) {
@@ -1215,15 +1222,19 @@ static VPackBuilder assembleLocalDatabaseInfo(DatabaseFeature& df, std::string c
   }
 }
 
-static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::QuickLogStatus const& status,
-                                           replication2::agency::LogCurrentLocalState const* currentLocal)
+static auto reportCurrentReplicatedLogLocal(
+    replication2::replicated_log::QuickLogStatus const& status,
+    replication2::agency::LogCurrentLocalState const* currentLocal)
     -> std::optional<replication2::agency::LogCurrentLocalState> {
   // Check if there is term locally (i.e. in status)
   if (auto localTerm = status.getCurrentTerm(); localTerm.has_value()) {
-    // If so, check if there is nothing in Agency/Current or the term value is different
+    // If so, check if there is nothing in Agency/Current or the term value is
+    // different
     if (currentLocal == nullptr || currentLocal->term != *localTerm) {
       auto localStats = status.getLocalStatistics();
-      TRI_ASSERT(localStats.has_value());  // if status has a term, then it has statistics
+      TRI_ASSERT(
+          localStats
+              .has_value());  // if status has a term, then it has statistics
       replication2::agency::LogCurrentLocalState localState;
       localState.term = localTerm.value();
       localState.spearhead = localStats->spearHead;
@@ -1235,7 +1246,7 @@ static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::QuickL
 
 static auto reportCurrentReplicatedLogLeader(
     replication2::replicated_log::QuickLogStatus const& status,
-    replication2::agency::LogCurrent::Leader const* currentLeader)
+    ServerID const& serverId, replication2::agency::LogCurrent::Leader const* currentLeader)
     -> std::optional<replication2::agency::LogCurrent::Leader> {
   TRI_ASSERT(status.role ==
              replication2::replicated_log::ParticipantRole::kLeader)
@@ -1248,10 +1259,10 @@ static auto reportCurrentReplicatedLogLeader(
         currentLeader->term != status.getCurrentTerm() ||
         currentLeader->committedParticipantsConfig.generation !=
             status.committedParticipantConfig->generation;
-
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
       leader.term = *status.getCurrentTerm();
+      leader.serverId = serverId;
       leader.committedParticipantsConfig = *status.activeParticipantConfig;
       return leader;
     }
@@ -1260,20 +1271,21 @@ static auto reportCurrentReplicatedLogLeader(
   return std::nullopt;
 }
 
-static void writeUpdateReplicatedLogLeader(VPackBuilder& report, replication2::LogId id,
-                                           DatabaseID const& dbName, replication2::LogTerm localTerm,
-                                           replication2::agency::LogCurrent::Leader const& leader) {
+static void writeUpdateReplicatedLogLeader(
+    VPackBuilder& report, replication2::LogId id, DatabaseID const& dbName,
+    replication2::LogTerm localTerm,
+    replication2::agency::LogCurrent::Leader const& leader) {
   // update Current/ReplicatedLogs/<dbname>/<logId>/leader/term with
   // currentTerm and precondition
   //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
   using namespace cluster::paths;
-  auto reportPath =
-      aliases::current()
-          ->replicatedLogs()
-          ->database(dbName)
-          ->log(to_string(id))
-          ->leader()
-          ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+  auto reportPath = aliases::current()
+                        ->replicatedLogs()
+                        ->database(dbName)
+                        ->log(to_string(id))
+                        ->leader()
+                        ->str(SkipComponents(
+                            1) /* skip first path component, i.e. 'arango' */);
   auto preconditionPath =
       aliases::plan()
           ->replicatedLogs()
@@ -1281,7 +1293,8 @@ static void writeUpdateReplicatedLogLeader(VPackBuilder& report, replication2::L
           ->log(to_string(id))
           ->currentTerm()
           ->term()
-          ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+          ->str(
+              SkipComponents(1) /* skip first path component, i.e. 'arango' */);
   report.add(VPackValue(reportPath));
   {
     VPackObjectBuilder o(&report);
@@ -1299,21 +1312,24 @@ static void writeUpdateReplicatedLogLocal(
     VPackBuilder& report, replication2::LogId id, DatabaseID const& dbName,
     ServerID const& serverId, replication2::LogTerm localTerm,
     replication2::agency::LogCurrentLocalState const& local) {
-  // Check Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId>/currentTerm != currentTerm
-  // if so, update Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId> with
-  //  {"currentTerm": currentTerm, "spearHead": {"index": last-index, "term": last-term}}
+  // Check
+  // Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId>/currentTerm
+  // != currentTerm if so, update
+  // Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId> with
+  //  {"currentTerm": currentTerm, "spearHead": {"index": last-index, "term":
+  //  last-term}}
   // and precondition
   //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
 
   using namespace cluster::paths;
-  auto reportPath =
-      aliases::current()
-          ->replicatedLogs()
-          ->database(dbName)
-          ->log(to_string(id))
-          ->localStatus()
-          ->participant(serverId)
-          ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+  auto reportPath = aliases::current()
+                        ->replicatedLogs()
+                        ->database(dbName)
+                        ->log(to_string(id))
+                        ->localStatus()
+                        ->participant(serverId)
+                        ->str(SkipComponents(
+                            1) /* skip first path component, i.e. 'arango' */);
   auto preconditionPath =
       aliases::plan()
           ->replicatedLogs()
@@ -1321,7 +1337,8 @@ static void writeUpdateReplicatedLogLocal(
           ->log(to_string(id))
           ->currentTerm()
           ->term()
-          ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+          ->str(
+              SkipComponents(1) /* skip first path component, i.e. 'arango' */);
   report.add(VPackValue(reportPath));
   {
     VPackObjectBuilder o(&report);
@@ -1340,6 +1357,7 @@ static void reportCurrentReplicatedLog(
     replication2::replicated_log::QuickLogStatus const& status, VPackSlice cur,
     replication2::LogId id, std::string const& dbName,
     std::string const& serverId) {
+  using namespace replication2::agency;
   auto logContext =
       LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
   auto localTerm = status.getCurrentTerm();
@@ -1351,26 +1369,29 @@ static void reportCurrentReplicatedLog(
     return;
   }
 
-  auto currentSlice = cur.get(cluster::paths::aliases::current()
-                                  ->replicatedLogs()
-                                  ->database(dbName)
-                                  ->log(to_string(id))
-                                  ->vec());
-  if (currentSlice.isNone()) {
-    return;
-  }
   // load current into memory
-  auto current = replication2::agency::LogCurrent::fromVelocyPack(currentSlice);
+  auto current = std::invoke([&]() -> std::optional<LogCurrent> {
+    auto currentSlice = cur.get(cluster::paths::aliases::current()
+                                    ->replicatedLogs()
+                                    ->database(dbName)
+                                    ->log(to_string(id))
+                                    ->vec());
+    if (currentSlice.isNone()) {
+      return std::nullopt;
+    }
+    return LogCurrent::fromVelocyPack(currentSlice);
+  });
 
   {
-    auto localState =
-        std::invoke([&]() -> replication2::agency::LogCurrentLocalState const* {
-          if (auto iter = current.localState.find(serverId);
-              iter != std::end(current.localState)) {
-            return &iter->second;
-          }
-          return nullptr;
-        });
+    auto localState = std::invoke([&]() -> LogCurrentLocalState const* {
+      if (current.has_value()) {
+        if (auto iter = current->localState.find(serverId);
+            iter != std::end(current->localState)) {
+          return &iter->second;
+        }
+      }
+      return nullptr;
+    });
 
     if (auto result = reportCurrentReplicatedLogLocal(status, localState);
         result.has_value()) {
@@ -1383,12 +1404,15 @@ static void reportCurrentReplicatedLog(
     if (status.role == replication2::replicated_log::ParticipantRole::kLeader) {
       auto currentLeader =
           std::invoke([&]() -> replication2::agency::LogCurrent::Leader const* {
-            if (current.leader.has_value()) {
-              return &current.leader.value();
+            if (current.has_value()) {
+              if (current->leader.has_value()) {
+                return &current->leader.value();
+              }
             }
             return nullptr;
           });
-      if (auto result = reportCurrentReplicatedLogLeader(status, currentLeader);
+      if (auto result =
+              reportCurrentReplicatedLogLeader(status, serverId, currentLeader);
           result.has_value()) {
         writeUpdateReplicatedLogLeader(report, id, dbName, *localTerm, *result);
       }
