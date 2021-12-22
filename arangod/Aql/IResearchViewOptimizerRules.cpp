@@ -723,12 +723,16 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
         if (stickToSortNode) {
-          auto& mainLimiNode = *ExecutionNode::castTo<LimitNode*>(limitNode);
+          auto& mainLimitNode = *ExecutionNode::castTo<LimitNode*>(limitNode);
+
+          // if we don't have remote breaker we could just replace the limit node
+          // otherwise we must have new node to constrain accesss to the
+          // sort node with only offset+limit documents
           auto* auxLimitNode = plan->registerNode(std::make_unique<LimitNode>(
               plan.get(), plan->nextId(),
-              haveRemoteBreaker ? 0 : mainLimiNode.offset(),
-              haveRemoteBreaker ? mainLimiNode.offset() + mainLimiNode.limit()
-                                : mainLimiNode.limit()));
+              haveRemoteBreaker ? 0 : mainLimitNode.offset(),
+              haveRemoteBreaker ? mainLimitNode.offset() + mainLimitNode.limit()
+                                : mainLimitNode.limit()));
           TRI_ASSERT(auxLimitNode);
           dependencyParent->replaceDependency(materializeDependency,
                                               materializeNode);
