@@ -51,9 +51,25 @@ function geoSuite () {
   let view;
 
   function insertAll(x) {
+    for (let i = 0; i < x.length; ++i) {
+      x[i]._key = "K" + i;
+    }
     noIndex.insert(x);
     withIndex.insert(x);
     withView.insert(x);
+    withView.insert(
+      {_key:"sentinel", geo:{"type":"Point", coordinates: [-13, -13]}});
+    // Wait until sentinel visible in view:
+    while (true) {
+      let res = getQueryResults(`
+        FOR d IN ${viewName}
+          SEARCH ANALYZER(GEO_DISTANCE([-13, -13], d.geo) < 100, "geo_json")
+          RETURN d._key`);
+      if (res.length === 1 && res[0] === "sentinel") {
+        break;
+      }
+    }
+    withView.remove("sentinel");
   }
 
   function truncateAll(x) {
@@ -72,16 +88,16 @@ function geoSuite () {
     }
     let i = 0;
     let j = 0;
-    while (i < a.length && j <= b.length) {
+    while (i < a.length && j < b.length) {
       if (a[i] < b[j]) {
         good = false;
         msg += "Found key " + a[i] + " in '" + namea + "' but not in '"
-               + nameb + "'";
+               + nameb + "'\n";
         ++i;
       } else if (a[i] > b[j]) {
         good = false;
         msg += "Found key " + b[j] + " in '" + nameb + "' but not in '"
-               + namea + "'";
+               + namea + "'\n";
         ++j;
       } else {
         ++i;
@@ -91,13 +107,13 @@ function geoSuite () {
     while (i < a.length) {
       good = false;
       msg += "Found key " + a[i] + " in '" + namea + "' but not in '"
-             + nameb + "'";
+             + nameb + "'\n";
       ++i;
     }
     while (j < b.length) {
       good = false;
       msg += "Found key " + b[j] + " in '" + nameb + "' but not in '"
-             + namea + "'";
+             + namea + "'\n";
       ++j;
     }
     return {good, msg};
@@ -111,6 +127,13 @@ function geoSuite () {
     let wv = getQueryResults(qv, {}).sort();
     let oi = compareKeyLists("without index", wo, "with index", wi);
     let ov = compareKeyLists("without index", wo, "with view", wv);
+    if (!oi.good || !ov.good) {
+      print("Query for collections:", q);
+      print("Query for views:", qv);
+      print("Without index:", wo);
+      print("With index:", wi);
+      print("With view:", wv);
+    }
     assertTrue(oi.good && ov.good, oi.msg + ov.msg);
   }
 
@@ -157,15 +180,36 @@ function geoSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test near function
+/// @brief test single point
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
       insertAll([{geo: { type: "Point", coordinates: [50, 50] } }]);
       compare(
-        `FILTER GEO_DISTANCE([50, 50], d.geo < 1000)`,
-        `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 1000, "geo_json")`
+        `FILTER GEO_DISTANCE([50, 50], d.geo) < 5000`,
+        `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 5000, "geo_json")`
       );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test point near centroid of polygon
+////////////////////////////////////////////////////////////////////////////////
+
+    testPointNearCentroidOfPolygon : function () {
+      insertAll([
+        {geo:{type:"Polygon",
+              coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,10]]]}},
+        {geo:{type:"Polygon",
+              coordinates:[[[10,10],[20,10],[30,20],[10,20],[10,10]]]}},
+        {geo:{type:"Polygon",
+              coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,11.1],
+                [11,11.1],[11,19],[19,19],[19,11],[10,11],[10,10]]]}}
+      ]);
+      compare(
+        `FILTER GEO_DISTANCE([15, 15], d.geo) <= 5000`,
+        `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 5000, "geo_json")`
+      );
+      require("internal").wait(3600);
     },
   };
 

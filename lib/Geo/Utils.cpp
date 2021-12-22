@@ -94,7 +94,7 @@ void scanIntervals(QueryParams const& params, std::vector<S2CellId> const& cover
     }
   }
 
-  if (!params.pointsOnly && params.filterType == FilterType::INTERSECTS) {
+  if (!params.pointsOnly || params.filterType == FilterType::INTERSECTS) {
     // we need to find larger cells that may still contain (parts of) the cover,
     // these are parent cells, up to the minimum allowed cell level allowed in
     // the index. In that case we do not need to look at all sub-cells only
