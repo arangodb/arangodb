@@ -56,6 +56,11 @@ class PhysicalCollection;
 class Result;
 class ShardingInfo;
 
+namespace replication2::replicated_log {
+struct ILogLeader;
+struct ReplicatedLog;
+}
+
 namespace transaction {
 class Methods;
 }
@@ -351,6 +356,10 @@ class LogicalCollection : public LogicalDataSource {
   bool isSatToSmartEdgeCollection() const noexcept;
 
   bool isSmartToSatEdgeCollection() const noexcept;
+  
+  replication2::LogId replicatedLogId() const;
+  
+  std::shared_ptr<replication2::replicated_log::ILogLeader> replicatedLogLeader();
 
  protected:
   void addInternalValidator(std::unique_ptr<ValidatorBase>);
@@ -449,6 +458,8 @@ class LogicalCollection : public LogicalDataSource {
   uint64_t _internalValidatorTypes;
 
   std::vector<std::unique_ptr<ValidatorBase>> _internalValidators;
+  
+  std::shared_ptr<replication2::replicated_log::ReplicatedLog> _replicatedLog;
 };
 
 }  // namespace arangodb

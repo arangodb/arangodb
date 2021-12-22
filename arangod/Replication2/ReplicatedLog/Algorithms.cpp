@@ -366,11 +366,11 @@ algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
   : _writeConcern(writeConcern),
     _softWriteConcern(softWriteConcern),
     _replicationFactor(replicationFactor) {
-  TRI_ASSERT(_writeConcern <= _softWriteConcern)
-      << "writeConcern > softWriteConcern " << _writeConcern << " > " << _softWriteConcern;
-  TRI_ASSERT(_softWriteConcern <= _replicationFactor)
-      << "softWriteConcern > opt.replicationFactor " << _softWriteConcern
-      << " > " << _replicationFactor;
+  //TRI_ASSERT(_writeConcern <= _softWriteConcern)
+  //    << "writeConcern > softWriteConcern " << _writeConcern << " > " << _softWriteConcern;
+  //TRI_ASSERT(_softWriteConcern <= _replicationFactor)
+  //    << "softWriteConcern > opt.replicationFactor " << _softWriteConcern
+  //    << " > " << _replicationFactor;
 }
 
 auto algorithms::calculateCommitIndex(std::vector<ParticipantStateTuple> const& indexes,

@@ -36,6 +36,8 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1245,6 +1247,18 @@ bool LogicalCollection::isSatToSmartEdgeCollection() const noexcept {
 
 bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
   return (_internalValidatorTypes & InternalValidatorType::SmartToSatEdge) != 0;
+}
+
+replication2::LogId LogicalCollection::replicatedLogId() const {
+  std::string logId{name().data() + 1, name().size() - 1};
+  return replication2::LogId(basics::StringUtils::uint64(logId));
+}
+
+std::shared_ptr<replication2::replicated_log::ILogLeader> LogicalCollection::replicatedLogLeader() {
+  if (_replicatedLog == nullptr) {
+    _replicatedLog = vocbase().getReplicatedLogById(replicatedLogId());
+  }
+  return _replicatedLog->getLeader();
 }
 
 #ifndef USE_ENTERPRISE
