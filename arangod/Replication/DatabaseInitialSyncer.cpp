@@ -653,7 +653,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
     if (s.isArray()) {
       // got one big velocypack array with all documents in it.
-      // servers >= 3.10 will send this if we send the "single=true" request parameter.
+      // servers >= 3.10 will send this if we send the "array=true" request parameter.
       // older versions are not able to send this format, but will send each document as
       // a single velocypack slice.
       
@@ -887,7 +887,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     // the syncer has code to tell the two formats apart.
     // note: we can only add this flag if we are sure there are no documents present locally.
     // everything else is not safe.
-    baseUrl += "&single=true";
+    baseUrl += "&array=true";
   }
 
   if (maxTick > 0) {

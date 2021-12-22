@@ -761,13 +761,13 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // wrapped into a {"type":2300,"data":<document>} envelope.
   bool const useEnvelope = _request->parsedValue("useEnvelope", true);
 
-  // "single" URL parameter supported from >= 3.10 onwards. it defaults to "false"
+  // "array" URL parameter supported from >= 3.10 onwards. it defaults to "false"
   // if not set. when explictly set to "true", we can get away with sending all
   // documents as one big velocypack array, instead of sending multiple velocypack
   // documents one following another. this has the advantage that on the client side
   // we will receive a velocypack array which is ready to be fed into a multi-document
   // operation.
-  bool const singleArray = _request->parsedValue("single", false);
+  bool const singleArray = _request->parsedValue("array", false);
 
   uint64_t chunkSize = determineChunkSize();
   size_t reserve = std::max<size_t>(chunkSize, 8192);
