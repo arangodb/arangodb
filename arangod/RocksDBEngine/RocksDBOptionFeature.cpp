@@ -130,7 +130,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
       _maxBytesForLevelMultiplier(rocksDBDefaults.max_bytes_for_level_multiplier),
       _maxBackgroundJobs(rocksDBDefaults.max_background_jobs),
-      _maxSubcompactions(rocksDBDefaults.max_subcompactions),
+      _maxSubcompactions(std::max(uint32_t(2), rocksDBDefaults.max_subcompactions)),
       _numThreadsHigh(0),
       _numThreadsLow(0),
       _targetFileSizeBase(rocksDBDefaults.target_file_size_base),
@@ -348,7 +348,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--rocksdb.max-subcompactions",
                      "maximum number of concurrent subjobs for a background "
                      "compaction",
-                     new UInt64Parameter(&_maxSubcompactions));
+                     new UInt32Parameter(&_maxSubcompactions));
 
   options->addOption("--rocksdb.level0-compaction-trigger",
                      "number of level-0 files that triggers a compaction",
