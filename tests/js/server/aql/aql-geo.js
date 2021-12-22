@@ -142,7 +142,7 @@ function geoSuite () {
       print("With view:", wv);
       print("Errors with index: ", oi.msg);
       print("Errors with view: ", ov.msg);
-      require("internal").wait(3600);
+      //require("internal").wait(3600);
     }
     assertTrue(oi.good && ov.good, oi.msg + ov.msg);
   }
