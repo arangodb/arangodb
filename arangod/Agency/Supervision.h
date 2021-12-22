@@ -184,6 +184,9 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for boken collections
   void checkBrokenCollections();
 
+  /// @brief Check if the shard leader matches that of the corresponding replicated log
+  void checkReplicatedLogAndShardLeadership();
+  
   /// @brief Check for broken analyzers
   void checkBrokenAnalyzers();
 

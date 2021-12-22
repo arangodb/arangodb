@@ -1650,6 +1650,10 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("69480", TRACE, Logger::SUPERVISION)
       << "Begin checkBrokenCollections";
   checkBrokenCollections();
+  
+    LOG_TOPIC("69481", TRACE, Logger::SUPERVISION)
+      << "Begin checkReplicatedLogAndShardLeadership";
+  checkReplicatedLogAndShardLeadership();
 
   LOG_TOPIC("83402", TRACE, Logger::SUPERVISION)
       << "Begin checkBrokenAnalyzers";
@@ -2360,6 +2364,99 @@ void Supervision::checkBrokenCollections() {
         deleteBrokenCollection(dbpair.first, collectionPair.first, ev.coordinatorId,
                                ev.coordinatorRebootId, ev.coordinatorFound);
       });
+    }
+  }
+}
+
+void Supervision::checkReplicatedLogAndShardLeadership() {
+  _lock.assertLockedByCurrentThread();
+
+  // check if snapshot has databases
+  auto collections = snapshot().hasAsNode(planColPrefix);
+  if (!collections) {
+    return;
+  }
+
+  using namespace replication2::agency;
+
+  // check if Plan has replicated logs
+  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
+  if (!planNode) {
+    return;
+  }
+  
+  auto const readPlanSpecification = [](Node const& node) -> LogPlanSpecification {
+    auto builder = node.toBuilder();
+    return LogPlanSpecification{from_velocypack, builder.slice()};
+  };
+
+  // dbpair is <std::string, std::shared_ptr<Node>>
+  for (auto const& [dbId, db] : collections.value().get().children()) {
+    for (auto const& [collectionId, collection] : db->children()) {
+      auto collectionName = collection->hasAsString(StaticStrings::DataSourceName);
+      if (!collectionName || collectionName.value().empty()) {
+        continue;
+      }
+
+      auto shards = collection->hasAsNode("shards");
+      for (auto const& [shardId, serversNode] : shards->get().children()) {
+        auto logId = shardId.substr(1);
+        auto log = planNode->get().get({dbId, logId});
+        if (!log.has_value()) {
+          continue;
+        }
+        auto planSpec = readPlanSpecification(log.value());
+        if (!planSpec.currentTerm.has_value()) {
+          continue;
+        }
+        auto const& term = planSpec.currentTerm.value();
+        if (!term.leader.has_value()) {
+          continue;
+        }
+        if (serversNode->slice()[0].stringView() == term.leader->serverId) {
+          continue; // leaders match -> nothing to do!
+        }
+
+        // shard and replicated log have different leaders
+        // -> rewrite the shard's server list so that the log leader is the first one
+        std::string collection_path =
+            plan()->collections()->database(dbId)->collection(collectionId)->shards()->shard(shardId)->str();
+        {
+          auto envelope = std::make_shared<Builder>();
+          {
+            VPackArrayBuilder trxs(envelope.get());
+            {
+              VPackArrayBuilder trx(envelope.get());
+              {
+                VPackObjectBuilder operation(envelope.get());
+                // increment Plan Version
+                {
+                  VPackObjectBuilder o(envelope.get(), _agencyPrefix + "/" + PLAN_VERSION);
+                  envelope->add("op", VPackValue("increment"));
+                }
+
+                {
+                  VPackObjectBuilder o(envelope.get(), collection_path);
+                  envelope->add("op", VPackValue("set"));
+                  envelope->add(VPackValue("new"));
+                  VPackArrayBuilder ab(envelope.get());
+                  envelope->add(VPackValue(term.leader->serverId));
+                  for (auto s : VPackArrayIterator(serversNode->slice())) {
+                    if (s.stringView() != term.leader->serverId) {
+                      envelope->add(s);
+                    }
+                  }
+                }
+              }
+              {
+                VPackObjectBuilder preconditions(envelope.get());
+              }
+            }
+          }
+
+          _agent->write(envelope);
+        }
+      }
     }
   }
 }
