@@ -51,6 +51,8 @@ struct WaitForResult;
  * request to the leader.
  */
 struct ReplicatedLogMethods {
+  static constexpr auto kDefaultLimit = std::size_t{10};
+
   virtual ~ReplicatedLogMethods() = default;
   virtual auto createReplicatedLog(agency::LogPlanSpecification const& spec) const
       -> futures::Future<Result> = 0;
