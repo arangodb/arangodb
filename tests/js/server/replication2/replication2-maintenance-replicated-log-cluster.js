@@ -258,6 +258,22 @@ const replicatedLogSuite = function () {
             log.drop();
         },
 
+        testCreateReplicatedLogWithoutLeader: function () {
+            const logId = nextLogId();
+            const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+            const term = 1;
+            const log = db._createReplicatedLog({
+                id: logId,
+                targetConfig,
+                currentTerm: createTermSpecification(term, servers, targetConfig),
+            });
+
+            // wait for all servers to have reported in current
+            waitFor(replicatedLogIsReady(logId, term, servers));
+
+            log.drop();
+        },
+
         testAddParticipantFlag: function () {
             const logId = nextLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
