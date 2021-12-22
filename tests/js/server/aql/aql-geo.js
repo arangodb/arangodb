@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, geo queries
@@ -50,13 +50,9 @@ function geoSuite () {
   let withView;
   let view;
 
-  function insertAll(x) {
-    for (let i = 0; i < x.length; ++i) {
-      x[i]._key = "K" + i;
-    }
-    noIndex.insert(x);
-    withIndex.insert(x);
-    withView.insert(x);
+  let keyCounter = 0;
+
+  function waitForArangoSearch() {
     withView.insert(
       {_key:"sentinel", geo:{"type":"Point", coordinates: [-13, -13]}});
     // Wait until sentinel visible in view:
@@ -68,8 +64,19 @@ function geoSuite () {
       if (res.length === 1 && res[0] === "sentinel") {
         break;
       }
+      print("Waiting for arangosearch index to have sentinel...");
+      require("internal").wait(0.5);
     }
     withView.remove("sentinel");
+  }
+
+  function insertAll(x) {
+    for (let i = 0; i < x.length; ++i) {
+      x[i]._key = "K" + (++keyCounter);
+    }
+    noIndex.insert(x);
+    withIndex.insert(x);
+    withView.insert(x);
   }
 
   function truncateAll(x) {
@@ -133,6 +140,9 @@ function geoSuite () {
       print("Without index:", wo);
       print("With index:", wi);
       print("With view:", wv);
+      print("Errors with index: ", oi.msg);
+      print("Errors with view: ", ov.msg);
+      require("internal").wait(3600);
     }
     assertTrue(oi.good && ov.good, oi.msg + ov.msg);
   }
@@ -183,8 +193,10 @@ function geoSuite () {
 /// @brief test single point
 ////////////////////////////////////////////////////////////////////////////////
 
+    /*
     testSetup : function () {
       insertAll([{geo: { type: "Point", coordinates: [50, 50] } }]);
+      waitForArangoSearch();
       compare(
         `FILTER GEO_DISTANCE([50, 50], d.geo) < 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 5000, "geo_json")`
@@ -205,14 +217,173 @@ function geoSuite () {
               coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,11.1],
                 [11,11.1],[11,19],[19,19],[19,11],[10,11],[10,10]]]}}
       ]);
+      waitForArangoSearch();
       compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 5000, "geo_json")`
       );
-      require("internal").wait(3600);
     },
-  };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with grid of points, upper bound
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearGrid : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      compare(
+        `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666`,
+        `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")`
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with grid of points, upper and lower bound
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearGridRingArea : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      compare(
+        `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
+                GEO_DISTANCE([15, 15], d.geo) >= 300000`,
+        `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
+                         GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with grid of points, only lower bound
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearGridOuterArea : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      compare(
+        `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
+        `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with grid of points, upper bound, descending
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearGridDescending : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      compare(
+        `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666
+         SORT GEO_DISTANCE([15, 15], d.geo) DESC`,
+        `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")
+         SORT GEO_DISTANCE([15, 15], d.geo) DESC`
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with grid of points, upper and lower bound, desc
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearGridRingAreaDescending : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      compare(
+        `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
+                GEO_DISTANCE([15, 15], d.geo) >= 300000
+         SORT GEO_DISTANCE([15, 15], d.geo) DESC`,
+        `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
+                         GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")
+         SORT GEO_DISTANCE([15, 15], d.geo) DESC`
+      );
+    },
+
+  */
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with grid of points, only lower bound, descending
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearGridOuterAreaDescending : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      compare(
+        `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
+        `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
+      );
+    },
+
+  };
 }
 
 jsunity.run(geoSuite);
