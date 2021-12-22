@@ -82,6 +82,16 @@ const replicatedLogSetPlanTerm = function (logId, term) {
     global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
+const replicatedLogSetPlan = function (logId, spec) {
+    writeAgencyAtKey(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
+    global.ArangoAgency.increaseVersion(`Plan/Version`);
+};
+
+const replicatedLogDeletePlan = function (logId) {
+    global.ArangoAgency.remove(`Plan/ReplicatedLogs/${database}/${logId}`);
+    global.ArangoAgency.increaseVersion(`Plan/Version`);
+};
+
 const dbservers = (function () {
     return global.ArangoClusterInfo.getDBServers().map((x) => x.serverId);
 }());
@@ -246,7 +256,7 @@ const replicatedLogSuite = function () {
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
-            const log = db._createReplicatedLog({
+            replicatedLogSetPlan(logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
@@ -255,14 +265,14 @@ const replicatedLogSuite = function () {
             // wait for all servers to have reported in current
             waitFor(replicatedLogIsReady(logId, term, servers, leader));
 
-            log.drop();
+            replicatedLogDeletePlan(logId);
         },
 
         testCreateReplicatedLogWithoutLeader: function () {
             const logId = nextLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const term = 1;
-            const log = db._createReplicatedLog({
+            replicatedLogSetPlan(logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig),
@@ -271,7 +281,7 @@ const replicatedLogSuite = function () {
             // wait for all servers to have reported in current
             waitFor(replicatedLogIsReady(logId, term, servers));
 
-            log.drop();
+            replicatedLogDeletePlan(logId);
         },
 
         testAddParticipantFlag: function () {
@@ -279,7 +289,7 @@ const replicatedLogSuite = function () {
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
-            const log = db._createReplicatedLog({
+            replicatedLogSetPlan(logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
@@ -297,7 +307,7 @@ const replicatedLogSuite = function () {
             waitFor(replicatedLogParticipantGeneration(logId, newGeneration));
 
             waitFor(replicatedLogParticipantsFlag(logId, {[follower]: null}, newGeneration));
-            log.drop();
+            replicatedLogDeletePlan(logId);
         },
 
         testUpdateTermInPlanLog: function () {
@@ -305,7 +315,7 @@ const replicatedLogSuite = function () {
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
-            const log = db._createReplicatedLog({
+            replicatedLogSetPlan(logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
@@ -317,7 +327,7 @@ const replicatedLogSuite = function () {
 
             // wait again for all servers to have acked term
             waitFor(replicatedLogIsReady(logId, term + 1, servers, leader));
-            log.drop();
+            replicatedLogDeletePlan(logId);
         },
 
         testUpdateTermInPlanLogWithNewLeader: function () {
@@ -325,7 +335,7 @@ const replicatedLogSuite = function () {
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
-            const log = db._createReplicatedLog({
+            replicatedLogSetPlan(logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
@@ -337,7 +347,7 @@ const replicatedLogSuite = function () {
             const otherLeader = servers[1];
             replicatedLogSetPlanTerm(logId, createTermSpecification(term + 1, servers, targetConfig, otherLeader));
             waitFor(replicatedLogIsReady(logId, term + 1, servers, otherLeader));
-            log.drop();
+            replicatedLogDeletePlan(logId);
         },
 
         testUpdateTermAddParticipant: function () {
@@ -346,7 +356,7 @@ const replicatedLogSuite = function () {
             const leader = servers[0];
             const remaining = _.difference(dbservers, servers);
             const term = 1;
-            const log = db._createReplicatedLog({
+            replicatedLogSetPlan(logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
@@ -358,7 +368,7 @@ const replicatedLogSuite = function () {
             const newServers = [...servers, _.sample(remaining)];
             replicatedLogSetPlanTerm(logId, createTermSpecification(term, newServers, targetConfig, leader));
             waitFor(replicatedLogIsReady(logId, term, newServers, leader));
-            log.drop();
+            replicatedLogDeletePlan(logId);
         },
 
         testUpdateTermRemoveParticipant: function () {
@@ -369,7 +379,7 @@ const replicatedLogSuite = function () {
             const leader = servers[0];
             const term = 1;
             const newServers = [...servers, toBeRemoved];
-            const log = db._createReplicatedLog({
+            replicatedLogSetPlan(logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, newServers, targetConfig, leader),
@@ -380,7 +390,7 @@ const replicatedLogSuite = function () {
             // now rewrite the term with an additional participant
             replicatedLogSetPlanTerm(logId, createTermSpecification(term, servers, targetConfig, leader));
             // TODO waitFor(replicatedLogParticipantsFlag(logId, {[toBeRemoved]: null})); -- doesn't work yet
-            log.drop();
+            replicatedLogDeletePlan(logId);
         },
     };
 };
