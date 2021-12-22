@@ -163,7 +163,7 @@ const replicatedLogSuite = function () {
 
     const createTermSpecification = function (term, servers, config, leader) {
         let spec = {term, config};
-        assertTrue(config.replicationFactor === servers.length);
+        //assertTrue(config.replicationFactor === servers.length);
         spec.participants = getParticipantsObjectForServers(servers);
         if (leader !== undefined) {
             assertTrue(_.includes(servers, leader));
@@ -210,6 +210,36 @@ const replicatedLogSuite = function () {
         };
     };
 
+    const replicatedLogParticipantsFlag = function (logId, flags, generation = undefined) {
+        return function () {
+            let {current} = readReplicatedLogAgency(logId);
+            if (current === undefined) {
+                return Error("current not yet defined");
+            }
+            if (!current.leader) {
+                return Error("Leader has not yet established its term");
+            }
+            if (!current.leader.committedParticipantsConfig || (generation !== undefined && current.leader.committedParticipantsConfig.generation < generation)) {
+                return Error("Leader has not yet acked new generation");
+            }
+
+            const participants = current.leader.committedParticipantsConfig.participants;
+            for (const [p, v] of Object.entries(flags)) {
+                if (v === null) {
+                    if (participants[p] !== undefined) {
+                        return Error(`Entry for server ${p} still present in participants flags`);
+                    }
+                } else {
+                    if (!_.isEqual(v, participants[p])) {
+                        return Error(`Flags for participant ${p} are not as expected: ${JSON.stringify(v)} vs. ${JSON.stringify(participants[p])}`);
+                    }
+                }
+            }
+
+            return true;
+        };
+    };
+
     return {
         testCreateReplicatedLog: function () {
             const logId = nextLogId();
@@ -245,18 +275,12 @@ const replicatedLogSuite = function () {
             // now update the excluded flag for one participant
             const follower = servers[1];
             let newGeneration = replicatedLogUpdatePlanParticipantsFlags(logId, {[follower]: {excluded: true}});
-            waitFor(replicatedLogParticipantGeneration(logId, newGeneration));
+            waitFor(replicatedLogParticipantsFlag(logId, {[follower]: {excluded: true, forced: false}}, newGeneration));
 
-            {
-                let {current} = readReplicatedLogAgency(logId);
-                assertTrue(current.leader.committedParticipantsConfig.participants[follower].excluded);
-            }
             newGeneration = replicatedLogUpdatePlanParticipantsFlags(logId, {[follower]: null});
             waitFor(replicatedLogParticipantGeneration(logId, newGeneration));
-            {
-                let {current} = readReplicatedLogAgency(logId);
-                assertEqual(current.leader.committedParticipantsConfig.participants[follower], undefined);
-            }
+
+            waitFor(replicatedLogParticipantsFlag(logId, {[follower]: null}, newGeneration));
             log.drop();
         },
 
@@ -300,6 +324,48 @@ const replicatedLogSuite = function () {
             log.drop();
         },
 
+        testUpdateTermAddParticipant: function () {
+            const logId = nextLogId();
+            const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+            const leader = servers[0];
+            const remaining = _.difference(dbservers, servers);
+            const term = 1;
+            const log = db._createReplicatedLog({
+                id: logId,
+                targetConfig,
+                currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+            });
+
+            // wait for all servers to have reported in current
+            waitFor(replicatedLogIsReady(logId, term, servers));
+            // now rewrite the term with an additional participant
+            const newServers = [...servers, _.sample(remaining)];
+            replicatedLogSetPlanTerm(logId, createTermSpecification(term, newServers, targetConfig, leader));
+            waitFor(replicatedLogIsReady(logId, term, newServers, leader));
+            log.drop();
+        },
+
+        testUpdateTermRemoveParticipant: function () {
+            const logId = nextLogId();
+            const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+            const remaining = _.difference(dbservers, servers);
+            const toBeRemoved = _.sample(remaining);
+            const leader = servers[0];
+            const term = 1;
+            const newServers = [...servers, toBeRemoved];
+            const log = db._createReplicatedLog({
+                id: logId,
+                targetConfig,
+                currentTerm: createTermSpecification(term, newServers, targetConfig, leader),
+            });
+
+            // wait for all servers to have reported in current
+            waitFor(replicatedLogIsReady(logId, term, newServers));
+            // now rewrite the term with an additional participant
+            replicatedLogSetPlanTerm(logId, createTermSpecification(term, servers, targetConfig, leader));
+            // TODO waitFor(replicatedLogParticipantsFlag(logId, {[toBeRemoved]: null})); -- doesn't work yet
+            log.drop();
+        },
     };
 };
 
