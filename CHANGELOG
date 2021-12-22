@@ -5,7 +5,7 @@ v3.9.0 (XXXX-XX-XX)
 * Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen 
   that a buffer containing only the header would be sent to the server, and 
   also batches would contain the documents equivalent to the csv rows in them, 
-  but not the header, which should be sent togheter with the documents. 
+  but not the header, which should be sent together with the documents. 
 
 * Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
   to 2. This allows compactions jobs to be broken up into disjoint ranges which
