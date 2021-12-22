@@ -1,24 +1,10 @@
-import styled from "styled-components";
+/* global arangoHelper, arangoFetch, frontendConfig */
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { DeleteNodeModal } from './DeleteNodeModal';
 
-const ModalBackground = styled.div`
-  position: fixed;
-  z-index: 1;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.5);
-`;
+export const DeleteNodeFromGraphData = ({ graphData, deleteNodeId, onDeleteNode }) => {
+  console.log("DeleteNodeFromGraphData (graphData): ", graphData);
 
-const ModalBody = styled.div`
-  background-color: white;
-  margin: 10% auto;
-  padding: 20px;
-  width: 50%;
-`;
-
-export const DeleteNodeModal = ({ graphData, shouldShow, onDeleteNode, onRequestClose, nodeId, children }) => {
   const deleteNode = (graphData, deleteNodeId) => {
     console.log("DeleteNodeFromGraphData in deleteNode (graphData): ", graphData);
     console.log("DeleteNodeFromGraphData in deleteNode (deleteNodeId): ", deleteNodeId);
@@ -58,13 +44,10 @@ export const DeleteNodeModal = ({ graphData, shouldShow, onDeleteNode, onRequest
     console.log("########################");
     onDeleteNode(mergedGraphData);
   }
-  return shouldShow ? (
-      <ModalBackground onClick={onRequestClose}>
-        <ModalBody onClick={(e) => e.stopPropagation()}>
-          <p>{children}<br />
-          nodeId: {nodeId}</p>
-          <button onClick={onRequestClose}>Cancel</button><button className="button-danger" onClick={() => { deleteNode(graphData, nodeId) }}>Delete</button>
-        </ModalBody>
-      </ModalBackground>
-  ) : null;
-};
+
+  return (
+    <button onClick={() => { deleteNode(graphData, deleteNodeId) }}>
+      Delete node
+    </button>
+  );
+}

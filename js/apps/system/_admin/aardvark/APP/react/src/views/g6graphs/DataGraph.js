@@ -6,6 +6,7 @@ import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/mod
 import { message, Card, Select } from 'antd';
 import { ContextMenu, MiniMap, Toolbar } from '@antv/graphin-components';
 import { useFetch } from './useFetch';
+import { Cell, Grid } from "../../components/pure-css/grid";
 import AqlEditor from './AqlEditor';
 import {
   TagFilled,
@@ -24,10 +25,16 @@ import {
 } from '@ant-design/icons';
 import { NodeList } from './components/node-list/node-list.component';
 import { EdgeList } from './components/edge-list/edge-list.component';
-import { EditNodeModal } from './components/modals/EditNodeModal';
+import { EditNodeModal } from './EditNodeModal';
 import { DeleteNodeModal } from './DeleteNodeModal';
+import { AddNodeModal } from './AddNodeModal';
 import { G6GraphHelpModal } from './G6GraphHelpModal';
 import { ControlledModal } from './ControlledModal';
+import { GraphDataChanger } from './GraphDataChanger';
+import { DeleteNodeFromGraphData } from './DeleteNodeFromGraphData';
+import { AddNodeToGraphData } from './AddNodeToGraphData';
+import { AddEdgeToGraphData } from './AddEdgeToGraphData';
+import './dataGraphStyles.css';
 
 const GraphDataInfo = (graphData) => {
   return (
@@ -38,8 +45,9 @@ const GraphDataInfo = (graphData) => {
   );
 }
 
-const MenuGraph = () => {
+const DataGraph = () => {
   let [queryString, setQueryString] = useState("/_admin/aardvark/g6graph/routeplanner");
+  let [aqlQueryString, setAqlQueryString] = useState("");
   let [graphData, setGraphData] = useState(null);
   let [graphDataNodes, setGraphDataNodes] = useState([]);
   let [graphNodes, setGraphNodes] = useState([]);
@@ -50,61 +58,11 @@ const MenuGraph = () => {
   const [currentNode, setCurrentNode] = useState("node1");
   const [deleteNodeModalShow, setDeleteNodeModalShow] = useState(false);
   const [showDeleteNodeModal, setShowDeleteNodeModal] = useState(false);
+  const [showAddNodeModal, setShowAddNodeModal] = useState(false);
   const [nodeId, setNodeId] = useState('Vancouver');
-
-  const toggleModal = (toggleValue) => {
-    console.log('toggleValue', toggleValue);
-    setToggleValue(toggleValue);
-  };
-
-  const TestModal = (visibility) => {
-    const [show, setShow] = useState(false);
-  
-    const showTestModal = (event) => {
-      event.preventDefault();
-      setShow(visibility);
-    };
-  
-    return <>
-      <a href={'#g6'} onClick={showTestModal}>
-        <QuestionCircleOutlined /> TestModal
-      </a>
-      <Modal show={show} setShow={setShow}>
-        <ModalHeader title={'TestModal'}/>
-        <ModalBody>
-          <dl>
-            <dt>Graphs</dt>
-            <dd>
-              If you are new to graphs and displaying graph data... have a look at our <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/docs/stable/graphs.html'}>graph documentation</a></strong>.
-            </dd>
-            <dt>Graph Course</dt>
-            <dd>
-              We also offer a course with the title <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/learn/graphs/graph-course/'}>Get Started with Graphs in ArangoDB</a></strong> for free.
-            </dd>
-            <dt>Quick Start</dt>
-            <dd>
-              To start immediately, the explanationn of our <strong><a target={'_blank'} rel={'noreferrer'} href={'https://www.arangodb.com/docs/stable/graphs.html#example-graphs'}>example graphs</a></strong> might help very well.
-            </dd>
-          </dl>
-        </ModalBody>
-        <ModalFooter>
-          <button className="button-close" onClick={() => setShow(false)}>Close</button>
-        </ModalFooter>
-      </Modal>
-    </>;
-  };
-
-  const toggleEditNodeModal = (editNodeModalVisibility) => {
-    setEditNodeModalVisibility(editNodeModalVisibility);
-  };
-
-  /*
-  const showDeleteNodeModal = (menuData, graphData) => {
-    message.info(`showDeleteNodeModal: Open Modal with text editor (${menuData.id})`);
-    console.log("menuData: ", menuData);
-    console.log("graphData: ", graphData);
-  }
-  */
+  const [deleteNodeId, setDeletNodeId] = useState("");
+  const [editNode, setEditNode] = useState();
+  const [showEditNodeModal, setShowEditNodeModal] = useState(false);
 
   const iconMap = {
     'graphin-force': <ShareAltOutlined />,
@@ -116,175 +74,73 @@ const MenuGraph = () => {
     grid: <CopyrightCircleFilled />,
     radial: <ShareAltOutlined />,
   };
-
-  const showEditNodeModal = (node) => {
-    message.info(`showEditNodeModal: Open Modal with text editor (${node})`);
-    console.log("MenuGraph: showEditNodeModal", node);
-  }
-
-  const SelectOption = Select.Option;
-  const LayoutSelector = props => {
-    const { value, onChange, options } = props;
-
-    return (
-      <div>
-        <Select style={{ width: '100%' }} value={value} onChange={onChange}>
-          {options.map(item => {
-            const { type } = item;
-            const iconComponent = iconMap[type] || <CustomerServiceFilled />;
-            return (
-              <SelectOption key={type} value={type}>
-                {iconComponent} &nbsp;
-                {type}
-              </SelectOption>
-            );
-          })}
-        </Select>
-      </div>
-    );
-  };
-
   const layouts = [
     { type: 'graphin-force' },
     {
         type: 'grid',
-        // begin: [0, 0], // optional，
-        // preventOverlap: true, // optional
-        // preventOverlapPdding: 20, // optional
-        // nodeSize: 30, // optional
-        // condense: false, // optional
-        // rows: 5, // optional
-        // cols: 5, // optional
-        // sortBy: 'degree', // optional
-        // workerEnabled: false, // optional
     },
     {
         type: 'circular',
-        // center: [200, 200], // optional
-        // radius: null, // optional
-        // startRadius: 10, // optional
-        // endRadius: 100, // optional
-        // clockwise: false, // optional
-        // divisions: 5, // optional
-        // ordering: 'degree', // optional
-        // angleRatio: 1, // optional
     },
     {
         type: 'radial',
-        // center: [200, 200], // optional
-        // linkDistance: 50, // optional，
-        // maxIteration: 1000, // optional
-        // focusNode: 'node11', // optional
-        // unitRadius: 100, // optional
-        // preventOverlap: true, // optional
-        // nodeSize: 30, // optional
-        // strictRadial: false, // optional
-        // workerEnabled: false, // optional
     },
     {
         type: 'force',
         preventOverlap: true,
-        // center: [200, 200], // optional
-        linkDistance: 50, // optional
-        nodeStrength: 30, // optional
-        edgeStrength: 0.8, // optional
-        collideStrength: 0.8, // optional
-        nodeSize: 30, // optional
-        alpha: 0.9, // optional
-        alphaDecay: 0.3, // optional
-        alphaMin: 0.01, // optional
-        forceSimulation: null, // optional
+        linkDistance: 50,
+        nodeStrength: 30,
+        edgeStrength: 0.8,
+        collideStrength: 0.8,
+        nodeSize: 30,
+        alpha: 0.9,
+        alphaDecay: 0.3,
+        alphaMin: 0.01,
+        forceSimulation: null,
         onTick: () => {
-            // optional
             console.log('ticking');
         },
         onLayoutEnd: () => {
-            // optional
             console.log('force layout done');
         },
     },
     {
         type: 'gForce',
-        linkDistance: 150, // optional
-        nodeStrength: 30, // optional
-        edgeStrength: 0.1, // optional
-        nodeSize: 30, // optional
+        linkDistance: 150,
+        nodeStrength: 30,
+        edgeStrength: 0.1,
+        nodeSize: 30,
         onTick: () => {
-            // optional
             console.log('ticking');
         },
         onLayoutEnd: () => {
-            // optional
             console.log('force layout done');
         },
-        workerEnabled: false, // optional
-        gpuEnabled: false, // optional
+        workerEnabled: false,
+        gpuEnabled: false,
     },
     {
         type: 'concentric',
         maxLevelDiff: 0.5,
         sortBy: 'degree',
-        // center: [200, 200], // optional
-
-        // linkDistance: 50, // optional
-        // preventOverlap: true, // optional
-        // nodeSize: 30, // optional
-        // sweep: 10, // optional
-        // equidistant: false, // optional
-        // startAngle: 0, // optional
-        // clockwise: false, // optional
-        // maxLevelDiff: 10, // optional
-        // sortBy: 'degree', // optional
-        // workerEnabled: false, // optional
     },
     {
         type: 'dagre',
-        rankdir: 'LR', // optional
-        // align: 'DL', // optional
-        // nodesep: 20, // optional
-        // ranksep: 50, // optional
-        // controlPoints: true, // optional
+        rankdir: 'LR',
     },
     {
         type: 'fruchterman',
-        // center: [200, 200], // optional
-        // gravity: 20, // optional
-        // speed: 2, // optional
-        // clustering: true, // optional
-        // clusterGravity: 30, // optional
-        // maxIteration: 2000, // optional
-        // workerEnabled: false, // optional
-        // gpuEnabled: false, // optional
     },
     {
         type: 'mds',
-        workerEnabled: false, // optional
+        workerEnabled: false,
     },
     {
         type: 'comboForce',
-        // // center: [200, 200], // optional
-        // linkDistance: 50, // optional
-        // nodeStrength: 30, // optional
-        // edgeStrength: 0.1, // optional
-        // onTick: () => {
-        //   // optional
-        //   console.log('ticking');
-        // },
-        // onLayoutEnd: () => {
-        //   // optional
-        //   console.log('combo force layout done');
-        // },
     },
   ];
 
-  const [type, setLayout] = React.useState('graphin-force');
-  const handleChange = value => {
-    console.log('value', value);
-    setLayout(value);
-  };
-
-  const layout = layouts.find(item => item.type === type);
-
+  // fetching data # start
   const fetchData = useCallback(() => {
     arangoFetch(arangoHelper.databaseUrl(queryString), {
       method: queryMethod,
@@ -304,11 +160,72 @@ const MenuGraph = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+  // fetching data # end
+
+  // diverse functions # start
+  const toggleEditNodeModal = (editNodeModalVisibility) => {
+    setEditNodeModalVisibility(editNodeModalVisibility);
+  };
+  // diverse functions # end
+
+  // Component LayoutSelector # start
+  const SelectOption = Select.Option;
+  const LayoutSelector = props => {
+    const { value, onChange, options } = props;
+
+    return (
+      <div>
+        <Select style={{ width: '90%' }} value={value} onChange={onChange}>
+          {options.map(item => {
+            const { type } = item;
+            const iconComponent = iconMap[type] || <CustomerServiceFilled />;
+            return (
+              <SelectOption key={type} value={type}>
+                {iconComponent} &nbsp;
+                {type}
+              </SelectOption>
+            );
+          })}
+        </Select>
+      </div>
+    );
+  };
+  const [type, setLayout] = React.useState('graphin-force');
+  const handleChange = value => {
+    console.log('value', value);
+    setLayout(value);
+  };
+  const layout = layouts.find(item => item.type === type);
+  // Component LayoutSelector # end
+
+  // Component fetchAqlQueryData # start
+  const fetchAqlQueryData = useCallback(() => {
+    // http://localhost:8529/_db/_system/_admin/aardvark/graph/routeplanner?nodeLabelByCollection=false&nodeColorByCollection=true&nodeSizeByEdges=true&edgeLabelByCollection=false&edgeColorByCollection=false&nodeStart=frenchCity/Paris&depth=1&limit=250&nodeLabel=_key&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true
+    arangoFetch(arangoHelper.databaseUrl(aqlQueryString), {
+      method: 'GET',
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("NEW DATA from aqlQuery");
+      console.log(data);
+      
+      setGraphData(data);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+  }, [aqlQueryString]);
+
+  useEffect(() => {
+    fetchAqlQueryData();
+  }, [fetchAqlQueryData]);
+  // Component fetchAqlQueryData # end
 
   const changeGraphNodes = useCallback((nodes) => {
       console.log("changeGraphNodes() triggered: ", graphNodes);
       console.log("changeGraphNodes() given nodes: ", nodes);
       console.log("stringified nodesinnput: ", JSON.stringify(nodes));
+      console.log("current graphData: ", graphData);
       if(nodes === "ja") {
         const limitedNodes = [
           {
@@ -430,7 +347,7 @@ const MenuGraph = () => {
         {
             key: 'tag',
             icon: <TagFilled />,
-            name: 'Tag (social)',
+            name: 'Set as startnode',
         },
         {
             key: 'delete',
@@ -440,13 +357,13 @@ const MenuGraph = () => {
         {
             key: 'expand',
             icon: <ExpandAltOutlined />,
-            name: 'Expand (Routeplanner)',
+            name: 'Expand',
         },
         {
           key: 'editnode',
           icon: <EditOutlined />,
-          name: 'Edit node',
-      },
+          name: 'Edit',
+        },
   ];
 
   const searchChange = e => {
@@ -458,11 +375,27 @@ const MenuGraph = () => {
       console.log("menuHandleChange -> menuItem: ", menuData);
       console.log("menuHandleChange -> menuData: ", menuData);
       console.log("menuHandleChange -> graphData: ", graphData);
+
       const reallyDeleteModal = (nodeId) => {
         console.log("nodeId in menuHandleChange: ", nodeId.id);
-        setNodeId(nodeId.id);
+        setDeletNodeId(nodeId.id);
         setShowDeleteNodeModal(!showDeleteNodeModal);
       }
+
+      const addNodeModal = () => {
+        console.log("addNodeModal()");
+        setShowAddNodeModal(!showAddNodeModal);
+      }
+
+      const editModal = (nodeId) => {
+        console.log("nodeId in menuHandleChange (editModal): ", nodeId.id);
+        console.log("node object in menuHandleChange (editModal): ", nodeId);
+        //setEditNode(nodeId);
+        setEditNode(nodeId.id);
+        //setShowEditNodeModal(!showEditNodeModal);
+        setShowEditNodeModal(true);
+      }
+
       //message.info(`Element：${menuData.id}，Action：${menuItem.name}, Key：${menuItem.key}`);
       let query;
       switch(menuItem.key) {
@@ -493,12 +426,13 @@ const MenuGraph = () => {
             setQueryString(query);
             break;
         case "editnode":
-            message.info(`GraphData：${graphData}`);
+            //message.info(`GraphData：${graphData}`);
             //query = `/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${menuData.id}" GRAPH "routeplanner" RETURN p`;
             //queryMethod = "GET";
-            message.info(`Open Modal with text editor`);
-            toggleEditNodeModal(true);
-            showEditNodeModal(graphData);
+            editModal(menuData);
+            //message.info(`Open Modal with text editor`);
+            //toggleEditNodeModal(true);
+            //showEditNodeModal(graphData);
             break;
         default:
             break;
@@ -542,6 +476,10 @@ const MenuGraph = () => {
       </Modal>
     </>;
   };
+
+  const onAddNode = (newGraphData) => {
+    console.log("DataGraph in onAddNode (newGraphData): ", newGraphData);
+  }
 
   const graphHelpModalRef = useRef();
   const deleteNodeModalRef = useRef();
@@ -613,23 +551,8 @@ const MenuGraph = () => {
         }
       }
     ];
-    console.log('graphData in onRequestDelete (1): ', graphData);
-    console.log('graphData.nodes in onRequestDelete (1): ', graphData.nodes);
     graphData.nodes = limitedNodes;
     changeGraphData(graphData);
-    console.log('graphData in onRequestDelete (2): ', graphData);
-    console.log('graphData.nodes in onRequestDelete (2): ', graphData.nodes);
-    console.log('graphData in onRequestDelete (3): ', graphData);
-    console.log('graphData.nodes in onRequestDelete (3): ', graphData.nodes);
-    //message.info(`Make API-CALL to delete: ${nodeId.nodeId}`);
-    /*
-    console.log("Make API-CALL to delete:", {nodeId});
-    const query = `/_api/gharial/routeplanner/vertex/${nodeId.nodeId}`;
-    queryMethod = "DELETE";
-    message.info(`query: ${query}; queryMethod: ${queryMethod}`);
-    setQueryMethod(queryMethod);
-    setQueryString(query);
-    */
   }
   // /_admin/aardvark/g6graph/social
   // /_admin/aardvark/g6graph/routeplanner
@@ -680,6 +603,8 @@ const MenuGraph = () => {
 
   const changeCollection = (myString) => {
     console.log('in changeCollection');
+    //http://localhost:8529/_db/_system/_admin/aardvark/g6graph/social
+    //http://localhost:8529/_db/_system/aardvark/g6graph/social
     setQueryString(`/_admin/aardvark/g6graph/${myString}`);
   }
 
@@ -691,38 +616,96 @@ const MenuGraph = () => {
     return (
       <div>
         <Card
-          title="G6 Graph Viewer"
+          title="G6 Graph Viewer (DataGraph component)"
           extra={
             <>
-
+              <Grid>
+                <Cell size={'1-4'}>
+                  <AqlEditor
+                    queryString={queryString}
+                    onNewSearch={(myString) => {setQueryString(myString)}}
+                    onQueryChange={(myString) => {setQueryString(myString)}}
+                    onOnclickHandler={(myString) => changeCollection(myString)}
+                    onReduceNodes={(nodes) => changeGraphNodes(nodes)}
+                    onAqlQueryHandler={(myString) => setAqlQueryString(myString)}
+                  />
+                </Cell>
+                <Cell size={'1-4'}>
+                  <LayoutSelector options={layouts} value={type} onChange={handleChange} />
+                  <NodeList
+                  nodes={graphData.nodes}
+                  graphData={graphData}
+                  onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
+                  onDeleteNode={onDeleteNode} />
+                  <EdgeList edges={graphData.edges} />
+                  <GraphDataInfo graphData={graphData}/>
+                </Cell>
+                <Cell size={'1-4'}>
+                  <AddNodeToGraphData
+                    graphData={graphData}
+                    onAddNode={(newGraphData) => {
+                      console.log('newGraphData in addNode: ', newGraphData);
+                      setGraphData(newGraphData);
+                      //setShowDeleteNodeModal(false);
+                    }}
+                  />
+                </Cell>
+                <Cell size={'1-4'}>
+                  <AddEdgeToGraphData
+                    graphData={graphData}
+                    onAddEdge={(newGraphData) => {
+                      console.log('newGraphData in addEdge: ', newGraphData);
+                      setGraphData(newGraphData);
+                    }}
+                  />
+                </Cell>
+              </Grid>
+              <AddNodeModal
+                graphData={graphData}
+                shouldShow={showAddNodeModal}
+                onRequestClose={() => {
+                  setShowAddNodeModal(false);
+                }}
+                onAddNode={(newGraphData) => {
+                  console.log('newGraphData in onAddNode: ', newGraphData);
+                  setGraphData(newGraphData);
+                  setShowAddNodeModal(false);
+                }}
+              >
+                <h1>Add Node</h1>
+              </AddNodeModal>
               <DeleteNodeModal
+                graphData={graphData}
                 shouldShow={showDeleteNodeModal}
                 onRequestClose={() => {
-                  console.log("START graphData: ", graphData);
-                  console.log("START graphData.nodes: ", graphData.nodes);
                   setShowDeleteNodeModal(false);
                 }}
-                onRequestDelete={() => {
-                  RequestDelete({nodeId});
+                nodeId={deleteNodeId}
+                onDeleteNode={(newGraphData) => {
+                  console.log('newGraphData in DeleteNode: ', newGraphData);
+                  setGraphData(newGraphData);
+                  setShowDeleteNodeModal(false);
                 }}
-                nodeId={nodeId}
               >
                 <h1>Delete Node</h1>
-                <p>Really delete node: {nodeId}</p>
+                <p>Really delete node: {deleteNodeId}</p>
               </DeleteNodeModal>
-
-              <button onClick={() => graphHelpModalRef.current.showG6GraphHelpFromParent('somedata')}>Open GraphHelpModal (from parent)</button>
-              <G6GraphHelpModal ref={graphHelpModalRef} />
-              <DeleteNodeModal node={currentNode} show={deleteNodeModalShow} setShow={setDeleteNodeModalShow} />
-              <button onClick={masterFunc}>Change data for DeleteNodeModal</button>
-              <button onClick={toggleDeleteNodeModal}>Toggle DeleteNodeModal</button>
-              <AqlEditor
-                queryString={queryString}
-                onNewSearch={(myString) => {setQueryString(myString)}}
-                onQueryChange={(myString) => {setQueryString(myString)}}
-                onOnclickHandler={(myString) => changeCollection(myString)}
-                onReduceNodes={(nodes) => changeGraphNodes(nodes)} />
-              <LayoutSelector options={layouts} value={type} onChange={handleChange} />
+              <EditNodeModal
+                graphData={graphData}
+                shouldShow={showEditNodeModal}
+                onRequestClose={() => {
+                  setShowEditNodeModal(false);
+                }}
+                node={editNode}
+                onUpdateNode={(newGraphData) => {
+                  console.log('newGraphData in EditNode: ', newGraphData);
+                  //setGraphData(newGraphData);
+                  setShowEditNodeModal(false);
+                }}
+              >
+                <h1>Edit Node</h1>
+                <p>Really edit node: {editNode}</p>
+              </EditNodeModal>
             </>
           }
         >
@@ -730,7 +713,6 @@ const MenuGraph = () => {
             <ContextMenu>
               <Menu options={menuOptions} onChange={menuHandleChange} graphData={graphData} bindType="node" />
             </ContextMenu>
-            <MiniMap />
           </Graphin>
         </Card>
       </div>
@@ -738,16 +720,6 @@ const MenuGraph = () => {
   } else {
     return null;
   }
-  /*
-  <GraphDataInfo graphData={graphData}/>
-  <NodeList
-                nodes={graphData.nodes}
-                graphData={graphData}
-                onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
-                onDeleteNode={onDeleteNode} />
-              <EdgeList edges={graphData.edges} />
-  */
-
 }
 
-export default MenuGraph;
+export default DataGraph;

@@ -21,7 +21,7 @@ export const NodeList = ({ nodes, graphData, onNodeInfo, data, onDeleteNode }) =
   return (
     <div>
       <div className="node-list">
-        <input list="nodelist" id="graphnodes" name="graphnodes" placeholder="Search nodes..." style={{ 'width': '100%' }} />
+        <input list="nodelist" id="graphnodes" name="graphnodes" placeholder="Search nodes..." style={{ 'width': '90%' }} />
         <datalist id="nodelist">
           {nodes.map(node => (
             <Node

@@ -7,7 +7,7 @@ const LayoutSelector = props => {
   const { layouts } = apis.getInfo();
   return (
     <div style={{ position: "absolute", top: 10, left: 10 }}>
-      <Select style={{ width: "120px" }} value={value} onChange={onChange}>
+      <Select style={{ width: "90%" }} value={value} onChange={onChange}>
         {layouts.map(item => {
           const { name, icon, disabled, desc } = item;
           return (

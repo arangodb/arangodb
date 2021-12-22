@@ -12,6 +12,7 @@ import MenuGraph from './MenuGraph.js';
 import HorizonGraph from './HorizonGraph.js';
 import LayoutedGraph from './LayoutedGraph.js';
 import DonutGraph from './DonutGraph.js';
+import DataGraph from './DataGraph.js';
 import 'antd/dist/antd.css';
 import iconLoader from '@antv/graphin-icons';
 import '@antv/graphin-icons/dist/index.css';
@@ -90,7 +91,7 @@ function G6Graph() {
 
 const G6GraphReactView = () => {
     return <div>
-        <MenuGraph />
+        <DataGraph />
     </div>;
 };
 
