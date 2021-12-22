@@ -744,7 +744,7 @@ class LimitNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief tell the node to fully count what it will limit
-  void setFullCount();
+  void setFullCount(bool enable = true);
 
   bool fullCount() const noexcept;
 

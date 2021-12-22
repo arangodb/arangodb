@@ -1803,7 +1803,7 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void LimitNode::setFullCount() { _fullCount = true; }
+void LimitNode::setFullCount(bool enable) { _fullCount = enable; }
 
 bool LimitNode::fullCount() const noexcept { return _fullCount; }
 

@@ -736,8 +736,13 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
                         plan.get(), plan->nextId(), 0,
                         mainLimitNode.offset() + mainLimitNode.limit()))
                   : limitNode;
-
           TRI_ASSERT(auxLimitNode);
+          if (haveRemoteBreaker && mainLimitNode.fullCount()) {
+            TRI_ASSERT(limitNode != auxLimitNode);
+            auto& tmp = *ExecutionNode::castTo<LimitNode*>(auxLimitNode);
+            tmp.setFullCount();
+            mainLimitNode.setFullCount(false);
+          }
           dependencyParent->replaceDependency(materializeDependency,
                                               materializeNode);
           auxLimitNode->addParent(materializeNode);
