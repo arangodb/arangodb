@@ -72,7 +72,7 @@ struct LogActionContext {
 
 auto updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
                          LogId logId, agency::LogPlanSpecification const* spec) noexcept
-    -> arangodb::Result;
+    -> futures::Future<arangodb::Result>;
 
 struct ParticipantStateTuple {
   LogIndex index;

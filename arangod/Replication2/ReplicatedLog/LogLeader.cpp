@@ -1136,7 +1136,8 @@ auto replicated_log::LogLeader::waitForLeadership()
   return waitFor(_firstIndexOfCurrentTerm);
 }
 
-void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config) {
+auto replicated_log::LogLeader::updateParticipantsConfig(
+    std::shared_ptr<ParticipantsConfig const> config) -> LogIndex {
   LOG_CTX("ac277", DEBUG, _logContext)
       << "updating configuration to generation " << config->generation;
   auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
@@ -1190,6 +1191,8 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
     LOG_TOPIC("a4fc1", TRACE, Logger::REPLICATION2)
         << "leader is already gone, configuration change was not committed";
   });
+
+  return waitForIndex;
 }
 
 auto replicated_log::LogLeader::getCommitIndex() const noexcept -> LogIndex {
