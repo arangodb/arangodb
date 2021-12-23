@@ -130,7 +130,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
       _maxBytesForLevelMultiplier(rocksDBDefaults.max_bytes_for_level_multiplier),
       _maxBackgroundJobs(rocksDBDefaults.max_background_jobs),
-      _maxSubcompactions(std::max(uint32_t(2), rocksDBDefaults.max_subcompactions)),
+      _maxSubcompactions(2),
       _numThreadsHigh(0),
       _numThreadsLow(0),
       _targetFileSizeBase(rocksDBDefaults.target_file_size_base),
@@ -142,8 +142,10 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
                    static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024))),
       _compactionReadaheadSize(2 * 1024 * 1024),  // rocksDBDefaults.compaction_readahead_size
       _level0CompactionTrigger(2),
-      _level0SlowdownTrigger(rocksDBDefaults.level0_slowdown_writes_trigger),
-      _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
+      _level0SlowdownTrigger(16),
+      _level0StopTrigger(256),
+      _pendingCompactionBytesSlowdownTrigger(8 * 1073741824ull),
+      _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
@@ -153,7 +155,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
           rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
       _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
-      _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
+      _enablePipelinedWrite(true),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
       _useDirectReads(rocksDBDefaults.use_direct_reads),
       _useDirectIoForFlushAndCompaction(rocksDBDefaults.use_direct_io_for_flush_and_compaction),
@@ -170,16 +172,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _minWriteBufferNumberToMergeTouched(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
-      std::max(static_cast<size_t>(2), std::min(NumberOfCores::getValue(), static_cast<size_t>(8))));
-#ifdef _WIN32
-  // Windows code does not (yet) support lowering thread priority of
-  //  compactions.  Therefore it is possible for rocksdb to use all
-  //  CPU time on compactions.  Essential network communications can be lost.
-  //  Save one CPU for ArangoDB network and other activities.
-  if (2 < _maxBackgroundJobs) {
-    --_maxBackgroundJobs;
-  }  // if
-#endif
+      std::max(static_cast<size_t>(2), NumberOfCores::getValue()));
 
   if (_totalWriteBufferSize == 0) {
     // unlimited write buffer size... now set to some fraction of physical RAM
@@ -359,8 +352,26 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new Int64Parameter(&_level0SlowdownTrigger));
 
   options->addOption("--rocksdb.level0-stop-trigger",
-                     "number of level-0 files that triggers a full write stall",
+                     "number of level-0 files that triggers a full write stop",
                      new Int64Parameter(&_level0StopTrigger));
+  options
+      ->addOption(
+          "--rocksdb.pending-compactions-slowdown-trigger",
+          "number of pending compaction bytes that triggers a write slowdown",
+          new UInt64Parameter(&_pendingCompactionBytesSlowdownTrigger),
+          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30805);
+  options
+      ->addOption(
+          "--rocksdb.pending-compactions-stop-trigger",
+          "number of pending compaction bytes that triggers a full write stop",
+          new UInt64Parameter(&_pendingCompactionBytesStopTrigger),
+          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30805);
 
   options->addOption(
       "--rocksdb.num-threads-priority-high",

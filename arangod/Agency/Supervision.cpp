@@ -1928,7 +1928,6 @@ void Supervision::cleanupHotbackupTransferJobs() {
   arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
       snapshot(), envelope);
   if (envelope->size() > 0) {
-    LOG_DEVEL << "Sending transaction to agency: " << envelope->toJson();
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
