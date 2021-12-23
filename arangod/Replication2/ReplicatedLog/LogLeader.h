@@ -158,7 +158,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogLea
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
   // Updates the flags of the participants.
-  void updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config);
+  auto updateParticipantsConfig(
+      std::shared_ptr<ParticipantsConfig const> config) -> LogIndex;
 
   // Returns [acceptedConfig.generation, committedConfig.generation]
   auto getParticipantConfigGenerations() const noexcept
