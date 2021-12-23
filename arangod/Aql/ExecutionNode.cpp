@@ -712,9 +712,7 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQuer
   // we can be quite generous with the buffer size since the implementation is not recursive.
   constexpr std::size_t NumBufferedEntries = 1000;
   constexpr std::size_t BufferSize = sizeof(Entry) * NumBufferedEntries;
-  using Container = containers::SmallVector<Entry, BufferSize>;
-  Container::allocator_type::arena_type arena;
-  Container nodes{arena};
+  containers::SmallVectorWithArena<Entry, BufferSize> nodes;
   // Our stackbased arena can hold NumBufferedEntries, so we reserve everythhing at once.
   nodes.reserve(NumBufferedEntries);
   nodes.emplace_back(const_cast<ExecutionNode*>(this), State::Pending);
@@ -1233,19 +1231,6 @@ std::vector<ExecutionNode*> ExecutionNode::getParents() const {
 
 bool ExecutionNode::hasParent() const { return (_parents.size() == 1); }
 
-/// @brief whether or not the node has any ancestor (parent at any distance)
-/// of this type
-bool ExecutionNode::hasParentOfType(ExecutionNode::NodeType type) const {
-  ExecutionNode* current = getFirstParent();
-  while (current != nullptr) {
-    if (current->getType() == type) {
-      return true;
-    }
-    current = current->getFirstParent();
-  }
-  return false;
-}
-
 ExecutionNode* ExecutionNode::getFirstParent() const {
   if (_parents.empty()) {
     return nullptr;
@@ -1592,7 +1577,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
 
 void EnumerateCollectionNode::setRandom() { _random = true; }
 
-bool EnumerateCollectionNode::isDeterministic() { return !_random; }
+bool EnumerateCollectionNode::isDeterministic() { return !_random && (canReadOwnWrites() == ReadOwnWrites::no); }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
@@ -2108,11 +2093,10 @@ bool SubqueryNode::mayAccessCollections() {
       ExecutionNode::SHORTEST_PATH,
       ExecutionNode::K_SHORTEST_PATHS};
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*> nodes;
 
   NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::Unique> finder(
-      types, nodes, true);
+      types, nodes.vector(), true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {

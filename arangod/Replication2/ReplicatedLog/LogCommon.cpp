@@ -36,10 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-auto LogIndex::operator<=(LogIndex other) const -> bool {
-  return value <= other.value;
-}
-
 auto LogIndex::operator+(std::uint64_t delta) const -> LogIndex {
   return LogIndex(this->value + delta);
 }
@@ -116,11 +112,6 @@ auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice) -> PersistingLo
   return PersistingLogEntry(logTerm, logIndex, std::move(payload));
 }
 
-auto PersistingLogEntry::operator==(PersistingLogEntry const& other) const noexcept -> bool {
-  return other._logIndex == _logIndex && other._logTerm == _logTerm &&
-         other._payload == _payload;
-}
-
 auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
   return TermIndexPair{_logTerm, _logIndex};
 }
@@ -128,8 +119,8 @@ auto PersistingLogEntry::logTermIndexPair() const noexcept -> TermIndexPair {
 auto PersistingLogEntry::approxByteSize() const noexcept -> std::size_t {
   auto size = approxMetaDataSize;
 
-  if(_payload.has_value()) {
-      size += _payload->byteSize();
+  if (_payload.has_value()) {
+    size += _payload->byteSize();
   }
 
   return size;
@@ -186,10 +177,6 @@ auto LogEntryView::clonePayload() const -> LogPayload {
   return LogPayload::createFromSlice(_payload);
 }
 
-auto LogTerm::operator<=(LogTerm other) const -> bool {
-  return value <= other.value;
-}
-
 LogTerm::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
@@ -202,10 +189,6 @@ auto replication2::operator==(LogPayload const& left, LogPayload const& right) -
   return arangodb::basics::VelocyPackHelper::equal(velocypack::Slice(left.dummy.data()),
                                                    velocypack::Slice(right.dummy.data()),
                                                    true);
-}
-
-auto replication2::operator!=(LogPayload const& left, LogPayload const& right) -> bool {
-  return !(left == right);
 }
 
 LogPayload::LogPayload(velocypack::UInt8Buffer dummy)
@@ -257,17 +240,6 @@ auto replication2::to_string(LogIndex index) -> std::string {
   return std::to_string(index.value);
 }
 
-auto replication2::operator<=(replication2::TermIndexPair left,
-                              replication2::TermIndexPair right) noexcept -> bool {
-  if (left.term < right.term) {
-    return true;
-  } else if (left.term == right.term) {
-    return left.index <= right.index;
-  } else {
-    return false;
-  }
-}
-
 void replication2::TermIndexPair::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
@@ -295,11 +267,14 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair) -> std::ostr
 LogConfig::LogConfig(VPackSlice slice) {
   waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
   writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
+  softWriteConcern = slice.get(StaticStrings::SoftWriteConcern).extract<std::size_t>();
   replicationFactor = slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
 }
 
-LogConfig::LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept
+LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
+                     std::size_t replicationFactor, bool waitForSync) noexcept
     : writeConcern(writeConcern),
+      softWriteConcern(softWriteConcern),
       replicationFactor(replicationFactor),
       waitForSync(waitForSync) {}
 
@@ -307,17 +282,8 @@ auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  builder.add(StaticStrings::SoftWriteConcern, VPackValue(softWriteConcern));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
-}
-
-auto replication2::operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool {
-  // TODO How can we make sure that we never forget a field here?
-  return left.waitForSync == right.waitForSync && left.writeConcern == right.writeConcern &&
-         left.replicationFactor == right.replicationFactor;
-}
-
-auto replication2::operator!=(const LogConfig& left, const LogConfig& right) noexcept -> bool {
-  return !(left == right);
 }
 
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
@@ -348,6 +314,10 @@ auto replication2::intersect(LogRange a, LogRange b) noexcept -> LogRange {
   }
 }
 
+auto replication2::to_string(LogRange const& r) -> std::string {
+  return basics::StringUtils::concatT('[', r.from, ", ", r.to, ')');
+}
+
 auto LogRange::end() const noexcept -> LogRange::Iterator {
   return Iterator{to};
 }
@@ -373,24 +343,6 @@ auto LogRange::Iterator::operator->() const noexcept -> LogIndex const* {
   return &current;
 }
 
-auto replication2::operator==(LogRange a, LogRange b) noexcept -> bool {
-  return a.from == b.from && a.to == b.to;
-}
-
-auto replication2::operator!=(LogRange a, LogRange b) noexcept -> bool {
-  return !(a == b);
-}
-
-auto replication2::operator==(LogRange::Iterator const& a,
-                              LogRange::Iterator const& b) noexcept -> bool {
-  return a.current == b.current;
-}
-
-auto replication2::operator!=(LogRange::Iterator const& a,
-                              LogRange::Iterator const& b) noexcept -> bool {
-  return !(a == b);
-}
-
 template <typename... Args>
 replicated_log::CommitFailReason::CommitFailReason(std::in_place_t, Args&&... args) noexcept
     : value(std::forward<Args>(args)...) {}
@@ -399,8 +351,14 @@ auto replicated_log::CommitFailReason::withNothingToCommit() noexcept -> CommitF
   return CommitFailReason(std::in_place, NothingToCommit{});
 }
 
-auto replicated_log::CommitFailReason::withQuorumSizeNotReached() noexcept -> CommitFailReason {
-  return CommitFailReason(std::in_place, QuorumSizeNotReached{});
+auto replicated_log::CommitFailReason::withQuorumSizeNotReached(ParticipantId who) noexcept
+    -> CommitFailReason {
+  return CommitFailReason(std::in_place, QuorumSizeNotReached{std::move(who)});
+}
+
+auto replicated_log::CommitFailReason::withForcedParticipantNotInQuorum(ParticipantId who) noexcept
+    -> CommitFailReason {
+  return CommitFailReason(std::in_place, ForcedParticipantNotInQuorum{std::move(who)});
 }
 
 namespace {
@@ -408,35 +366,59 @@ inline constexpr std::string_view ReasonFieldName = "reason";
 inline constexpr std::string_view NothingToCommitEnum = "NothingToCommit";
 inline constexpr std::string_view QuorumSizeNotReachedEnum =
     "QuorumSizeNotReached";
+inline constexpr std::string_view ForcedParticipantNotInQuorumEnum =
+    "ForcedParticipantNotInQuorum";
+inline constexpr std::string_view WhoFieldName = "who";
 }  // namespace
 
 auto replicated_log::CommitFailReason::NothingToCommit::fromVelocyPack(velocypack::Slice s)
     -> NothingToCommit {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(NothingToCommitEnum)))
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(NothingToCommitEnum))
       << "Expected string `" << NothingToCommitEnum << "`, found: " << s.stringView();
   return {};
 }
 
 void replicated_log::CommitFailReason::NothingToCommit::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(VPackStringRef(ReasonFieldName), VPackValue(NothingToCommitEnum));
+  builder.add(std::string_view(ReasonFieldName), VPackValue(NothingToCommitEnum));
 }
 
 auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(velocypack::Slice s)
     -> QuorumSizeNotReached {
   TRI_ASSERT(s.get(ReasonFieldName).isString())
       << "Expected string, found: " << s.toJson();
-  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(VPackStringRef(QuorumSizeNotReachedEnum)))
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(QuorumSizeNotReachedEnum))
       << "Expected string `" << QuorumSizeNotReachedEnum
       << "`, found: " << s.stringView();
-  return {};
+  TRI_ASSERT(s.get(WhoFieldName).isString())
+      << "Expected string, found: " << s.toJson();
+  return {s.get(WhoFieldName).toString()};
 }
 
 void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(VPackStringRef(ReasonFieldName), VPackValue(QuorumSizeNotReachedEnum));
+  builder.add(std::string_view(ReasonFieldName), VPackValue(QuorumSizeNotReachedEnum));
+  builder.add(std::string_view(WhoFieldName), VPackValue(who));
+}
+
+auto replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::fromVelocyPack(velocypack::Slice s)
+  -> ForcedParticipantNotInQuorum {
+  TRI_ASSERT(s.get(ReasonFieldName).isString())
+      << "Expected string, found: " << s.toJson();
+  TRI_ASSERT(s.get(ReasonFieldName).isEqualString(ForcedParticipantNotInQuorumEnum))
+      << "Expected string `" << ForcedParticipantNotInQuorumEnum
+      << "`, found: " << s.stringView();
+  TRI_ASSERT(s.get(WhoFieldName).isString())
+      << "Expected string, found: " << s.toJson();
+  return {s.get(WhoFieldName).toString()};
+}
+
+void replicated_log::CommitFailReason::ForcedParticipantNotInQuorum::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder obj(&builder);
+  builder.add(std::string_view(ReasonFieldName), VPackValue(ForcedParticipantNotInQuorumEnum));
+  builder.add(std::string_view(WhoFieldName), VPackValue(who));
 }
 
 auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> CommitFailReason {
@@ -445,6 +427,8 @@ auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s) -> Co
     return CommitFailReason{std::in_place, NothingToCommit::fromVelocyPack(s)};
   } else if (reason == QuorumSizeNotReachedEnum) {
     return CommitFailReason{std::in_place, QuorumSizeNotReached::fromVelocyPack(s)};
+  } else if (reason == ForcedParticipantNotInQuorumEnum) {
+    return CommitFailReason{std::in_place, ForcedParticipantNotInQuorum::fromVelocyPack(s)};
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -462,10 +446,59 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     auto operator()(CommitFailReason::NothingToCommit const&) -> std::string {
       return "Nothing to commit";
     }
-    auto operator()(CommitFailReason::QuorumSizeNotReached const&) -> std::string {
-      return "Required quorum size not yet reached";
+    auto operator()(CommitFailReason::QuorumSizeNotReached const& reason)
+        -> std::string {
+      return "Required quorum size not yet reached. Participant " + reason.who;
+    }
+    auto operator()(CommitFailReason::ForcedParticipantNotInQuorum const& reason)
+        -> std::string {
+      return "Forced participant not in quorum. Participant " + reason.who;
     }
   };
 
   return std::visit(ToStringVisitor{}, r.value);
+}
+
+void replication2::ParticipantFlags::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("excluded", VPackValue(excluded));
+  builder.add("forced", VPackValue(forced));
+}
+
+auto replication2::ParticipantFlags::fromVelocyPack(velocypack::Slice s) -> ParticipantFlags {
+  auto const forced = s.get("forced").isTrue();
+  auto const excluded = s.get("excluded").isTrue();
+  return ParticipantFlags{forced, excluded};  // {.forced = forced, .excluded = excluded}
+}
+
+auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f) -> std::ostream& {
+  os << "{ ";
+  if (f.excluded) {
+    os << "excluded ";
+  }
+  if (f.forced) {
+    os << "forced ";
+  }
+  return os << "}";
+}
+
+void replication2::ParticipantsConfig::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+  builder.add("generation", VPackValue(generation));
+  VPackObjectBuilder pob(&builder, "participants");
+  for (auto const& [id, flags] : participants) {
+    builder.add(VPackValue(id));
+    flags.toVelocyPack(builder);
+  }
+}
+
+auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s) -> ParticipantsConfig {
+  ParticipantsConfig config;
+  config.generation = s.get("generation").extract<std::size_t>();
+  for (auto [key, value] : VPackObjectIterator(s.get("participants"))) {
+    auto id = key.copyString();
+    auto flags = ParticipantFlags::fromVelocyPack(value);
+    config.participants.emplace(std::move(id), flags);
+  }
+  return config;
 }

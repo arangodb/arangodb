@@ -172,7 +172,7 @@ class ResultT {
 
   T const& operator*() const& { return get(); }
 
-  T&& operator*() && { return get(); }
+  T&& operator*() && { return std::move(get()); }
 
   T const&& operator*() const&& { return get(); }
 
@@ -242,13 +242,13 @@ class ResultT {
       : _result(errorNumber), _val(std::move(val_)) {}
 
   ResultT(std::optional<T>&& val_, ErrorCode errorNumber, std::string_view const& errorMessage)
-      : _result(errorNumber, errorMessage), _val(val_) {}
+      : _result(errorNumber, errorMessage), _val(std::move(val_)) {}
 
   ResultT(std::optional<T>&& val_, ErrorCode errorNumber, std::string&& errorMessage)
-      : _result(errorNumber, std::move(errorMessage)), _val(val_) {}
+      : _result(errorNumber, std::move(errorMessage)), _val(std::move(val_)) {}
 
   ResultT(std::optional<T>&& val_, ErrorCode errorNumber, const char* errorMessage)
-      : _result(errorNumber, errorMessage), _val(val_) {}
+      : _result(errorNumber, errorMessage), _val(std::move(val_)) {}
 
   ResultT(std::optional<T> const& val_, ErrorCode errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}

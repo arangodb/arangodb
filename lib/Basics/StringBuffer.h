@@ -28,6 +28,7 @@
 #include <cstring>
 #include <iosfwd>
 #include <sstream>
+#include <string_view>
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -72,9 +73,6 @@ void TRI_AnnihilateStringBuffer(TRI_string_buffer_t*);
 
 /// @brief frees the string buffer and the pointer
 void TRI_FreeStringBuffer(TRI_string_buffer_t*);
-
-/// @brief compress the string buffer using deflate
-ErrorCode TRI_DeflateStringBuffer(TRI_string_buffer_t*, size_t);
 
 /// @brief ensure the string buffer has a specific capacity
 ErrorCode TRI_ReserveStringBuffer(TRI_string_buffer_t*, size_t const);
@@ -269,17 +267,11 @@ class StringBuffer {
     return TRI_ReserveStringBuffer(&_buffer, length);
   }
 
-  /// @brief compress the buffer using deflate
-  ErrorCode deflate(size_t bufferSize) {
-    return TRI_DeflateStringBuffer(&_buffer, bufferSize);
-  }
-
-  /// @brief uncompress the buffer into stringstream out, using zlib-inflate
-  ErrorCode inflate(std::stringstream& out, size_t bufferSize = 16384, size_t skip = 0);
+  /// @brief compress the buffer in place, using zlib-deflate
+  ErrorCode deflate();
 
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-  ErrorCode inflate(arangodb::basics::StringBuffer& out,
-                    size_t bufferSize = 16384, size_t skip = 0);
+  ErrorCode inflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
 
   /// @brief returns the low level buffer
   TRI_string_buffer_t* stringBuffer() { return &_buffer; }
@@ -397,29 +389,33 @@ class StringBuffer {
     TRI_AppendJsonEncodedStringStringBuffer(&_buffer, str, length, true);
     return *this;
   }
+  
+  /// @brief appends characters
+  StringBuffer& append(char const* str, size_t len) {
+    TRI_AppendString2StringBuffer(&_buffer, str, len);
+    return *this;
+  }
+
+  StringBuffer& append(char const* str) {
+    return append(str, strlen(str));
+  }
 
   /// @brief appends characters
   StringBuffer& appendText(char const* str, size_t len) {
     TRI_AppendString2StringBuffer(&_buffer, str, len);
     return *this;
   }
-
+  
   void appendTextUnsafe(char const* str, size_t len) {
     TRI_AppendStringUnsafeStringBuffer(&_buffer, str, len);
   }
 
   /// @brief appends characters
-  StringBuffer& appendText(char const* str) {
-    TRI_AppendString2StringBuffer(&_buffer, str, strlen(str));
+  StringBuffer& appendText(std::string_view str) {
+    TRI_AppendString2StringBuffer(&_buffer, str.data(), str.size());
     return *this;
   }
-
-  /// @brief appends string
-  StringBuffer& appendText(std::string const& str) {
-    TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
-    return *this;
-  }
-
+  
   void appendTextUnsafe(std::string const& str) {
     TRI_AppendStringUnsafeStringBuffer(&_buffer, str.c_str(), str.length());
   }

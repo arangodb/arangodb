@@ -31,7 +31,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -53,11 +54,11 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       _streamingLockTimeout(8.0),
       _streamingIdleTimeout(defaultStreamingIdleTimeout),
       _numExpiredTransactions(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_transactions_expired_total{})) {
+        server.getFeature<metrics::MetricsFeature>().add(arangodb_transactions_expired_total{})) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();
-  startsAfter<MetricsFeature>();
+  startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
   startsBefore<DatabaseFeature>();
 
@@ -78,9 +79,9 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("transaction", "transactions");
 
   options->addOption("--transaction.streaming-lock-timeout", "lock timeout in seconds "
-		     "in case of parallel access to the same streaming transaction",
+                     "in case of parallel access to the same streaming transaction",
                      new DoubleParameter(&_streamingLockTimeout),
-		     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+         arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30605).setIntroducedIn(30701);
   
   options->addOption("--transaction.streaming-idle-timeout", "idle timeout for streaming "

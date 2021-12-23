@@ -28,6 +28,8 @@
 #include <Network/Methods.h>
 
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

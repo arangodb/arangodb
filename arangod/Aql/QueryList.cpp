@@ -36,14 +36,12 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 

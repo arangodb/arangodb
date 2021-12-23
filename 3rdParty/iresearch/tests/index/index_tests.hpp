@@ -41,7 +41,7 @@ namespace iresearch {
 
 struct term_attribute;
 
-} // namespace iresearch {
+}
 
 namespace tests {
 
@@ -146,6 +146,22 @@ struct blocking_directory : directory_mock {
   std::mutex intermediate_commits_lock;
 }; // blocking_directory
 
+struct callback_directory : directory_mock {
+  typedef std::function<void()> AfterCallback;
+
+  explicit callback_directory(irs::directory& impl, AfterCallback&& p)
+    : tests::directory_mock(impl), after(p) {
+  }
+
+  irs::index_output::ptr create(const std::string& name) noexcept override {
+    auto stream = tests::directory_mock::create(name);
+    after();
+    return stream;
+  }
+
+  AfterCallback after;
+}; // callback_directory
+
 struct format_info {
   constexpr format_info(
       const char* codec = nullptr,
@@ -165,7 +181,6 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   static std::string to_string(const testing::TestParamInfo<index_test_context>& info);
 
  protected:
-
   std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const;
 
   irs::format::ptr get_codec() const;
@@ -184,27 +199,33 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::index_writer::ptr open_writer(
       irs::directory& dir,
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& options = {}) {
+      const irs::index_writer::init_options& options = {}) const {
     return irs::index_writer::make(dir, codec_, mode, options);
   }
 
   irs::index_writer::ptr open_writer(
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& options = {}) {
+      const irs::index_writer::init_options& options = {}) const {
     return irs::index_writer::make(*dir_, codec_, mode, options);
   }
 
-  irs::directory_reader open_reader() {
+  irs::directory_reader open_reader() const {
     return irs::directory_reader::open(*dir_, codec_);
   }
 
   void assert_index(irs::IndexFeatures features,
                     size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
-    tests::assert_index(dir(), codec_, index(), features, skip, matcher);
+    tests::assert_index(static_cast<irs::index_reader::ptr>(open_reader()),
+                        index(), features, skip, matcher);
   }
 
-  virtual void SetUp() {
+  void assert_columnstore(size_t skip = 0) const {
+    tests::assert_columnstore(static_cast<irs::index_reader::ptr>(open_reader()),
+                              index(), skip);
+  }
+
+  virtual void SetUp() override {
     test_base::SetUp();
 
     // set directory
@@ -216,7 +237,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     ASSERT_NE(nullptr, codec_);
   }
 
-  virtual void TearDown() {
+  virtual void TearDown() override {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();
@@ -224,227 +245,28 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   }
 
   void write_segment(
-      irs::index_writer& writer,
-      tests::index_segment& segment,
-      tests::doc_generator_base& gen) {
-    // add segment
-    const document* src;
-
-    while ((src = gen.next())) {
-      segment.add(
-        src->indexed.begin(),
-        src->indexed.end(),
-        src->sorted);
-
-      ASSERT_TRUE(insert(
-        writer,
-        src->indexed.begin(), src->indexed.end(),
-        src->stored.begin(), src->stored.end(),
-        src->sorted));
-    }
-
-    if (writer.comparator()) {
-      segment.sort(*writer.comparator());
-    }
-  }
-
-  void add_segment(irs::index_writer& writer, tests::doc_generator_base& gen) {
-    index_.emplace_back();
-    write_segment(writer, index_.back(), gen);
-    writer.commit();
-  }
-
-  void add_segments(
-      irs::index_writer& writer, std::vector<doc_generator_base::ptr>& gens) {
-    for (auto& gen : gens) {
-      index_.emplace_back();
-      write_segment(writer, index_.back(), *gen);
-    }
-    writer.commit();
-  }
+    irs::index_writer& writer,
+    tests::index_segment& segment,
+    tests::doc_generator_base& gen);
 
   void add_segment(
-      tests::doc_generator_base& gen,
-      irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& opts = {}) {
-    auto writer = open_writer(mode, opts);
-    add_segment(*writer, gen);
-  }
+    irs::index_writer& writer,
+    tests::doc_generator_base& gen);
+
+  void add_segments(
+    irs::index_writer& writer,
+    std::vector<doc_generator_base::ptr>& gens);
+
+  void add_segment(
+    tests::doc_generator_base& gen,
+    irs::OpenMode mode = irs::OM_CREATE,
+    const irs::index_writer::init_options& opts = {});
 
  private:
   index_t index_;
   std::shared_ptr<irs::directory> dir_;
   irs::format::ptr codec_;
 }; // index_test_base
-
-namespace templates {
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class token_stream_payload
-/// @brief token stream wrapper which sets payload equal to term value
-//////////////////////////////////////////////////////////////////////////////
-class token_stream_payload final : public irs::token_stream {
- public:
-  explicit token_stream_payload(irs::token_stream* impl);
-  bool next();
-
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type);
-
- private:
-  const irs::term_attribute* term_;
-  irs::payload pay_;
-  irs::token_stream* impl_;
-}; // token_stream_payload
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class text_field
-/// @brief field which uses text analyzer for tokenization and stemming
-//////////////////////////////////////////////////////////////////////////////
-template<typename T>
-class text_field : public tests::field_base {
- public:
-  text_field(const std::string& name, bool payload = false)
-    : token_stream_(irs::analysis::analyzers::get("text",
-                                                   irs::type<irs::text_format::json>::get(),
-                                                   "{\"locale\":\"C\", \"stopwords\":[]}")) {
-    if (payload) {
-      if (!token_stream_->reset(value_)) {
-         throw irs::illegal_state();
-      }
-      pay_stream_.reset(new token_stream_payload(token_stream_.get()));
-    }
-    this->name(name);
-    index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-                      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
-  }
-
-  text_field(const std::string& name, const T& value, bool payload = false)
-    : token_stream_(irs::analysis::analyzers::get("text",
-                                                  irs::type<irs::text_format::json>::get(),
-                                                  "{\"locale\":\"C\", \"stopwords\":[]}")),
-      value_(value) {
-    if (payload) {
-      if (!token_stream_->reset(value_)) {
-        throw irs::illegal_state();
-      }
-      pay_stream_.reset(new token_stream_payload(token_stream_.get()));
-    }
-    this->name(name);
-    index_features_ = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-                      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
-  }
-
-  text_field(text_field&& other) = default;
-
-  irs::string_ref value() const { return value_; }
-  void value(const T& value) { value_ = value; }
-  void value(T&& value) { value_ = std::move(value); }
-
-  irs::token_stream& get_tokens() const {
-    token_stream_->reset(value_);
-
-    return pay_stream_
-      ? static_cast<irs::token_stream&>(*pay_stream_)
-      : *token_stream_;
-  }
-
- private:
-  virtual bool write(irs::data_output&) const { return false; }
-
-  std::unique_ptr<token_stream_payload> pay_stream_;
-  irs::analysis::analyzer::ptr token_stream_;
-  T value_;
-}; // text_field
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class string field
-/// @brief field which uses simple analyzer without tokenization
-//////////////////////////////////////////////////////////////////////////////
-class string_field : public tests::field_base {
- public:
-  string_field(
-    const std::string& name,
-    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
-    const std::vector<irs::type_info::type_id>& extra_features = {});
-  string_field(
-    const std::string& name,
-    const irs::string_ref& value,
-    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
-    const std::vector<irs::type_info::type_id>& extra_features = {});
-
-  void value(const irs::string_ref& str);
-  irs::string_ref value() const { return value_; }
-
-  virtual irs::token_stream& get_tokens() const override;
-  virtual bool write(irs::data_output& out) const override;
-
- private:
-  mutable irs::string_token_stream stream_;
-  std::string value_;
-}; // string_field
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class string_ref field
-/// @brief field which uses simple analyzer without tokenization
-//////////////////////////////////////////////////////////////////////////////
-class string_ref_field : public tests::field_base {
- public:
-  string_ref_field(
-    const std::string& name,
-    irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
-    const std::vector<irs::type_info::type_id>& extra_features = {});
-  string_ref_field(
-    const std::string& name,
-    const irs::string_ref& value,
-    irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
-    const std::vector<irs::type_info::type_id>& extra_features = {});
-
-  void value(const irs::string_ref& str);
-  irs::string_ref value() const { return value_; }
-
-  virtual irs::token_stream& get_tokens() const override;
-  virtual bool write(irs::data_output& out) const override;
-
- private:
-  mutable irs::string_token_stream stream_;
-  irs::string_ref value_;
-}; // string_field
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class europarl_doc_template
-/// @brief document template for europarl.subset.text
-//////////////////////////////////////////////////////////////////////////////
-class europarl_doc_template: public delim_doc_generator::doc_template {
- public:
-  typedef templates::text_field<irs::string_ref> text_field;
-
-  virtual void init();
-  virtual void value(size_t idx, const std::string& value);
-  virtual void end();
-  virtual void reset();
-
- private:
-  std::string title_; // current title
-  std::string body_; // current body
-  irs::doc_id_t idval_ = 0;
-}; // europarl_doc_template
-
-} // templates
-
-void generic_json_field_factory(
-  tests::document& doc,
-  const std::string& name,
-  const json_doc_generator::json_value& data);
-
-void payloaded_json_field_factory(
-  tests::document& doc,
-  const std::string& name,
-  const json_doc_generator::json_value& data);
-
-void normalized_string_json_field_factory(
-  tests::document& doc,
-  const std::string& name,
-  const json_doc_generator::json_value& data);
 
 } // tests
 

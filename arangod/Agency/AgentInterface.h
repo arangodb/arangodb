@@ -56,11 +56,11 @@ class AgentInterface {
   /// @brief Attempt write
   virtual trans_ret_t transact(query_t const&) = 0;
 
-  /// @brief Wait for slaves to confirm appended entries
+  /// @brief Wait for followers to confirm appended entries
   virtual raft_commit_t waitFor(index_t last_entry, double timeout = 2.0) = 0;
 
-  /// @brief Wait for slaves to confirm appended entries
-  virtual bool isCommitted(index_t last_entry) = 0;
+  /// @brief Wait for followers to confirm appended entries
+  virtual bool isCommitted(index_t last_entry) const = 0;
 
   // Suffice warnings
   virtual ~AgentInterface() = default;

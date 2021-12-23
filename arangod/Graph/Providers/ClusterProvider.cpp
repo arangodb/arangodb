@@ -59,7 +59,7 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType const
   TRI_ASSERT(edge.isObject());
   auto from = edge.get(arangodb::StaticStrings::FromString);
   TRI_ASSERT(from.isString());
-  if (from.stringRef() == origin.stringRef()) {
+  if (from.stringView() == origin.stringView()) {
     auto to = edge.get(arangodb::StaticStrings::ToString);
     TRI_ASSERT(to.isString());
     return VertexType{to};
@@ -115,6 +115,7 @@ void ClusterProvider::clear() {
     _resourceMonitor->decreaseMemoryUsage(
         costPerVertexOrEdgeType + (entry.second.size() * (costPerVertexOrEdgeType * 2)));
   }
+  _vertexConnectedEdges.clear();
 }
 
 auto ClusterProvider::startVertex(VertexType vertex, size_t depth, double weight) -> Step {
@@ -355,9 +356,13 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   // Note: This disables the ScopeGuard
   futures.clear();
 
-  _resourceMonitor->increaseMemoryUsage(
-      costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2)));
-  _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+  std::uint64_t memoryPerItem = costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
+  ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
+
+  auto [it, inserted] = _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+  if (inserted) {
+    guard.steal();
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -373,8 +378,7 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
     _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
 
     for (auto const& step : result) {
-      if (_vertexConnectedEdges.find(step->getVertex().getID()) ==
-          _vertexConnectedEdges.end()) {
+      if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
         auto res = fetchEdgesFromEngines(step->getVertex().getID());
         // TODO: check stats (also take a look of vertex stats)
         // add http stats
@@ -401,11 +405,16 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   auto const& vertex = step.getVertex();
 
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
-  TRI_ASSERT(_vertexConnectedEdges.find(vertex.getID()) != _vertexConnectedEdges.end());
-  for (auto const& relation : _vertexConnectedEdges.at(vertex.getID())) {
-    bool fetched =
-        _vertexConnectedEdges.find(relation.second) != _vertexConnectedEdges.end();
-    callback(Step{relation.second, relation.first, previous, fetched});
+  auto const relations = _vertexConnectedEdges.find(vertex.getID());
+  TRI_ASSERT(relations != _vertexConnectedEdges.end());
+
+  if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
+    for (auto const& relation : relations->second) {
+      bool const fetched = _vertexConnectedEdges.contains(relation.second);
+      callback(Step{relation.second, relation.first, previous, fetched});
+    }
+  } else {
+    throw std::out_of_range{"ClusterProvider::_vertexConnectedEdges"};
   }
 }
 

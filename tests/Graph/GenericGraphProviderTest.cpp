@@ -131,15 +131,15 @@ class GraphProviderTest : public ::testing::Test {
         arangodb::tests::mocks::MockDBServer server{true, true};
         graph.prepareServer(server);
 
-        auto queryString = arangodb::aql::QueryString("RETURN 1");
+        auto queryString = arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
         auto fakeQuery = arangodb::aql::Query::create(ctx, queryString, nullptr);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
-                                       arangodb::aql::Collection::Hint::Shard);
-        } catch(...) {
+                                      arangodb::aql::Collection::Hint::Shard);
+        } catch (...) {
         }
         fakeQuery->prepareQuery(SerializationFormat::SHADOWROWS);
         auto ast = fakeQuery->ast();
@@ -151,8 +151,7 @@ class GraphProviderTest : public ::testing::Test {
         opts.setVariable(tmpVar);
 
         auto const* access =
-            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::FromString.c_str(),
-                                           StaticStrings::FromString.length());
+            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::FromString);
         auto const* cond =
             ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
         auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -160,8 +159,7 @@ class GraphProviderTest : public ::testing::Test {
         opts.addLookupInfo(fakeQuery->plan(), "s9880", StaticStrings::FromString, fromCondition);
 
         auto const* revAccess =
-            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString.c_str(),
-                                           StaticStrings::ToString.length());
+            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString);
         auto const* revCond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                                             revAccess, tmpIdNode);
         auto toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -190,7 +188,7 @@ class GraphProviderTest : public ::testing::Test {
           ->addPreparedResponses(dbServerEndpoint, std::move(preparedResponses));
 
       {
-        auto queryString = arangodb::aql::QueryString("RETURN 1");
+        auto queryString = arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server->getSystemDatabase());

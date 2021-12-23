@@ -42,7 +42,6 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -184,9 +183,9 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
       return r.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
     }
 
-    VPackStringRef idRef = idSlice.stringRef();
+    std::string_view idRef = idSlice.stringView();
     TransactionId tid{StringUtils::uint64(idRef.data(), idRef.size())};
-    VPackStringRef statusRef = statusSlice.stringRef();
+    std::string_view statusRef = statusSlice.stringView();
     if (tid == desiredTid && transaction::statusFromString(statusRef.data(), statusRef.size()) == desStatus) {
       // all good
       return r.reset();
@@ -271,7 +270,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
           Result res;
           for (Try<arangodb::network::Response> const& tryRes : responses) {
             network::Response const& resp = tryRes.get();  // throws exceptions upwards
-            Result res = ::checkTransactionResult(tidPlus, status, resp);
+            res = ::checkTransactionResult(tidPlus, status, resp);
             if (res.fail()) {
               break;
             }
@@ -345,8 +344,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
 
 }  // namespace
 
-namespace arangodb {
-namespace ClusterTrxMethods {
+namespace arangodb::ClusterTrxMethods {
 using namespace arangodb::futures;
 
 bool IsServerIdLessThan::operator()(ServerID const& lhs, ServerID const& rhs) const noexcept {
@@ -575,5 +573,4 @@ bool isElCheapo(TransactionState const& state) {
           state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 }
 
-}  // namespace ClusterTrxMethods
-}  // namespace arangodb
+}  // namespace arangodb::ClusterTrxMethods

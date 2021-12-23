@@ -62,6 +62,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
+#include "RestHandler/RestVersionHandler.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -1434,11 +1435,9 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, ARANGODB_VERSION));
   }
 
-  // return version details
+  TRI_GET_GLOBALS();
   VPackBuilder builder;
-  builder.openObject();
-  rest::Version::getVPack(builder);
-  builder.close();
+  arangodb::RestVersionHandler::getVersion(v8g->_server, true, true, builder);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
@@ -2275,6 +2274,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      .FromMaybe(false);  // ignore result
+
+  // max number of move shards
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_MOVE_SHARDS"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfMoveShards()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
   
   // force one shard collections?

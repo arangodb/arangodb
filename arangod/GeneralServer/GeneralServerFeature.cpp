@@ -102,6 +102,9 @@
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -123,7 +126,7 @@ namespace arangodb {
 static uint64_t const _maxIoThreads = 64;
 
 struct RequestBodySizeScale {
-  static log_scale_t<uint64_t> scale() { return { 2, 64, 65536, 10 }; }
+  static metrics::LogScale<uint64_t> scale() { return { 2, 64, 65536, 10 }; }
 };
 
 DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
@@ -147,15 +150,15 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
       _supportInfoApiPolicy("hardened"),
       _numIoThreads(0),
       _requestBodySizeHttp1(
-          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http1{})),
+          server.getFeature<metrics::MetricsFeature>().add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(
-          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http2{})),
+          server.getFeature<metrics::MetricsFeature>().add(arangodb_request_body_size_http2{})),
       _requestBodySizeVst(
-          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_vst{})),
+          server.getFeature<metrics::MetricsFeature>().add(arangodb_request_body_size_vst{})),
       _http2Connections(
-          server.getFeature<MetricsFeature>().add(arangodb_http2_connections_total{})),
+          server.getFeature<metrics::MetricsFeature>().add(arangodb_http2_connections_total{})),
       _vstConnections(
-          server.getFeature<MetricsFeature>().add(arangodb_vst_connections_total{})) {
+          server.getFeature<metrics::MetricsFeature>().add(arangodb_vst_connections_total{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -176,7 +179,6 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("server.hide-product-header",
                         "http.hide-product-header");
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  options->addOldOption("server.default-api-compatibility", "");
   options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.io-threads",

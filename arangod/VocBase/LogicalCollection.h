@@ -39,7 +39,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 
 namespace arangodb {
 typedef std::string ServerID;  // ID of a server
@@ -197,7 +196,7 @@ class LogicalCollection : public LogicalDataSource {
 
   ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
                                 std::string& shardID, bool& usesDefaultShardKeys,
-                                velocypack::StringRef const& key = velocypack::StringRef());
+                                std::string_view key = std::string_view());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -367,6 +366,8 @@ class LogicalCollection : public LogicalDataSource {
    */
   std::string createSmartToSatKey(arangodb::velocypack::Slice input);
 
+  void decorateWithInternalEEValidators();
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -375,8 +376,6 @@ class LogicalCollection : public LogicalDataSource {
   bool determineSyncByRevision() const;
 
   void decorateWithInternalValidators();
-
-  void decorateWithInternalEEValidators();
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;

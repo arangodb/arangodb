@@ -28,10 +28,12 @@
 #include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/overload.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Counter.h"
+#include "Metrics/MetricsFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -51,15 +53,9 @@ using namespace arangodb;
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
-      _type(AccessMode::Type::READ),
-      _status(transaction::Status::CREATED),
-      _arena(),
-      _collections{_arena},  // assign arena to vector
-      _hints(),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
-      _id(tid),
-      _registeredTransaction(false) {
+      _id(tid) {
 
   // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -84,15 +80,18 @@ TransactionCollection* TransactionState::collection(DataSourceId cid,
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
-  size_t unused;
-  TransactionCollection* trxCollection = findCollection(cid, unused);
+  auto collectionOrPos = findCollectionOrPos(cid);
 
-  if (trxCollection == nullptr || !trxCollection->canAccess(accessType)) {
-    // not found or not accessible in the requested mode
-    return nullptr;
-  }
-
-  return trxCollection;
+  return std::visit(overload{
+                        [](CollectionNotFound const&) -> TransactionCollection* {
+                          return nullptr;
+                        },
+                        [&](CollectionFound const& colFound) -> TransactionCollection* {
+                          auto* const col = colFound.collection;
+                          return col->canAccess(accessType) ? col : nullptr;
+                        },
+                    },
+                    collectionOrPos);
 }
 
 /// @brief return the collection from a transaction
@@ -114,7 +113,7 @@ TransactionCollection* TransactionState::collection(std::string const& name,
   return (*it);
 }
 
-TransactionState::Cookie* TransactionState::cookie(void const* key) noexcept {
+TransactionState::Cookie* TransactionState::cookie(void const* key) const noexcept {
   auto itr = _cookies.find(key);
 
   return itr == _cookies.end() ? nullptr : itr->second.get();
@@ -194,10 +193,9 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
   Result res;
 
   // check if we already got this collection in the _collections vector
-  size_t position = 0;
-  TransactionCollection* trxColl = findCollection(cid, position);
-
-  if (trxColl != nullptr) {
+  auto colOrPos = findCollectionOrPos(cid);
+  if (std::holds_alternative<CollectionFound>(colOrPos)) {
+    auto* const trxColl = std::get<CollectionFound>(colOrPos).collection;
     LOG_TRX("ad6d0", TRACE, this)
         << "updating collection usage " << cid << ": '" << cname << "'";
 
@@ -212,6 +210,9 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
     // collection is already contained in vector
     return res.reset(trxColl->updateUsage(accessType));
   }
+  TRI_ASSERT(std::holds_alternative<CollectionNotFound>(colOrPos));
+  auto const position = std::get<CollectionNotFound>(colOrPos).lowerBound;
+
 
   // collection not found.
 
@@ -242,9 +243,8 @@ Result TransactionState::addCollectionInternal(DataSourceId cid, std::string con
   }
 
   // collection was not contained. now create and insert it
-  TRI_ASSERT(trxColl == nullptr);
 
-  trxColl = createTransactionCollection(cid, accessType).release();
+  auto* const trxColl = createTransactionCollection(cid, accessType).release();
 
   TRI_ASSERT(trxColl != nullptr);
 
@@ -300,21 +300,22 @@ TransactionCollection* TransactionState::findCollection(DataSourceId cid) const 
 ///        The idea is if a collection is found it will be returned.
 ///        In this case the position is not used.
 ///        In case the collection is not found. It will return a
-///        nullptr and the position will be set. The position
+///        lower bound of its position. The position
 ///        defines where the collection should be inserted,
 ///        so whenever we want to insert the collection we
 ///        have to use this position for insert.
-TransactionCollection* TransactionState::findCollection(DataSourceId cid,
-                                                        size_t& position) const {
+auto TransactionState::findCollectionOrPos(DataSourceId cid) const
+    -> std::variant<CollectionNotFound, CollectionFound> {
   size_t const n = _collections.size();
   size_t i;
 
+  // TODO We could do a binary search here.
   for (i = 0; i < n; ++i) {
-    auto trxCollection = _collections[i];
+    auto* trxCollection = _collections[i];
 
     if (cid == trxCollection->id()) {
       // found
-      return trxCollection;
+      return CollectionFound{trxCollection};
     }
 
     if (cid < trxCollection->id()) {
@@ -324,10 +325,8 @@ TransactionCollection* TransactionState::findCollection(DataSourceId cid,
     // next
   }
 
-  // update the insert position if required
-  position = i;
-
-  return nullptr;
+  // return the insert position if required
+  return CollectionNotFound{i};
 }
 
 void TransactionState::setExclusiveAccessType() {
@@ -484,5 +483,5 @@ void TransactionState::coordinatorRerollTransactionId() {
 
 /// @brief return a reference to the global transaction statistics
 TransactionStatistics& TransactionState::statistics() noexcept {
-  return _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
+  return _vocbase.server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics;
 }

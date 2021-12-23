@@ -57,6 +57,9 @@ struct NonConstExpressionContainer {
 
   // Allow moving.
   NonConstExpressionContainer(NonConstExpressionContainer&&) = default;
+  NonConstExpressionContainer(std::vector<std::unique_ptr<NonConstExpression>> expressions,
+                              std::vector<std::pair<VariableId, RegisterId>> varToRegisterMapping,
+                              bool hasV8Expression);
   NonConstExpressionContainer& operator=(NonConstExpressionContainer&&) = default;
 
   std::vector<std::unique_ptr<NonConstExpression>> _expressions;

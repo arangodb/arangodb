@@ -31,17 +31,28 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/MetricsFeature.h"
+
+#include "Metrics/Fwd.h"
 
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <map>
 
 namespace arangodb {
+class LogicalCollection;
 namespace maintenance {
 enum ActionState;
+
+
+// The following is used in multiple Maintenance actions and therefore
+// made available here.
+arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
+                                 uint64_t& c);
+
 }
 
 template <typename T>
@@ -73,7 +84,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   typedef std::map<ShardID, std::shared_ptr<maintenance::ActionDescription>> ShardActionMap;
 
   /// @brief Lowest limit for worker threads
-  static constexpr uint32_t const minThreadLimit = 2;
+  static constexpr uint32_t const minThreadLimit = 3;
 
   /// @brief Highest limit for worker threads
   static constexpr uint32_t const maxThreadLimit = 64;
@@ -81,6 +92,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
 
   // @brief #databases last time we checked allDatabases
   size_t lastNumberOfDatabases() const;
@@ -151,6 +163,13 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief check if a database is dirty
   bool isDirty(std::string const& dbName) const;
 
+  /// @brief Requeue an action with a new priority. This will clone the
+  /// action to create a new action object with a different priority.
+  /// It is only allowed to requeue actions which are in states
+  /// ActionState::COMPLETE or ActionState::FAILED!
+  Result requeueAction(std::shared_ptr<maintenance::Action>& action,
+                       int newPriority);
+
  protected:
   std::shared_ptr<maintenance::Action> createAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
@@ -176,6 +195,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// @brief Return pointer to next ready action, or nullptr
   std::shared_ptr<maintenance::Action> findReadyAction(
+      int minimalPriorityAllowed,
       std::unordered_set<std::string> const& options = std::unordered_set<std::string>());
 
   /// @brief Process specific ID for a new action
@@ -406,6 +426,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
 
+  /// @brief tunable option for number of slow threads
+  uint32_t _maintenanceThreadsSlowMax;
+
   /// @brief tunable option for number of seconds COMPLETE or FAILED actions block
   ///  duplicates from adding to _actionRegistry
   int32_t _secondsActionsBlock;
@@ -509,27 +532,27 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   size_t _lastNumberOfDatabases;
 
  public:
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase2_runtime_msec;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _agency_sync_total_runtime_msec;
+  metrics::Histogram<metrics::LogScale<uint64_t>>* _phase1_runtime_msec = nullptr;
+  metrics::Histogram<metrics::LogScale<uint64_t>>* _phase2_runtime_msec = nullptr;
+  metrics::Histogram<metrics::LogScale<uint64_t>>* _agency_sync_total_runtime_msec = nullptr;
 
-  std::optional<std::reference_wrapper<Counter>> _phase1_accum_runtime_msec;
-  std::optional<std::reference_wrapper<Counter>> _phase2_accum_runtime_msec;
-  std::optional<std::reference_wrapper<Counter>> _agency_sync_total_accum_runtime_msec;
+  metrics::Counter* _phase1_accum_runtime_msec = nullptr;
+  metrics::Counter* _phase2_accum_runtime_msec = nullptr;
+  metrics::Counter* _agency_sync_total_accum_runtime_msec = nullptr;
 
-  std::optional<std::reference_wrapper<Counter>> _action_duplicated_counter;
-  std::optional<std::reference_wrapper<Counter>> _action_registered_counter;
-  std::optional<std::reference_wrapper<Counter>> _action_done_counter;
+  metrics::Counter* _action_duplicated_counter = nullptr;
+  metrics::Counter* _action_registered_counter = nullptr;
+  metrics::Counter* _action_done_counter = nullptr;
 
   struct ActionMetrics {
-    Histogram<log_scale_t<uint64_t>>& _runtime_histogram;
-    Histogram<log_scale_t<uint64_t>>& _queue_time_histogram;
-    Counter& _accum_runtime;
-    Counter& _accum_queue_time;
-    Counter& _failure_counter;
+    metrics::Histogram<metrics::LogScale<uint64_t>>& _runtime_histogram;
+    metrics::Histogram<metrics::LogScale<uint64_t>>& _queue_time_histogram;
+    metrics::Counter& _accum_runtime;
+    metrics::Counter& _accum_queue_time;
+    metrics::Counter& _failure_counter;
 
-    ActionMetrics(Histogram<log_scale_t<uint64_t>>& a,
-                  Histogram<log_scale_t<uint64_t>>& b, Counter& c, Counter& d, Counter& e)
+    ActionMetrics(metrics::Histogram<metrics::LogScale<uint64_t>>& a,
+                  metrics::Histogram<metrics::LogScale<uint64_t>>& b, metrics::Counter& c, metrics::Counter& d, metrics::Counter& e)
         : _runtime_histogram(a),
           _queue_time_histogram(b),
           _accum_runtime(c),
@@ -538,12 +561,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   };
 
   std::unordered_map<std::string, ActionMetrics> _maintenance_job_metrics_map;
-  std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _maintenance_action_runtime_msec;
+  metrics::Histogram<metrics::LogScale<uint64_t>>* _maintenance_action_runtime_msec = nullptr;
 
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_out_of_sync;
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_total_count;
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_leader_count;
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_not_replicated_count;
+  metrics::Gauge<uint64_t>* _shards_out_of_sync = nullptr;
+  metrics::Gauge<uint64_t>* _shards_total_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_leader_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_not_replicated_count = nullptr;
 };
 
 }  // namespace arangodb

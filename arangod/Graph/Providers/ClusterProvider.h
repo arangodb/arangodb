@@ -32,6 +32,7 @@
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
+#include "Containers/FlatHashMap.h"
 
 #include "Transaction/Methods.h"
 
@@ -190,7 +191,7 @@ class ClusterProvider {
   arangodb::aql::TraversalStats _stats;
 
   /// @brief vertex reference to all connected edges including the edges target
-  std::unordered_map<VertexType, std::vector<std::pair<EdgeType, VertexType>>> _vertexConnectedEdges;
+  containers::FlatHashMap<VertexType, std::vector<std::pair<EdgeType, VertexType>>> _vertexConnectedEdges;
 };
 }  // namespace graph
 }  // namespace arangodb

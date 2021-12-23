@@ -30,11 +30,13 @@
 #include "velocypack/vpack.h"
 #include "utils/vpack_utils.hpp"
 
+#include <string_view>
+
 namespace {
 
-constexpr VPackStringRef PIPELINE_PARAM_NAME    {"pipeline"};
-constexpr VPackStringRef TYPE_PARAM_NAME        {"type"};
-constexpr VPackStringRef PROPERTIES_PARAM_NAME  {"properties"};
+constexpr std::string_view PIPELINE_PARAM_NAME    {"pipeline"};
+constexpr std::string_view TYPE_PARAM_NAME        {"type"};
+constexpr std::string_view PROPERTIES_PARAM_NAME  {"properties"};
 
 const irs::offset NO_OFFSET;
 

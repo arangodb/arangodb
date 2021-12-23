@@ -31,6 +31,7 @@
 #include <ratio>
 #include <regex>
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -42,11 +43,8 @@
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 
-#include <velocypack/StringRef.h>
-
 namespace {
 using namespace date;
-using namespace std::chrono;
 
 std::string tail(std::string const& source, size_t const length) {
   if (length >= source.size()) {
@@ -237,7 +235,7 @@ std::
                                                                                 day{0};
                                                                             uint64_t daysSinceFirst =
                                                                                 duration_cast<date::days>(
-                                                                                    tp - sys_days(firstDayInYear))
+                                                                                    tp - date::sys_days(firstDayInYear))
                                                                                     .count();
                                                                             if (daysSinceFirst < 10) {
                                                                               wrk.append(
@@ -354,7 +352,7 @@ std::
                                                                             auto diffDuration =
                                                                                 tp - unixEpoch;
                                                                             auto diff =
-                                                                                duration_cast<duration<double, std::milli>>(
+                                                                                duration_cast<std::chrono::duration<double, std::milli>>(
                                                                                     diffDuration)
                                                                                     .count();
                                                                             wrk.append(std::to_string(static_cast<int64_t>(
@@ -365,7 +363,7 @@ std::
                                                                              arangodb::tp_sys_clock_ms const& tp) {
                                                                             std::string formatted = format(
                                                                                 "%FT%TZ",
-                                                                                floor<milliseconds>(tp));
+                                                                                floor<std::chrono::milliseconds>(tp));
                                                                             wrk.append(formatted);
                                                                           }},
                                                                          {"%w",
@@ -457,7 +455,7 @@ std::
                                                                                 day{0};
                                                                             uint64_t daysSinceFirst =
                                                                                 duration_cast<date::days>(
-                                                                                    tp - sys_days(firstDayInYear))
+                                                                                    tp - date::sys_days(firstDayInYear))
                                                                                     .count();
                                                                             wrk.append(std::to_string(daysSinceFirst));
                                                                           }},
@@ -593,7 +591,7 @@ struct ParsedDateTime {
 };
 
 /// @brief parses a number value, and returns its length
-int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
+int parseNumber(std::string_view dateTime, int& result) {
   char const* p = dateTime.data();
   char const* e = p + dateTime.size();
 
@@ -609,8 +607,7 @@ int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
   return static_cast<int>(p - dateTime.data());
 }
 
-bool parseDateTime(arangodb::velocypack::StringRef dateTime,
-                   ParsedDateTime& result) {
+bool parseDateTime(std::string_view dateTime, ParsedDateTime& result) {
   // trim input string
   while (!dateTime.empty()) {
     char c = dateTime.front();
@@ -635,7 +632,7 @@ bool parseDateTime(arangodb::velocypack::StringRef dateTime,
     if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
       break;
     }
-    dateTime.pop_back();
+    dateTime.remove_suffix(1);
   }
 
   // year
@@ -768,27 +765,33 @@ bool parseDateTime(arangodb::velocypack::StringRef dateTime,
   return dateTime.empty();
 }
 
+bool regexIsoDuration(std::string_view isoDuration,
+                      std::match_results<std::string_view::iterator>& durationParts) {
+  if (isoDuration.length() <= 1) {
+    return false;
+  }
+
+  return std::regex_match(isoDuration.begin(), isoDuration.end(), durationParts, durationRegex);
+}
+
 }  // namespace
 
-bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
+bool arangodb::basics::parseDateTime(std::string_view dateTime,
                                      arangodb::tp_sys_clock_ms& date_tp) {
   ::ParsedDateTime result;
   if (!::parseDateTime(dateTime, result)) {
     return false;
   }
 
-  using namespace date;
-  using namespace std::chrono;
-
   date_tp = sys_days(year{result.year} / result.month / result.day);
-  date_tp += hours{result.hour};
-  date_tp += minutes{result.minute};
-  date_tp += seconds{result.second};
-  date_tp += milliseconds{result.millisecond};
+  date_tp += std::chrono::hours{result.hour};
+  date_tp += std::chrono::minutes{result.minute};
+  date_tp += std::chrono::seconds{result.second};
+  date_tp += std::chrono::milliseconds{result.millisecond};
 
   if (result.tzOffsetHour != 0 || result.tzOffsetMinute != 0) {
-    minutes offset = hours{result.tzOffsetHour};
-    offset += minutes{result.tzOffsetMinute};
+    std::chrono::minutes offset = std::chrono::hours{result.tzOffsetHour};
+    offset += std::chrono::minutes{result.tzOffsetMinute};
 
     if (offset.count() != 0) {
       // apply timezone adjustment
@@ -817,26 +820,17 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
   return true;
 }
 
-bool arangodb::basics::regexIsoDuration(arangodb::velocypack::StringRef isoDuration,
-                                        std::match_results<char const*>& durationParts) {
-  if (isoDuration.length() <= 1) {
-    return false;
-  }
-
-  return std::regex_match(isoDuration.begin(), isoDuration.end(), durationParts, ::durationRegex);
-}
-
 std::string arangodb::basics::formatDate(std::string const& formatString,
                                          arangodb::tp_sys_clock_ms const& dateValue) {
   return ::executeDateFormatRegex(formatString, dateValue);
 }
 
-bool arangodb::basics::parseIsoDuration(arangodb::velocypack::StringRef duration,
+bool arangodb::basics::parseIsoDuration(std::string_view duration,
                                         arangodb::basics::ParsedDuration& ret) {
   using namespace arangodb;
 
-  std::match_results<char const*> durationParts;
-  if (!arangodb::basics::regexIsoDuration(duration, durationParts)) {
+  std::match_results<std::string_view::iterator> durationParts;
+  if (!::regexIsoDuration(duration, durationParts)) {
     return false;
   }
 

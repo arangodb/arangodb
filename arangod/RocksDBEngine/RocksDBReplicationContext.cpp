@@ -55,7 +55,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -531,8 +530,10 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope) {
+    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope,
+    bool singleArray) {
   TRI_ASSERT(_users > 0 && chunkSize > 0);
+  TRI_ASSERT(!useEnvelope || !singleArray);
 
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&]() noexcept {
@@ -563,6 +564,10 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
              RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents));
 
   VPackBuilder builder(buffer, &cIter->vpackOptions);
+  if (singleArray) {
+    // put everything into a single result array on demand
+    builder.openArray(true);
+  }
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buffer.length() < chunkSize) {
     if (useEnvelope) {
@@ -576,6 +581,9 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     }
     cIter->iter->Next();
     ++cIter->numberDocumentsDumped;
+  }
+  if (singleArray) {
+    builder.close();
   }
 
   bool hasMore = cIter->hasMore();
@@ -656,7 +664,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     while (k-- > 0 && cIter->hasMore()) {
       snapNumDocs++;
 
-      arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+      std::string_view key = RocksDBKey::primaryKey(cIter->iter->key());
       if (lowKey.empty()) {
         lowKey.assign(key.data(), key.size());
       }
@@ -680,7 +688,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
         } else {
           LOG_TOPIC("32e3b", WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
-              << "did not find document with key " << key.toString();
+              << "did not find document with key " << key;
           TRI_ASSERT(false);
           return rv.reset(TRI_ERROR_INTERNAL);
         }
@@ -776,7 +784,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   size_t from = chunk * chunkSize;
   if (from != cIter->lastSortedIteratorOffset) {
     if (!lowKey.empty()) {
-      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), arangodb::velocypack::StringRef(lowKey));
+      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), std::string_view(lowKey));
       cIter->iter->Seek(tmpKey.string());
       cIter->lastSortedIteratorOffset = from;
       TRI_ASSERT(cIter->iter->Valid());
@@ -833,16 +841,16 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
         docRev = RevisionId::fromSlice(
             VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
       } else {
-        arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+        std::string_view key = RocksDBKey::primaryKey(cIter->iter->key());
         LOG_TOPIC("41803", WARN, Logger::REPLICATION)
             << "inconsistent primary index, "
-            << "did not find document with key " << key.toString();
+            << "did not find document with key " << key;
         TRI_ASSERT(false);
         return rv.reset(TRI_ERROR_INTERNAL);
       }
     }
 
-    arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
+    std::string_view docKey(RocksDBKey::primaryKey(cIter->iter->key()));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
     b.add(docRev.toValuePair(ridBuffer));
@@ -894,7 +902,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   size_t from = chunk * chunkSize;
   if (from != cIter->lastSortedIteratorOffset) {
     if (!lowKey.empty()) {
-      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), arangodb::velocypack::StringRef(lowKey));
+      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), std::string_view(lowKey));
       cIter->iter->Seek(tmpKey.string());
       cIter->lastSortedIteratorOffset = from;
       TRI_ASSERT(cIter->iter->Valid());
@@ -975,10 +983,10 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
           TRI_ASSERT(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())).isObject());
           b.add(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
         } else {
-          arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+          std::string_view key = RocksDBKey::primaryKey(cIter->iter->key());
           LOG_TOPIC("d79df", WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
-              << "did not find document with key " << key.toString();
+              << "did not find document with key " << key;
           TRI_ASSERT(false);
           return Result(TRI_ERROR_INTERNAL);
         }
@@ -1105,6 +1113,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   
   _cTypeHandler = transaction::Context::createCustomTypeHandler(vocbase, _resolver);
   vpackOptions.customTypeHandler = _cTypeHandler.get();
+  vpackOptions.paddingBehavior = velocypack::Options::PaddingBehavior::UsePadding;
   setSorted(sorted);
 
   if (!vocbase.use()) {  // false if vobase was deleted

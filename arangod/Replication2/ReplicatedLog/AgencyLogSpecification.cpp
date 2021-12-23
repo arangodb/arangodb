@@ -80,6 +80,8 @@ auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
     builder.add(VPackValue(StaticStrings::CurrentTerm));
     currentTerm->toVelocyPack(builder);
   }
+  builder.add(VPackValue("participantsConfig"));
+  participantsConfig.toVelocyPack(builder);
 }
 
 LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
@@ -87,6 +89,10 @@ LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
       targetConfig(slice.get(StaticStrings::TargetConfig)) {
   if (auto term = slice.get(StaticStrings::CurrentTerm); !term.isNone()) {
     currentTerm = LogPlanTermSpecification{from_velocypack, term};
+  }
+
+  if (auto partConfig = slice.get("participantsConfig"); !partConfig.isNone()) {
+    participantsConfig = ParticipantsConfig::fromVelocyPack(partConfig);
   }
 }
 
@@ -101,6 +107,13 @@ LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term, LogConfig confi
 LogPlanSpecification::LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
                                            LogConfig config)
     : id(id), currentTerm(std::move(term)), targetConfig(config) {}
+
+LogPlanSpecification::LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
+                                           LogConfig config, ParticipantsConfig participantsConfig)
+    : id(id),
+      currentTerm(std::move(term)),
+      targetConfig(config),
+      participantsConfig(std::move(participantsConfig)) {}
 
 LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t, VPackSlice slice) {
   auto spearheadSlice = slice.get(StaticStrings::Spearhead);
@@ -120,13 +133,17 @@ auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
 }
 
 LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
-  for (auto const& [key, value] :
-       VPackObjectIterator(slice.get(StaticStrings::LocalStatus))) {
-    localState.emplace(ParticipantId{key.copyString()},
-                       LogCurrentLocalState(from_velocypack, value));
+  if (auto ls = slice.get(StaticStrings::LocalStatus); !ls.isNone()) {
+    for (auto const& [key, value] : VPackObjectIterator(ls)) {
+      localState.emplace(ParticipantId{key.copyString()},
+                         LogCurrentLocalState(from_velocypack, value));
+    }
   }
   if (auto ss = slice.get("supervision"); !ss.isNone()) {
     supervision = LogCurrentSupervision{from_velocypack, ss};
+  }
+  if (auto ls = slice.get("leader"); !ls.isNone()) {
+    leader = Leader::fromVelocyPack(ls);
   }
 }
 
@@ -157,6 +174,14 @@ auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
     builder.add(VPackValue("supervision"));
     supervision->toVelocyPack(builder);
   }
+  if (leader.has_value()) {
+    VPackObjectBuilder lob(&builder, "leader");
+    leader->toVelocyPack(builder);
+  }
+}
+
+auto LogCurrent::fromVelocyPack(VPackSlice s) -> LogCurrent {
+  return LogCurrent(from_velocypack, s);
 }
 
 auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
@@ -210,4 +235,18 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
          left.participantsAvailable == right.participantsAvailable &&
          left.participantsRequired == right.participantsRequired &&
          left.detail == right.detail;
+}
+
+auto LogCurrent::Leader::toVelocyPack(VPackBuilder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Term, VPackValue(term));
+  builder.add(VPackValue("committedParticipantsConfig"));
+  committedParticipantsConfig.toVelocyPack(builder);
+}
+
+auto LogCurrent::Leader::fromVelocyPack(VPackSlice s) -> Leader {
+  auto leader =  LogCurrent::Leader{};
+  leader.term = s.get(StaticStrings::Term).extract<LogTerm>();
+  leader.committedParticipantsConfig = ParticipantsConfig::fromVelocyPack(s.get("committedParticipantsConfig"));
+  return leader;
 }

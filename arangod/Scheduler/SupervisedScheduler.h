@@ -32,7 +32,7 @@
 
 #include <boost/lockfree/queue.hpp>
 
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -213,30 +213,30 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  Gauge<uint64_t>& _metricsQueueLength;
-  Gauge<uint64_t>& _metricsJobsDone;
-  Gauge<uint64_t>& _metricsJobsSubmitted;
-  Gauge<uint64_t>& _metricsJobsDequeued;
-  Counter& _metricsJobsDoneTotal;
-  Counter& _metricsJobsSubmittedTotal;
-  Counter& _metricsJobsDequeuedTotal;
-  Gauge<uint64_t>& _metricsNumAwakeThreads;
-  Gauge<uint64_t>& _metricsNumWorkingThreads;
-  Gauge<uint64_t>& _metricsNumWorkerThreads;
-  
-  Counter& _metricsHandlerTasksCreated;
-  Counter& _metricsThreadsStarted;
-  Counter& _metricsThreadsStopped;
-  Counter& _metricsQueueFull;
-  Counter& _metricsQueueTimeViolations;
-  Gauge<uint64_t>& _ongoingLowPriorityGauge;
-  
+  metrics::Gauge<uint64_t>& _metricsQueueLength;
+  metrics::Gauge<uint64_t>& _metricsJobsDone;
+  metrics::Gauge<uint64_t>& _metricsJobsSubmitted;
+  metrics::Gauge<uint64_t>& _metricsJobsDequeued;
+  metrics::Counter& _metricsJobsDoneTotal;
+  metrics::Counter& _metricsJobsSubmittedTotal;
+  metrics::Counter& _metricsJobsDequeuedTotal;
+  metrics::Gauge<uint64_t>& _metricsNumAwakeThreads;
+  metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
+  metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
+
+  metrics::Counter& _metricsHandlerTasksCreated;
+  metrics::Counter& _metricsThreadsStarted;
+  metrics::Counter& _metricsThreadsStopped;
+  metrics::Counter& _metricsQueueFull;
+  metrics::Counter& _metricsQueueTimeViolations;
+  metrics::Gauge<uint64_t>& _ongoingLowPriorityGauge;
+
   /// @brief amount of time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms].
   /// this metric is only updated probabilistically
-  Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
+  metrics::Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
 
-  std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;
+  std::array<std::reference_wrapper<metrics::Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;
 };
 
 }  // namespace arangodb

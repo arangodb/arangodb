@@ -46,7 +46,7 @@ static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-    RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
+    RegisterId collectRegister, std::vector<std::string> aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     velocypack::Options const* opts, 
     arangodb::ResourceMonitor& resourceMonitor)
@@ -93,7 +93,7 @@ HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos co
 
     // initialize aggregators
     for (auto const& r : infos.getAggregateTypes()) {
-      aggregatorFactories.emplace_back(&Aggregator::factoryFromTypeString(r));
+      aggregatorFactories.emplace_back(&Aggregator::factoryFromTypeString(std::string_view(r)));
     }
   }
 

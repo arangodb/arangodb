@@ -29,6 +29,9 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
 
+#include <memory>
+#include <string>
+
 namespace arangodb {
 class RestBatchHandler;
 
@@ -74,13 +77,13 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void addPayload(velocypack::Slice const&,
+  void addPayload(velocypack::Slice slice,
                   velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override final;
   void addPayload(velocypack::Buffer<uint8_t>&&,
                   velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override final;
-  void addRawPayload(velocypack::StringRef payload) override final;
+  void addRawPayload(std::string_view payload) override final;
 
   bool isResponseEmpty() const override final {
     return _body->empty();
@@ -99,8 +102,8 @@ class HttpResponse : public GeneralResponse {
   
  private:
   // the body must already be set. deflate is then run on the existing body
-  ErrorCode deflate(size_t size = 16384) override {
-    return _body->deflate(size);
+  ErrorCode deflate() override {
+    return _body->deflate();
   }
 
   void addPayloadInternal(uint8_t const* data, size_t length, 

@@ -41,7 +41,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -197,7 +197,7 @@ class ShardDistributionReporterTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // required for TRI_vocbase_t instantiation
 
@@ -381,11 +381,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver2short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             }
           }
 
@@ -404,7 +404,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver2short);
+            ASSERT_EQ(leader.copyString(), dbserver2short);
           }
 
           {  // It should have the correct followers shortnames
@@ -419,11 +419,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver1short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver1short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver1short);
             }
           }
 
@@ -457,11 +457,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+            if (firstFollower.stringView() == dbserver1short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver1short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver2short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver1short);
             }
           }
 
@@ -502,12 +502,12 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice secondFollower = followers.at(1);
             ASSERT_TRUE(secondFollower.isString());
 
-            // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            // We do not guarantee any ordering here
+            if (firstFollower.stringView() == dbserver2short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             }
           }
         }
@@ -521,7 +521,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver2short);
+            ASSERT_EQ(leader.copyString(), dbserver2short);
           }
 
           {  // It should not have any followers
@@ -540,7 +540,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver3short);
+            ASSERT_EQ(leader.copyString(), dbserver3short);
           }
 
           {  // It should have the correct followers shortnames
@@ -550,7 +550,7 @@ TEST_F(ShardDistributionReporterTest,
 
             VPackSlice firstFollower = followers.at(0);
             ASSERT_TRUE(firstFollower.isString());
-            ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
+            ASSERT_EQ(firstFollower.copyString(), dbserver2short);
           }
         }
       }
@@ -605,11 +605,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver2short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             }
           }
 
@@ -643,11 +643,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver1short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver1short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver1short);
             }
           }
 
@@ -680,7 +680,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver3short);
+            ASSERT_EQ(leader.copyString(), dbserver3short);
           }
 
           {  // It should have the correct followers shortnames
@@ -695,11 +695,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+            if (firstFollower.stringView() == dbserver1short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver1short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver2short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver1short);
             }
           }
 
@@ -709,11 +709,11 @@ TEST_F(ShardDistributionReporterTest,
 
             VPackSlice total = progress.get("total");
             ASSERT_TRUE(total.isNumber());
-            ASSERT_TRUE(total.getNumber<uint64_t>() == shard3LeaderCount);
+            ASSERT_EQ(total.getNumber<uint64_t>(), shard3LeaderCount);
 
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
-            ASSERT_TRUE(current.getNumber<uint64_t>() == shard3FollowerCount);
+            ASSERT_EQ(current.getNumber<uint64_t>(), shard3FollowerCount);
             
             VPackSlice pct = progress.get("followerPercent");
             ASSERT_TRUE(pct.isNumber());
@@ -755,11 +755,11 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
-              ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
+            if (firstFollower.stringView() == dbserver2short) {
+              ASSERT_EQ(secondFollower.copyString(), dbserver3short);
             } else {
-              ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
-              ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
+              ASSERT_EQ(firstFollower.copyString(), dbserver3short);
+              ASSERT_EQ(secondFollower.copyString(), dbserver2short);
             }
           }
         }
@@ -792,7 +792,7 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice leader = shard.get("leader");
 
             ASSERT_TRUE(leader.isString());
-            ASSERT_TRUE(leader.copyString() == dbserver3short);
+            ASSERT_EQ(leader.copyString(), dbserver3short);
           }
 
           {  // It should have the correct followers shortnames
@@ -802,7 +802,7 @@ TEST_F(ShardDistributionReporterTest,
 
             VPackSlice firstFollower = followers.at(0);
             ASSERT_TRUE(firstFollower.isString());
-            ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
+            ASSERT_EQ(firstFollower.copyString(), dbserver2short);
           }
         }
       }

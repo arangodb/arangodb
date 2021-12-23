@@ -73,31 +73,32 @@ std::string_view GeneralRequest::translateMethod(RequestType method) {
 }
 
 namespace  {
-rest::RequestType translateMethod(VPackStringRef const& methodString) {
-  if (methodString == "DELETE") {
+rest::RequestType translateMethodHelper(std::string_view method) {
+  if (method == "DELETE") {
     return RequestType::DELETE_REQ;
-  } else if (methodString == "GET") {
+  } else if (method == "GET") {
     return RequestType::GET;
-  } else if (methodString == "HEAD") {
+  } else if (method == "HEAD") {
     return RequestType::HEAD;
-  } else if (methodString == "OPTIONS") {
+  } else if (method == "OPTIONS") {
     return RequestType::OPTIONS;
-  } else if (methodString == "PATCH") {
+  } else if (method == "PATCH") {
     return RequestType::PATCH;
-  } else if (methodString == "POST") {
+  } else if (method == "POST") {
     return RequestType::POST;
-  } else if (methodString == "PUT") {
+  } else if (method == "PUT") {
     return RequestType::PUT;
   }
   return RequestType::ILLEGAL;
 }
 }
 
-rest::RequestType GeneralRequest::translateMethod(VPackStringRef const& method) {
-  auto ret = ::translateMethod(method);
+rest::RequestType GeneralRequest::translateMethod(std::string_view method) {
+  auto ret = ::translateMethodHelper(method);
   if (RequestType::ILLEGAL == ret) {
-    std::string const methodString = StringUtils::toupper(method.toString());
-    return ::translateMethod(VPackStringRef(methodString));
+    std::string methodString(method.data(), method.size());
+    StringUtils::toupperInPlace(methodString);
+    return ::translateMethodHelper(std::string_view(methodString));
   }
   return ret;
 }

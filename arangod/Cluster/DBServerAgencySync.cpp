@@ -39,6 +39,9 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -96,7 +99,7 @@ Result DBServerAgencySync::getLocalCollections(
     }
 
     {
-      auto [it, created] = replLogs.try_emplace(dbname, vocbase.getReplicatedLogs());
+      auto [it, created] = replLogs.try_emplace(dbname, vocbase.getReplicatedLogsQuickStatus());
       if (!created) {
         LOG_TOPIC("5d5c9", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new entry in local replicated logs cache";
@@ -295,9 +298,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
+    std::unordered_set<std::string> failedServers;
+    auto failedServersList = clusterInfo.getFailedServers();
+    for (auto const& fs : failedServersList) {
+      failedServers.emplace(fs);
+    }
     tmp = arangodb::maintenance::phaseTwo(plan, current, currentIndex, dirty,
                                           local, serverId, mfeature, rb,
-                                          currentShardLocks, localLogs);
+                                          currentShardLocks, localLogs,
+                                          failedServers);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -395,8 +404,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto end = clock::now();
   auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  mfeature._agency_sync_total_runtime_msec->get().count(total_ms);
-  mfeature._agency_sync_total_accum_runtime_msec->get().count(total_ms);
+  TRI_ASSERT(mfeature._agency_sync_total_runtime_msec != nullptr);
+  mfeature._agency_sync_total_runtime_msec->count(total_ms);
+  TRI_ASSERT(mfeature._agency_sync_total_accum_runtime_msec != nullptr);
+  mfeature._agency_sync_total_accum_runtime_msec->count(total_ms);
   auto took = duration<double>(end - start).count();
   if (took > 30.0) {
     LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE)

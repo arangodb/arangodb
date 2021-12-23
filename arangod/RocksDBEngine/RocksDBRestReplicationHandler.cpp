@@ -132,13 +132,13 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       // and "lastUncommittedLogTick"
       b.add("state", VPackValue(VPackValueType::Object));
       for (auto it : VPackObjectIterator(tmp.slice())) {
-        if (it.key.stringRef() == "lastLogTick" ||
-            it.key.stringRef() == "lastUncommittedLogTick") {
+        if (it.key.stringView() == "lastLogTick" ||
+            it.key.stringView() == "lastUncommittedLogTick") {
           // put into the tick from our own snapshot
-          b.add(it.key.stringRef(), VPackValue(snapTick));
+          b.add(it.key.stringView(), VPackValue(snapTick));
         } else {
           // write our other attributes as they are
-          b.add(it.key.stringRef(), it.value);
+          b.add(it.key.stringView(), it.value);
         }
       }
       b.close(); // state
@@ -755,7 +755,19 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     return;
   }
 
+  // "useEnvelope" URL parameter supported from >= 3.8 onwards. it defaults to
+  // "true" if not set. when explicitly set to "false", we can get away with using
+  // a more lightweight response format, in which each document does not need to be
+  // wrapped into a {"type":2300,"data":<document>} envelope.
   bool const useEnvelope = _request->parsedValue("useEnvelope", true);
+
+  // "array" URL parameter supported from >= 3.10 onwards. it defaults to "false"
+  // if not set. when explictly set to "true", we can get away with sending all
+  // documents as one big velocypack array, instead of sending multiple velocypack
+  // documents one following another. this has the advantage that on the client side
+  // we will receive a velocypack array which is ready to be fed into a multi-document
+  // operation.
+  bool const singleArray = _request->parsedValue("array", false);
 
   uint64_t chunkSize = determineChunkSize();
   size_t reserve = std::max<size_t>(chunkSize, 8192);
@@ -767,7 +779,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
     auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
 
-    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope);
+    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope, singleArray);
     // generate the result
     if (res.fail()) {
       generateError(res.result());
@@ -832,7 +844,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       // avoid double freeing
       TRI_StealStringBuffer(dump.stringBuffer());
     } else {
-      _response->addRawPayload(VPackStringRef(dump.data(), dump.length()));
+      _response->addRawPayload(std::string_view(dump.data(), dump.length()));
       _response->setGenerateBody(true);
     }
   }

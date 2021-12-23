@@ -24,7 +24,7 @@
 #include <deque>
 
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -75,6 +75,16 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
     }
   }
 
+  void runAllAsyncAppendEntries() {
+    while(hasPendingAppendEntries()) {
+      runAsyncAppendEntries();
+    }
+  }
+
+  auto getCommitIndex() const noexcept -> LogIndex override {
+    return _follower->getCommitIndex();
+  }
+
   using WaitForAsyncPromise = futures::Promise<replicated_log::AppendEntriesRequest>;
 
   struct AsyncRequest {
@@ -98,6 +108,10 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
 
   auto getStatus() const -> replicated_log::LogStatus override {
     return _follower->getStatus();
+  }
+
+  auto getQuickStatus() const -> replicated_log::QuickLogStatus override {
+    return _follower->getQuickStatus();
   }
 
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> override {

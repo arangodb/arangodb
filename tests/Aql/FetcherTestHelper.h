@@ -21,8 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_AQL_FETCHER_TESTHELPER_H
-#define TESTS_AQL_FETCHER_TESTHELPER_H
+#pragma once
 
 #include "AqlItemBlockHelper.h"
 #include "DependencyProxyMock.h"
@@ -378,5 +377,3 @@ static std::vector<std::pair<arangodb::aql::ExecutionState, arangodb::aql::Share
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

@@ -77,10 +77,31 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::clear() {
-  _shell.clear();
-  _interior.reset();
-  _queue.clear();
   _depth = 0;
+  _queue.clear();
+  _shell.clear();
+  _interior.reset();  // PathStore
+
+  // Provider - Must be last one to be cleared(!)
+  clearProvider();
+}
+
+template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::clearProvider() {
+  // We need to make sure, no one holds references to _provider.
+  // Guarantee that the used Queue is empty and we do not hold any reference to PathStore.
+  // Info: Steps do contain VertexRefs which are hold in PathStore.
+  TRI_ASSERT(_queue.isEmpty());
+
+  // Guarantee that _shell is empty. Steps are contained in _shell and those
+  // do contain VertexRefs which are hold in PathStore.
+  TRI_ASSERT(_shell.empty());
+
+  // Guarantee that the used PathStore is cleared, before we clear the Provider.
+  // The Provider does hold the StringHeap cache.
+  TRI_ASSERT(_interior.size() == 0);
+
+  _provider.clear();
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
@@ -270,9 +291,13 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::clear() {
+  // Order is important here, please do not change.
+  // 1.) Remove current results
+  _results.clear();
+
+  // 2.) Remove both Balls (order here is not important)
   _left.clear();
   _right.clear();
-  _results.clear();
 }
 
 /**
@@ -290,7 +315,7 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
  * @brief Reset to new source and target vertices.
  * This API uses string references, this class will not take responsibility
  * for the referenced data. It is caller's responsibility to retain the
- * underlying data and make sure the StringRefs stay valid until next
+ * underlying data and make sure the strings stay valid until next
  * call of reset.
  *
  * @param source The source vertex to start the paths

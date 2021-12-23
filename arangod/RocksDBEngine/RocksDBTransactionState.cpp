@@ -36,7 +36,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
@@ -215,7 +217,8 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     cleanupTransaction();  // deletes trx
     ++statistics()._transactionsCommitted;
   } else {
-    abortTransaction(activeTrx);  // deletes trx
+    // what if this fails?
+    std::ignore = abortTransaction(activeTrx);  // deletes trx
   }
   TRI_ASSERT(!_cacheTx);
 
@@ -261,16 +264,15 @@ void RocksDBTransactionState::prepareOperation(DataSourceId cid, RevisionId rid,
 
 /// @brief add an operation for a transaction collection
 Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisionId,
-                                             TRI_voc_document_operation_e operationType,
-                                             bool& hasPerformedIntermediateCommit) {
-  Result result = rocksdbMethods(cid)->addOperation(cid, revisionId, operationType);
+                                             TRI_voc_document_operation_e operationType) {
+  Result result = rocksdbMethods(cid)->addOperation(operationType);
 
   if (result.ok()) {
     auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
     if (tcoll == nullptr) {
       std::string message = "collection '" + std::to_string(cid.id()) +
                             "' not found in transaction state";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
     }
 
     // should not fail or fail with exception
@@ -282,10 +284,13 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
     if (queryCache->mayBeActive() && tcoll->collection()) {
       queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
     }
-    
-    result = rocksdbMethods(cid)->checkIntermediateCommit(hasPerformedIntermediateCommit);
   }
+
   return result;
+}
+
+Result RocksDBTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
+  return rocksdbMethods(cid)->checkIntermediateCommit();
 }
 
 RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(DataSourceId cid) {
@@ -330,17 +335,35 @@ void RocksDBTransactionState::trackIndexRemove(DataSourceId cid, IndexId idxId, 
   }
 }
 
-bool RocksDBTransactionState::isOnlyExclusiveTransaction() const {
+bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   if (!AccessMode::isWriteOrExclusive(_type)) {
     return false;
   }
-  for (TransactionCollection* coll : _collections) {
-    if (AccessMode::isWrite(coll->accessType())) {
-      return false;
-    }
-  }
-  return true;
+  return std::none_of(_collections.begin(), _collections.end(), [](auto* coll) {
+    return AccessMode::isWrite(coll->accessType());
+  });
 }
+
+bool RocksDBTransactionState::hasFailedOperations() const {
+  return (_status == transaction::Status::ABORTED) && hasOperations();
+}
+
+RocksDBTransactionState* RocksDBTransactionState::toState(transaction::Methods* trx) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(state);
+}
+
+RocksDBTransactionMethods* RocksDBTransactionState::toMethods(transaction::Methods* trx, DataSourceId collectionId) {
+  TRI_ASSERT(trx != nullptr);
+  TransactionState* state = trx->state();
+  TRI_ASSERT(state != nullptr);
+  return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods(collectionId);
+}
+
+void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
+bool RocksDBTransactionState::inParallelMode() const { return _parallel; }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 RocksDBTransactionStateGuard::RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept

@@ -26,6 +26,8 @@
 
 #include "Aql/types.h"
 #include "Basics/StringHeap.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/Providers/TypeAliases.h"
 
@@ -79,17 +81,17 @@ class RefactoredClusterTraverserCache {
   ///        during the entire traversal.
   //////////////////////////////////////////////////////////////////////////////
   arangodb::StringHeap _stringHeap;
-  std::unordered_set<VertexType> _persistedStrings;
+  containers::FlatHashSet<VertexType> _persistedStrings;
 
   /// @brief dump for our edge and vertex documents
   arangodb::graph::ClusterGraphDatalake _datalake;
 
   /// @brief maps to organize data access
   /// @brief vertex reference to vertex data slice
-  std::unordered_map<VertexType, velocypack::Slice> _vertexData;
+  containers::FlatHashMap<VertexType, velocypack::Slice> _vertexData;
 
   /// @brief edge reference to edge data slice
-  std::unordered_map<EdgeType, velocypack::Slice> _edgeData;
+  containers::FlatHashMap<EdgeType, velocypack::Slice> _edgeData;
 
 };
 

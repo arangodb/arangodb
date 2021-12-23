@@ -31,18 +31,23 @@
 
 namespace arangodb::replication2::test {
 
-struct AsyncFollower : replicated_log::ILogParticipant, replicated_log::AbstractFollower {
+struct AsyncFollower : replicated_log::ILogFollower {
   explicit AsyncFollower(std::shared_ptr<replicated_log::LogFollower> follower);
   ~AsyncFollower() noexcept override;
   [[nodiscard]] auto getStatus() const -> replicated_log::LogStatus override;
+  [[nodiscard]] auto getQuickStatus() const -> replicated_log::QuickLogStatus override;
   auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> override;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto release(LogIndex doneWithIdx) -> Result override;
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override;
   auto appendEntries(replicated_log::AppendEntriesRequest request)
       -> futures::Future<replicated_log::AppendEntriesResult> override;
-
+  auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
   void stop() noexcept;
+
+  auto waitForLeaderAcked() -> WaitForFuture override;
+
  private:
   void runWorker();
 

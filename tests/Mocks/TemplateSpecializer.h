@@ -22,8 +22,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCKS_TEMPLATE_SPECIALIZER_H
-#define ARANGODB_TESTS_MOCKS_TEMPLATE_SPECIALIZER_H 1
+#pragma once
 
 namespace {
 
@@ -151,5 +150,3 @@ class TemplateSpecializer {
 };
 
 }  // namespace
-
-#endif

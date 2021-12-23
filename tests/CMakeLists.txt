@@ -1,5 +1,3 @@
-include_directories(.)
-
 # ----------------------------------------
 # Greenspun tests
 # ----------------------------------------
@@ -11,11 +9,11 @@ add_subdirectory(Greenspun)
 # ----------------------------------------
 
 set(FUERTE_TESTS_SOURCES
-  Fuerte/test_vst.cpp
-  Fuerte/test_connection_basic.cpp
-  Fuerte/test_connection_concurrent.cpp
-  Fuerte/test_connection_failures.cpp
-  Fuerte/test_connection_timeouts.cpp
+  Fuerte/VstTest.cpp
+  Fuerte/ConnectionBasicTest.cpp
+  Fuerte/ConnectionConcurrentTest.cpp
+  Fuerte/ConnectionFailuresTest.cpp
+  Fuerte/ConnectionTimeoutsTest.cpp
 #    test_10000_writes.cpp
 )
 
@@ -30,6 +28,8 @@ target_link_libraries(fuertetest
     boost_boost
     arango
     arango_v8server
+    arango_v8
+    arangoserver
     ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
@@ -69,6 +69,7 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
 )
 
 add_subdirectory(IResearch)
@@ -106,6 +107,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/FixedOutputExecutionBlockMock.cpp
   Aql/InRangeFunctionTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
@@ -149,7 +151,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SkipResultTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortExecutorTest.cpp
-  Aql/SortLimit-test.cpp
+  Aql/SortLimitTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
@@ -168,21 +170,23 @@ set(ARANGODB_TESTS_SOURCES
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Auth/UserManagerClusterTest.cpp
-  Basics/conversions-test.cpp
-  Basics/csv-test.cpp
+  Basics/ConversionsTest.cpp
+  Basics/CsvTest.cpp
   Basics/datetime.cpp
-  Basics/files-test.cpp
-  Basics/fpconv-test.cpp
-  Basics/hashes-test.cpp
-  Basics/overload-test.cpp
-  Basics/priorityqueue-test.cpp
-  Basics/string-buffer-test.cpp
-  Basics/string-test.cpp
-  Basics/string-utf8-normalize-test.cpp
-  Basics/string-utf8-test.cpp
+  Basics/FilesTest.cpp
+  Basics/FpConvTest.cpp
+  Basics/HashesTest.cpp
+  Basics/OverloadTest.cpp
+  Basics/PriorityQueueTest.cpp
+  Basics/StringBufferTest.cpp
+  Basics/StringBufferInternalTest.cpp
+  Basics/StringTest.cpp
+  Basics/StringUtf8NormalizeTest.cpp
+  Basics/StringUtf8Test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/CpuUsageSnapshotTest.cpp
+  Basics/EncodingUtilsTest.cpp
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/GuardedTest.cpp
@@ -198,7 +202,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/UnshackledMutexTest.cpp
-  Basics/VelocyPackHelper-test.cpp
+  Basics/VelocyPackHelperTest.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
@@ -218,13 +222,14 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
   Cluster/RebootTrackerTest.cpp
-  Cluster/QueryAnalyzerRevisions-test.cpp
+  Cluster/QueryAnalyzerRevisionsTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
-  Futures/Future-test.cpp
-  Futures/Promise-test.cpp
-  Futures/Try-test.cpp
+  Containers/SmallVectorTest.cpp
+  Futures/FutureTest.cpp
+  Futures/PromiseTest.cpp
+  Futures/TryTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp
@@ -248,6 +253,7 @@ set(ARANGODB_TESTS_SOURCES
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
+  Logger/LogContextTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
@@ -261,12 +267,12 @@ set(ARANGODB_TESTS_SOURCES
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
-  RestHandler/RestAnalyzerHandler-test.cpp
-  RestHandler/RestDocumentHandler-test.cpp
-  RestHandler/RestUsersHandler-test.cpp
-  RestHandler/RestViewHandler-test.cpp
-  RestHandler/VstResponse-test.cpp
-  RestServer/FlushFeature-test.cpp
+  RestHandler/RestAnalyzerHandlerTest.cpp
+  RestHandler/RestDocumentHandlerTest.cpp
+  RestHandler/RestUsersHandlerTest.cpp
+  RestHandler/RestViewHandlerTest.cpp
+  RestHandler/VstResponseTest.cpp
+  RestServer/FlushFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
@@ -279,20 +285,20 @@ set(ARANGODB_TESTS_SOURCES
   SimpleHttpClient/HttpResponseCheckerTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
-  Transaction/Context-test.cpp
+  Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp
-  Transaction/Manager-test.cpp
-  Transaction/RestTransactionHandler-test.cpp
-  Utils/CollectionNameResolver-test.cpp
+  Transaction/ManagerTest.cpp
+  Transaction/RestTransactionHandlerTest.cpp
+  Utils/CollectionNameResolverTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
-  V8Server/v8-analyzers-test.cpp
-  V8Server/v8-users-test.cpp
-  V8Server/v8-views-test.cpp
-  VocBase/vocbase-test.cpp
-  VocBase/KeyGenerator-test.cpp
-  VocBase/LogicalDataSource-test.cpp
-  VocBase/LogicalView-test.cpp
+  V8Server/V8AnalyzersTest.cpp
+  V8Server/V8UsersTest.cpp
+  V8Server/V8ViewsTest.cpp
+  VocBase/VocbaseTest.cpp
+  VocBase/KeyGeneratorTest.cpp
+  VocBase/LogicalDataSourceTest.cpp
+  VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
@@ -334,7 +340,20 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/FakeFollower.h
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp)
+  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
+  Replication2/Serialization/LogStatusTest.cpp
+  Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
+  Replication2/ReplicatedState/ReplicatedStateTest.cpp
+  Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
+  Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
+  Replication2/ReplicatedState/LeaderRecoveryTest.cpp
+  Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
+  Replication2/Serialization/LogCommonTest.cpp
+  Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
+  Replication2/Mocks/AsyncLeader.cpp
+  Replication2/ReplicatedLog/LogStatusTest.cpp
+)
+
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -404,13 +423,18 @@ if (USE_ENTERPRISE)
 endif ()
 
 target_include_directories(arangodbtests PRIVATE
-  ${INCLUDE_DIRECTORIES}
+  ${PROJECT_SOURCE_DIR}/arangod
+  ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 PRIVATE
-    ${INCLUDE_DIRECTORIES}
+    ${PROJECT_SOURCE_DIR}/arangod
+    ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
   )
   target_link_libraries(arangodbtests_replication2 arango)
 endif()
@@ -433,11 +457,12 @@ endif()
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests SYSTEM PRIVATE
-  ${V8_INCLUDE_DIR}
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
+
+target_link_libraries(arangodbtests v8_interface)
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE

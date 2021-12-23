@@ -126,11 +126,6 @@ aql::AqlValue contextFunc(aql::ExpressionContext* ctx,
   return aql::AqlValue{ materializer.slice(args[0], true) };
 }
 
-/// Check whether prefix is a value prefix
-inline bool isPrefix(velocypack::StringRef const& prefix, velocypack::StringRef const& value) {
-  return prefix.size() <= value.size() && value.substr(0, prefix.size()) == prefix;
-}
-
 /// Register invalid argument warning
 inline aql::AqlValue errorAqlValue(aql::ExpressionContext* ctx, char const* afn) {
   aql::registerInvalidArgumentWarning(ctx, afn);
@@ -152,7 +147,7 @@ aql::AqlValue startsWithFunc(aql::ExpressionContext* ctx,
   if (!value.isString()) {
     return errorAqlValue(ctx, AFN);
   }
-  auto const valueRef = value.slice().stringRef();
+  auto const valueRef = value.slice().stringView();
 
   auto result = false;
 
@@ -181,7 +176,7 @@ aql::AqlValue startsWithFunc(aql::ExpressionContext* ctx,
         if (!prefix.isString()) {
           return errorAqlValue(ctx, AFN);
         }
-        if (isPrefix(prefix.slice().stringRef(), valueRef) && ++matchedCount == minMatchCount) {
+        if (valueRef.starts_with(prefix.slice().stringView()) && ++matchedCount == minMatchCount) {
           result = true;
           break;
         }
@@ -191,7 +186,7 @@ aql::AqlValue startsWithFunc(aql::ExpressionContext* ctx,
     if (!prefixes.isString()) {
       return errorAqlValue(ctx, AFN);
     }
-    result = isPrefix(prefixes.slice().stringRef(), valueRef);
+    result = valueRef.starts_with(prefixes.slice().stringView());
   }
   return aql::AqlValue{aql::AqlValueHintBool{result}};
 }
@@ -364,7 +359,7 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
                   LOG_TOPIC("50ace", WARN, arangodb::iresearch::TOPIC)
                     << "Unable to store updated link information on upgrade for collection '"
                     << clusterCollectionName << "' for link " << indexPtr->id().id()
-                    << ": " << res.errorMessage();;
+                    << ": " << res.errorMessage();
                 }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               } else if (selector.engineName() != "Mock") { // for unit tests just ignore write to storage

@@ -32,15 +32,6 @@
 
 using namespace arangodb::aql;
 
-/// @brief name of $OLD variable
-char const* const Variable::NAME_OLD = "$OLD";
-
-/// @brief name of $NEW variable
-char const* const Variable::NAME_NEW = "$NEW";
-
-/// @brief name of $CURRENT variable
-char const* const Variable::NAME_CURRENT = "$CURRENT";
-
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
     : id(id), 

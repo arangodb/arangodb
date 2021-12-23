@@ -9,12 +9,17 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-suggest-override")
 endif()
 
-set(ARANGO_ROCKSDB_VERSION "6.26")
+set(ARANGO_ROCKSDB_VERSION "6.27")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 # we want the following definitions to be in effect for both rocksdb and arangodb
 add_definitions("-DNROCKSDB_THREAD_STATUS")
 add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
+
+# IPO_ENABLED is set by the top-level CMakeLists.txt file
+if (IPO_ENABLED)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION True)
+endif()
 
 # jemalloc settings
 if (USE_JEMALLOC)
@@ -47,6 +52,7 @@ set(WITH_ALL_TESTS OFF CACHE BOOL "disable all tests")
 set(WITH_EXAMPLES OFF CACHE BOOL "disable all examples")
 set(WITH_LIBURING OFF CACHE BOOL "disable io_uring")
 set(WITH_SNAPPY ON CACHE BOOL "force enable snappy")
+set(WITH_FOLLY_DISTRIBUTED_MUTEX OFF CACHE BOOL "disable folly")
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 if (MSVC) 
   set(SNAPPY_ROOT_DIR "${SNAPPY_SOURCE_DIR}" CACHE PATH "snappy source")

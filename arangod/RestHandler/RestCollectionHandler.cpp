@@ -372,6 +372,8 @@ void RestCollectionHandler::handleCommandPost() {
   VPackBuilder filtered = methods::Collections::filterInput(body);
   VPackSlice const parameters = filtered.slice();
 
+  bool allowSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
+
   // now we can create the collection
   std::string const& name = nameSlice.copyString();
   _builder.clear();
@@ -387,7 +389,7 @@ void RestCollectionHandler::handleCommandPost() {
                                    waitForSyncReplication,  // replication wait flag
                                    enforceReplicationFactor,  // replication factor flag
                                    false,  // new Database?, here always false
-                                   coll);
+                                   coll, allowSystem);
 
   if (res.ok()) {
     TRI_ASSERT(coll);
@@ -784,7 +786,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
   }
 
   return std::move(figures)
-      .thenValue([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+      .thenValue([=, this, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
         if (figures.fail()) {
           THROW_ARANGO_EXCEPTION(figures.result);
         }
@@ -803,7 +805,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
         }
         return futures::makeFuture(OperationResult(Result(), options));
       })
-      .thenValue([=, &ctxt](OperationResult&& opRes) -> void {
+      .thenValue([=, this, &ctxt](OperationResult&& opRes) -> void {
         if (opRes.fail()) {
           if (showCount != CountType::None) {
             auto trx = ctxt.trx(AccessMode::Type::READ, true, true);

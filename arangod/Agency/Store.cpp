@@ -40,7 +40,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <ctime>
@@ -128,13 +127,13 @@ index_t Store::applyTransactions(std::vector<log_t> const& queries) {
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
-std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
+std::vector<apply_ret_t> Store::applyTransactions(VPackSlice query,
                                                   Agent::WriteMode const& wmode) {
   std::vector<apply_ret_t> success;
 
-  if (query->slice().isArray()) {
+  if (query.isArray()) {
     try {
-      for (auto const& i : VPackArrayIterator(query->slice())) {
+      for (auto const& i : VPackArrayIterator(query)) {
         if (!wmode.privileged()) {
           bool found = false;
           for (auto const& o : VPackObjectIterator(i[0])) {
@@ -193,7 +192,7 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
 }
 
 /// Apply single transaction
-check_ret_t Store::applyTransaction(Slice const& query) {
+check_ret_t Store::applyTransaction(VPackSlice query) {
   check_ret_t ret(true);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
@@ -324,8 +323,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
     for (auto const& url : urls) {
 
-      auto buffer = std::make_shared<VPackBufferUInt8>();
-      VPackBuilder body(*buffer);  // host
+      VPackBufferUInt8 buffer;
+      VPackBuilder body(buffer);  // host
       {
         VPackObjectBuilder b(&body);
         body.add("term", VPackValue(term));
@@ -335,7 +334,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
         // key -> (modified -> op)
         // using the map to make sure no double key entries end up in document
-        std::map<std::string,std::map<std::string, std::string>> result;
+        std::map<std::string, std::map<std::string, std::string>> result;
         for (auto it = ret.first; it != ret.second; ++it) {
           result[it->second->key][it->second->modified] = it->second->oper;
         }
@@ -362,8 +361,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
         LOG_TOPIC("9dbfc", TRACE, Logger::AGENCY) << "Sending callback to " << url;
         Agent* agent = _agent;
         try {
-          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, *buffer, reqOpts).thenValue(
-            [=](network::Response r) {
+          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, buffer, reqOpts).thenValue(
+            [=, this](network::Response r) {
                 if (r.fail()) {
                   LOG_TOPIC("9dbf1", TRACE, Logger::AGENCY)
                       << url << "(no response, " << fuerte::to_string(r.error)
@@ -377,7 +376,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                     if (r.statusCode() == 404 && _agent != nullptr) {
                       LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
                           << "dropping dead callback at " << url;
-                      agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+                      agent->trashStoreCallback(url, VPackSlice(buffer.data()));
                     }
                   } else {
                     LOG_TOPIC("9dbfb", TRACE, Logger::AGENCY) << "Successfully sent callback to " << url;
@@ -401,7 +400,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 }
 
 /// Check precodition object
-check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
+check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
   TRI_ASSERT(slice.isObject());
   check_ret_t ret;
   ret.open();
@@ -517,7 +516,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           // the lock is write locked by the given entity, if node and the value
           // are strings and both are equal.
           if (found && op.value.isString() && node->slice().isString()) {
-            if (node->slice().isEqualString(op.value.stringRef())) {
+            if (node->slice().isEqualString(op.value.stringView())) {
               continue;
             }
           }
@@ -536,7 +535,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
                 isValid = false;
                 break;  // invalid, only strings allowed
               }
-              if (i.isEqualString(op.value.stringRef())) {
+              if (i.isEqualString(op.value.stringView())) {
                 isValid = true;
               }
             }
@@ -554,7 +553,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (!op.value.isString() || !node->isReadLockable(op.value.stringRef())) {
+          if (!op.value.isString() || !node->isReadLockable(op.value.stringView())) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -566,7 +565,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (!op.value.isString() || !node->isWriteLockable(op.value.stringRef())) {
+          if (!op.value.isString() || !node->isWriteLockable(op.value.stringView())) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -642,12 +641,12 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
 }
 
 /// Read queries into result
-std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
+std::vector<bool> Store::readMultiple(VPackSlice queries, Builder& result) const {
   std::vector<bool> success;
-  if (queries->slice().isArray()) {
-    VPackArrayBuilder r(result.get());
-    for (auto const& query : VPackArrayIterator(queries->slice())) {
-      success.push_back(read(query, *result));
+  if (queries.isArray()) {
+    VPackArrayBuilder r(&result);
+    for (auto const& query : VPackArrayIterator(queries)) {
+      success.push_back(read(query, result));
     }
   } else {
     LOG_TOPIC("fec72", ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
@@ -656,7 +655,7 @@ std::vector<bool> Store::read(query_t const& queries, query_t& result) const {
 }
 
 /// Read single query into ret
-bool Store::read(VPackSlice const& query, Builder& ret) const {
+bool Store::read(VPackSlice query, Builder& ret) const {
   bool success = true;
   bool showHidden = false;
 
@@ -813,7 +812,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
   size_t counter = 0;
   while (it.valid()) {
-    VPackStringRef key = it.key().stringRef();
+    std::string_view key = it.key().stringView();
 
     // push back an empty string first, so we can avoid a later move
     abskeys.emplace_back();
@@ -1041,7 +1040,7 @@ void Store::removeTTL(std::string const& uri) {
 }
 
 std::string Store::normalize(char const* key, size_t length) {
-  VPackStringRef const path(key, length);
+  std::string_view const path(key, length);
 
   std::string normalized;
   normalized.reserve(path.size() + 1);

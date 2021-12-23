@@ -67,7 +67,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NONE);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
     }
   }
 
@@ -86,7 +86,7 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NONE);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
     }
   }
 }
@@ -111,7 +111,7 @@ TEST_F(FollowerAppendEntriesTest, wrong_term) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::WRONG_TERM);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kWrongTerm});
     }
   }
 }
@@ -136,7 +136,7 @@ TEST_F(FollowerAppendEntriesTest, missing_prev_log_index) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NO_PREV_LOG_MATCH);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch});
     }
   }
 }
@@ -181,7 +181,7 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NO_PREV_LOG_MATCH);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch});
     }
   }
 }
@@ -207,7 +207,7 @@ TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
       EXPECT_EQ(result.logTerm, LogTerm{5});
       // TODO this is known to fail
       EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::INVALID_LEADER_ID);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kInvalidLeaderId});
     }
   }
 }
@@ -259,7 +259,7 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::LOST_LOG_CORE);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kLostLogCore});
     }
   }
 }
@@ -303,7 +303,7 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::MESSAGE_OUTDATED);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{AppendEntriesErrorReason::ErrorType::kMessageOutdated});
     }
   }
 }
@@ -328,7 +328,7 @@ TEST_F(FollowerAppendEntriesTest, rewrite_log) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
-      EXPECT_EQ(result.reason, AppendEntriesErrorReason::NONE);
+      EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
     }
   }
 

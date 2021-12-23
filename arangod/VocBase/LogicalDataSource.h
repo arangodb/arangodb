@@ -28,9 +28,8 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "voc-types.h"
 
-#include <velocypack/StringRef.h>
-
 #include <atomic>
+#include <string_view>
 
 struct TRI_vocbase_t;  // forward declaration
 
@@ -79,7 +78,7 @@ class LogicalDataSource {
     bool operator==(Type const& other) const noexcept { return this == &other; }
     bool operator!=(Type const& other) const noexcept { return this != &other; }
     operator Type const*() const noexcept { return this; }
-    static Type const& emplace(arangodb::velocypack::StringRef const& name);
+    static Type const& emplace(std::string_view name);
     std::string const& name() const noexcept { return _name; }
 
    private:

@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/QueryRegistry.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 
@@ -111,16 +111,16 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 
-  Histogram<log_scale_t<double>>& _queryTimes;
-  Histogram<log_scale_t<double>>& _slowQueryTimes;
-  Counter& _totalQueryExecutionTime;
-  Counter& _queriesCounter;
-  Counter& _slowQueriesCounter;
-  Gauge<uint64_t>& _runningQueries;
-  Gauge<uint64_t>& _globalQueryMemoryUsage;
-  Gauge<uint64_t>& _globalQueryMemoryLimit;
-  Counter& _globalQueryMemoryLimitReached; 
-  Counter& _localQueryMemoryLimitReached; 
+  metrics::Histogram<metrics::LogScale<double>>& _queryTimes;
+  metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;
+  metrics::Counter& _totalQueryExecutionTime;
+  metrics::Counter& _queriesCounter;
+  metrics::Counter& _slowQueriesCounter;
+  metrics::Gauge<uint64_t>& _runningQueries;
+  metrics::Gauge<uint64_t>& _globalQueryMemoryUsage;
+  metrics::Gauge<uint64_t>& _globalQueryMemoryLimit;
+  metrics::Counter& _globalQueryMemoryLimitReached;
+  metrics::Counter& _localQueryMemoryLimitReached;
 };
 
 }  // namespace arangodb

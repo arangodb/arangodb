@@ -1,0 +1,74 @@
+# Boost.Outcome Library test Jamfile
+#
+# Copyright (C) 2017-2019 Niall Douglas
+#
+# Use, modification, and distribution is subject to the Boost Software
+# License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+#
+# See http://www.boost.org/libs/outcome for documentation.
+
+import testing ;
+import ../../config/checks/config : requires ;
+import ../../predef/tools/check/predef : check require : predef-check predef-require ;
+
+project
+    : requirements
+      [ requires cxx14_variable_templates cxx14_constexpr ]
+      [ predef-require "!BOOST_COMP_GNUC" or "BOOST_COMP_GNUC >= 6.0" ]
+      [ predef-require "!BOOST_COMP_CLANG" or "BOOST_COMP_CLANG >= 4.0" ]
+      <define>BOOST_TEST_MODULE=Outcome
+      <library>../../test/build//boost_unit_test_framework
+    ;
+
+{
+  test-suite outcome :
+
+    [ compile-fail compile-fail/issue0071-fail.cpp ]
+    [ compile-fail compile-fail/outcome-int-int-1.cpp ]
+    [ compile-fail compile-fail/result-int-int-1.cpp ]
+    [ compile-fail compile-fail/result-int-int-2.cpp ]
+
+    [ run tests/comparison.cpp ]
+    [ run tests/constexpr.cpp ]
+    [ run tests/containers.cpp ]
+    [ run tests/core-outcome.cpp ]
+    [ run tests/core-result.cpp ]
+    [ run tests/default-construction.cpp ]
+    [ run tests/experimental-core-outcome-status.cpp ]
+    [ run tests/experimental-core-result-status.cpp ]
+    [ run tests/experimental-p0709a.cpp ]
+    [ run tests/fileopen.cpp ]
+    [ run tests/hooks.cpp ]
+    [ run tests/issue0007.cpp ]
+    [ run tests/issue0009.cpp ]
+    [ run tests/issue0010.cpp ]
+    [ run tests/issue0012.cpp ]
+    [ run tests/issue0016.cpp ]
+    [ run tests/issue0059.cpp ]
+    [ run tests/issue0061.cpp ]
+    [ run tests/issue0064.cpp ]
+    [ run tests/issue0065.cpp ]
+    [ run tests/issue0071.cpp ]
+    [ run tests/issue0095.cpp ]
+    [ run tests/issue0115.cpp ]
+    [ run tests/issue0116.cpp ]
+    [ run tests/issue0140.cpp ]
+#    [ run tests/issue0182.cpp ]  ## not applicable to Boost
+    [ run tests/issue0203.cpp ]
+    [ run tests/issue0210.cpp ]
+    [ run tests/issue0220.cpp ]
+    [ run tests/issue0244.cpp ]
+    [ run tests/issue0247.cpp ]
+    [ run tests/noexcept-propagation.cpp ]
+    [ run tests/propagate.cpp ]
+    [ run tests/serialisation.cpp ]
+    [ run tests/success-failure.cpp ]
+    [ run tests/swap.cpp ]
+    [ run tests/udts.cpp ]
+    [ run tests/value-or-error.cpp ]
+
+    [ run expected-pass.cpp ]
+
+  ;
+}

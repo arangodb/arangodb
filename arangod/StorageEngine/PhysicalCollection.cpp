@@ -49,7 +49,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -194,7 +193,7 @@ RevisionId PhysicalCollection::newRevisionId() const {
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(
-    transaction::Methods*, VPackSlice const& oldValue, VPackSlice const& newValue,
+    transaction::Methods*, VPackSlice oldValue, VPackSlice newValue,
     bool isEdgeCollection, bool mergeObjects, bool keepNull, VPackBuilder& b,
     bool isRestore, RevisionId& revisionId) const {
   b.openObject();
@@ -208,12 +207,12 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> newValues;
+  std::unordered_map<std::string_view, VPackSlice> newValues;
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
       auto current = *it;
-      arangodb::velocypack::StringRef key(current.key);
+      std::string_view key(current.key.stringView());
       if (key.size() >= 3 && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
@@ -290,7 +289,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     VPackObjectIterator it(oldValue, true);
     while (it.valid()) {
       auto current = (*it);
-      arangodb::velocypack::StringRef key(current.key);
+      std::string_view key(current.key.stringView());
       // exclude system attributes in old value now
       if (key.size() >= 3 && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
@@ -350,7 +349,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
 /// @brief new object for insert, computes the hash of the key
 Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
-                                              VPackSlice const& value, bool isEdgeCollection,
+                                              VPackSlice value, bool isEdgeCollection,
                                               VPackBuilder& builder, bool isRestore,
                                               RevisionId& revisionId) const {
   builder.openObject();
@@ -455,7 +454,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 }
 
 /// @brief new object for remove, must have _key set
-void PhysicalCollection::newObjectForRemove(transaction::Methods*, VPackSlice const& oldValue,
+void PhysicalCollection::newObjectForRemove(transaction::Methods*, VPackSlice oldValue,
                                             VPackBuilder& builder, bool isRestore,
                                             RevisionId& revisionId) const {
   // create an object consisting of _key and _rev (in this order)
@@ -478,8 +477,8 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods*, VPackSlice co
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
 Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
-                                               VPackSlice const& oldValue,
-                                               VPackSlice const& newValue, bool isEdgeCollection,
+                                               VPackSlice oldValue,
+                                               VPackSlice newValue, bool isEdgeCollection,
                                                VPackBuilder& builder, bool isRestore,
                                                RevisionId& revisionId) const {
   builder.openObject();

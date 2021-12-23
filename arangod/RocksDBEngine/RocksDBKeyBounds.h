@@ -30,7 +30,6 @@
 
 #include <rocksdb/slice.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iosfwd>
@@ -85,8 +84,7 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all index-entries belonging to a specified edge index
   /// related to the specified vertex
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds EdgeIndexVertex(uint64_t indexId,
-                                          arangodb::velocypack::StringRef const& vertexId);
+  static RocksDBKeyBounds EdgeIndexVertex(uint64_t indexId, std::string_view vertexId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified non-unique
@@ -148,12 +146,12 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, arangodb::velocypack::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, std::string_view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching the word
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::velocypack::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, std::string_view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified non-unique
@@ -207,13 +205,11 @@ class RocksDBKeyBounds {
   explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::velocypack::StringRef const& second);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice const& second);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                   VPackSlice const& second, VPackSlice const& third);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, std::string_view second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice second, VPackSlice third);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second, uint64_t third);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t id, std::string const& lower,
-                   std::string const& upper);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t id, std::string_view lower, std::string_view upper);
 
  private:
   // private class that will hold both bounds in a single buffer (with only one
