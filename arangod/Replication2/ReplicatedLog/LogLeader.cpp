@@ -1165,7 +1165,7 @@ void replicated_log::LogLeader::updateParticipantsConfig(
     // all participants in the new configuration must either exist already, or
     // be added via additionalFollowers.
     {
-      auto const& newConfigParticipants = data.activeParticipantsConfig->participants;
+      auto const& newConfigParticipants = config->participants;
       TRI_ASSERT(std::all_of(newConfigParticipants.begin(),
                              newConfigParticipants.end(), [&](auto const& it) {
                                return data._follower.contains(it.first) ||
@@ -1199,7 +1199,7 @@ void replicated_log::LogLeader::updateParticipantsConfig(
     // all participants (but the leader) in the new configuration must now be
     // part of followers
     {
-      auto const& newConfigParticipants = data.activeParticipantsConfig->participants;
+      auto const& newConfigParticipants = config->participants;
       TRI_ASSERT(std::all_of(newConfigParticipants.begin(),
                              newConfigParticipants.end(), [&](auto const& it) {
                                return followers.contains(it.first) ||
