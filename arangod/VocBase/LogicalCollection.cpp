@@ -170,7 +170,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
       _smartJoinAttribute(
           Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
-      _countCache(/*ttl*/ system() ? 900.0 : 15.0),
+      _countCache(/*ttl*/ system() ? 900.0 : 180.0),
       _physical(vocbase.server().getFeature<EngineSelectorFeature>().engine().createPhysicalCollection(
           *this, info)) {
 
