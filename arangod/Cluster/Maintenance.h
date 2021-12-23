@@ -36,7 +36,8 @@ class LogicalCollection;
 class StorageEngine;
 
 namespace replication2::replicated_log {
-struct LogStatus;
+struct QuickLogStatus;
+enum class ParticipantRole;
 }
 
 namespace maintenance {
@@ -62,9 +63,9 @@ constexpr int SLOW_OP_PRIORITY = 0;
   // maintenance thread which does not execute SLOW_OP_PRIORITY jobs.
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
-// database -> LogId -> LogStatus
+// database -> LogId -> QuickLogStatus
 using ReplicatedLogStatusMap =
-    std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
+    std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::QuickLogStatus>;
 using ReplicatedLogStatusMapByDatabase =
     std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
 using ReplicatedLogSpecMap =

@@ -405,6 +405,12 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30805);
 
+  options->addOption("--rocksdb.throttle-lower-bound-bps", "lower bound for throttle's "
+                     "write bandwidth in bytes per second",
+                     new UInt64Parameter(&_throttleLowerBoundBps),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30805);
+
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
                      "enable generation of sha256 files for each .sst file",
@@ -618,7 +624,7 @@ void RocksDBEngine::start() {
   }
 
   _options.max_background_jobs = static_cast<int>(opts._maxBackgroundJobs);
-  _options.max_subcompactions = static_cast<int>(opts._maxSubcompactions);
+  _options.max_subcompactions = opts._maxSubcompactions;
   _options.use_fsync = opts._useFSync;
 
   // only compress levels >= 2
@@ -642,6 +648,13 @@ void RocksDBEngine::start() {
 
   // Maximum number of level-0 files.  We stop writes at this point.
   _options.level0_stop_writes_trigger = static_cast<int>(opts._level0StopTrigger);
+
+  // Soft limit on pending compaction bytes. We start slowing down writes
+  // at this point.
+  _options.soft_pending_compaction_bytes_limit = opts._pendingCompactionBytesSlowdownTrigger;
+
+  // Maximum number of pending compaction bytes. We stop writes at this point.
+  _options.hard_pending_compaction_bytes_limit = opts._pendingCompactionBytesStopTrigger;
 
   _options.recycle_log_file_num = opts._recycleLogFileNum;
   _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
@@ -742,7 +755,7 @@ void RocksDBEngine::start() {
 
   if (_useThrottle) {
     _throttleListener = std::make_shared<RocksDBThrottle>(_throttleSlots, _throttleFrequency, _throttleScalingFactor,
-                                                          _throttleMaxWriteRate, _throttleSlowdownWritesTrigger);
+                                                          _throttleMaxWriteRate, _throttleSlowdownWritesTrigger, _throttleLowerBoundBps);
     _options.listeners.push_back(_throttleListener);
   }
 

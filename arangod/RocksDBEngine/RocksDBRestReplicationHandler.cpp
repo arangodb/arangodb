@@ -755,7 +755,19 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     return;
   }
 
+  // "useEnvelope" URL parameter supported from >= 3.8 onwards. it defaults to
+  // "true" if not set. when explicitly set to "false", we can get away with using
+  // a more lightweight response format, in which each document does not need to be
+  // wrapped into a {"type":2300,"data":<document>} envelope.
   bool const useEnvelope = _request->parsedValue("useEnvelope", true);
+
+  // "array" URL parameter supported from >= 3.10 onwards. it defaults to "false"
+  // if not set. when explictly set to "true", we can get away with sending all
+  // documents as one big velocypack array, instead of sending multiple velocypack
+  // documents one following another. this has the advantage that on the client side
+  // we will receive a velocypack array which is ready to be fed into a multi-document
+  // operation.
+  bool const singleArray = _request->parsedValue("array", false);
 
   uint64_t chunkSize = determineChunkSize();
   size_t reserve = std::max<size_t>(chunkSize, 8192);
@@ -767,7 +779,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
     auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
 
-    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope);
+    res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope, singleArray);
     // generate the result
     if (res.fail()) {
       generateError(res.result());

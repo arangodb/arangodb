@@ -352,6 +352,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Serialization/LogCommonTest.cpp
   Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
   Replication2/Mocks/AsyncLeader.cpp
+  Replication2/ReplicatedLog/LogStatusTest.cpp
 )
 
 
