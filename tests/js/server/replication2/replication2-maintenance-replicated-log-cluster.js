@@ -107,11 +107,6 @@ const replicatedLogParticipantsFlag = function (logId, flags, generation = undef
     };
 };
 
-
-
-
-
-
 const replicatedLogSuite = function () {
 
     const nextLogId = (function () {
