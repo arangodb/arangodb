@@ -642,7 +642,9 @@ bool RocksDBCollection::dropIndex(IndexId iid) {
     events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
                       std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
 
-    cindex->compact(); // trigger compaction before deleting the object
+    if (meta().numberDocuments() >= 32 * 1024) {
+      cindex->compact(); // trigger compaction to reclaim disk space
+    }
   }
 
   return res.ok();
