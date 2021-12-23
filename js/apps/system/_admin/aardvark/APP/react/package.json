@@ -159,5 +159,6 @@
     "presets": [
       "react-app"
     ]
-  }
+  },
+  "overrides": { "ansi-html@0.0.7": "npm:ansi-html-community@0.0.8" }
 }
