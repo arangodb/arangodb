@@ -462,8 +462,8 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   return _guardedLeaderData.doUnderLock(
       [term = _currentTerm](GuardedLeaderData const& leaderData) {
         if (leaderData._didResign) {
-          THROW_ARANGO_EXCEPTION(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+          throw ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
         return QuickLogStatus{
             .role = ParticipantRole::kLeader,
@@ -494,7 +494,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
     std::optional<LogPayload> payload, bool waitForSync,
     std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex {
   if (this->_didResign) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    throw ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
   }
   auto const index = this->_inMemoryLog.getNextIndex();
   auto const payloadSize = payload.has_value() ? payload->byteSize() : 0;
@@ -534,7 +535,8 @@ auto replicated_log::LogLeader::getParticipantId() const noexcept -> Participant
 auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
   auto preparedRequests = _guardedLeaderData.doUnderLock([](auto& leaderData) {
     if (leaderData._didResign) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
     return leaderData.prepareAppendEntries();
   });
