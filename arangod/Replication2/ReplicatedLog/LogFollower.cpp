@@ -23,12 +23,12 @@
 #include "LogFollower.h"
 
 #include "Logger/LogContextKeys.h"
+#include "Metrics/Gauge.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Metrics/Gauge.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
@@ -64,7 +64,23 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
                                                AppendEntriesRequest const& req) const noexcept
     -> std::optional<AppendEntriesResult> {
   if (data._logCore == nullptr) {
-    LOG_CTX("d290d", DEBUG, _loggerContext)
+    // Note that a `ReplicatedLog` instance, when destroyed, will resign its
+    // participant. This is intentional and has been thoroughly discussed to be
+    // the preferable behavior in production, so no LogCore can ever be "lost"
+    // but still working in the background. It is expected to be unproblematic,
+    // as the ReplicatedLogs are the entries in the central log registry in the
+    // vocbase.
+    // It is an easy pitfall in the tests, however, as it's easy to drop the
+    // shared_ptr to the ReplicatedLog, and keep only the one to the participant.
+    // In that case, the participant looses its LogCore, which is hard to find
+    // out. Thus we increase the log level for this message to make this more
+    // visible.
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+#define LOST_LOG_CORE_LOGLEVEL WARN
+#else
+#define LOST_LOG_CORE_LOGLEVEL DEBUG
+#endif
+    LOG_CTX("d290d", LOST_LOG_CORE_LOGLEVEL, _loggerContext)
         << "reject append entries - log core gone";
     return AppendEntriesResult::withRejection(_currentTerm, req.messageId,
                                               {AppendEntriesErrorReason::ErrorType::kLostLogCore});
@@ -319,6 +335,20 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   });
 }
 
+auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
+  return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
+    if (followerData._logCore == nullptr) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    }
+    constexpr auto kBaseIndex = LogIndex{0};
+    return QuickLogStatus{.role = ParticipantRole::kFollower,
+                          .term = _currentTerm,
+                          .local = followerData.getLocalStatistics(),
+                          .leadershipEstablished = followerData._commitIndex > kBaseIndex};
+  });
+}
+
 auto replicated_log::LogFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return _participantId;
 }
@@ -484,6 +514,10 @@ auto LogFollower::release(LogIndex doneWithIdx) -> Result {
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
   return waitFor(LogIndex{1});
+}
+
+auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
+  return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept

@@ -256,9 +256,11 @@ RestStatus RestLogHandler::handleGetPoll(ReplicatedLogMethods const& methods,
                   "expect GET /_api/log/<log-id>/poll");
     return RestStatus::DONE;
   }
+  bool limitFound;
   LogIndex logIdx{basics::StringUtils::uint64(_request->value("first"))};
-  std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
-  limit = limit == 0 ? 1000 : limit;
+  std::size_t limit{basics::StringUtils::uint64(_request->value("limit", limitFound))};
+  limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
+
   auto fut = methods.poll(logId, logIdx, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
     VPackBuilder builder;
     {
@@ -281,7 +283,9 @@ RestStatus RestLogHandler::handleGetTail(ReplicatedLogMethods const& methods,
                   "expect GET /_api/log/<log-id>/tail");
     return RestStatus::DONE;
   }
-  std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
+  bool limitFound;
+  std::size_t limit{basics::StringUtils::uint64(_request->value("limit", limitFound))};
+  limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut =
       methods.tail(logId, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
@@ -306,7 +310,9 @@ RestStatus RestLogHandler::handleGetHead(ReplicatedLogMethods const& methods,
                   "expect GET /_api/log/<log-id>/head");
     return RestStatus::DONE;
   }
-  std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
+  bool limitFound;
+  std::size_t limit{basics::StringUtils::uint64(_request->value("limit", limitFound))};
+  limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut =
       methods.head(logId, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
@@ -331,8 +337,10 @@ RestStatus RestLogHandler::handleGetSlice(ReplicatedLogMethods const& methods,
                   "expect GET /_api/log/<log-id>/slice");
     return RestStatus::DONE;
   }
+  bool stopFound;
   LogIndex start{basics::StringUtils::uint64(_request->value("start"))};
-  LogIndex stop{basics::StringUtils::uint64(_request->value("stop"))};
+  LogIndex stop{basics::StringUtils::uint64(_request->value("stop", stopFound))};
+  stop = stopFound ? stop: start + ReplicatedLogMethods::kDefaultLimit + 1;
 
   auto fut =
       methods.slice(logId, start, stop).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {

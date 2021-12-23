@@ -76,7 +76,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _maxBytesForLevelBase;
   double _maxBytesForLevelMultiplier;
   int32_t _maxBackgroundJobs;
-  uint64_t _maxSubcompactions;
+  uint32_t _maxSubcompactions;
   uint32_t _numThreadsHigh;
   uint32_t _numThreadsLow;
   uint64_t _targetFileSizeBase;
@@ -88,6 +88,8 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   int64_t _level0CompactionTrigger;
   int64_t _level0SlowdownTrigger;
   int64_t _level0StopTrigger;
+  uint64_t _pendingCompactionBytesSlowdownTrigger;
+  uint64_t _pendingCompactionBytesStopTrigger;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;

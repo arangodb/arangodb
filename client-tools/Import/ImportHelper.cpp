@@ -272,7 +272,6 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
 
   constexpr int BUFFER_SIZE = 16384;
   char buffer[BUFFER_SIZE];
-
   while (!_hasError) {
     ssize_t n = fd->read(buffer, sizeof(buffer));
 
@@ -298,6 +297,7 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
     _outputBuffer.appendChar('\n');
   }
 
+
   if (_rowsRead > 2) {
     _errorMessages.push_back("headers file '" + headersFile +
                              "' contained more than a single line of headers");
@@ -313,6 +313,8 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   _numberLines = 0;
   // restore copy of _rowsToSkip
   _rowsToSkip = rowsToSkip;
+  _outputBuffer.reset();
+
 
   return true;
 }
@@ -418,7 +420,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     } else if (n == 0) {
-
       // we have read the entire file
       // now have the CSV parser parse an additional new line so it
       // will definitely process the last line of the input data if
@@ -428,11 +429,12 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     }
     reportProgress(totalLength, fd->offset(), nextProgress);
     TRI_ParseCsvString(&parser, buffer, n);
+
   }
 
-  if (_outputBuffer.length() > 0) {
-    sendCsvBuffer();
-  }
+  // trailing buffer items than can be accumulated because buffer length is
+  // smaller than batch size, so we send the data at the end of the parsing
+  handleCsvBuffer(0);
 
   TRI_DestroyCsvParser(&parser);
 
@@ -640,7 +642,6 @@ std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(std::string const& i
     bool found1 = pos1 != std::string::npos;
     bool found2 = pos2 != std::string::npos;
     if (found1 != found2) {
-      LOG_DEVEL << "IF";
       LOG_TOPIC("89a3b", FATAL, arangodb::Logger::FIXME)
           << "Wrong syntax in --merge-attributes: unbalanced brackets";
       FATAL_ERROR_EXIT();
@@ -985,9 +986,11 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 
   _lineBuffer.appendChar(']');
 
-  if (row == _rowsToSkip) {
+  if (row == _rowsToSkip && !_headersSeen) {
     // save the first line
     _firstLine = std::string(_lineBuffer.c_str(), _lineBuffer.length());
+    _lineBuffer.reset();
+    return;
   } else if (row > _rowsToSkip && _firstLine.empty()) {
     // error
     MUTEX_LOCKER(guard, _stats._mutex);
@@ -999,6 +1002,10 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   // read a complete line
 
   if (_lineBuffer.length() > 0) {
+    if (!_outputBuffer.length()) {
+      _outputBuffer.appendText(_firstLine);
+      _outputBuffer.appendChar('\n');
+    }
     _outputBuffer.appendText(_lineBuffer);
     _lineBuffer.reset();
   } else {
@@ -1006,10 +1013,10 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
     ++_stats._numberErrors;
   }
 
-  if (_outputBuffer.length() > getMaxUploadSize()) {
-    sendCsvBuffer();
-    _outputBuffer.appendText(_firstLine);
-  }
+  // we will send the data if the buffer is already bigger than the batch size,
+  // otherwise, it will accumulate to be sent later when buffer length is bigger
+  // than the batch size
+  handleCsvBuffer(getMaxUploadSize());
 }
 
 bool ImportHelper::collectionExists() {
@@ -1115,8 +1122,8 @@ bool ImportHelper::truncateCollection() {
   return false;
 }
 
-void ImportHelper::sendCsvBuffer() {
-  if (_hasError) {
+void ImportHelper::handleCsvBuffer(uint64_t bufferSizeThreshold) {
+  if (_hasError || _outputBuffer.length() <= bufferSizeThreshold) {
     return;
   }
 
