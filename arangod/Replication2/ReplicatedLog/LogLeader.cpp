@@ -1174,7 +1174,7 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
           LOG_CTX("fd245", TRACE, self->_logContext)
               << "configuration already newer than generation " << config->generation;
         }
-      } catch (ParticipantResignedException const& err) {
+      } catch (ParticipantResignedException const&) {
         LOG_CTX("3959f", DEBUG, self->_logContext)
             << "leader resigned before new participant configuration was "
                "committed";
