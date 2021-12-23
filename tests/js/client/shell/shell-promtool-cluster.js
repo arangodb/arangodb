@@ -121,8 +121,15 @@ function validateMetrics(metrics) {
     let command = promtoolPath + ' check metrics < "' + input + '" > "' + output + '" 2>&1';
     // pipe contents of temp file into promtool
     let actualRc = internal.executeExternalAndWait('sh', ['-c', command]);
+
+    // provide more context about what exactly went wrong
+    let help = "";
+    try {
+      help = metrics + "\n\n" + String(fs.readFileSync(output));
+    } catch (err) {}
+
     assertTrue(actualRc.hasOwnProperty('exit'));
-    assertEqual(0, actualRc.exit);
+    assertEqual(0, actualRc.exit, help);
 
     let promtoolResult = fs.readFileSync(output).toString();
     // no errors found means an empty result file
@@ -214,7 +221,7 @@ function promtoolClusterSuite() {
       expect(res).to.have.property('statusCode', 404);
       expect(res.json.errorNum).to.equal(errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
-    testServerDoesntResponse: function () {
+    testServerDoesntRespond: function () {
       //query metrics from coordinator, supplying id of a server, that is shut down
       let dbServer = dbServers[0];
       let serverId = getServerId(dbServer);

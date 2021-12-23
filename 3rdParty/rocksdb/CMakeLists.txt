@@ -9,7 +9,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-suggest-override")
 endif()
 
-set(ARANGO_ROCKSDB_VERSION "6.26")
+set(ARANGO_ROCKSDB_VERSION "6.27")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 # we want the following definitions to be in effect for both rocksdb and arangodb

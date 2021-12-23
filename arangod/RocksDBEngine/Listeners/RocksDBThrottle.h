@@ -37,6 +37,8 @@
 
 #include <chrono>
 #include <future>
+#include <memory>
+#include <vector>
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -65,7 +67,9 @@ namespace arangodb {
 
 class RocksDBThrottle : public rocksdb::EventListener {
  public:
-  RocksDBThrottle();
+  RocksDBThrottle(uint64_t numSlots, uint64_t frequency, uint64_t scalingFactor, 
+                  uint64_t maxWriteRate, uint64_t slowdownWritesTrigger,
+                  uint64_t lowerBoundBps);
   virtual ~RocksDBThrottle();
 
   void OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
@@ -98,26 +102,13 @@ class RocksDBThrottle : public rocksdb::EventListener {
 
   void RecalculateThrottle();
 
-  // I am unable to figure out static initialization of std::chrono::seconds,
-  //  using old school unsigned.
-  static constexpr unsigned THROTTLE_SECONDS = 60;
-  static constexpr unsigned THROTTLE_INTERVALS = 63;
-
-  // following is a heuristic value, determined by trial and error.
-  //  its job is slow down the rate of change in the current throttle.
-  //  do not want sudden changes in one or two intervals to swing
-  //  the throttle value wildly.  Goal is a nice, even throttle value.
-  static constexpr unsigned THROTTLE_SCALING = 17;
-
-  // trigger point where level-0 file is considered "too many pending"
-  //  (from original Google leveldb db/dbformat.h)
-  static constexpr int64_t kL0_SlowdownWritesTrigger = 8;
-
   struct ThrottleData_t {
-    std::chrono::microseconds _micros;
-    uint64_t _keys;
-    uint64_t _bytes;
-    uint64_t _compactions;
+    std::chrono::microseconds _micros{};
+    uint64_t _keys = 0;
+    uint64_t _bytes = 0;
+    uint64_t _compactions = 0;
+
+    ThrottleData_t() noexcept = default;
   };
 
   rocksdb::DBImpl* _internalRocksDB;
@@ -141,11 +132,11 @@ class RocksDBThrottle : public rocksdb::EventListener {
   basics::ConditionVariable _threadCondvar;
 
   // this array stores compaction statistics used in throttle calculation.
-  //  Index 0 of this array accumulates the current minute's compaction data for
-  //  level 0. Index 1 accumulates accumulates current minute's compaction
+  //  Index 0 of this array accumulates the current interval's compaction data for
+  //  level 0. Index 1 accumulates accumulates current intervals's compaction
   //  statistics for all other levels.  Remaining intervals contain
-  //  most recent interval statistics for last hour.
-  ThrottleData_t _throttleData[THROTTLE_INTERVALS];
+  //  most recent interval statistics for the total time period.
+  std::unique_ptr<std::vector<ThrottleData_t>> _throttleData;
   size_t _replaceIdx;
 
   std::atomic<uint64_t> _throttleBps;
@@ -154,6 +145,14 @@ class RocksDBThrottle : public rocksdb::EventListener {
   std::unique_ptr<rocksdb::WriteControllerToken> _delayToken;
   std::vector<rocksdb::ColumnFamilyHandle*> _families;
 
-};  // class RocksDBThrottle
+ private:
+  uint64_t const _numSlots;
+  // frequency in milliseconds
+  uint64_t const _frequency; 
+  uint64_t const _scalingFactor;
+  uint64_t const _maxWriteRate;
+  uint64_t const _slowdownWritesTrigger;
+  uint64_t const _lowerBoundThrottleBps;
+}; 
 
 }  // namespace arangodb

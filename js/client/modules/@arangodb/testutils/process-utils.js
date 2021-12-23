@@ -641,8 +641,10 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 }
 
 function killWithCoreDump (options, instanceInfo) {
-  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    crashUtils.stopProcdump (options, instanceInfo, true);
+  if (platform.substr(0, 3) === 'win') {
+    if (!options.disableMonitor) {
+      crashUtils.stopProcdump (options, instanceInfo, true);
+    }
     crashUtils.runProcdump (options, instanceInfo, instanceInfo.rootDir, instanceInfo.pid, true);
   }
   instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
@@ -1099,6 +1101,10 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
 
   if (what.mergeAttributes !== undefined) {
     args['merge-attributes'] = what.mergeAttributes;
+  }
+
+  if (what.batchSize !== undefined) {
+    args['batch-size'] = what.batchSize;
   }
 
 

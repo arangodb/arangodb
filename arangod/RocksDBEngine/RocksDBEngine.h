@@ -336,6 +336,12 @@ class RocksDBEngine final : public StorageEngine {
   /// so don't call it from other features during their start() if they are
   /// earlier in the startup sequence
   bool dbExisted() const noexcept { return _dbExisted; }
+
+  void trackRevisionTreeHibernation() noexcept;
+  void trackRevisionTreeResurrection() noexcept;
+  
+  void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
+  void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
   
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
@@ -580,13 +586,35 @@ class RocksDBEngine final : public StorageEngine {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
+
+  // frequency for throttle in milliseconds between iterations
+  uint64_t _throttleFrequency = 1000; 
+
+  // number of historic data slots to keep around for throttle
+  uint64_t _throttleSlots = 120;
+  // adaptiveness factor for throttle
+  // following is a heuristic value, determined by trial and error.
+  // its job is slow down the rate of change in the current throttle.
+  // we do not want sudden changes in one or two intervals to swing
+  // the throttle value wildly. the goal is a nice, even throttle value.
+  uint64_t _throttleScalingFactor = 17;
+  // max write rate enforced by throttle
+  uint64_t _throttleMaxWriteRate = 0;
+  // trigger point where level-0 file is considered "too many pending"
+  // (from original Google leveldb db/dbformat.h)
+  uint64_t _throttleSlowdownWritesTrigger = 8;
+  // Lower bound for computed write bandwidth of throttle:
+  uint64_t _throttleLowerBoundBps = 10 * 1024 * 1024;
   
   Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   Gauge<uint64_t>& _metricsArchivedWalFiles;
   Gauge<uint64_t>& _metricsPrunableWalFiles;
   Gauge<uint64_t>& _metricsWalPruningActive;
+  Gauge<uint64_t>& _metricsTreeMemoryUsage;
   Counter& _metricsTreeRebuildsSuccess;
   Counter& _metricsTreeRebuildsFailure;
+  Counter& _metricsTreeHibernations;
+  Counter& _metricsTreeResurrections;
   
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBLogPersistor> _logPersistor;

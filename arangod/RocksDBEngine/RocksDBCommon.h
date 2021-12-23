@@ -40,12 +40,15 @@
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction_db.h>
 
+#include <atomic>
+
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
 class DB;
 class Iterator;
 struct ReadOptions;
+class Snapshot;
 class TransactionDB;
 }  // namespace rocksdb
 
@@ -67,10 +70,12 @@ void checkIteratorStatus(rocksdb::Iterator const* iterator);
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
+std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, 
+                          rocksdb::Snapshot const* snapshot, bool prefixSameAsStart);
 
 /// @brief whether or not the specified range has keys
-bool hasKeys(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
+bool hasKeys(rocksdb::DB*, RocksDBKeyBounds const&, 
+             rocksdb::Snapshot const* snapshot, bool prefixSameAsStart);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
@@ -80,7 +85,8 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 /// @brief compacts the entire key range of the database.
 /// warning: may cause a full rewrite of the entire database, which will
 /// take long for large databases - use with care!
-Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLeve);
+Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel,
+                  std::atomic<bool>* canceled = nullptr);
 
 // optional switch to std::function to reduce amount of includes and
 // to avoid template

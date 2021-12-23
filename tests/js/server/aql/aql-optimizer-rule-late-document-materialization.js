@@ -41,6 +41,7 @@ function lateDocumentMaterializationRuleTestSuite () {
   const primaryIndexCollectionName = "UnitTestsPrimCollection";
   const edgeIndexCollectionName = "UnitTestsEdgeCollection";
   const severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
+  const withIndexCollectionName = "UnitTestsWithIndexCollection";
   const projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
   const prefixIndexCollectionName = "PrefixIndexCollection";
   let collectionNames = [];
@@ -342,20 +343,15 @@ function lateDocumentMaterializationRuleTestSuite () {
                     "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(c.obj.b, c.obj.a) RETURN p) " +
                     "SORT CONCAT(a, e) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
-        if (!isCluster) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query);
-          assertEqual(2, result.json.length);
-          let expectedKeys = new Set(['c0', 'c2']);
-          result.json.forEach(function(doc) {
-            assertTrue(expectedKeys.has(doc._key));
-            expectedKeys.delete(doc._key);
-          });
-          assertEqual(0, expectedKeys.size);
-        } else {
-          // on cluster this will not be applied as remote node placed before sort node
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(2, result.json.length);
+        let expectedKeys = new Set(['c0', 'c2']);
+        result.json.forEach(function(doc) {
+          assertTrue(expectedKeys.has(doc._key));
+          expectedKeys.delete(doc._key);
+        });
+        assertEqual(0, expectedKeys.size);
       }
     },
     testQueryResultsWithCalculation() {
@@ -646,6 +642,35 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query).json;
       assertEqual(0, result.length);
+    },
+
+    // fullCount was too low
+    testRegressionBts611() {
+      const _ = require('lodash');
+      try {
+        const col = db._create(withIndexCollectionName, {numberOfShards: 9});
+        col.ensureIndex({type: "persistent", fields: ["value", "x"]});
+        col.insert(_.range(0, 1000).map(i => ({value: i, x: Math.random()})));
+        const query = `
+          FOR doc IN ${withIndexCollectionName}
+            FILTER doc.value >= 500
+            SORT doc.x
+            LIMIT @limit
+            RETURN doc
+        `;
+        const options = { fullCount: true };
+        let result;
+
+        result = AQL_EXECUTE(query, {limit: 1000}, options);
+        assertEqual(500, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+
+        result = AQL_EXECUTE(query, {limit: 1}, options);
+        assertEqual(1, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+      } finally {
+        db._drop(withIndexCollectionName);
+      }
     },
 
   };

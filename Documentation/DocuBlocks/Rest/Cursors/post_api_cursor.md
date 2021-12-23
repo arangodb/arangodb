@@ -78,6 +78,8 @@ Limits the maximum number of plans that are created by the AQL query optimizer.
 The number of execution nodes in the query plan after that stack splitting is
 performed to avoid a potential stack overflow. Defaults to the configured value
 of the startup option `--query.max-nodes-per-callstack`.
+This option is only useful for testing and debugging and normally does not need
+any adjustment.
 
 @RESTSTRUCT{maxWarningCount,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of warnings a query will return. The number of warnings
