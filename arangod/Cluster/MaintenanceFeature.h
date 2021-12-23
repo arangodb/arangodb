@@ -532,17 +532,17 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   size_t _lastNumberOfDatabases;
 
  public:
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<uint64_t>>>> _phase1_runtime_msec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<uint64_t>>>> _phase2_runtime_msec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<uint64_t>>>> _agency_sync_total_runtime_msec;
+  metrics::Histogram<metrics::LogScale<uint64_t>>* _phase1_runtime_msec = nullptr;
+  metrics::Histogram<metrics::LogScale<uint64_t>>* _phase2_runtime_msec = nullptr;
+  metrics::Histogram<metrics::LogScale<uint64_t>>* _agency_sync_total_runtime_msec = nullptr;
 
-  std::optional<std::reference_wrapper<metrics::Counter>> _phase1_accum_runtime_msec;
-  std::optional<std::reference_wrapper<metrics::Counter>> _phase2_accum_runtime_msec;
-  std::optional<std::reference_wrapper<metrics::Counter>> _agency_sync_total_accum_runtime_msec;
+  metrics::Counter* _phase1_accum_runtime_msec = nullptr;
+  metrics::Counter* _phase2_accum_runtime_msec = nullptr;
+  metrics::Counter* _agency_sync_total_accum_runtime_msec = nullptr;
 
-  std::optional<std::reference_wrapper<metrics::Counter>> _action_duplicated_counter;
-  std::optional<std::reference_wrapper<metrics::Counter>> _action_registered_counter;
-  std::optional<std::reference_wrapper<metrics::Counter>> _action_done_counter;
+  metrics::Counter* _action_duplicated_counter = nullptr;
+  metrics::Counter* _action_registered_counter = nullptr;
+  metrics::Counter* _action_done_counter = nullptr;
 
   struct ActionMetrics {
     metrics::Histogram<metrics::LogScale<uint64_t>>& _runtime_histogram;
@@ -561,12 +561,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   };
 
   std::unordered_map<std::string, ActionMetrics> _maintenance_job_metrics_map;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<uint64_t>>>> _maintenance_action_runtime_msec;
+  metrics::Histogram<metrics::LogScale<uint64_t>>* _maintenance_action_runtime_msec = nullptr;
 
-  std::optional<std::reference_wrapper<metrics::Gauge<uint64_t>>> _shards_out_of_sync;
-  std::optional<std::reference_wrapper<metrics::Gauge<uint64_t>>> _shards_total_count;
-  std::optional<std::reference_wrapper<metrics::Gauge<uint64_t>>> _shards_leader_count;
-  std::optional<std::reference_wrapper<metrics::Gauge<uint64_t>>> _shards_not_replicated_count;
+  metrics::Gauge<uint64_t>* _shards_out_of_sync = nullptr;
+  metrics::Gauge<uint64_t>* _shards_total_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_leader_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_not_replicated_count = nullptr;
 };
 
 }  // namespace arangodb

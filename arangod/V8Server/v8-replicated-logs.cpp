@@ -285,9 +285,9 @@ static void JS_Head(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::size_t length;
   if (args.Length() == 0) {
-    length = 100;
+    length = ReplicatedLogMethods::kDefaultLimit;
   } else if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("head(<limit = 100>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("head(<limit = 10>)");
   } else {
     length = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
   }
@@ -318,9 +318,9 @@ static void JS_Tail(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::size_t length;
   if (args.Length() == 0) {
-    length = 100;
+    length = ReplicatedLogMethods::kDefaultLimit;
   } else if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("tail(<limit = 100>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("tail(<limit = 10>)");
   } else {
     length = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
   }
@@ -349,12 +349,19 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  if (args.Length() != 2) {
+  if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
   }
-
-  auto start = LogIndex{args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
-  auto stop = LogIndex{args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
+  auto [start, stop] = std::invoke([&]() -> std::pair<LogIndex, LogIndex> {
+    auto startIdx = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
+    if (args.Length() > 1) {
+      auto stopIdx = args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
+      return std::make_pair(LogIndex{startIdx}, LogIndex{stopIdx});
+    }
+    return std::make_pair(
+        LogIndex{startIdx},
+        LogIndex{startIdx + ReplicatedLogMethods::kDefaultLimit + 1});
+  });
   auto iter =
       ReplicatedLogMethods::createInstance(vocbase)->slice(id, start, stop).get();
   VPackBuilder response;
@@ -380,8 +387,8 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("poll(<first, limit = 1000>)");
+  if (args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("poll(<first = 0, limit = 10>)");
   }
   auto [first, limit] = std::invoke([&]() -> std::pair<LogIndex, std::size_t> {
     auto firstIdx = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
@@ -389,7 +396,7 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
       auto limitValue = args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
       return std::make_pair(LogIndex{firstIdx}, limitValue);
     }
-    return std::make_pair(LogIndex{firstIdx}, 1000);
+    return std::make_pair(LogIndex{firstIdx}, ReplicatedLogMethods::kDefaultLimit);
   });
 
   auto iter = ReplicatedLogMethods::createInstance(vocbase)->poll(id, first, limit).get();

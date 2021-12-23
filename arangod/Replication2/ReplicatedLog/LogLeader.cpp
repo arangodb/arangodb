@@ -443,6 +443,23 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
   });
 }
 
+auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
+  return _guardedLeaderData.doUnderLock(
+      [term = _currentTerm](GuardedLeaderData const& leaderData) {
+        if (leaderData._didResign) {
+          THROW_ARANGO_EXCEPTION(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+        }
+        return QuickLogStatus{
+            .role = ParticipantRole::kLeader,
+            .term = term,
+            .local = leaderData.getLocalStatistics(),
+            .leadershipEstablished = leaderData._leadershipEstablished,
+            .activeParticipantConfig = leaderData.activeParticipantConfig,
+            .committedParticipantConfig = leaderData.committedParticipantConfig};
+      });
+}
+
 auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync) -> LogIndex {
   auto index = insert(std::move(payload), waitForSync, doNotTriggerAsyncReplication);
   triggerAsyncReplication();
@@ -1119,7 +1136,8 @@ auto replicated_log::LogLeader::waitForLeadership()
   return waitFor(_firstIndexOfCurrentTerm);
 }
 
-void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config) {
+auto replicated_log::LogLeader::updateParticipantsConfig(
+    std::shared_ptr<ParticipantsConfig const> config) -> LogIndex {
   LOG_CTX("ac277", DEBUG, _logContext)
       << "updating configuration to generation " << config->generation;
   auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
@@ -1173,6 +1191,8 @@ void replicated_log::LogLeader::updateParticipantsConfig(std::shared_ptr<Partici
     LOG_TOPIC("a4fc1", TRACE, Logger::REPLICATION2)
         << "leader is already gone, configuration change was not committed";
   });
+
+  return waitForIndex;
 }
 
 auto replicated_log::LogLeader::getCommitIndex() const noexcept -> LogIndex {

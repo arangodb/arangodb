@@ -64,6 +64,7 @@ class LogLeader;
 class LogFollower;
 struct ILogParticipant;
 struct LogStatus;
+struct QuickLogStatus;
 struct PersistedLog;
 struct ReplicatedLog;
 }  // namespace replicated_log
@@ -156,7 +157,9 @@ struct TRI_vocbase_t {
   [[nodiscard]] auto getReplicatedLogFollowerById(arangodb::replication2::LogId id) const
       -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
   [[nodiscard]] auto getReplicatedLogs() const
-      -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
+  -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>;
+  [[nodiscard]] auto getReplicatedLogsQuickStatus() const
+      -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::QuickLogStatus>;
   [[nodiscard]] auto createReplicatedLog(arangodb::replication2::LogId id,
                                          std::optional<std::string> const& collectionName)
       -> arangodb::ResultT<std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>>;

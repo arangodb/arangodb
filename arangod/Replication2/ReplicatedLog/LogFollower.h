@@ -56,6 +56,7 @@ class LogFollower final : public ILogFollower,
       -> futures::Future<AppendEntriesResult> override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
+  [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;

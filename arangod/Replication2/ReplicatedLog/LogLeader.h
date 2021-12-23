@@ -137,6 +137,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogLea
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
 
+  [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
+
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
@@ -156,7 +158,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogLea
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
   // Updates the flags of the participants.
-  void updateParticipantsConfig(std::shared_ptr<ParticipantsConfig const> config);
+  auto updateParticipantsConfig(
+      std::shared_ptr<ParticipantsConfig const> config) -> LogIndex;
 
   // Returns [acceptedConfig.generation, committedConfig.generation]
   auto getParticipantConfigGenerations() const noexcept

@@ -70,7 +70,7 @@
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
       if (window.frontendConfig.isEnterprise === true) {
-        this.fetchLicenseInfo();
+        this.fetchServerTime();
       }
     },
 
@@ -129,7 +129,7 @@
       return this;
     },
 
-    fetchLicenseInfo: function () {
+    fetchLicenseInfo: function (serverTime) {
       const self = this;
       const url = arangoHelper.databaseUrl('/_admin/license');
 
@@ -138,7 +138,7 @@
         url: url,
         success: function (licenseData) {
           if (licenseData.status && licenseData.features && licenseData.features.expires) {
-            self.renderLicenseInfo(licenseData.status, licenseData.features.expires);
+            self.renderLicenseInfo(licenseData.status, licenseData.features.expires, serverTime);
           } else {
             self.showLicenseError();  
           }
@@ -149,35 +149,77 @@
       }); 
     },
 
+    fetchServerTime: function () {
+      const self = this;
+      const url = arangoHelper.databaseUrl('/_admin/time');
+
+      $.ajax({
+        type: "GET",
+        url: url,
+        success: function (timeData) {
+          console.log("timeData: ", timeData);
+          if (!timeData.error && timeData.code === 200 && timeData.time) {
+            self.fetchLicenseInfo(timeData.time);
+          } else {
+            self.showGetTimeError();  
+          }
+        },
+        error: function () {
+          self.showGetTimeError();
+        }
+      }); 
+    },
+
     showLicenseError: function () {
       const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
       $('#licenseInfoArea').append(errorElement);
     },
 
-    renderLicenseInfo: function (status, expires) {
+    showGetTimeError: function () {
+      const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch server time</span></div>';
+      $('#licenseInfoArea').append(errorElement);
+    },
+
+    renderLicenseInfo: function (status, expires, serverTime) {
       if (status !== null && expires !== null) {
         let infotext = '';
         let daysInfo = '';
         let alertClasses = 'alert alert-license';
         switch (status) {
-          case 'expiring':
-            daysInfo = Math.floor((expires - Math.round(new Date().getTime() / 1000)) / (3600*24));
-            infotext = 'Your license is expiring ' + daysInfo + ' days from now. Please contact ArangoDB sales to extend your license urgently.';
-            this.appendLicenseInfoToUi(infotext, alertClasses);
-            break;
-          case 'expired':
-            daysInfo = Math.floor((Math.round(new Date().getTime() / 1000) - expires) / (3600*24));
-            infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
-            alertClasses += ' alert-danger';
-            this.appendLicenseInfoToUi(infotext, alertClasses);
-            break;
-          case 'read-only':
-            infotext = 'Your license expired over 14 days ago. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
-            alertClasses += ' alert-danger';
-            this.appendLicenseInfoToUi(infotext, alertClasses);
-            break;
-          default:
-            break;
+        case 'expiring':
+          let remains = expires - Math.round(serverTime);
+          let daysInfo = Math.ceil(remains / (3600*24));
+          let hoursInfo = '';
+          let minutesInfo = '';
+          infotext = 'Your license is expiring in under ';
+          if (daysInfo > 1) {
+            infotext += daysInfo + ' days';
+          } else {
+            hoursInfo = Math.ceil(remains / 3600);
+            if (hoursInfo > 1) {
+              infotext += hoursInfo + ' hours';
+            } else {
+              minutesInfo = Math.ceil(remains / 60);
+              infotext += minutesInfo + ' minutes';
+            }
+
+          }
+          infotext += '. Please contact ArangoDB sales to extend your license urgently.';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        case 'expired':
+          daysInfo = Math.floor((Math.round(serverTime) - expires) / (3600*24));
+          infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
+          alertClasses += ' alert-danger';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        case 'read-only':
+          infotext = 'Your license has expired. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
+          alertClasses += ' alert-danger';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        default:
+          break;
         }
       }
     },
