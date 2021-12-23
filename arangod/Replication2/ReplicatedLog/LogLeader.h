@@ -328,7 +328,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogLea
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
-  void establishLeadership();
+  void establishLeadership(std::shared_ptr<ParticipantsConfig const> config);
 
   [[nodiscard]] static auto instantiateFollowers(
       LoggerContext const&, std::vector<std::shared_ptr<AbstractFollower>> const& followers,

@@ -340,15 +340,7 @@ auto replicated_log::LogLeader::construct(
         << " writeConcern: " << config.writeConcern;
   }
 
-  leader->establishLeadership();
-
-  leader->waitForLeadership().thenFinal([weak = leader->weak_from_this(), participantsConfig](auto&&) noexcept {
-    if (auto leader = weak.lock(); leader != nullptr) {
-      // If acquiring the mutex fails, there's nothing we can do but to abort.
-      auto leaderDataGuard = leader->acquireMutex();
-      leaderDataGuard->committedParticipantsConfig = participantsConfig;
-    }
-  });
+  leader->establishLeadership(std::move(participantsConfig));
 
   return leader;
 }
@@ -1116,7 +1108,7 @@ auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept -> bool
   return _guardedLeaderData.getLockedGuard()->_leadershipEstablished;
 }
 
-void replicated_log::LogLeader::establishLeadership() {
+void replicated_log::LogLeader::establishLeadership(std::shared_ptr<ParticipantsConfig const> config) {
   LOG_CTX("f3aa8", INFO, _logContext) << "trying to establish leadership";
   auto waitForIndex = _guardedLeaderData.doUnderLock([](GuardedLeaderData& data) {
     auto const lastIndex = data._inMemoryLog.getLastTermIndexPair();
@@ -1133,21 +1125,27 @@ void replicated_log::LogLeader::establishLeadership() {
   });
 
   TRI_ASSERT(waitForIndex == _firstIndexOfCurrentTerm);
-  waitFor(waitForIndex).thenFinal([weak = weak_from_this()](futures::Try<WaitForResult>&& result) noexcept {
-    if (auto self = weak.lock(); self) {
-      try {
-        result.throwIfFailed();
-        self->_guardedLeaderData.getLockedGuard()->_leadershipEstablished = true;
-        LOG_CTX("536f4", INFO, self->_logContext) << "leadership established";
-      } catch (std::exception const& err) {
-        LOG_CTX("5ceda", FATAL, self->_logContext)
-            << "failed to establish leadership: " << err.what();
-      }
-    } else {
-      LOG_TOPIC("94696", TRACE, Logger::REPLICATION2)
-          << "leader is already gone, no leadership was established";
-    }
-  });
+  waitFor(waitForIndex)
+      .thenFinal([weak = weak_from_this(), config = std::move(config)](
+                     futures::Try<WaitForResult>&& result) mutable noexcept {
+        if (auto self = weak.lock(); self) {
+          try {
+            result.throwIfFailed();
+            self->_guardedLeaderData.doUnderLock([&](auto& data) {
+              data._leadershipEstablished = true;
+              data.committedParticipantsConfig = std::move(config);
+            });
+            LOG_CTX("536f4", INFO, self->_logContext)
+                << "leadership established";
+          } catch (std::exception const& err) {
+            LOG_CTX("5ceda", FATAL, self->_logContext)
+                << "failed to establish leadership: " << err.what();
+          }
+        } else {
+          LOG_TOPIC("94696", TRACE, Logger::REPLICATION2)
+              << "leader is already gone, no leadership was established";
+        }
+      });
 }
 
 auto replicated_log::LogLeader::waitForLeadership()
