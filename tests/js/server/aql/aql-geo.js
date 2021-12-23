@@ -53,21 +53,8 @@ function geoSuite () {
   let keyCounter = 0;
 
   function waitForArangoSearch() {
-    withView.insert(
-      {_key:"sentinel", geo:{"type":"Point", coordinates: [-13, -13]}});
-    // Wait until sentinel visible in view:
-    while (true) {
-      let res = getQueryResults(`
-        FOR d IN ${viewName}
-          SEARCH ANALYZER(GEO_DISTANCE([-13, -13], d.geo) < 100, "geo_json")
-          RETURN d._key`);
-      if (res.length === 1 && res[0] === "sentinel") {
-        break;
-      }
-      print("Waiting for arangosearch index to have sentinel...");
-      require("internal").wait(0.5);
-    }
-    withView.remove("sentinel");
+    let res = getQueryResults(
+      `FOR d IN ${viewName} OPTIONS { waitForSync:true } LIMIT 1 RETURN 1`);
   }
 
   function insertAll(x) {
@@ -95,6 +82,7 @@ function geoSuite () {
     }
     let i = 0;
     let j = 0;
+    let count = 0;
     while (i < a.length && j < b.length) {
       if (a[i] < b[j]) {
         good = false;
@@ -110,18 +98,27 @@ function geoSuite () {
         ++i;
         ++j;
       }
+      if (++count >= 10) {
+        return {good, msg};
+      }
     }
     while (i < a.length) {
       good = false;
       msg += "Found key " + a[i] + " in '" + namea + "' but not in '"
              + nameb + "'\n";
       ++i;
+      if (++count >= 10) {
+        return {good, msg};
+      }
     }
     while (j < b.length) {
       good = false;
       msg += "Found key " + b[j] + " in '" + nameb + "' but not in '"
              + namea + "'\n";
       ++j;
+      if (++count >= 10) {
+        return {good, msg};
+      }
     }
     return {good, msg};
   }
@@ -198,8 +195,8 @@ function geoSuite () {
       let c = compare(
         `FILTER GEO_DISTANCE([50, 50], d.geo) < 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 5000, "geo_json")`
-      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
       );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,7 +378,7 @@ function geoSuite () {
         insertAll(l);
       }
       waitForArangoSearch();
-      let compare(
+      let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
       );
@@ -559,10 +556,6 @@ function geoSuite () {
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        if (!c.oi.good) {
-          print(c.oi.msg);
-          require("internal").wait(3600);
-        }
         assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
       }
     },
