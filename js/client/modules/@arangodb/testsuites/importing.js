@@ -250,6 +250,36 @@ const impTodos = [{
   create: 'true',
   database: 'UnitTestImportCreateDatabase',
   createDatabase: 'true'
+}, {
+  id: 'importDataBatchSizeWithoutHeaderFile',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-with-header.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithoutHeaderFile',
+  type: 'csv',
+  create: 'true',
+  batchSize: 10,
+}, {
+  id: 'importDataBatchSizeWithoutHeaderFile2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-with-header.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithoutHeaderFile2',
+  type: 'csv',
+  create: 'true',
+  batchSize: 1000
+}, {
+  id: 'importDataBatchSizeWithHeaderFile',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithHeaderFile',
+  type: 'csv',
+  create: 'true',
+  batchSize: 10,
+}, {
+  id: 'importDataBatchSizeWithHeaderFile2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithHeaderFile2',
+  type: 'csv',
+  create: 'true',
+  batchSize: 1000
 }];
 
 function importing (options) {

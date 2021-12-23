@@ -443,6 +443,66 @@ function importTestSuite () {
       assertEqual(JSON.stringify(expected), JSON.stringify(actual));
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv with data and header in single csv file, small batch-size
+////////////////////////////////////////////////////////////////////////////////
+    testImportDataBatchSizeWithoutHeaderFile: function () {
+      let expected = [
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+      let actual = getQueryResults("FOR i IN UnitTestsImportDataBatchSizeWithoutHeaderFile SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv with data and header in single csv file, small batch-size
+////////////////////////////////////////////////////////////////////////////////
+    testImportDataBatchSizeWithoutHeaderFile2: function () {
+      let expected = [
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+      let actual = getQueryResults("FOR i IN UnitTestsImportDataBatchSizeWithoutHeaderFile2 SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv with data and header in single csv file, small batch-size
+////////////////////////////////////////////////////////////////////////////////
+    testImportDataBatchSizeWithHeaderFile: function () {
+      let expected = [
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+      let actual = getQueryResults("FOR i IN UnitTestsImportDataBatchSizeWithHeaderFile SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv with data and header in single csv file, small batch-size
+////////////////////////////////////////////////////////////////////////////////
+    testImportDataBatchSizeWithHeaderFile2: function () {
+      let expected = [
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 },
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 },
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+      let actual = getQueryResults("FOR i IN UnitTestsImportDataBatchSizeWithHeaderFile2 SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import without trailing eol
 ////////////////////////////////////////////////////////////////////////////////

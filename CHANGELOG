@@ -1,6 +1,11 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen
+  that a buffer containing only the header would be sent to the server, and also
+  batches would contain the documents equivalent to the csv rows in them, but
+  not the header, which should be sent together with the documents.
+
 * Changed various default values for RocksDB to tune operations for different
   typical scenarios like gp2 type volumes and gp3 type volumes and locally
   attached SSDs with RAID0:

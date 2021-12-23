@@ -51,6 +51,10 @@
   db._drop("UnitTestsImportCsvConvert");
   db._drop("UnitTestsImportCsvNoConvert");
   db._drop("UnitTestsImportCsvNoEol");
+  db._drop("UnitTestsImportDataBatchSizeWithoutHeaderFile");
+  db._drop("UnitTestsImportDataBatchSizeWithoutHeaderFile2");
+  db._drop("UnitTestsImportDataBatchSizeWithHeaderFile");
+  db._drop("UnitTestsImportDataBatchSizeWithHeaderFile2");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv1Gz");
   db._drop("UnitTestsImportTsv2");
