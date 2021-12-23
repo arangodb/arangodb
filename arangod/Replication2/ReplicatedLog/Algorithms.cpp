@@ -343,14 +343,12 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
       }
 
       auto const& previousConfig = leaderStatus->activeParticipantsConfig;
-      leader->updateParticipantsConfig(std::make_shared<ParticipantsConfig const>(
-                                           spec->participantsConfig),
-                                       previousConfig.generation,
-                                       std::move(additionalParticipants),
-                                       obsoleteParticipantIds);
-      return leader->waitFor(index).thenValue([](auto&& quorum) -> Result {
-        return Result{TRI_ERROR_NO_ERROR};
-      });
+      auto index = leader->updateParticipantsConfig(
+          std::make_shared<ParticipantsConfig const>(spec->participantsConfig),
+          previousConfig.generation, std::move(additionalParticipants),
+          obsoleteParticipantIds);
+      return leader->waitFor(index).thenValue(
+          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
     } else if (plannedLeader.has_value() && plannedLeader->serverId == myServerId &&
                plannedLeader->rebootId == myRebootId) {
       auto followers =
