@@ -85,15 +85,25 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
   auto ctx = LogActionContextMaintenance{guard.database(), pool};
-  auto result =
-      replication2::algorithms::updateReplicatedLog(ctx, serverId, rebootId, logId,
-                                                    spec.has_value() ? &spec.value() : nullptr);
-
-  if (result.fail()) {
-    LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
-        << "failed to modify replicated log " << _description.get(DATABASE)
-        << '/' << logId << "; " << result.errorMessage();
-  }
+  auto result = replication2::algorithms::updateReplicatedLog(
+      ctx, serverId, rebootId, logId,
+      spec.has_value() ? &spec.value() : nullptr);
+  std::move(result).thenFinal([desc = _description, logId, &feature = _feature](
+                                  futures::Try<Result>&& tryResult) noexcept {
+    try {
+      auto const& result = tryResult.get();
+      if (result.fail()) {
+        LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
+            << "failed to modify replicated log " << desc.get(DATABASE) << '/'
+            << logId << "; " << result.errorMessage();
+      }
+      feature.addDirty(desc.get(DATABASE));
+    } catch (std::exception const& e) {
+      LOG_TOPIC("f824f", ERR, Logger::REPLICATION2)
+          << "exception during update of replicated log " << desc.get(DATABASE)
+          << '/' << logId << "; " << e.what();
+    }
+  });
 
   return false;
 }
