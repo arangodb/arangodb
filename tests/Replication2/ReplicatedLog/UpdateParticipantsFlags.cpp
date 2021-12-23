@@ -326,7 +326,6 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_new_follower) {
     auto oldConfig = leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
-    newConfig->participants["follower3"] = replication2::ParticipantFlags{};
 
     // note that this adds a new log entry
     leader->updateParticipantsConfig(newConfig, oldConfig.generation,
