@@ -137,14 +137,13 @@ function geoSuite () {
     if (!oi.good || !ov.good) {
       print("Query for collections:", q);
       print("Query for views:", qv);
-      print("Without index:", wo);
-      print("With index:", wi);
-      print("With view:", wv);
+      print("Without index:", wo.length);
+      print("With index:", wi.length);
+      print("With view:", wv.length);
       print("Errors with index: ", oi.msg);
       print("Errors with view: ", ov.msg);
-      //require("internal").wait(3600);
     }
-    assertTrue(oi.good && ov.good, oi.msg + ov.msg);
+    return {oi, ov};
   }
 
   return {
@@ -196,9 +195,10 @@ function geoSuite () {
     testSetup : function () {
       insertAll([{geo: { type: "Point", coordinates: [50, 50] } }]);
       waitForArangoSearch();
-      compare(
+      let c = compare(
         `FILTER GEO_DISTANCE([50, 50], d.geo) < 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 5000, "geo_json")`
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
       );
     },
 
@@ -217,10 +217,11 @@ function geoSuite () {
                 [11,11.1],[11,19],[19,19],[19,11],[10,11],[10,10]]]}}
       ]);
       waitForArangoSearch();
-      compare(
+      let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 5000, "geo_json")`
       );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,10 +243,11 @@ function geoSuite () {
         insertAll(l);
       }
       waitForArangoSearch();
-      compare(
+      let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")`
       );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,12 +269,13 @@ function geoSuite () {
         insertAll(l);
       }
       waitForArangoSearch();
-      compare(
+      let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
                 GEO_DISTANCE([15, 15], d.geo) >= 300000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
                          GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
       );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,10 +297,11 @@ function geoSuite () {
         insertAll(l);
       }
       waitForArangoSearch();
-      compare(
+      let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
       );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,12 +323,13 @@ function geoSuite () {
         insertAll(l);
       }
       waitForArangoSearch();
-      compare(
+      let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`
       );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,7 +351,7 @@ function geoSuite () {
         insertAll(l);
       }
       waitForArangoSearch();
-      compare(
+      let c = compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
                 GEO_DISTANCE([15, 15], d.geo) >= 300000
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`,
@@ -354,6 +359,7 @@ function geoSuite () {
                          GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`
       );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -375,10 +381,190 @@ function geoSuite () {
         insertAll(l);
       }
       waitForArangoSearch();
-      compare(
+      let compare(
         `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
       );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with objects of different sizes
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearObjectsSizes : function () {
+      let l = [];
+      for (let size = 0.0001; size <= 10; size *= 10) {
+        for (let lon = 14.8; lon <= 15.2; lon += 0.04) {
+          l.push({geo:{type:"Polygon", 
+            coordinates:[[[lon-size, 10-size], [lon+size, 10-size],
+                          [lon+size, 10+size], [lon-size, 10+size],
+                          [lon-size, 10-size]]]},
+            centroid:{type:"Point", coordinates:[lon, 10]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      let c = compare(
+        `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
+        `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "geo_json")`
+      );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with large objects different distance
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearSlidingLargeObject : function () {
+      let l = [];
+      for (let size = 1; size <= 11; size += 1) {
+        for (let lon = 11; lon <= 30; lon += 0.1) {
+          l.push({geo:{type:"Polygon", 
+            coordinates:[[[lon-size, 10-size], [lon+size, 10-size],
+                          [lon+size, 10+size], [lon-size, 10+size],
+                          [lon-size, 10-size]]]},
+            centroid:{type:"Point", coordinates:[lon, 10]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      let c = compare(
+        `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
+        `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "geo_json")`
+      );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test near query with large non-convex object whose centroid
+/// is not contained in the object.
+////////////////////////////////////////////////////////////////////////////////
+
+    testNearNonConvexObject : function () {
+      insertAll([
+        {geo:{type:"Polygon",
+         coordinates:[[[0,0],[10,10],[0,20],[9,10],[0,0]]]}},
+        {geo:{type:"Polygon",
+         coordinates:[[[0,0],[10,10],[0,20],[0,19],[9,10],[0,1],[0,0]]]}}
+      ]);
+      // Centroid will be at approx. [7,10]
+      waitForArangoSearch();
+      for (let dist = 1000; dist <= 100000; dist += 100) {
+        print("Distance", dist);
+        let c = compare(
+          `FILTER GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}`,
+          `SEARCH ANALYZER(GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}, "geo_json")`
+        );
+        assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test contains query with a polygon, move polygon over grip
+////////////////////////////////////////////////////////////////////////////////
+
+    testContainsWithSmallPoly : function () {
+      let l = [];
+      for (let lat = 9; lat <= 11; lat += 0.1) {
+        for (let lon = 9; lon <= 11; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+        }
+      }
+      insertAll(l);
+      waitForArangoSearch();
+      let d = 0.001;
+      for (let lat = 9; lat <= 11; lat += 0.4) {
+        for (let lon = 9; lon <= 11; lon += 0.4) {
+          let p = {type:"Polygon", coordinates:[[[lon-d, lat-d],
+            [lon+d, lat-d], [lon+d, lat+d], [lon-d, lat+d], [lon-d, lat-d]]]};
+          print("Polygon:", JSON.stringify(p));
+          let c = compare(
+            `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
+            `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+          );
+          assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test contains query with a large polygon and a point grid
+////////////////////////////////////////////////////////////////////////////////
+
+    testContainsGrid : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      for (let d = 1; d <= 5; d += 1) {
+        let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15-d], [15+d,15],
+          [15,15+d], [15-d,15]]]};
+        print("d=", d, JSON.stringify(p));
+        let c = compare(
+          `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
+          `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+        );
+        assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test contains query with a complement of a large polygon and a 
+/// point grid
+////////////////////////////////////////////////////////////////////////////////
+
+    testContainsGridComplement : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      for (let d = 1; d <= 5; d += 1) {
+        let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15+d], [15+d,15],
+          [15,15-d], [15-d,15]]]};
+        print("d=", d, JSON.stringify(p));
+        let c = compare(
+          `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
+          `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
+        );
+        if (!c.oi.good) {
+          print(c.oi.msg);
+          require("internal").wait(3600);
+        }
+        assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+      }
     },
 
   };
