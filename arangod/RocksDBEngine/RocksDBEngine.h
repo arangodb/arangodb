@@ -578,11 +578,11 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
 
-  // frequency for throttle in milliseconds
-  uint64_t _throttleFrequency = 60 * 1000; 
+  // frequency for throttle in milliseconds between iterations
+  uint64_t _throttleFrequency = 1000; 
 
   // number of historic data slots to keep around for throttle
-  uint64_t _throttleSlots = 63;
+  uint64_t _throttleSlots = 120;
   // adaptiveness factor for throttle
   // following is a heuristic value, determined by trial and error.
   // its job is slow down the rate of change in the current throttle.
@@ -594,6 +594,8 @@ class RocksDBEngine final : public StorageEngine {
   // trigger point where level-0 file is considered "too many pending"
   // (from original Google leveldb db/dbformat.h)
   uint64_t _throttleSlowdownWritesTrigger = 8;
+  // Lower bound for computed write bandwidth of throttle:
+  uint64_t _throttleLowerBoundBps = 10 * 1024 * 1024;
   
   Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   Gauge<uint64_t>& _metricsArchivedWalFiles;

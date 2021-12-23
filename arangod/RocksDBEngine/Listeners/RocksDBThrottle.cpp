@@ -106,7 +106,8 @@ thread_local std::chrono::steady_clock::time_point flushStart = std::chrono::ste
 
 // Setup the object, clearing variables, but do no real work
 RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency, uint64_t scalingFactor,
-                                 uint64_t maxWriteRate, uint64_t slowdownWritesTrigger)
+                                 uint64_t maxWriteRate, uint64_t slowdownWritesTrigger,
+                                 uint64_t lowerBoundBps)
     : _internalRocksDB(nullptr),
       _throttleState(ThrottleState::NotStarted),
       _replaceIdx(2),
@@ -116,7 +117,8 @@ RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency, uint64_t
       _frequency(frequency),
       _scalingFactor(scalingFactor),
       _maxWriteRate(maxWriteRate == 0 ? std::numeric_limits<uint64_t>::max() : maxWriteRate), 
-      _slowdownWritesTrigger(slowdownWritesTrigger) {
+      _slowdownWritesTrigger(slowdownWritesTrigger),
+      _lowerBoundThrottleBps(lowerBoundBps) {
       
   TRI_ASSERT(_scalingFactor != 0);
   _throttleData = std::make_unique<std::vector<ThrottleData_t>>();
@@ -392,15 +394,19 @@ void RocksDBThrottle::RecalculateThrottle() {
       }
 
       LOG_TOPIC("46d4a", DEBUG, arangodb::Logger::ENGINES)
-          << "RecalculateThrottle(): old " << _throttleBps << ", new " << temp_rate << ", cap: " << _maxWriteRate;
+          << "RecalculateThrottle(): old " << _throttleBps << ", new " << temp_rate
+          << ", cap: " << _maxWriteRate << ", lower bound: " << _lowerBoundThrottleBps;
 
-      _throttleBps = std::min(static_cast<uint64_t>(temp_rate), _maxWriteRate);
-      
+      _throttleBps = std::max(_lowerBoundThrottleBps,
+                              std::min(static_cast<uint64_t>(temp_rate), _maxWriteRate));
+
       // prepare for next interval
       throttleData[0] = ThrottleData_t{};
     } else if (1 < new_throttle) {
       // never had a valid throttle, and have first hint now
-      _throttleBps = std::min(static_cast<uint64_t>(new_throttle), _maxWriteRate);
+      _throttleBps =
+          std::max(_lowerBoundThrottleBps,
+                   std::min(static_cast<uint64_t>(new_throttle), _maxWriteRate));
 
       LOG_TOPIC("e0bbb", DEBUG, arangodb::Logger::ENGINES)
           << "RecalculateThrottle(): first " << _throttleBps;
