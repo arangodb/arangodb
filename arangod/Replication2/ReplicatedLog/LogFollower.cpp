@@ -323,8 +323,8 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
 auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
   return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
     if (followerData._logCore == nullptr) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
     }
     constexpr auto kBaseIndex = LogIndex{0};
     return QuickLogStatus{.role = ParticipantRole::kFollower,

@@ -49,6 +49,7 @@
 #include <Basics/application-exit.h>
 
 #include "LogMultiplexer.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 
 #include <Replication2/ReplicatedLog/ILogInterfaces.h>
 
@@ -290,16 +291,14 @@ struct LogDemultiplexerImplementation
 
               that->triggerWaitFor(nextIndex);
               resolvePromiseSets(Spec{}, promiseSets);
+            } catch (replicated_log::ParticipantResignedException const&) {
+              LOG_TOPIC("c5c04", DEBUG, Logger::REPLICATION2)
+                  << "demultiplexer received follower-resigned exception";
+              that->resolveLeaderChange(std::current_exception());
             } catch (basics::Exception const& e) {
-              if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
-                LOG_TOPIC("c5c04", DEBUG, Logger::REPLICATION2)
-                    << "demultiplexer received follower-resigned exception";
-                that->resolveLeaderChange(std::current_exception());
-              } else {
-                LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
-                    << "demultiplexer received unexpected exception: " << e.what();
-                FATAL_ERROR_EXIT();
-              }
+              LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
+                  << "demultiplexer received unexpected exception: " << e.what();
+              FATAL_ERROR_EXIT();
             } catch (std::exception const& e) {
               LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
                   << "demultiplexer received unexpected exception: " << e.what();
@@ -405,16 +404,14 @@ struct LogMultiplexerImplementation
           if (nextIndex.has_value()) {
             that->triggerWaitForIndex(*nextIndex);
           }
+        } catch (replicated_log::ParticipantResignedException const&) {
+          LOG_TOPIC("c5c05", DEBUG, Logger::REPLICATION2)
+              << "multiplexer received leader-resigned exception";
+          that->resolveLeaderChange(std::current_exception());
         } catch (basics::Exception const& e) {
-          if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
-            LOG_TOPIC("c5c05", DEBUG, Logger::REPLICATION2)
-                << "multiplexer received leader-resigned exception";
-            that->resolveLeaderChange(std::current_exception());
-          } else {
-            LOG_TOPIC("2e28e", FATAL, Logger::REPLICATION2)
-                << "multiplexer received unexpected exception: " << e.what();
-            FATAL_ERROR_EXIT();
-          }
+          LOG_TOPIC("2e28e", FATAL, Logger::REPLICATION2)
+              << "multiplexer received unexpected exception: " << e.what();
+          FATAL_ERROR_EXIT();
         } catch (std::exception const& e) {
           LOG_TOPIC("709f9", FATAL, Logger::REPLICATION2)
               << "multiplexer received unexpected exception: " << e.what();
