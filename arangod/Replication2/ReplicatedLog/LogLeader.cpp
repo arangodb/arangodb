@@ -334,7 +334,6 @@ auto replicated_log::LogLeader::construct(
     leaderDataGuard->_follower =
         instantiateFollowers(commonLogContext, followers, localFollower, lastIndex);
     leaderDataGuard->activeParticipantsConfig = participantsConfig;
-    leaderDataGuard->committedParticipantsConfig = participantsConfig;
     leader->_localFollower = std::move(localFollower);
     TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
@@ -342,6 +341,15 @@ auto replicated_log::LogLeader::construct(
   }
 
   leader->establishLeadership();
+
+  leader->waitForLeadership().thenFinal([weak = leader->weak_from_this(), participantsConfig](auto&&) noexcept {
+    if (auto leader = weak.lock(); leader != nullptr) {
+      // If acquiring the mutex fails, there's nothing we can do but to abort.
+      auto leaderDataGuard = leader->acquireMutex();
+      leaderDataGuard->committedParticipantsConfig = participantsConfig;
+    }
+  });
+
   return leader;
 }
 
@@ -415,7 +423,9 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
-    status.committedParticipantsConfig = *leaderData.committedParticipantsConfig;
+    if (auto const config = leaderData.committedParticipantsConfig; config != nullptr) {
+      status.committedParticipantsConfig = *config;
+    }
     for (auto const& [pid, f] : leaderData._follower) {
       auto lastRequestLatencyMS =
           std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(f->_lastRequestLatency);
@@ -434,7 +444,10 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
             return FollowerState::withUpToDate();
         }
       });
-      status.follower.emplace(f->_impl->getParticipantId(),
+      auto const& participantId = f->_impl->getParticipantId();
+      TRI_ASSERT(pid == participantId);
+      TRI_ASSERT(!pid.empty());
+      status.follower.emplace(participantId,
                               FollowerStatistics{LogStatistics{f->lastAckedEntry, f->lastAckedCommitIndex},
                                                  f->lastErrorReason,
                                                  lastRequestLatencyMS, state});
@@ -1242,10 +1255,16 @@ auto replicated_log::LogLeader::getCommitIndex() const noexcept -> LogIndex {
 }
 
 auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
-    -> std::pair<std::size_t, std::size_t> {
+    -> std::pair<std::size_t, std::optional<std::size_t>> {
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData const& data) {
-    return std::make_pair(data.activeParticipantsConfig->generation,
-                          data.committedParticipantsConfig->generation);
+    auto activeGeneration = data.activeParticipantsConfig->generation;
+    auto committedGeneration = std::optional<std::size_t>{};
+
+    if (auto committedConfig = data.committedParticipantsConfig; committedConfig != nullptr) {
+      committedGeneration = committedConfig->generation;
+    }
+
+    return std::make_pair(activeGeneration, committedGeneration);
   });
 }
 

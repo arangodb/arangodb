@@ -57,7 +57,7 @@ struct LeaderStatus {
   std::chrono::duration<double, std::milli> commitLagMS;
   CommitFailReason lastCommitStatus;
   ParticipantsConfig activeParticipantsConfig;
-  ParticipantsConfig committedParticipantsConfig;
+  std::optional<ParticipantsConfig> committedParticipantsConfig;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;

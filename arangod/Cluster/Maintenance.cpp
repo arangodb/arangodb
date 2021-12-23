@@ -1236,17 +1236,19 @@ static auto reportCurrentReplicatedLogLeader(
     replication2::agency::LogCurrent::Leader const* currentLeader)
     -> std::optional<replication2::agency::LogCurrent::Leader> {
   if (status.leadershipEstablished) {
+    // must have a value after leadership has been established
+    TRI_ASSERT(status.committedParticipantsConfig.has_value());
     // check if either there is no entry in current yet, the term has changed or
     // the participant config generation has changed.
-    bool requiresUpdate = currentLeader == nullptr ||
-                          currentLeader->term != status.term ||
-                          currentLeader->committedParticipantsConfig.generation !=
-                              status.committedParticipantsConfig.generation;
+    bool const requiresUpdate =
+        currentLeader == nullptr || currentLeader->term != status.term ||
+        status.committedParticipantsConfig.value().generation !=
+            currentLeader->committedParticipantsConfig.generation;
 
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
       leader.term = status.term;
-      leader.committedParticipantsConfig = status.committedParticipantsConfig;
+      leader.committedParticipantsConfig = status.committedParticipantsConfig.value();
       return leader;
     }
   }

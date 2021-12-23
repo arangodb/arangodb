@@ -170,7 +170,8 @@ TEST(LogStatusTest, leader_status) {
   leaderStatus.term = LogTerm{2};
   leaderStatus.largestCommonIndex = LogIndex{1};
   leaderStatus.activeParticipantsConfig.generation = 14;
-  leaderStatus.committedParticipantsConfig.generation = 18;
+  leaderStatus.committedParticipantsConfig = ParticipantsConfig{};
+  leaderStatus.committedParticipantsConfig->generation = 18;
   std::unordered_map<ParticipantId, FollowerStatistics> follower({
       {
         "PRMR-45c56239-6a83-4ab0-961e-9adea5078286",

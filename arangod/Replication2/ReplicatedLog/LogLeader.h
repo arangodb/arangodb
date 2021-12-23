@@ -163,9 +163,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
                                 std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>> additionalFollowers,
                                 std::vector<ParticipantId> const& followersToRemove);
 
-  // Returns [acceptedConfig.generation, committedConfig.generation]
+  // Returns [acceptedConfig.generation, committedConfig.?generation]
   auto getParticipantConfigGenerations() const noexcept
-      -> std::pair<std::size_t, std::size_t>;
+      -> std::pair<std::size_t, std::optional<std::size_t>>;
 
  protected:
   // Use the named constructor construct() to create a leader!
@@ -311,6 +311,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     // active - that is currently used to check for committed entries
     std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig;
     // committed - latest active config that has committed at least one entry
+    // Note that this will be nullptr until leadership is established!
     std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig;
   };
 
