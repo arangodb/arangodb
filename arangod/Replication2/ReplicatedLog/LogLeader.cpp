@@ -1158,10 +1158,10 @@ auto replicated_log::LogLeader::waitForLeadership()
   return waitFor(_firstIndexOfCurrentTerm);
 }
 
-void replicated_log::LogLeader::updateParticipantsConfig(
+auto replicated_log::LogLeader::updateParticipantsConfig(
     std::shared_ptr<ParticipantsConfig const> config, std::size_t previousGeneration,
     std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>> additionalFollowers,
-    std::vector<ParticipantId> const& followersToRemove) {
+    std::vector<ParticipantId> const& followersToRemove) -> LogIndex {
   LOG_CTX("ac277", DEBUG, _logContext)
       << "updating configuration to generation " << config->generation;
   TRI_ASSERT(previousGeneration < config->generation);
@@ -1270,6 +1270,8 @@ void replicated_log::LogLeader::updateParticipantsConfig(
     LOG_TOPIC("a4fc1", TRACE, Logger::REPLICATION2)
         << "leader is already gone, configuration change was not committed";
   });
+
+  return waitForIndex;
 }
 
 auto replicated_log::LogLeader::getCommitIndex() const noexcept -> LogIndex {

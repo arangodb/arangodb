@@ -310,8 +310,8 @@ auto keySetDifference = [](auto const& left, auto const& right) {
 auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& myServerId,
                                      RebootId myRebootId, LogId logId,
                                      agency::LogPlanSpecification const* spec) noexcept
-    -> arangodb::Result {
-  return basics::catchToResult([&]() -> Result {
+    -> futures::Future<arangodb::Result> {
+  auto result = basics::catchToResultT([&]() -> futures::Future<arangodb::Result> {
     if (spec == nullptr) {
       return ctx.dropReplicatedLog(logId);
     }
@@ -348,6 +348,9 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
                                        previousConfig.generation,
                                        std::move(additionalParticipants),
                                        obsoleteParticipantIds);
+      return leader->waitFor(index).thenValue([](auto&& quorum) -> Result {
+        return Result{TRI_ERROR_NO_ERROR};
+      });
     } else if (plannedLeader.has_value() && plannedLeader->serverId == myServerId &&
                plannedLeader->rebootId == myRebootId) {
       auto followers =
@@ -361,6 +364,9 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
       auto newLeader = log->becomeLeader(spec->currentTerm->config, myServerId,
                                          spec->currentTerm->term, followers);
       newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
+      return newLeader->waitForLeadership().thenValue([](auto&& quorum) -> Result {
+        return Result{TRI_ERROR_NO_ERROR};
+      });
     } else {
       auto leaderString = std::optional<ParticipantId>{};
       if (spec->currentTerm->leader) {
@@ -370,8 +376,14 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
       std::ignore = log->becomeFollower(myServerId, spec->currentTerm->term, leaderString);
     }
 
-    return {};
+    return futures::Future<arangodb::Result>{std::in_place};
   });
+
+  if (result.ok()) {
+    return *std::move(result);
+  } else {
+    return futures::Future<arangodb::Result>{std::in_place, result.result()};
+  }
 }
 
 auto algorithms::operator<<(std::ostream& os, ParticipantStateTuple const& p) noexcept
