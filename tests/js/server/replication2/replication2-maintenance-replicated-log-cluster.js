@@ -31,7 +31,7 @@ const internal = require("internal");
 const wait = internal.wait;
 const print = internal.print;
 
-const database = '_system';
+const database = 'ReplLogsMaintenanceTest';
 
 const readAgencyAtKey = function (key) {
     const response = global.ArangoAgency.get(key);
@@ -190,13 +190,13 @@ const replicatedLogSuite = function () {
             }
 
             for (const srv of participants) {
-                if (!current.localStatus || !current.localStatus[srv] || current.localStatus[srv].term !== term) {
+                if (!current.localStatus || !current.localStatus[srv] || current.localStatus[srv].term < term) {
                     return Error(`Participant ${srv} has not yet acknowledge the current term.`);
                 }
             }
 
             if (leader !== undefined) {
-                if (!current.leader || current.leader.term !== term || current.leader.serverId !== leader) {
+                if (!current.leader || current.leader.term < term || current.leader.serverId !== leader) {
                     return Error("Leader has not yet established its term");
                 }
             }
@@ -250,7 +250,30 @@ const replicatedLogSuite = function () {
         };
     };
 
+    const {setUpAll, tearDownAll} = (function () {
+        let previousDatabase, databaseExisted = true;
+        return {
+            setUpAll: function () {
+                previousDatabase = db._name();
+                if (!_.includes(db._databases(), database)) {
+                    db._createDatabase(database);
+                    databaseExisted = false;
+                }
+                db._useDatabase(database);
+            },
+
+            tearDownAll: function () {
+                db._useDatabase(previousDatabase);
+                if (!databaseExisted) {
+                    db._dropDatabase(database);
+                }
+            }
+        };
+    }());
+
     return {
+        setUpAll, tearDownAll,
+
         testCreateReplicatedLog: function () {
             const logId = nextLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
