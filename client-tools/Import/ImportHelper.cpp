@@ -640,7 +640,6 @@ std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(std::string const& i
     bool found1 = pos1 != std::string::npos;
     bool found2 = pos2 != std::string::npos;
     if (found1 != found2) {
-      LOG_DEVEL << "IF";
       LOG_TOPIC("89a3b", FATAL, arangodb::Logger::FIXME)
           << "Wrong syntax in --merge-attributes: unbalanced brackets";
       FATAL_ERROR_EXIT();
