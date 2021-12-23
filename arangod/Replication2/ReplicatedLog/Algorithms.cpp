@@ -321,12 +321,11 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& mySe
     auto& plannedLeader = spec->currentTerm->leader;
     auto log = ctx.ensureReplicatedLog(logId);
 
-    auto status = log->getParticipant()->getStatus();
-
-    if (status.getCurrentTerm() == spec->currentTerm->term) {
+    if (log->getParticipant()->getTerm() == spec->currentTerm->term) {
       // something has changed in the term volatile configuration
       auto leader = log->getLeader();
       TRI_ASSERT(leader != nullptr);
+      auto const status = log->getParticipant()->getStatus();
       auto* const leaderStatus = status.asLeaderStatus();
       // Note that newParticipants contains the leader, while oldFollowers does not.
       auto const& oldFollowers = leaderStatus->follower;

@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
@@ -567,6 +568,38 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     // store leader info for later, so that the next phases don't need to acquire it again.
     // this saves an HTTP roundtrip to the leader when initializing the WAL tailing.
     return tailingSyncer->inheritFromInitialSyncer(syncer);
+  });
+  
+  syncer->setAbortionCheckCallback([&]() -> bool {
+    // Will return true if the SynchronizeShard job should be aborted.
+    auto& agencyCache = job.feature().server().getFeature<ClusterFeature>().agencyCache();
+    std::string path = "Plan/Collections/" + database + "/" +
+          std::to_string(col->planId().id()) + "/shards/" + col->name();
+    VPackBuilder builder;
+    agencyCache.get(builder, path);
+
+    if (!builder.isEmpty()) {
+      VPackSlice plan = builder.slice();
+      if (plan.isArray()) {
+        if (plan.length() >= 2) {
+          if (plan[0].isString() && plan[0].isEqualString(leaderId)) {
+            std::string myself = arangodb::ServerState::instance()->getId();
+            for (size_t i = 1; i < plan.length(); ++i) {
+              if (plan[i].isString() && plan[i].isEqualString(myself)) {
+                // do not abort the synchronization
+                return false;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // abort synchronization
+    LOG_TOPIC("f6dbc", INFO, Logger::REPLICATION)
+        << "aborting initial sync for " << database << "/" << col->name()
+        << " because we are not planned as a follower anymore";
+    return true;
   });
 
   SyncerId syncerId{syncer->syncerId()};

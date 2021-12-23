@@ -136,6 +136,7 @@ struct LogCurrent {
     static auto fromVelocyPack(VPackSlice) -> Leader;
   };
 
+  // Will be nullopt until leadership has been established
   std::optional<Leader> leader;
 
   auto toVelocyPack(VPackBuilder&) const -> void;

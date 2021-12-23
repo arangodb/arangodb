@@ -33,6 +33,33 @@
 
 namespace arangodb::replication2::replicated_log {
 
+enum class ParticipantRole {
+  kUnconfigured,
+  kLeader,
+  kFollower
+};
+
+/**
+ * @brief A minimalist variant of LogStatus, designed to replace FollowerStatus
+ * and LeaderStatus where only basic information is needed.
+ */
+struct QuickLogStatus {
+  ParticipantRole role{ParticipantRole::kUnconfigured};
+  std::optional<LogTerm> term{};
+  std::optional<LogStatistics> local{};
+  bool leadershipEstablished{false};
+
+  // The following make sense only for a leader.
+  std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig{};
+  // Note that committedParticipantsConfig will be nullptr until leadership has
+  // been established!
+  std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig{};
+
+  [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
+  [[nodiscard]] auto getLocalStatistics() const noexcept
+      -> std::optional<LogStatistics>;
+};
+
 struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
@@ -81,7 +108,8 @@ struct UnconfiguredStatus {
 };
 
 struct LogStatus {
-  using VariantType = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
+  using VariantType =
+      std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
   // default constructs as unconfigured status
   LogStatus() = default;
@@ -92,12 +120,14 @@ struct LogStatus {
   [[nodiscard]] auto getVariant() const noexcept -> VariantType const&;
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
-  [[nodiscard]] auto getLocalStatistics() const noexcept -> std::optional<LogStatistics>;
+  [[nodiscard]] auto getLocalStatistics() const noexcept
+      -> std::optional<LogStatistics>;
 
   [[nodiscard]] auto asLeaderStatus() const noexcept -> LeaderStatus const*;
 
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
+
  private:
   VariantType _variant;
 };

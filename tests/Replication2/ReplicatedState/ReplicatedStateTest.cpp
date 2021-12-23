@@ -96,9 +96,7 @@ TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
 
   // create a leader in term 2
   leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader", LogTerm{2}, {follower});
-  mux = streams::LogMultiplexer<ReplicatedStateStreamSpec<MyState>>::construct(leader);
-  inputStream = mux->getStreamById<1>();
-  inputStream->insert({.key = "hello", .value = "world"});
+  leader->triggerAsyncReplication();
 
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();

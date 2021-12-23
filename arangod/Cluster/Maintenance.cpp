@@ -567,8 +567,8 @@ void arangodb::maintenance::diffReplicatedLogs(
           }
 
           // check if participants generation has changed (in case we are the leader)
-          if (auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
-            if (leaderStatus->activeParticipantsConfig.generation <
+          if (status.role == replicated_log::ParticipantRole::kLeader) {
+            if (status.activeParticipantsConfig->generation <
                 spec.participantsConfig.generation) {
               return true;
             }
@@ -1057,8 +1057,10 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
   auto end = std::chrono::steady_clock::now();
   uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  feature._phase1_runtime_msec->get().count(total_ms);
-  feature._phase1_accum_runtime_msec->get().count(total_ms);
+  TRI_ASSERT(feature._phase1_runtime_msec != nullptr);
+  feature._phase1_runtime_msec->count(total_ms);
+  TRI_ASSERT(feature._phase1_accum_runtime_msec != nullptr);
+  feature._phase1_accum_runtime_msec->count(total_ms);
 
   return result;
 }
@@ -1213,7 +1215,7 @@ static VPackBuilder assembleLocalDatabaseInfo(DatabaseFeature& df, std::string c
   }
 }
 
-static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::LogStatus const& status,
+static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::QuickLogStatus const& status,
                                            replication2::agency::LogCurrentLocalState const* currentLocal)
     -> std::optional<replication2::agency::LogCurrentLocalState> {
   // Check if there is term locally (i.e. in status)
@@ -1232,23 +1234,27 @@ static auto reportCurrentReplicatedLogLocal(replication2::replicated_log::LogSta
 }
 
 static auto reportCurrentReplicatedLogLeader(
-    replication2::replicated_log::LeaderStatus const& status,
+    replication2::replicated_log::QuickLogStatus const& status,
     replication2::agency::LogCurrent::Leader const* currentLeader)
     -> std::optional<replication2::agency::LogCurrent::Leader> {
+  TRI_ASSERT(status.role ==
+             replication2::replicated_log::ParticipantRole::kLeader)
+      << "expected participant with leader role";
   if (status.leadershipEstablished) {
     // must have a value after leadership has been established
-    TRI_ASSERT(status.committedParticipantsConfig.has_value());
+    TRI_ASSERT(status.committedParticipantsConfig != nullptr);
     // check if either there is no entry in current yet, the term has changed or
     // the participant config generation has changed.
     bool const requiresUpdate =
-        currentLeader == nullptr || currentLeader->term != status.term ||
-        status.committedParticipantsConfig.value().generation !=
+        currentLeader == nullptr ||
+        currentLeader->term != status.getCurrentTerm() ||
+        status.committedParticipantsConfig->generation !=
             currentLeader->committedParticipantsConfig.generation;
 
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
-      leader.term = status.term;
-      leader.committedParticipantsConfig = status.committedParticipantsConfig.value();
+      leader.term = *status.getCurrentTerm();
+      leader.committedParticipantsConfig = *status.committedParticipantsConfig;
       return leader;
     }
   }
@@ -1331,12 +1337,13 @@ static void writeUpdateReplicatedLogLocal(
   }
 }
 
-static void reportCurrentReplicatedLog(VPackBuilder& report,
-                                     replication2::replicated_log::LogStatus const& status,
-                                     VPackSlice cur, replication2::LogId id,
-                                     std::string const& dbName, std::string const& serverId) {
-
-  auto logContext = LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
+static void reportCurrentReplicatedLog(
+    VPackBuilder& report,
+    replication2::replicated_log::QuickLogStatus const& status, VPackSlice cur,
+    replication2::LogId id, std::string const& dbName,
+    std::string const& serverId) {
+  auto logContext =
+      LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
   auto localTerm = status.getCurrentTerm();
   LOG_CTX("11dbd", TRACE, logContext)
       << "checking replicated log " << id
@@ -1358,20 +1365,24 @@ static void reportCurrentReplicatedLog(VPackBuilder& report,
   auto current = replication2::agency::LogCurrent::fromVelocyPack(currentSlice);
 
   {
-    auto localState = std::invoke([&]() -> replication2::agency::LogCurrentLocalState const* {
-      if (auto iter = current.localState.find(serverId); iter != std::end(current.localState)) {
-        return &iter->second;
-      }
-      return nullptr;
-    });
+    auto localState =
+        std::invoke([&]() -> replication2::agency::LogCurrentLocalState const* {
+          if (auto iter = current.localState.find(serverId);
+              iter != std::end(current.localState)) {
+            return &iter->second;
+          }
+          return nullptr;
+        });
 
-    if (auto result = reportCurrentReplicatedLogLocal(status, localState); result.has_value()) {
-      writeUpdateReplicatedLogLocal(report, id, dbName, serverId, *localTerm, *result);
+    if (auto result = reportCurrentReplicatedLogLocal(status, localState);
+        result.has_value()) {
+      writeUpdateReplicatedLogLocal(report, id, dbName, serverId, *localTerm,
+                                    *result);
     }
   }
 
   {
-    if(auto leaderStatus = status.asLeaderStatus(); leaderStatus != nullptr) {
+    if (status.role == replication2::replicated_log::ParticipantRole::kLeader) {
       auto currentLeader =
           std::invoke([&]() -> replication2::agency::LogCurrent::Leader const* {
             if (current.leader.has_value()) {
@@ -1379,7 +1390,8 @@ static void reportCurrentReplicatedLog(VPackBuilder& report,
             }
             return nullptr;
           });
-      if (auto result = reportCurrentReplicatedLogLeader(*leaderStatus, currentLeader); result.has_value()) {
+      if (auto result = reportCurrentReplicatedLogLeader(status, currentLeader);
+          result.has_value()) {
         writeUpdateReplicatedLogLeader(report, id, dbName, *localTerm, *result);
       }
     }
@@ -2027,13 +2039,19 @@ arangodb::Result arangodb::maintenance::phaseTwo(
 
   auto end = std::chrono::steady_clock::now();
   uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  feature._phase2_runtime_msec->get().count(total_ms);
-  feature._phase2_accum_runtime_msec->get().count(total_ms);
+  TRI_ASSERT(feature._phase2_runtime_msec != nullptr);
+  feature._phase2_runtime_msec->count(total_ms);
+  TRI_ASSERT(feature._phase2_accum_runtime_msec != nullptr);
+  feature._phase2_accum_runtime_msec->count(total_ms);
 
-  feature._shards_out_of_sync->get().operator=(shardStats.numOutOfSyncShards);
-  feature._shards_total_count->get().operator=(shardStats.numShards);
-  feature._shards_leader_count->get().operator=(shardStats.numLeaderShards);
-  feature._shards_not_replicated_count->get().operator=(shardStats.numNotReplicated);
+  TRI_ASSERT(feature._shards_out_of_sync != nullptr);
+  feature._shards_out_of_sync->store(shardStats.numOutOfSyncShards, std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_total_count != nullptr);
+  feature._shards_total_count->store(shardStats.numShards, std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_leader_count != nullptr);
+  feature._shards_leader_count->store(shardStats.numLeaderShards, std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_not_replicated_count != nullptr);
+  feature._shards_not_replicated_count->store(shardStats.numNotReplicated, std::memory_order_relaxed);
 
   return result;
 }

@@ -23,12 +23,12 @@
 #include "LogFollower.h"
 
 #include "Logger/LogContextKeys.h"
+#include "Metrics/Gauge.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Metrics/Gauge.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 
 #include <Basics/Exceptions.h>
@@ -337,6 +337,20 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   });
 }
 
+auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
+  return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
+    if (followerData._logCore == nullptr) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    }
+    constexpr auto kBaseIndex = LogIndex{0};
+    return QuickLogStatus{.role = ParticipantRole::kFollower,
+                          .term = _currentTerm,
+                          .local = followerData.getLocalStatistics(),
+                          .leadershipEstablished = followerData._commitIndex > kBaseIndex};
+  });
+}
+
 auto replicated_log::LogFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return _participantId;
 }
@@ -503,6 +517,10 @@ auto LogFollower::release(LogIndex doneWithIdx) -> Result {
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
   return waitFor(LogIndex{1});
+}
+
+auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
+  return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics() const noexcept
