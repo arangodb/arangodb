@@ -6,13 +6,15 @@
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Value.h"
 
 #include <cstdint>
 #include <limits>
 
 namespace arangodb::replication2::replicated_state {
 
-auto to_string(LeaderElectionCampaign::Reason const& reason) -> std::string {
+auto to_string(LeaderElectionCampaign::Reason reason) -> std::string_view {
   switch (reason) {
     case LeaderElectionCampaign::Reason::OK: {
       return "OK";
@@ -24,6 +26,64 @@ auto to_string(LeaderElectionCampaign::Reason const& reason) -> std::string {
       return "TermNotConfirmed";
     } break;
   }
+}
+auto operator<<(std::ostream& os, LeaderElectionCampaign::Reason reason)
+    -> std::ostream& {
+  return os << to_string(reason);
+}
+
+void LeaderElectionCampaign::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add("numberOKParticipants", VPackValue(numberOKParticipants));
+
+  builder.add(VPackValue("bestTermIndex"));
+  bestTermIndex.toVelocyPack(builder);
+
+  {
+    auto rb = VPackObjectBuilder(&builder, "reasons");
+    for (auto const& [participant, reason] : reasons) {
+      builder.add(VPackValue(participant));
+      builder.add(VPackValue(to_string(reason)));
+    }
+  }
+
+  {
+    auto eb = VPackArrayBuilder(&builder, "electibleLeaderSet");
+    for (auto const& participant : electibleLeaderSet) {
+      builder.add(VPackValue(participant));
+    }
+  }
+}
+
+auto to_string(LeaderElectionCampaign const& campaign) -> std::string {
+  auto bb = VPackBuilder{};
+  campaign.toVelocyPack(bb);
+  return bb.toString();
+}
+
+auto operator<<(std::ostream& os, Action::ActionType const& action)
+    -> std::ostream&;
+
+auto to_string(Action::ActionType action) -> std::string_view {
+  switch (action) {
+    case Action::ActionType::FailedLeaderElectionAction: {
+      return "FailedLeaderElection";
+    } break;
+    case Action::ActionType::SuccessfulLeaderElectionAction: {
+      return "SuccessfulLeaderElection";
+    } break;
+    case Action::ActionType::UpdateTermAction: {
+      return "UpdateTermAction";
+    } break;
+    case Action::ActionType::ImpossibleCampaignAction: {
+      return "ImpossibleCampaignAction";
+    } break;
+  }
+}
+
+auto operator<<(std::ostream& os, Action::ActionType const& action)
+    -> std::ostream& {
+  return os << to_string(action);
 }
 
 auto computeReason(Log::Current::LocalState const& status, bool healthy,
@@ -79,13 +139,27 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
     }
   } else {
     // New leader required; we try running an election
+
+    // There aren't enough participants to reach a quorum
+    if (log.plan.participants.set.size() + 1 <
+        log.plan.termSpec.config.writeConcern) {
+
+        LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
+          << "replicated log not enough participants available for leader "
+             "election campaign "
+          << log.plan.participants.set.size() + 1 << " < "
+          << log.plan.termSpec.config.writeConcern;
+
+      return std::make_unique<ImpossibleCampaignAction>();
+    }
+
     auto const& termSpec = log.plan.termSpec;
     auto const& campaign =
         runElectionCampaign(log.current.localStates, health, termSpec.term);
 
-    // This is the required number of participants to reach a quorum; the
-    // set of participants that can become leader is a subset of the
-    // OK participants
+    // This should be taken care of by a test above
+    TRI_ASSERT(log.plan.participants.set.size() + 1 >=
+               log.plan.termSpec.config.writeConcern);
     auto const requiredNumberOfOKParticipants =
         log.plan.participants.set.size() -
         log.plan.termSpec.config.writeConcern + 1;
@@ -94,8 +168,8 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
       auto const numElectible = campaign.electibleLeaderSet.size();
 
       // Something went really wrong: we have enough ok participants, but none
-      // of them is electible, or too many of them are, because we only support
-      // uint16_t::max participants at he moment
+      // of them is electible, or too many of them are (we only support
+      // uint16_t::max participants at the moment)
       if (ADB_UNLIKELY(numElectible == 0 ||
                        numElectible > std::numeric_limits<uint16_t>::max())) {
         abortOrThrow(TRI_ERROR_NUMERIC_OVERFLOW,
@@ -110,6 +184,7 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
       // We randomly elect on of the electible leaders
       // TODO this can be straightened out a bit
       auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+
       auto const& newLeader =
           campaign.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
       auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
@@ -121,18 +196,18 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
           .leader = Log::Plan::TermSpecification::Leader{
               .serverId = newLeader, .rebootId = newLeaderRebootId}};
       action->_newLeader = newLeader;
+
       return action;
     } else {
       // Not enough participants were available to form a quorum, so
       // we can't elect a leader
 
-      /*
-    LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
-        << "replicated log " << database << "/" << spec.id
-        << " not enough participants available for leader election "
-        << campaign.numberOKParticipants << " < "
-        << requiredNumberOfOKParticipants;
-      */
+      LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
+          << "replicated log not enough participants available for leader "
+             "election "
+          << campaign.numberOKParticipants << " < "
+          << requiredNumberOfOKParticipants;
+
       auto action = std::make_unique<FailedLeaderElectionAction>();
       action->_campaign = campaign;
       return action;

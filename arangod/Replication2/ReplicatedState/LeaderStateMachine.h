@@ -1,6 +1,11 @@
 #pragma once
 
 #include "Basics/ErrorCode.h"
+#include "Cluster/ClusterTypes.h"
+
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-common.h"
+#include "velocypack/velocypack-aliases.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
@@ -54,8 +59,6 @@
 
 namespace arangodb::replication2::replicated_state {
 
-using RebootId = size_t;
-
 using namespace arangodb::replication2;
 
 struct Log {
@@ -89,16 +92,22 @@ struct Log {
       struct Leader {
         ParticipantId serverId;
         RebootId rebootId;
+
+        void toVelocyPack(VPackBuilder&) const;
       };
       struct Config {
         bool waitForSync;
         size_t writeConcern;
         size_t softWriteConcern;
+
+        void toVelocyPack(VPackBuilder&) const;
       };
 
       LogTerm term;
       std::optional<Leader> leader;
       Config config;
+
+      void toVelocyPack(VPackBuilder&) const;
     };
 
     struct Participants {
@@ -107,6 +116,8 @@ struct Log {
       struct Participant {
         bool forced;
         bool excluded;
+
+        void toVelocyPack(VPackBuilder& builder) const;
       };
       using Set = std::unordered_map<ParticipantId, Participant>;
 
@@ -242,19 +253,6 @@ struct ParticipantsHealth {
   std::unordered_map<ParticipantId, ParticipantHealth> _health;
 };
 
-struct Action {
-  virtual void execute() = 0;
-  virtual ~Action() = default;
-};
-
-struct UpdateTermAction : Action {
-  UpdateTermAction(Log::Plan::TermSpecification const& newTerm)
-      : _newTerm(newTerm){};
-  void execute() override{};
-
-  Log::Plan::TermSpecification _newTerm;
-};
-
 struct LeaderElectionCampaign {
   enum class Reason { ServerIll, TermNotConfirmed, OK };
 
@@ -262,27 +260,76 @@ struct LeaderElectionCampaign {
   size_t numberOKParticipants{0};
   replication2::TermIndexPair bestTermIndex;
   std::vector<ParticipantId> electibleLeaderSet;
+
+  void toVelocyPack(VPackBuilder& builder) const;
 };
+auto to_string(LeaderElectionCampaign::Reason reason) -> std::string_view;
+auto operator<<(std::ostream& os, LeaderElectionCampaign::Reason reason) -> std::ostream&;
+
+auto to_string(LeaderElectionCampaign const& campaign) -> std::string;
+auto operator<<(std::ostream& os, LeaderElectionCampaign const& action) -> std::ostream&;
+
+struct Action {
+  enum class ActionType { UpdateTermAction, SuccessfulLeaderElectionAction, FailedLeaderElectionAction, ImpossibleCampaignAction };
+  virtual void execute() = 0;
+  virtual ActionType type() const = 0;
+  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
+  virtual ~Action() = default;
+};
+
+auto to_string(Action::ActionType action) -> std::string_view;
+auto operator<<(std::ostream& os, Action::ActionType const& action) -> std::ostream&;
+auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
+
+struct UpdateTermAction : Action {
+  UpdateTermAction(Log::Plan::TermSpecification const& newTerm)
+      : _newTerm(newTerm){};
+  void execute() override{};
+  ActionType type() const override { return Action::ActionType::UpdateTermAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  Log::Plan::TermSpecification _newTerm;
+};
+
+auto to_string(UpdateTermAction action) -> std::string;
+auto operator<<(std::ostream& os, UpdateTermAction const& action) -> std::ostream&;
 
 struct SuccessfulLeaderElectionAction : Action {
   SuccessfulLeaderElectionAction(){};
   void execute() override{};
+  ActionType type() const override { return Action::ActionType::SuccessfulLeaderElectionAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
 
   LeaderElectionCampaign _campaign;
   ParticipantId _newLeader;
   Log::Plan::TermSpecification _newTerm;
 };
+auto to_string(SuccessfulLeaderElectionAction action) -> std::string;
+auto operator<<(std::ostream& os, SuccessfulLeaderElectionAction const& action) -> std::ostream&;
 
 struct FailedLeaderElectionAction : Action {
   FailedLeaderElectionAction(){};
   void execute() override{};
+  ActionType type() const override { return Action::ActionType::FailedLeaderElectionAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
 
   LeaderElectionCampaign _campaign;
-  ParticipantId _newLeader;
-  Log::Plan::TermSpecification _newTerm;
 };
+auto to_string(FailedLeaderElectionAction const& action) -> std::string;
+auto operator<<(std::ostream& os, FailedLeaderElectionAction const& action) -> std::ostream&;
 
-auto to_string(LeaderElectionCampaign::Reason const& reason) -> std::string;
+
+struct ImpossibleCampaignAction : Action {
+  ImpossibleCampaignAction(){};
+  void execute() override{};
+  ActionType type() const override { return Action::ActionType::ImpossibleCampaignAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
+auto to_string(ImpossibleCampaignAction const& action) -> std::string;
+auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action) -> std::ostream&;
+
+
+
 auto computeReason(Log::Current::LocalState const& status, bool healthy,
                    LogTerm term) -> LeaderElectionCampaign::Reason;
 

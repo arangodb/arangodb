@@ -557,6 +557,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/LeaderStateMachine.cpp
+  Replication2/ReplicatedState/LeaderStateMachineVelocyPackHell.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
   Replication2/Methods.cpp
