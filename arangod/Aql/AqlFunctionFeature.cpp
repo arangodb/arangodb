@@ -192,6 +192,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"HASH", ".", flags, &Functions::Hash});
   add({"TO_BASE64", ".", flags, &Functions::ToBase64});
   add({"TO_HEX", ".", flags, &Functions::ToHex});
+  add({"TO_FIXED", ".,.", flags, &Functions::ToFixed});
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
@@ -216,7 +217,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   // numeric functions
   add({"FLOOR", ".", flags, &Functions::Floor});
   add({"CEIL", ".", flags, &Functions::Ceil});
-  add({"ROUND", ".|.,.", flags, &Functions::Round});
+  add({"ROUND", ".", flags, &Functions::Round});
   add({"ABS", ".", flags, &Functions::Abs});
   add({"SQRT", ".", flags, &Functions::Sqrt});
   add({"POW", ".,.", flags, &Functions::Pow});

@@ -110,6 +110,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 #ifdef __APPLE__
 #include <regex>
@@ -1521,6 +1523,75 @@ AqlValue Functions::ToHex(ExpressionContext* expr, AstNode const&,
       basics::StringUtils::encodeHex(buffer->begin(), buffer->length());
 
   return AqlValue(encoded);
+}
+
+/// @brief function TO_FIXED
+AqlValue Functions::ToFixed(ExpressionContext* ctx, AstNode const&,
+                            VPackFunctionParameters const& parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& precision = extractFunctionParameterValue(parameters, 1);
+
+  static char const* AFN = "TO_FIXED";
+  if (!precision.isNumber()) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+  int64_t prec = precision.toInt64();
+  if (prec < 0 || prec > 20) {
+    // invalid precision
+    aql::registerWarning(ctx, AFN, Result(TRI_ERROR_BAD_PARAMETER, "invalid precision value"));
+    return AqlValue(AqlValueHintNull());
+  }
+
+  double input = value.toDouble();
+  std::stringstream ss;
+  if (prec == 0) {
+    input = std::round(input);
+  } 
+  if (std::isnan(input) || !std::isfinite(input)) {
+    return AqlValue(AqlValueHintNull());
+  }
+  ss << std::setprecision(prec) << std::setw(prec) << std::fixed << input;
+  std::string s = ss.str();
+  return AqlValue(s.c_str(), s.size());
+  /*
+
+  AqlValue tmp;
+  if (prec == 0) {
+    tmp = ::numberValue(std::round(input), true);
+  } else {
+    double exp = std::pow(10, prec > 0 ? static_cast<double>(prec) : 10.0);
+    // Rounds down for < x.4999 and up for >= x.50000
+    tmp = ::numberValue(std::floor((input * exp) + 0.5) / exp, true);
+  }
+  if (!tmp.isNumber()) {
+    return AqlValue(AqlValueHintNull());
+  }
+  double tmpValue = tmp.toDouble();
+  if (std::isnan(tmpValue) || !std::isfinite(tmpValue)) {
+    return AqlValue(AqlValueHintNull());
+  }
+  // stringify number 
+  char buffer[128];
+  size_t length = static_cast<size_t>(fpconv_dtoa(tmpValue, buffer));
+  char const* p = static_cast<char const*>(memchr(&buffer[0], '.', length));
+  if (prec > 0) {
+    if (p == nullptr) {
+      p = &buffer[length];
+      buffer[length++] = '.';
+    }
+    TRI_ASSERT(p != nullptr);
+    int64_t diff = &buffer[0] + length - p - 1;
+    while (diff++ < prec) {
+      buffer[length++] = '0';
+    }
+  } else {
+    if (p != nullptr) {
+      length = (p - &buffer[0]);
+    }
+  }
+  return AqlValue(&buffer[0], length);
+  */
 }
 
 /// @brief function ENCODE_URI_COMPONENT
@@ -6769,13 +6840,11 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, AstNode const&
 AqlValue Functions::Round(ExpressionContext*, AstNode const&,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  AqlValue const& precision = extractFunctionParameterValue(parameters, 1);
 
   double input = value.toDouble();
-  double exp = std::pow(10, precision.toDouble() >= 0 ? precision.toDouble() : 0);
 
-  // Rounds down for < x.4999 and up for > x.50000
-  return ::numberValue(std::floor((input * exp) + 0.5) / exp, true);
+  // Rounds down for < x.4999 and up for >= x.50000
+  return ::numberValue(std::floor(input + 0.5), true);
 }
 
 /// @brief function ABS

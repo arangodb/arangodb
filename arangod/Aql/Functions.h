@@ -140,6 +140,8 @@ struct Functions {
                            AstNode const&, VPackFunctionParameters const&);
   static AqlValue ToHex(arangodb::aql::ExpressionContext*,
                         AstNode const&, VPackFunctionParameters const&);
+  static AqlValue ToFixed(arangodb::aql::ExpressionContext*,
+                           AstNode const&, VPackFunctionParameters const&);
   static AqlValue EncodeURIComponent(arangodb::aql::ExpressionContext*,
                                      AstNode const&,
                                      VPackFunctionParameters const&);
