@@ -1,3 +1,25 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Markus Pfeiffer
+////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "Basics/ErrorCode.h"
@@ -8,6 +30,9 @@
 #include "velocypack/velocypack-aliases.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+
+#include "Replication2/ReplicatedState/AgencySpecificationLog.h"
+#include "Replication2/ReplicatedState/AgencySpecificationState.h"
 
 #include <chrono>
 #include <optional>
@@ -32,203 +57,10 @@
 //  Then write (a) function(s)
 // auto replicatedStateAction(Log, State) -> Action;
 
-// we use namespacing to separate definitions from implementations as well as
-// some of the noise from the essential information.
-//
-// For instance  this way we can write up the struct for Log:
-//
-// namespace log {
-//    using namespace target;
-//    using namespace current;
-//    using namespace plan;
-//
-//    struct Log {
-//        Target target;
-//        Current current;
-//        Plan plan;
-//    };
-// }
-//
-// and move the implementations into namespaced sections.
-//
-// In particular we do not litter struct Log {} with defining sub-structs
-// and sub-sub-structs.
-//
-// risk: spreading the namespace out too much.
-// risk: namespacetangle
-
 namespace arangodb::replication2::replicated_state {
 
 using namespace arangodb::replication2;
-
-struct Log {
-  struct Target {
-    struct Participant {
-      bool forced;
-    };
-    using Participants = std::unordered_map<ParticipantId, Participant>;
-
-    struct Config {
-      size_t writeConcern;
-      size_t softWriteConcern;
-      bool waitForSync;
-    };
-
-    using Leader = std::optional<ParticipantId>;
-
-    struct Properties {
-      // ...
-    };
-
-    LogId id;
-    Participants participants;
-    Config config;
-    Leader leader;
-    Properties properties;
-  };
-
-  struct Plan {
-    struct TermSpecification {
-      struct Leader {
-        ParticipantId serverId;
-        RebootId rebootId;
-
-        void toVelocyPack(VPackBuilder&) const;
-      };
-      struct Config {
-        bool waitForSync;
-        size_t writeConcern;
-        size_t softWriteConcern;
-
-        void toVelocyPack(VPackBuilder&) const;
-      };
-
-      LogTerm term;
-      std::optional<Leader> leader;
-      Config config;
-
-      void toVelocyPack(VPackBuilder&) const;
-    };
-
-    struct Participants {
-      using Generation = size_t;
-
-      struct Participant {
-        bool forced;
-        bool excluded;
-
-        void toVelocyPack(VPackBuilder& builder) const;
-      };
-      using Set = std::unordered_map<ParticipantId, Participant>;
-
-      Generation generation;
-      Set set;
-    };
-
-    TermSpecification termSpec;
-    Participants participants;
-  };
-
-  struct Current {
-    struct LocalState {
-      LogTerm term;
-      TermIndexPair spearhead;
-    };
-    using LocalStates = std::unordered_map<ParticipantId, LocalState>;
-
-    struct Leader {
-      using Term = size_t;
-
-      struct Participants {
-        using Generation = size_t;
-
-        Generation generation;
-        // TODO: probably missing, participants
-      };
-
-      Term term;
-      Participants participants;
-    };
-
-    struct Supervision {
-      // TODO.
-    };
-
-    LocalStates localStates;
-    Leader leader;
-    Supervision supervision;
-  };
-
-  Target target;
-  Plan plan;
-  Current current;
-};
-
-struct State {
-  struct Target {
-    using StateId = size_t;
-    struct Properties {
-      enum class Hash { Crc32 };
-      enum class Implementation { DocumentStore };
-
-      Hash hash;
-      Implementation implementation;
-    };
-    struct Configuration {
-      bool waitForSync;
-      size_t writeConcern;
-      size_t softWriteConcern;
-    };
-    struct Participant {
-      // TODO
-    };
-    using Participants = std::unordered_map<ParticipantId, Participant>;
-
-    StateId id;
-    Properties properties;
-    Configuration configuration;
-    Participants participants;
-  };
-  struct Plan {
-    using PlanId = size_t;
-    using Generation = size_t;
-    struct Participant {
-      Generation generation;
-    };
-    using Participants = std::unordered_map<ParticipantId, Participant>;
-
-    PlanId id;
-    Generation generation;
-    Participants participants;
-  };
-  struct Current {
-    using CurrentId = size_t;
-
-    struct Participant {
-      using Generation = size_t;
-      struct Snapshot {
-        enum class Status { Completed, InProgreess, Failed };
-        struct Timestamp {
-          // TODO std::chrono?
-        };
-
-        Status status;
-        Timestamp timestamp;
-      };
-
-      Generation generation;
-      Snapshot snapshot;
-    };
-    using Participants = std::unordered_map<ParticipantId, Participant>;
-
-    CurrentId id;
-    Participants participants;
-  };
-
-  Target target;
-  Plan plan;
-  Current current;
-};
+using namespace arangodb::replication2::replicated_state::agency;
 
 struct ParticipantHealth {
   RebootId rebootId;
@@ -282,13 +114,13 @@ auto operator<<(std::ostream& os, Action::ActionType const& action) -> std::ostr
 auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
 
 struct UpdateTermAction : Action {
-  UpdateTermAction(Log::Plan::TermSpecification const& newTerm)
+  UpdateTermAction(agency::Log::Plan::TermSpecification const& newTerm)
       : _newTerm(newTerm){};
   void execute() override{};
   ActionType type() const override { return Action::ActionType::UpdateTermAction; };
   void toVelocyPack(VPackBuilder& builder) const override;
 
-  Log::Plan::TermSpecification _newTerm;
+  agency::Log::Plan::TermSpecification _newTerm;
 };
 
 auto to_string(UpdateTermAction action) -> std::string;
@@ -302,7 +134,7 @@ struct SuccessfulLeaderElectionAction : Action {
 
   LeaderElectionCampaign _campaign;
   ParticipantId _newLeader;
-  Log::Plan::TermSpecification _newTerm;
+  agency::Log::Plan::TermSpecification _newTerm;
 };
 auto to_string(SuccessfulLeaderElectionAction action) -> std::string;
 auto operator<<(std::ostream& os, SuccessfulLeaderElectionAction const& action) -> std::ostream&;
@@ -330,10 +162,10 @@ auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action) -> std
 
 
 
-auto computeReason(Log::Current::LocalState const& status, bool healthy,
+auto computeReason(agency::Log::Current::LocalState const& status, bool healthy,
                    LogTerm term) -> LeaderElectionCampaign::Reason;
 
-auto runElectionCampaign(Log::Current::LocalStates const& states,
+auto runElectionCampaign(agency::Log::Current::LocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term)
     -> LeaderElectionCampaign;
 
