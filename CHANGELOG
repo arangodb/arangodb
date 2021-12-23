@@ -8,20 +8,21 @@ v3.9.0 (XXXX-XX-XX)
   - `--rocksdb.level0-stop-trigger` has been increased from 36 to 256
   - `--rocksdb.max-background-jobs` has been increased to the number of cores
     and is no longer limited to 8
-  - `--rocksdb.enabled-pipelined-write` is now `true` by default instead of `false`
+  - `--rocksdb.enabled-pipelined-write` is now `true` by default instead of
+    `false`
   - `--rocksdb.throttle-frequency` has been decreased from 60000ms down to
     1000ms per iteration, which makes the RocksDB throttle react much quicker
-  - `--rocksdb.pending-compactions-slowdown-trigger` has been decreased from
-    64 GB down to 8 GB
-  - `--rocksdb.pending-compactions-stop-trigger` has been decreased from
-    256 GB down to 16 GB
+  - `--rocksdb.pending-compactions-slowdown-trigger` has been decreased from 64
+    GB down to 8 GB
+  - `--rocksdb.pending-compactions-stop-trigger` has been decreased from 256 GB
+    down to 16 GB
   - `--rocksdb.throttle-slots` has been increased from 63 to 120
   - `--rocksdb.encryption-hardware-acceleration` is now `true` by default,
     which helps performance and should not create any problems, since we
     require sandybridge anyway.
-  Combined, these changes help ArangoDB/RocksDB to react quicker to a backlog
-  of background jobs and thus to prevent catastrophic stops which abort
-  data ingestion or lead to cluster internal timeouts.
+  Combined, these changes help ArangoDB/RocksDB to react quicker to a backlog of
+  background jobs and thus to prevent catastrophic stops which abort data
+  ingestion or lead to cluster internal timeouts.
 
 * Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
   to 2. This allows compactions jobs to be broken up into disjoint ranges which
