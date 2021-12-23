@@ -598,7 +598,6 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       // this node could be appended with materializer
       auto stopSearch = false;
       auto stickToSortNode = false;
-      auto haveRemoteBreaker = false;
       auto const& var = viewNode.outVariable();
       std::vector<aql::CalculationNode*> calcNodes; // nodes variables can be replaced
       auto& viewNodeState = viewNode.state();
@@ -618,7 +617,16 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             } else {
               stickToSortNode = true;
             }
-            haveRemoteBreaker = true;
+            break;
+          case ExecutionNode::LIMIT:
+            // After sort-limit rule was modified we could encounter additional
+            // limit nodes before Sort. Break search on them if still no sort
+            // found. As we need the closest LIMIT to the Sort. If we encounter
+            // additional LIMITs after we found a Sort node that is ok as it
+            // makes no harm for the late materialization.
+            if (sortNode == nullptr) {
+              stopSearch = true;
+            }
             break;
           default: // make clang happy
             break;
@@ -722,36 +730,9 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         TRI_ASSERT(materializeDependency);
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
-        if (stickToSortNode) {
-          auto& mainLimitNode = *ExecutionNode::castTo<LimitNode*>(limitNode);
-          // if we don't have remote breaker we could just replace the limit
-          // node otherwise we must have new node to constrain accesss to the
-          // sort node with only offset+limit documents
-          if (!haveRemoteBreaker) {
-            plan->unlinkNode(limitNode);
-          }
-          auto* auxLimitNode =
-              haveRemoteBreaker
-                  ? plan->registerNode(std::make_unique<LimitNode>(
-                        plan.get(), plan->nextId(), 0,
-                        mainLimitNode.offset() + mainLimitNode.limit()))
-                  : limitNode;
-          TRI_ASSERT(auxLimitNode);
-          if (haveRemoteBreaker && mainLimitNode.fullCount()) {
-            TRI_ASSERT(limitNode != auxLimitNode);
-            auto& tmp = *ExecutionNode::castTo<LimitNode*>(auxLimitNode);
-            tmp.setFullCount();
-            mainLimitNode.setFullCount(false);
-          }
-          dependencyParent->replaceDependency(materializeDependency,
-                                              materializeNode);
-          auxLimitNode->addParent(materializeNode);
-          materializeDependency->addParent(auxLimitNode);
-        } else {
-          dependencyParent->replaceDependency(materializeDependency,
-                                              materializeNode);
-          materializeDependency->addParent(materializeNode);
-        }
+        dependencyParent->replaceDependency(materializeDependency,
+                                            materializeNode);
+        materializeDependency->addParent(materializeNode);
         modified = true;
       }
     }

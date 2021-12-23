@@ -358,6 +358,11 @@ struct OptimizerRule {
 
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
+  // sort-limit adds/moves limit nodes. And calculations should
+  // not be moved up after that.
+  static_assert(moveCalculationsUpRule < applySortLimitRule);
+  static_assert(moveCalculationsUpRule2 < applySortLimitRule);
+
   std::string_view name;
   RuleFunction func;
   RuleLevel level;
