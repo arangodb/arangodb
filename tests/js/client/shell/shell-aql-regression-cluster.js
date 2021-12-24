@@ -71,6 +71,7 @@ function ShellAqlRegressionSuite () {
           'EnumerateCollectionNode',
           'CalculationNode',
           'SortNode',
+          'LimitNode',
           'RemoteNode',
           'GatherNode',
           'LimitNode',
