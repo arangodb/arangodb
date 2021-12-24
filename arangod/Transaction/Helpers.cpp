@@ -453,18 +453,14 @@ transaction::StringLeaser::~StringLeaser() {
 // ============== BuilderLeaser ==============
 
 /// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
-    : _transactionContext(trx->transactionContextPtr()),
-      _builder(_transactionContext->leaseBuilder()) {
-  TRI_ASSERT(_builder != nullptr);
-}
-
-/// @brief constructor, leases a builder
 transaction::BuilderLeaser::BuilderLeaser(transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
       _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);
 }
+
+transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
+    : BuilderLeaser(trx->transactionContextPtr()) {}
 
 /// @brief destructor
 transaction::BuilderLeaser::~BuilderLeaser() {

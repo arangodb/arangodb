@@ -83,7 +83,7 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
 }
 
 RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
-                           arangodb::velocypack::Slice const& info,
+                           arangodb::velocypack::Slice info,
                            rocksdb::ColumnFamilyHandle* cf, bool useCache)
     : Index(id, collection, info),
       _cf(cf),

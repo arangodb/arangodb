@@ -863,7 +863,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(rocksValue);  // we want probably to do this instead
             physical->read(trx.get(), documentId,
-                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
+                           [&docRev](LocalDocumentId const&, VPackSlice doc, VPackSlice /*extra*/) {
                              docRev = RevisionId::fromSlice(doc);
                              return true;
                            }, ReadOwnWrites::yes);

@@ -82,7 +82,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
                                             IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
                                             IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
   return [&context, &index, &outNonMaterializedIndVars, &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                                                                    VPackSlice slice) {
+                                                                                    VPackSlice slice, VPackSlice /*extra*/) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it

@@ -70,7 +70,7 @@ class IndexIterator {
 
  public:
   typedef std::function<bool(LocalDocumentId const& token)> LocalDocumentIdCallback;
-  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
+  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc, velocypack::Slice extra)> DocumentCallback;
   typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
 
  public:

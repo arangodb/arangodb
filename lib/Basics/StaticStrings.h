@@ -126,6 +126,7 @@ class StaticStrings {
 
   // Index definition fields
   static std::string const IndexExpireAfter;   // ttl index expire value
+  static std::string const IndexExtraFields;   // index extra fields
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
   static std::string const IndexInBackground;  // index in background

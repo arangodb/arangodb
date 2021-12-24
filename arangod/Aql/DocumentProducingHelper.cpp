@@ -43,7 +43,7 @@ using namespace arangodb::aql;
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
                                                  DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice) {
+  return [&context](LocalDocumentId const& token, VPackSlice slice, VPackSlice /*extra*/) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -76,7 +76,8 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     RegisterId registerId = context.getOutputRegister();
 
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto<InputAqlItemRow, VPackSlice const>(registerId, input, objectBuilder.slice());
+    VPackSlice s = objectBuilder.slice();
+    output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId, input, s);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -87,7 +88,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::DocumentCopy,
                                                  DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice const slice) {
+  return [&context](LocalDocumentId const& token, VPackSlice slice, VPackSlice /*extra*/) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -127,7 +128,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(DocumentProducingFunc
     if (!context.getProduceResult()) {
       // This callback is disallowed use getNullCallback instead
       TRI_ASSERT(false);
-      return [](LocalDocumentId const&, VPackSlice slice) -> bool {
+      return [](LocalDocumentId const&, VPackSlice /*slice*/, VPackSlice /*extra*/) -> bool {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
       };
     }
@@ -316,7 +317,7 @@ bool DocumentProducingFunctionContext::hasFilter() const noexcept {
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
                                                  DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice) {
+  return [&context](LocalDocumentId const& token, VPackSlice slice, VPackSlice extra) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -343,7 +344,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
 
     if (context.getAllowCoveringIndexOptimization()) {
       // projections from a covering index
-      context.getProjections().toVelocyPackFromIndex(objectBuilder, slice, context.getTrxPtr());
+      context.getProjections().toVelocyPackFromIndex(objectBuilder, slice, extra, context.getTrxPtr());
     } else {
       // projections from a "real" document
       context.getProjections().toVelocyPackFromDocument(objectBuilder, slice, context.getTrxPtr());
@@ -361,7 +362,8 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       OutputAqlItemRow& output = context.getOutputRow();
       RegisterId registerId = context.getOutputRegister();
       TRI_ASSERT(!output.isFull());
-      output.moveValueInto<InputAqlItemRow, VPackSlice const>(registerId, input, objectBuilder.slice());
+      VPackSlice s = objectBuilder.slice();
+      output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId, input, s);
       TRI_ASSERT(output.produced());
       output.advanceRow();
     }

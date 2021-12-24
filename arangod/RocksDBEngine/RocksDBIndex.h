@@ -153,9 +153,9 @@ class RocksDBIndex : public Index {
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
-
+  
   RocksDBIndex(IndexId id, LogicalCollection& collection,
-               arangodb::velocypack::Slice const& info,
+               arangodb::velocypack::Slice info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
   inline bool useCache() const { return (_cacheEnabled && _cache); }

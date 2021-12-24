@@ -273,7 +273,7 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
   typedef std::function<IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
 
   static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
-    return [&ctx](LocalDocumentId /*id*/, VPackSlice const doc) {
+    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc, VPackSlice /*extra*/) {
       ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, doc);
       return true;
     };
@@ -666,8 +666,7 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
     }
     TRI_ASSERT(!slice.isNone());
 
-    VPackSlice const& value = slice;
-    ctx.outputRow.moveValueInto(registerId, ctx.inputRow, value);
+    ctx.outputRow.moveValueInto(registerId, ctx.inputRow, slice);
   }
   return true;
 }

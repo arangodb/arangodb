@@ -59,6 +59,9 @@ RocksDBValue RocksDBValue::VPackIndexValue() {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
 
+RocksDBValue RocksDBValue::VPackIndexValue(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::VPackIndexValue, data);
+}
 
 RocksDBValue RocksDBValue::ZkdIndexValue() {
   return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
@@ -89,7 +92,6 @@ RocksDBValue RocksDBValue::S2Value(S2Point const& p) { return RocksDBValue(p); }
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
-
 
 RocksDBValue RocksDBValue::LogEntry(replication2::PersistingLogEntry const& entry) {
   return RocksDBValue(RocksDBEntryType::LogEntry, entry);
@@ -196,6 +198,10 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
+    case RocksDBEntryType::VPackIndexValue:
+      TRI_ASSERT(data.isArray());
+      [[fallthrough]];
+
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::ReplicatedLog:
@@ -207,7 +213,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
                      static_cast<size_t>(data.byteSize()));
       break;
     }
-
+  
     case RocksDBEntryType::Document:
       TRI_ASSERT(false);  // use for document => get free schellen
       break;

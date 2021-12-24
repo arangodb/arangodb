@@ -138,7 +138,7 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
 }
 
 void BaseWindowExecutor::produceInvalidOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output) {
-  VPackSlice const nullSlice = VPackSlice::nullSlice();
+  VPackSlice nullSlice = VPackSlice::nullSlice();
   for (auto const& regId : _infos.getAggregatedRegisters()) {
     output.moveValueInto(/*outRegister*/ regId.first, input, nullSlice);
   }

@@ -220,6 +220,7 @@ void Projections::toVelocyPackFromDocument(arangodb::velocypack::Builder& b,
 /// @brief projections from a covering index
 void Projections::toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
                                         arangodb::velocypack::Slice slice,
+                                        arangodb::velocypack::Slice extra,
                                         transaction::Methods const* trxPtr) const {
   TRI_ASSERT(_supportsCoveringIndex);
   TRI_ASSERT(b.isOpenObject());
@@ -227,15 +228,22 @@ void Projections::toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
   bool const isArray = slice.isArray();
   for (auto const& it : _projections) {
     if (isArray) {
+      auto numIndexAttributes = slice.length();
+
       // _id cannot be part of a user-defined index
       TRI_ASSERT(it.type != AttributeNamePath::Type::IdAttribute);
 
       // we will get a Slice with an array of index values. now we need
       // to look up the array values from the correct positions to
-      // populate the result with the projection values this case will
+      // populate the result with the projection values. this case will
       // be triggered for indexes that can be set up on any number of
-      // attributes (hash/skiplist)
-      VPackSlice found = slice.at(it.coveringIndexPosition);
+      // attributes (persistent/hash/skiplist)
+      VPackSlice found; 
+      if (it.coveringIndexPosition >= numIndexAttributes) {
+        found = extra.at(it.coveringIndexPosition - numIndexAttributes);
+      } else {
+        found = slice.at(it.coveringIndexPosition);
+      }
       if (found.isNone()) {
         found = VPackSlice::nullSlice();
       }

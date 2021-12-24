@@ -142,7 +142,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       coveringBuilder->add(_lastKey);
       coveringBuilder->add(fromTo);
       coveringBuilder->close();
-      cb(docId, coveringBuilder->slice());
+      cb(docId, coveringBuilder->slice(), VPackSlice::emptyArraySlice());
     }, limit);
   }
 
@@ -355,7 +355,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // adding documentId and _from or _to value
       _builder.add(VPackValue(docId.id()));
       std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
-      _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
+      _builder.add(VPackValue(vertexId));
     }
     _builder.close();
 
@@ -499,7 +499,6 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   // always invalidate cache entry for all edges with same _from / _to
   invalidateCacheEntry(fromToRef);
 
-  // acquire rocksdb transaction
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
 
   if (s.ok()) {

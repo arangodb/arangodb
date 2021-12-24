@@ -65,9 +65,11 @@ class RocksDBVPackIndex : public RocksDBIndex {
   RocksDBVPackIndex() = delete;
 
   RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
-                    arangodb::velocypack::Slice const& info);
+                    arangodb::velocypack::Slice info);
 
   ~RocksDBVPackIndex();
+  
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
   bool hasSelectivityEstimate() const override;
 
@@ -86,12 +88,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
-
-  /// @brief return the attribute paths, a -1 entry means none is expanding,
-  /// otherwise the non-negative number is the index of the expanding one.
-  std::vector<int> const& expanding() const { return _expanding; }
-
-  static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
   /// @brief attempts to locate an entry in the index
   std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
@@ -135,6 +131,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options,
                 bool performChecks) override;
 
+  bool hasExtraFields() const noexcept { return !_extraFields.empty(); }
+
  private:
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
@@ -152,15 +150,15 @@ class RocksDBVPackIndex : public RocksDBIndex {
                                       LocalDocumentId const& documentId, velocypack::Slice doc,
                                       OperationOptions const& options, bool ignoreExisting);
 
-  /// @brief return the number of paths
-  inline size_t numPaths() const { return _paths.size(); }
-
   /// @brief helper function to transform AttributeNames into string lists
-  void fillPaths(std::vector<std::vector<std::string>>& paths, std::vector<int>& expanding);
+  void fillPaths(
+      std::vector<std::vector<arangodb::basics::AttributeName>> const& source,
+      std::vector<std::vector<std::string>>& paths, 
+      std::vector<int>* expanding);
 
   /// @brief helper function to insert a document into any index type
   ErrorCode fillElement(velocypack::Builder& leased,
-                        LocalDocumentId const& documentId, VPackSlice const& doc,
+                        LocalDocumentId const& documentId, VPackSlice doc,
                         ::arangodb::containers::SmallVector<RocksDBKey>& elements,
                         ::arangodb::containers::SmallVector<uint64_t>& hashes);
 
@@ -168,7 +166,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
   void addIndexValue(velocypack::Builder& leased,
-                     LocalDocumentId const& documentId, VPackSlice const& document,
+                     LocalDocumentId const& documentId, VPackSlice document,
                      ::arangodb::containers::SmallVector<RocksDBKey>& elements,
                      ::arangodb::containers::SmallVector<uint64_t>& hashes,
                      ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
@@ -185,10 +183,14 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
 
  private:
-  /// @brief the attribute paths
+  /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;
+  /// @brief the attribute paths (for extra fields)
+  std::vector<std::vector<std::string>> _extraFieldsPaths;;
 
   /// @brief ... and which of them expands
+  /// @brief a -1 entry means none is expanding,
+  /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> _expanding;
 
   /// @brief whether or not array indexes will de-duplicate their input values
@@ -200,10 +202,14 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief whether or not we want to have estimates
   bool _estimates;
 
-  /// @brief A fixed size library to estimate the selectivity of the index.
+  /// @brief A fixed size buffer to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
+  
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _extraFields;
+  
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _coveredFields;
 };
-}  // namespace arangodb
 
+}  // namespace arangodb

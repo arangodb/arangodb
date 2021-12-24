@@ -156,7 +156,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     LocalDocumentId documentId =
         _index->lookupKey(_trx, _key->slice().stringView(), canReadOwnWrites());
     if (documentId.isSet()) {
-      cb(documentId, _key->slice());
+      cb(documentId, _key->slice(), VPackSlice::emptyArraySlice());
     }
     return false;
   }
@@ -258,7 +258,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
       LocalDocumentId documentId =
           _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
       if (documentId.isSet()) {
-        cb(documentId, *_iterator);
+        cb(documentId, *_iterator, VPackSlice::emptyArraySlice());
         --limit;
       }
 
@@ -377,8 +377,8 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       std::string_view key = RocksDBKey::primaryKey(_iterator->key());
 
       builder->clear();
-      builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-      cb(documentId, builder->slice());
+      builder->add(VPackValue(key));
+      cb(documentId, builder->slice(), VPackSlice::emptyArraySlice());
 
       --limit;
       if constexpr (reverse) {

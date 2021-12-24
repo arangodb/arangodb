@@ -136,9 +136,7 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
                                    "invalid index type definition");
   }
 
-  VPackValueLength len;
-  char const* str = value.getStringUnchecked(len);
-  arangodb::Index::IndexType const type = arangodb::Index::type(str, len);
+  arangodb::Index::IndexType const type = arangodb::Index::type(value.stringView());
   for (auto const& idx : indexes) {
     if (idx->type() == type) {
       // Only check relevant indexes

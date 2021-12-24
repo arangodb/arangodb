@@ -221,8 +221,8 @@ bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback, size_
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback, size_t limit) {
-  auto cb = [&limit, &callback](LocalDocumentId const& token, arangodb::velocypack::Slice slice) {
-    if (callback(token, slice)) {
+  auto cb = [&limit, &callback](LocalDocumentId const& token, arangodb::velocypack::Slice slice, arangodb::velocypack::Slice extra) {
+    if (callback(token, slice, extra)) {
       --limit;
       return true;
     }
@@ -255,8 +255,9 @@ bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback, size_t lim
 bool MultiIndexIterator::nextCoveringImpl(DocumentCallback const& callback, size_t limit) {
   TRI_ASSERT(hasCovering());
   auto cb = [&limit, &callback](LocalDocumentId const& token,
-                                arangodb::velocypack::Slice slice) {
-    if (callback(token, slice)) {
+                                arangodb::velocypack::Slice slice,
+                                arangodb::velocypack::Slice extra) {
+    if (callback(token, slice, extra)) {
       --limit;
       return true;
     }

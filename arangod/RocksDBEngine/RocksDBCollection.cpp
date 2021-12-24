@@ -948,7 +948,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 
     res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true, readOwnWrites);
     if (res.ok()) {
-      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
+      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())), VPackSlice::emptyArraySlice());
     }
   } while (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
            RocksDBTransactionState::toState(trx)->ensureSnapshot());
@@ -1884,7 +1884,7 @@ Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
-      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
+      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())), VPackSlice::emptyArraySlice());
       return Result{};
     }
   }
@@ -1902,7 +1902,7 @@ Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   }
 
   TRI_ASSERT(ps.size() > 0);
-  cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
+  cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())), VPackSlice::emptyArraySlice());
 
   if (withCache && useCache()) {
     TRI_ASSERT(_cache != nullptr);

@@ -104,7 +104,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* cursor, EdgeCur
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
   collection->getPhysical()->read(
-      _trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+      _trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc, VPackSlice /*extra*/) {
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible()) {
           // TODO: we only need to check one of these
@@ -252,7 +252,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
         });
       } else {
         cursor->all([&](LocalDocumentId const& token) {
-          return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+          return collection->getPhysical()->read(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc, VPackSlice /*extra*/) {
 #ifdef USE_ENTERPRISE
             if (_trx->skipInaccessible()) {
               // TODO: we only need to check one of these

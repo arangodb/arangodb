@@ -474,7 +474,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
                                                               noCollections, opts);
   ASSERT_EQ(1, collection->numberDocuments(trx.get(), transaction::CountType::Normal));
   bool called = false;
-  auto result = collection->getPhysical()->read(trx.get(), std::string_view{"myKey"}, [&](LocalDocumentId const&, VPackSlice document) {
+  auto result = collection->getPhysical()->read(trx.get(), std::string_view{"myKey"}, [&](LocalDocumentId const&, VPackSlice document, VPackSlice /*extra*/) {
     called = true;
     EXPECT_TRUE(document.isObject());
     EXPECT_TRUE(document.get("_key").isString());

@@ -89,7 +89,7 @@ class IndexFactory {
   Result emplace(std::string const& type, IndexTypeFactory const& factory);
 
   virtual Result enhanceIndexDefinition(
-    velocypack::Slice const definition,
+    velocypack::Slice definition,
     velocypack::Builder& normalized,
     bool isCreation,
     TRI_vocbase_t const& vocbase) const;
@@ -121,6 +121,7 @@ class IndexFactory {
                               std::vector<std::shared_ptr<Index>>& indexes) const = 0;
 
   static Result validateFieldsDefinition(velocypack::Slice definition,
+                                         std::string const& attributeName,
                                          size_t minFields, size_t maxFields,
                                          bool allowSubAttributes = true);
 
@@ -128,7 +129,16 @@ class IndexFactory {
   static Result processIndexFields(velocypack::Slice definition,
                                    velocypack::Builder& builder,
                                    size_t minFields, size_t maxFields, bool create,
-                                   bool allowExpansion, bool allowSubAttributes = true);
+                                   bool allowExpansion, bool allowSubAttributes);
+  
+  /// @brief process the extra fields list, deduplicate it, and add it to the json
+  static Result processIndexExtraFields(velocypack::Slice definition,
+                                        velocypack::Builder& builder,
+                                        size_t minFields, size_t maxFields, bool create,
+                                        bool allowSubAttributes);
+
+  static void processIndexInBackground(velocypack::Slice definition, 
+                                       velocypack::Builder& builder);
 
   /// @brief process the unique flag and add it to the json
   static void processIndexUniqueFlag(velocypack::Slice definition,
