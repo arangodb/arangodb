@@ -69,26 +69,54 @@ ArangoReplicatedLog.prototype.status = function() {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.head = function(limit = 100) {
-  let requestResult = this._database._connection.GET(this._baseurl() + `/head?limit=${limit}`);
+ArangoReplicatedLog.prototype.head = function(limit) {
+  let query = '/head';
+  if (limit !== undefined) {
+    query += `?limit=${limit}`;
+  }
+  let requestResult = this._database._connection.GET(this._baseurl() + query);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.tail = function(limit = 100) {
-  let requestResult = this._database._connection.GET(this._baseurl() + `/tail?limit=${limit}`);
+ArangoReplicatedLog.prototype.tail = function(limit) {
+  let query = '/tail';
+  if (limit !== undefined) {
+    query += `?limit=${limit}`;
+  }
+  let requestResult = this._database._connection.GET(this._baseurl() + query);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
 ArangoReplicatedLog.prototype.slice = function(start, stop) {
-  let requestResult = this._database._connection.GET(this._baseurl() + `/slice?start=${start}&stop=${stop}`);
+  let query = '/slice?';
+  if (start !== undefined) {
+    query += `start=${start}`;
+  }
+  if (stop !== undefined) {
+    if (start !== undefined) {
+      query += `&`;
+    }
+    query += `stop=${stop}`;
+  }
+  let requestResult = this._database._connection.GET(this._baseurl() + query);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.poll = function(first, limit = 100) {
-  let requestResult = this._database._connection.GET(this._baseurl() + `/poll?first=${first}&limit=${limit}`);
+ArangoReplicatedLog.prototype.poll = function(first, limit) {
+  let query = '/poll?';
+  if (first !== undefined) {
+    query += `first=${first}`;
+  }
+  if (limit !== undefined) {
+    if (first !== undefined) {
+      query += `&`;
+    }
+    query += `limit=${limit}`;
+  }
+  let requestResult = this._database._connection.GET(this._baseurl() + query);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
