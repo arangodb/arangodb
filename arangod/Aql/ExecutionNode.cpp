@@ -1745,9 +1745,19 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  // Fullcount must only be enabled on the last limit node on the main level
-  TRI_ASSERT(!_fullCount || !isInSubquery());
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_fullCount) {
+    // Fullcount must only be enabled on the last limit node on the main level
+    auto const* current = static_cast<ExecutionNode const*>(this);
+    while (current != nullptr && current->hasDependency()) {
+      current = current->getFirstDependency();
+      if (current->getType() == NodeType::LIMIT) {
+        auto const* otherLimit = ExecutionNode::castTo<LimitNode const*>(current);
+        TRI_ASSERT(!otherLimit->fullCount());
+      }
+    }
+  }
+#endif
   auto registerInfos = createRegisterInfos({}, {});
 
   auto executorInfos = LimitExecutorInfos(_offset, _limit, _fullCount);
