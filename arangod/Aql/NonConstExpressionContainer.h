@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "Aql/NonConstExpression.h"
+#include "Aql/types.h"
 
 #include <memory>
 #include <unordered_map>
@@ -68,7 +68,7 @@ struct NonConstExpressionContainer {
   // On my tests below 20 elements vector was faster, otherwise map.
   // As it is very unlikely to have 20 active variables this variant shall
   // give a better overall read performance.
-  std::vector<std::pair<VariableId, RegisterId>> _varToRegisterMapping; 
+  std::vector<std::pair<VariableId, RegisterId>> _varToRegisterMapping;
 
   bool _hasV8Expression = false;
 
@@ -79,6 +79,5 @@ struct NonConstExpressionContainer {
   NonConstExpressionContainer clone(Ast* ast) const;
 };
 
-
-}
-}
+}  // namespace aql
+}  // namespace arangodb

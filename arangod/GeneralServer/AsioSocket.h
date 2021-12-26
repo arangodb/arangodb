@@ -89,7 +89,10 @@ struct AsioSocket<SocketType::Tcp> {
 template <>
 struct AsioSocket<SocketType::Ssl> {
   AsioSocket(arangodb::rest::IoContext& ctx, SslServerFeature::SslContextList sslContexts)
-      : context(ctx), storedSslContexts(std::move(sslContexts)), socket(ctx.io_context, (*storedSslContexts)[0]), timer(ctx.io_context) {
+      : context(ctx),
+        storedSslContexts(std::move(sslContexts)),
+        socket(ctx.io_context, (*storedSslContexts)[0]),
+        timer(ctx.io_context) {
     context.incClients();
   }
 

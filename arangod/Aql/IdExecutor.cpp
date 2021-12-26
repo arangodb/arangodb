@@ -58,7 +58,9 @@ auto IdExecutorInfos::getOutputRegister() const noexcept -> RegisterId {
   return _outputRegister;
 }
 
-std::string const& IdExecutorInfos::distributeId() const noexcept { return _distributeId; }
+std::string const& IdExecutorInfos::distributeId() const noexcept {
+  return _distributeId;
+}
 
 bool IdExecutorInfos::isResponsibleForInitializeCursor() const noexcept {
   return _isResponsibleForInitializeCursor;

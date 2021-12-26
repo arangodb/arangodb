@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/types.h"
 
 #include <stack>
 #include <string>
@@ -111,4 +111,3 @@ class EngineInfoContainerCoordinator {
 
 }  // namespace aql
 }  // namespace arangodb
-

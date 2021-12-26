@@ -68,7 +68,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) {  // check auth after ensuring that the view exists
     // auth after ensuring that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
@@ -171,7 +171,6 @@ void RestViewHandler::createView() {
     return;
   }
 
-
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);
 
@@ -187,9 +186,7 @@ void RestViewHandler::createView() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting type parameter to be of the form of \"type: "
                   "<string>\"");
-    events::CreateView(_vocbase.name(),
-                       nameSlice.copyString(),
-                       TRI_ERROR_BAD_PARAMETER);
+    events::CreateView(_vocbase.name(), nameSlice.copyString(), TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -206,8 +203,9 @@ void RestViewHandler::createView() {
 
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
-    auto res = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                       .loadAvailableAnalyzers(_vocbase.name());
+    auto res =
+        server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().loadAvailableAnalyzers(
+            _vocbase.name());
 
     if (res.fail()) {
       generateError(res);
@@ -285,8 +283,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   // First refresh our analyzers cache to see all latest changes in analyzers
-  auto const analyzersRes = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                                    .loadAvailableAnalyzers(_vocbase.name());
+  auto const analyzersRes =
+      server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().loadAvailableAnalyzers(
+          _vocbase.name());
   if (analyzersRes.fail()) {
     generateError(analyzersRes);
     return;
@@ -307,7 +306,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     // end of parameter parsing
     // .......................................................................
 
-    if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
+    if (!view->canUse(auth::Level::RW)) {  // check auth after ensuring that the view exists
       generateError(
           Result(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view"));
 
@@ -349,7 +348,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   // end of parameter parsing
   // .........................................................................
 
-  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RW)) {  // check auth after ensuring that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view"));
 
@@ -362,8 +361,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     builderCurrent.openObject();
 
-    auto resCurrent = view->properties(builderCurrent,
-                                       LogicalDataSource::Serialization::Properties);
+    auto resCurrent =
+        view->properties(builderCurrent, LogicalDataSource::Serialization::Properties);
 
     if (!resCurrent.ok()) {
       generateError(resCurrent);
@@ -435,7 +434,7 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RW)) {  // check auth after ensuring that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
 
@@ -520,7 +519,7 @@ void RestViewHandler::getViews() {
 
   for (auto view : views) {
     if (view && (!excludeSystem || !view->system())) {
-      if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
+      if (!view->canUse(auth::Level::RO)) {  // check auth after ensuring that the view exists
         continue;  // skip views that are not authorized to be read
       }
 
@@ -531,7 +530,8 @@ void RestViewHandler::getViews() {
 
         viewBuilder.openObject();
 
-        if (!view->properties(viewBuilder, LogicalDataSource::Serialization::Properties).ok()) {
+        if (!view->properties(viewBuilder, LogicalDataSource::Serialization::Properties)
+                 .ok()) {
           continue;  // skip view
         }
       } catch (...) {

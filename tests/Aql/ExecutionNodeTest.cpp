@@ -49,9 +49,7 @@ class ExecutionNodeTest : public ::testing::Test {
 
  public:
   ExecutionNodeTest()
-    : fakedQuery(server.createFakeQuery()),
-      ast(*fakedQuery.get()),
-      plan(&ast, false) {}
+      : fakedQuery(server.createFakeQuery()), ast(*fakedQuery.get()), plan(&ast, false) {}
 };
 
 TEST_F(ExecutionNodeTest, allToVelocyPack_roundtrip) {
@@ -63,14 +61,16 @@ TEST_F(ExecutionNodeTest, allToVelocyPack_roundtrip) {
 
   auto singletonNode = std::make_unique<SingletonNode>(&plan, ExecutionNodeId{1});
   initNode(singletonNode.get());
-  
-  auto returnNode = std::make_unique<ReturnNode>(&plan, ExecutionNodeId{0}, ast.variables()->createTemporaryVariable());
+
+  auto returnNode =
+      std::make_unique<ReturnNode>(&plan, ExecutionNodeId{0},
+                                   ast.variables()->createTemporaryVariable());
   returnNode->addDependency(singletonNode.get());
   initNode(returnNode.get());
 
   VPackBuilder builder;
   returnNode->allToVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
-  
+
   auto slice = builder.slice();
   EXPECT_TRUE(slice.isArray());
   EXPECT_EQ(2, slice.length());
@@ -99,7 +99,7 @@ TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
   node->setRegsToKeep({{}});
 
   node->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
-  
+
   nodeFromVPack = std::make_unique<SubqueryStartNode>(&plan, builder.slice());
 
   ASSERT_TRUE(node->isEqualTo(*nodeFromVPack));

@@ -57,8 +57,7 @@ AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
 
   // noskip && no data => state != HASMORE
   // <=> skipped || data || state != HASMORE
-  TRI_ASSERT(!_skipped.nothingSkipped() ||
-             (_block != nullptr && _block->numRows() > 0) ||
+  TRI_ASSERT(!_skipped.nothingSkipped() || (_block != nullptr && _block->numRows() > 0) ||
              _state != ExecutionState::HASMORE);
 }
 
@@ -157,9 +156,8 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   for (auto const it : velocypack::ObjectIterator(slice)) {
     auto const keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
-      return Result(
-          TRI_ERROR_TYPE_ERROR,
-          "When deserializing AqlExecuteResult: Key is not a string");
+      return Result(TRI_ERROR_TYPE_ERROR,
+                    "When deserializing AqlExecuteResult: Key is not a string");
     }
     auto const key = getStringView(keySlice);
 

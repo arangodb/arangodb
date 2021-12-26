@@ -187,4 +187,3 @@ class ReplicationClientsProgressTracker {
 };
 
 }  // namespace arangodb
-

@@ -71,7 +71,7 @@ S2Polygon latLngRectToPolygon(S2LatLngRect const* rect) {
   return S2Polygon{std::move(loop), S2Debug::DISABLE};
 }
 
-}
+}  // namespace
 
 Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
   if (!json.isArray() || json.length() < 2) {
@@ -576,8 +576,10 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
 bool ShapeContainer::intersects(S2Polyline const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-          "The case GEO_INTERSECTS(<point>, <polyline>) is numerically instable and thus not supported.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<point>, <polyline>) is numerically "
+          "instable and thus not supported.");
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
@@ -595,8 +597,10 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
     }
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-          "The case GEO_INTERSECTS(<multipoint or multipolyline>, <polyline>) is not yet implemented.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multipoint or multipolyline>, <polyline>) "
+          "is not yet implemented.");
     }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
@@ -625,7 +629,7 @@ bool insersectMultiPointsRegion(S2MultiPointRegion const* points, S2Region const
   }
   return false;
 }
-}
+}  // namespace
 
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
   switch (_type) {
@@ -658,7 +662,8 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
 
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-          "The case GEO_INTERSECTS(<multiline>, <latlngrect>) is not yet implemented.");
+                                     "The case GEO_INTERSECTS(<multiline>, "
+                                     "<latlngrect>) is not yet implemented.");
     }
 
     case ShapeContainer::Type::EMPTY:
@@ -688,8 +693,10 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
     }
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-          "The case GEO_INTERSECTS(<multipoint or multipolyline>, <polygon>) is not yet implemented.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "The case GEO_INTERSECTS(<multipoint or multipolyline>, <polygon>) "
+          "is not yet implemented.");
     }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
@@ -702,8 +709,10 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     case ShapeContainer::Type::S2_POINT: {
       if (_type == ShapeContainer::Type::S2_POLYLINE ||
           _type == ShapeContainer::Type::S2_MULTIPOLYLINE) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-            "The case GEO_INTERSECTS(<polyline>, <point>) is numerically instable and thus not supported.");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_NOT_IMPLEMENTED,
+            "The case GEO_INTERSECTS(<polyline>, <point>) is numerically "
+            "instable and thus not supported.");
       }
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
       return _data->Contains(p);  // same
@@ -720,8 +729,10 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     case ShapeContainer::Type::S2_MULTIPOINT: {
       if (_type == ShapeContainer::Type::S2_POLYLINE ||
           _type == ShapeContainer::Type::S2_MULTIPOLYLINE) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-            "The case GEO_INTERSECTS(<polyline>, <multipoint>) is numerically instable and thus not supported.");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_NOT_IMPLEMENTED,
+            "The case GEO_INTERSECTS(<polyline>, <multipoint>) is numerically "
+            "instable and thus not supported.");
       }
       auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
       return insersectMultiPointsRegion(pts, _data);

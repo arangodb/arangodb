@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/voc-errors.h"
 #include "StorageEngine/HealthData.h"
+#include "Basics/voc-errors.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
@@ -36,14 +36,15 @@ using namespace arangodb;
     auto code = TRI_ERROR_NO_ERROR;
     std::string message;
 
-    if (VPackSlice status = slice.get("status"); status.isString() && status.isEqualString("BAD")) {
+    if (VPackSlice status = slice.get("status");
+        status.isString() && status.isEqualString("BAD")) {
       code = TRI_ERROR_FAILED;
     }
     if (VPackSlice msg = slice.get("message"); msg.isString()) {
       message = msg.copyString();
     }
     result.res.reset(code, message);
-  
+
     if (VPackSlice bg = slice.get("backgroundError"); bg.isBoolean()) {
       result.backgroundError = bg.getBoolean();
     }
@@ -51,7 +52,7 @@ using namespace arangodb;
     if (VPackSlice fdsb = slice.get("freeDiskSpaceBytes"); fdsb.isNumber()) {
       result.freeDiskSpaceBytes = fdsb.getNumber<decltype(freeDiskSpaceBytes)>();
     }
-    
+
     if (VPackSlice fdsp = slice.get("freeDiskSpacePercent"); fdsp.isNumber()) {
       result.freeDiskSpacePercent = fdsp.getNumber<decltype(freeDiskSpacePercent)>();
     }

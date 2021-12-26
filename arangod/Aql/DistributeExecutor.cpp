@@ -135,7 +135,8 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, Ski
 
         if (!input.isObject()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL, "DistributeExecutor requires an object as input");
+              TRI_ERROR_INTERNAL,
+              "DistributeExecutor requires an object as input");
         }
         // NONE is ignored.
         // Object is processd
@@ -152,8 +153,10 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, Ski
             // We can only have clients we are prepared for
             TRI_ASSERT(blockMap.find(client) != blockMap.end());
             if (ADB_UNLIKELY(blockMap.find(client) == blockMap.end())) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-                  std::string("unexpected client id '") + client + "' found in blockMap");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                             std::string(
+                                                 "unexpected client id '") +
+                                                 client + "' found in blockMap");
             }
             choosenMap[client].emplace_back(i);
           }

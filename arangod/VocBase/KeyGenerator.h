@@ -107,4 +107,3 @@ class KeyGenerator {
 };
 
 }  // namespace arangodb
-

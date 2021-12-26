@@ -186,7 +186,7 @@ void toupperInPlace(std::string& str);
 std::string toupper(std::string const& str);
 
 /// @brief case insensitive string comparison. locale-independent, ASCII inputs only!
-template<typename T1, typename T2>
+template <typename T1, typename T2>
 [[nodiscard]] bool equalStringsCaseInsensitive(T1 const& lhs, T2 const& rhs) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
@@ -575,4 +575,3 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
 }  // namespace StringUtils
 }  // namespace basics
 }  // namespace arangodb
-

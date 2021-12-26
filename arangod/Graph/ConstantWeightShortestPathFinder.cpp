@@ -39,17 +39,14 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 ConstantWeightShortestPathFinder::PathSnippet::PathSnippet() noexcept
-    : _pred(), 
-      _path() {}
+    : _pred(), _path() {}
 
 ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(arangodb::velocypack::StringRef pred,
                                                            EdgeDocumentToken&& path) noexcept
-    : _pred(pred), 
-      _path(std::move(path)) {}
+    : _pred(pred), _path(std::move(path)) {}
 
 ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options),
-      _resourceMonitor(options.resourceMonitor()) {
+    : ShortestPathFinder(options), _resourceMonitor(options.resourceMonitor()) {
   // cppcheck-suppress *
   _forwardCursor = _options.buildCursor(false);
   // cppcheck-suppress *
@@ -79,7 +76,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
     _options.fetchVerticesCoordinator(result._vertices);
     return true;
   }
-  
+
   clearVisited();
   _leftFound.try_emplace(start, PathSnippet());
   try {
@@ -89,7 +86,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
     _leftFound.erase(start);
     throw;
   }
-  
+
   // memory usage for the initial start vertices
   _resourceMonitor.increaseMemoryUsage(2 * pathSnippetMemoryUsage());
 
@@ -136,7 +133,7 @@ bool ConstantWeightShortestPathFinder::expandClosure(
       if (sourceSnippets.try_emplace(n.vertex, v, std::move(n.edge)).second) {
         // new PathSnippet created. now sourceSnippets is responsible for memory usage tracking
         guard.steal();
-        
+
         auto targetFoundIt = targetSnippets.find(n.vertex);
         if (targetFoundIt != targetSnippets.end()) {
           result = n.vertex;
@@ -185,7 +182,7 @@ void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRe
   }
   _options.fetchVerticesCoordinator(result._vertices);
   clearVisited();
-  
+
   // we intentionally don't commit the memory usage to the _resourceMonitor here.
   // we do this later at the call site if the result will be used for longer.
 }
@@ -194,7 +191,7 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
                                                     arangodb::velocypack::StringRef vertex) {
   EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
   cursor->rearm(vertex, 0);
- 
+
   // we are tracking the memory usage for neighbors temporarily here (only inside this function)
   ResourceUsageScope guard(_resourceMonitor);
 
@@ -225,7 +222,7 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
         guard.increase(Neighbor::itemMemoryUsage());
 
         arangodb::velocypack::StringRef id = _options.cache()->persistString(other);
-        
+
         if (_neighbors.capacity() == 0) {
           // avoid a few reallocations for the first members
           _neighbors.reserve(8);
@@ -234,13 +231,14 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
       }
     }
   });
-  
+
   // we don't commit the memory usage to the _resourceMonitor here because
   // _neighbors is recycled over and over
 }
 
 void ConstantWeightShortestPathFinder::clearVisited() {
-  size_t totalMemoryUsage = (_leftFound.size() + _rightFound.size()) * pathSnippetMemoryUsage();
+  size_t totalMemoryUsage =
+      (_leftFound.size() + _rightFound.size()) * pathSnippetMemoryUsage();
   _resourceMonitor.decreaseMemoryUsage(totalMemoryUsage);
 
   _leftFound.clear();
@@ -248,7 +246,6 @@ void ConstantWeightShortestPathFinder::clearVisited() {
 }
 
 size_t ConstantWeightShortestPathFinder::pathSnippetMemoryUsage() const noexcept {
-  return 16 /*arbitrary overhead*/ + 
-         sizeof(arangodb::velocypack::StringRef) + 
+  return 16 /*arbitrary overhead*/ + sizeof(arangodb::velocypack::StringRef) +
          sizeof(PathSnippet);
 }

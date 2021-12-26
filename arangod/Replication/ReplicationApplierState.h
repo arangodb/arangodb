@@ -154,4 +154,3 @@ struct ReplicationApplierState {
 };
 
 }  // namespace arangodb
-

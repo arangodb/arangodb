@@ -51,4 +51,3 @@ class RestViewHandler : public RestVocbaseBaseHandler {
 };
 
 }  // namespace arangodb
-

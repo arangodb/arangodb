@@ -59,7 +59,7 @@ auto vpackHasNoneRecursive(VPackSlice slice) -> bool {
 
   return false;
 }
-}
+}  // namespace
 
 void arangodb::tests::aql::AssertQueryResultToSlice(QueryResult const& result,
                                                     VPackSlice expected) {

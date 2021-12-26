@@ -101,7 +101,8 @@ void PrivilegeFeature::extractPrivileges() {
       group* g = getgrgid(gidNumber);
 
       if (g == nullptr) {
-        LOG_TOPIC("3d53b", FATAL, arangodb::Logger::FIXME) << "unknown numeric gid '" << _gid << "'";
+        LOG_TOPIC("3d53b", FATAL, arangodb::Logger::FIXME)
+            << "unknown numeric gid '" << _gid << "'";
         FATAL_ERROR_EXIT();
       }
 #endif
@@ -141,7 +142,8 @@ void PrivilegeFeature::extractPrivileges() {
       passwd* p = getpwuid(uidNumber);
 
       if (p == nullptr) {
-        LOG_TOPIC("09f8d", FATAL, arangodb::Logger::FIXME) << "unknown numeric uid '" << _uid << "'";
+        LOG_TOPIC("09f8d", FATAL, arangodb::Logger::FIXME)
+            << "unknown numeric uid '" << _uid << "'";
         FATAL_ERROR_EXIT();
       }
 #endif

@@ -60,4 +60,3 @@ inline std::chrono::system_clock::time_point stringToTimepoint(std::string const
   }
   return std::chrono::time_point<std::chrono::system_clock>();
 }
-

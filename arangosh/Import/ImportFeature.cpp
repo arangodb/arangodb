@@ -28,8 +28,8 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/files.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportHelper.h"
@@ -77,17 +77,20 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  _threadCount = std::max(uint32_t(_threadCount), static_cast<uint32_t>(NumberOfCores::getValue()));
+  _threadCount = std::max(uint32_t(_threadCount),
+                          static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
 void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--file", "file name (\"-\" for STDIN)",
                      new StringParameter(&_filename));
-  
-  options->addOption("--auto-rate-limit",
-                     "adjust the data loading rate automatically, starting at --batch-size bytes per thread per second",
-                     new BooleanParameter(&_autoChunkSize))
-                     .setIntroducedIn(30711);
+
+  options
+      ->addOption("--auto-rate-limit",
+                  "adjust the data loading rate automatically, starting at "
+                  "--batch-size bytes per thread per second",
+                  new BooleanParameter(&_autoChunkSize))
+      .setIntroducedIn(30711);
 
   options->addOption(
       "--backslash-escape",
@@ -98,11 +101,9 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "size for individual data batches (in bytes)",
                      new UInt64Parameter(&_chunkSize));
 
-  options->addOption(
-      "--threads",
-      "Number of parallel import threads",
-      new UInt32Parameter(&_threadCount),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption("--threads", "Number of parallel import threads",
+                     new UInt32Parameter(&_threadCount),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--collection", "collection name", new StringParameter(&_collectionName));
 
@@ -123,11 +124,13 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--create-database",
                      "create the target database if it does not exist",
                      new BooleanParameter(&_createDatabase));
-  
-  options->addOption("--headers-file",
-                     "filename to read CSV or TSV headers from. if specified will not try to read headers from regular input file",
-                     new StringParameter(&_headersFile))
-                     .setIntroducedIn(30800);
+
+  options
+      ->addOption("--headers-file",
+                  "filename to read CSV or TSV headers from. if specified will "
+                  "not try to read headers from regular input file",
+                  new StringParameter(&_headersFile))
+      .setIntroducedIn(30800);
 
   options->addOption("--skip-lines",
                      "number of lines to skip for formats (csv and tsv only)",
@@ -143,13 +146,14 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "translate an attribute name (use as --translate "
                      "\"from=to\", for csv and tsv only)",
                      new VectorParameter<StringParameter>(&_translations));
-  
-  options->addOption("--datatype",
-                     "force a specific datatype for an attribute "
-                     "(null/boolean/number/string). Use as \"attribute=type\". "
-                     "For CSV and TSV only. Takes precendence over --convert",
-                     new VectorParameter<StringParameter>(&_datatypes))
-                     .setIntroducedIn(30900);
+
+  options
+      ->addOption("--datatype",
+                  "force a specific datatype for an attribute "
+                  "(null/boolean/number/string). Use as \"attribute=type\". "
+                  "For CSV and TSV only. Takes precendence over --convert",
+                  new VectorParameter<StringParameter>(&_datatypes))
+      .setIntroducedIn(30900);
 
   options->addOption("--remove-attribute",
                      "remove an attribute before inserting documents"
@@ -180,10 +184,12 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--quote", "quote character(s), used for csv",
                      new StringParameter(&_quote));
 
-  options->addOption("--separator", "field separator, used for csv and tsv. "
-                     "Defaults to a comma (csv) or a tabulation character (tsv)",
-                     new StringParameter(&_separator),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption(
+      "--separator",
+      "field separator, used for csv and tsv. "
+      "Defaults to a comma (csv) or a tabulation character (tsv)",
+      new StringParameter(&_separator),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
@@ -201,17 +207,22 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                          actionsJoined,
                      new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
 
-  options->addOption("--merge-attributes",
-                     "merge attributes into new document attribute (e.g. mergedAttribute=[someAttribute]-[otherAttribute]) (CSV and TSV only)",
-                     new VectorParameter<StringParameter>(&_mergeAttributes)).setIntroducedIn(30901);
+  options
+      ->addOption("--merge-attributes",
+                  "merge attributes into new document attribute (e.g. "
+                  "mergedAttribute=[someAttribute]-[otherAttribute]) (CSV and "
+                  "TSV only)",
+                  new VectorParameter<StringParameter>(&_mergeAttributes))
+      .setIntroducedIn(30901);
 
   options->addOption(
       "--latency", "show 10 second latency statistics (values in microseconds)",
       new BooleanParameter(&_latencyStats));
 
-  options->addOption(
-      "--skip-validation", "skips document validation during import",
-      new BooleanParameter(&_skipValidation)).setIntroducedIn(30700);
+  options
+      ->addOption("--skip-validation", "skips document validation during import",
+                  new BooleanParameter(&_skipValidation))
+      .setIntroducedIn(30700);
 }
 
 void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -229,7 +240,7 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     FATAL_ERROR_EXIT();
   } else if (n > 0) {
     LOG_TOPIC("0dc13", FATAL, arangodb::Logger::FIXME)
-      << "Unused commandline arguments: " << positionals;
+        << "Unused commandline arguments: " << positionals;
     FATAL_ERROR_EXIT();
   }
 
@@ -245,7 +256,8 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   if (_threadCount < 1) {
     // it's not sensible to use just one thread
-    LOG_TOPIC("9e3f9", WARN, arangodb::Logger::FIXME) << "capping --threads value to " << 1;
+    LOG_TOPIC("9e3f9", WARN, arangodb::Logger::FIXME)
+        << "capping --threads value to " << 1;
     _threadCount = 1;
   }
   if (_threadCount > NumberOfCores::getValue() * 2) {
@@ -265,7 +277,8 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     StringUtils::trimInPlace(parts[1]);
 
     if (parts.size() != 2 || parts[0].empty() || parts[1].empty()) {
-      LOG_TOPIC("83ae7", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
+      LOG_TOPIC("83ae7", FATAL, arangodb::Logger::FIXME)
+          << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
     }
   }
@@ -278,8 +291,9 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     StringUtils::trimInPlace(parts[1]);
 
     if (parts.size() != 2 || parts[0].empty() ||
-        (parts[1] != "boolean" && parts[1] != "number" && parts[1] != "null" && parts[1] != "string")) {
-      LOG_TOPIC("13e75", FATAL, arangodb::Logger::FIXME) 
+        (parts[1] != "boolean" && parts[1] != "number" && parts[1] != "null" &&
+         parts[1] != "string")) {
+      LOG_TOPIC("13e75", FATAL, arangodb::Logger::FIXME)
           << "invalid datatype '" << it << "'. valid types are: "
           << "boolean, number, null, string";
       FATAL_ERROR_EXIT();
@@ -303,7 +317,8 @@ void ImportFeature::start() {
 
   // filename
   if (_filename == "") {
-    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
+    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME)
+        << "File name is missing.";
     FATAL_ERROR_EXIT();
   }
 
@@ -410,7 +425,8 @@ void ImportFeature::start() {
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("90431", ERR, arangodb::Logger::FIXME)
           << "Could not create database '" << dbName << "'";
-      LOG_TOPIC("891eb", FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
+      LOG_TOPIC("891eb", FATAL, arangodb::Logger::FIXME)
+          << _httpClient->getErrorMessage() << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -429,7 +445,8 @@ void ImportFeature::start() {
     LOG_TOPIC("541c6", ERR, arangodb::Logger::FIXME)
         << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
         << client.databaseName() << "', username: '" << client.username() << "'";
-    LOG_TOPIC("034c9", FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC("034c9", FATAL, arangodb::Logger::FIXME)
+        << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -471,7 +488,7 @@ void ImportFeature::start() {
     translations.emplace(parts[0], parts[1]);
   }
   ih.setTranslations(translations);
-  
+
   // datatypes (a.k.a. forcing an attribute to a specific type)
   std::unordered_map<std::string, std::string> datatypes;
   for (auto const& it : _datatypes) {
@@ -514,7 +531,8 @@ void ImportFeature::start() {
 
   // collection name
   if (_collectionName == "") {
-    LOG_TOPIC("a64ef", FATAL, arangodb::Logger::FIXME) << "Collection name is missing.";
+    LOG_TOPIC("a64ef", FATAL, arangodb::Logger::FIXME)
+        << "Collection name is missing.";
     FATAL_ERROR_EXIT();
   }
 
@@ -563,7 +581,8 @@ void ImportFeature::start() {
       std::cout << "Starting JSON import..." << std::endl;
       ok = ih.importJson(_collectionName, _filename, (_typeImport == "jsonl"));
     } else {
-      LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
+      LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME)
+          << "Wrong type '" << _typeImport << "'.";
       FATAL_ERROR_EXIT();
     }
 
@@ -589,9 +608,11 @@ void ImportFeature::start() {
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("a7dca", ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
+    LOG_TOPIC("a7dca", ERR, arangodb::Logger::FIXME)
+        << "caught exception: " << ex.what();
   } catch (...) {
-    LOG_TOPIC("fc131", ERR, arangodb::Logger::FIXME) << "caught unknown exception";
+    LOG_TOPIC("fc131", ERR, arangodb::Logger::FIXME)
+        << "caught unknown exception";
   }
 
   *_result = ret;

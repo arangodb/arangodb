@@ -52,7 +52,7 @@ RestStatus RestAdminStatisticsHandler::execute() {
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 

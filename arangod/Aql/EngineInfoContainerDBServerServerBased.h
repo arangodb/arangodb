@@ -158,8 +158,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // Parse the response of a DBServer to a setup request
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
-                       ServerID const& server,
-                       std::vector<bool> const& didCreateEngine,
+                       ServerID const& server, std::vector<bool> const& didCreateEngine,
                        QueryId& globalQueryId, RebootId& rebootId) const;
 
   void injectVertexCollections(GraphNode* node);

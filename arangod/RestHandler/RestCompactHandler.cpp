@@ -37,17 +37,16 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestCompactHandler::RestCompactHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request,
-                                       GeneralResponse* response)
+                                       GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestCompactHandler::execute() {
   if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "compaction is only allowed for superusers");
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "compaction is only allowed for superusers");
     return RestStatus::DONE;
   }
-  
+
   if (_request->requestType() != rest::RequestType::PUT) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;

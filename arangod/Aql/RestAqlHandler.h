@@ -51,7 +51,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
    public:
     static auto execute() -> const char* { return "/_api/aql/execute"; }
   };
-  
+
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "execute", "getSome", "skipSome" "initializeCursor" or
@@ -125,7 +125,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
-  
+
   // handle query finalization for all engines
   RestStatus handleFinishQuery(std::string const& idString);
 
@@ -140,4 +140,3 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace aql
 }  // namespace arangodb
-

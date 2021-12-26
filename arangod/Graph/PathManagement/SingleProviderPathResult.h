@@ -44,7 +44,6 @@ namespace graph {
 
 template <class ProviderType, class PathStoreType, class Step>
 class SingleProviderPathResult : public PathResultInterface {
-
  public:
   SingleProviderPathResult(Step step, ProviderType& provider, PathStoreType& store);
   auto clear() -> void;

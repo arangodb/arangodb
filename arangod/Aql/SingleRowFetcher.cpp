@@ -38,7 +38,7 @@ using namespace arangodb::aql;
 
 template <BlockPassthrough passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(DependencyProxy<passBlocksThrough>& executionBlock)
-    : _dependencyProxy(&executionBlock){}
+    : _dependencyProxy(&executionBlock) {}
 
 template <BlockPassthrough passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
@@ -65,14 +65,13 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
   if (state == ExecutionState::HASMORE) {
     TRI_ASSERT(block != nullptr);
     return {state, skipped,
-            AqlItemBlockInputRange{ExecutorState::HASMORE,
-                                   skipped.getSkipCount(), std::move(block), start}};
+            AqlItemBlockInputRange{ExecutorState::HASMORE, skipped.getSkipCount(),
+                                   std::move(block), start}};
   }
   return {state, skipped,
-          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(), std::move(block), start}};
+          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(),
+                                 std::move(block), start}};
 }
-
-
 
 template <BlockPassthrough blockPassthrough>
 void SingleRowFetcher<blockPassthrough>::setDistributeId(std::string const& id) {

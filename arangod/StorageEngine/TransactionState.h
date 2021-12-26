@@ -273,7 +273,7 @@ class TransactionState {
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                    AccessMode::Type);
-  
+
   /// @brief helper function for addCollection
   Result addCollectionInternal(DataSourceId cid, std::string const& cname,
                                AccessMode::Type accessType, bool lockUsage);
@@ -310,4 +310,3 @@ class TransactionState {
 };
 
 }  // namespace arangodb
-

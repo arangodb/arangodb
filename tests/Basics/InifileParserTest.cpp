@@ -63,50 +63,71 @@ TEST(InifileParserTest, test_options) {
   std::string anotherStringValueWithAnInlineComment = "gaw";
   std::string aStringValueNotSet = "meow";
 
-  std::unordered_set<std::string> soundsPorksMake = { "foo", "bar", "blub", "snuggles", "slurp", "oink" };
+  std::unordered_set<std::string> soundsPorksMake = {"foo",   "bar",
+                                                     "blub",  "snuggles",
+                                                     "slurp", "oink"};
   std::vector<std::string> porkSounds = {"slurp"};
   std::vector<std::string> strangePorkSounds = {"slurp", "snuggles"};
-  
+
   ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
   options.addSection("rocksdb", "bla");
-  options.addOption("--rocksdb.write-buffer-size", "bla", new UInt64Parameter(&writeBufferSize));
-  options.addOption("--rocksdb.total-write-buffer-size", "bla", new UInt64Parameter(&totalWriteBufferSize));
-  options.addOption("--rocksdb.max-write-buffer-number", "bla", new UInt64Parameter(&maxWriteBufferNumber));
-  options.addOption("--rocksdb.max-total-wal-size", "bla", new UInt64Parameter(&maxTotalWalSize));
+  options.addOption("--rocksdb.write-buffer-size", "bla",
+                    new UInt64Parameter(&writeBufferSize));
+  options.addOption("--rocksdb.total-write-buffer-size", "bla",
+                    new UInt64Parameter(&totalWriteBufferSize));
+  options.addOption("--rocksdb.max-write-buffer-number", "bla",
+                    new UInt64Parameter(&maxWriteBufferNumber));
+  options.addOption("--rocksdb.max-total-wal-size", "bla",
+                    new UInt64Parameter(&maxTotalWalSize));
   options.addOption("--rocksdb.block-cache-size", "bla", new UInt64Parameter(&blockCacheSize));
-  options.addOption("--rocksdb.enforce-block-cache-size-limit", "bla", new BooleanParameter(&enforceBlockCacheSizeLimit));
-  
+  options.addOption("--rocksdb.enforce-block-cache-size-limit", "bla",
+                    new BooleanParameter(&enforceBlockCacheSizeLimit));
+
   options.addSection("cache", "bla");
   options.addOption("--cache.size", "bla", new UInt64Parameter(&cacheSize));
   options.addOption("--cache.nono-set-option", "bla", new UInt64Parameter(&nonoSetOption));
-  
+
   options.addSection("pork", "bla");
   options.addOption("--pork.a-boolean", "bla", new BooleanParameter(&aBoolean, true));
-  options.addOption("--pork.a-boolean-true", "bla", new BooleanParameter(&aBooleanTrue, true));
-  options.addOption("--pork.a-boolean-false", "bla", new BooleanParameter(&aBooleanFalse, true));
-  options.addOption("--pork.a-boolean-not-set", "bla", new BooleanParameter(&aBooleanNotSet, true));
-  options.addOption("--pork.some-value-using-suffixes", "bla", new UInt64Parameter(&someValueUsingSuffixes));
-  options.addOption("--pork.some-other-value-using-suffixes", "bla", new UInt64Parameter(&someOtherValueUsingSuffixes));
-  options.addOption("--pork.yet-some-other-value-using-suffixes", "bla", new UInt64Parameter(&yetSomeOtherValueUsingSuffixes));
-  options.addOption("--pork.and-another-value-using-suffixes", "bla", new UInt64Parameter(&andAnotherValueUsingSuffixes));
-  options.addOption("--pork.and-finally-some-gb", "bla", new UInt64Parameter(&andFinallySomeGb));
-  options.addOption("--pork.a-value-with-an-inline-comment", "bla", new UInt64Parameter(&aValueWithAnInlineComment));
+  options.addOption("--pork.a-boolean-true", "bla",
+                    new BooleanParameter(&aBooleanTrue, true));
+  options.addOption("--pork.a-boolean-false", "bla",
+                    new BooleanParameter(&aBooleanFalse, true));
+  options.addOption("--pork.a-boolean-not-set", "bla",
+                    new BooleanParameter(&aBooleanNotSet, true));
+  options.addOption("--pork.some-value-using-suffixes", "bla",
+                    new UInt64Parameter(&someValueUsingSuffixes));
+  options.addOption("--pork.some-other-value-using-suffixes", "bla",
+                    new UInt64Parameter(&someOtherValueUsingSuffixes));
+  options.addOption("--pork.yet-some-other-value-using-suffixes", "bla",
+                    new UInt64Parameter(&yetSomeOtherValueUsingSuffixes));
+  options.addOption("--pork.and-another-value-using-suffixes", "bla",
+                    new UInt64Parameter(&andAnotherValueUsingSuffixes));
+  options.addOption("--pork.and-finally-some-gb", "bla",
+                    new UInt64Parameter(&andFinallySomeGb));
+  options.addOption("--pork.a-value-with-an-inline-comment", "bla",
+                    new UInt64Parameter(&aValueWithAnInlineComment));
   options.addOption("--pork.a-double", "bla", new DoubleParameter(&aDouble));
-  options.addOption("--pork.a-double-with-a-comment", "bla", new DoubleParameter(&aDoubleWithAComment));
+  options.addOption("--pork.a-double-with-a-comment", "bla",
+                    new DoubleParameter(&aDoubleWithAComment));
   options.addOption("--pork.a-double-not-set", "bla", new DoubleParameter(&aDoubleNotSet));
-  options.addOption("--pork.a-string-value-empty", "bla", new StringParameter(&aStringValueEmpty));
+  options.addOption("--pork.a-string-value-empty", "bla",
+                    new StringParameter(&aStringValueEmpty));
   options.addOption("--pork.a-string-value", "bla", new StringParameter(&aStringValue));
-  options.addOption("--pork.a-string-value-with-an-inline-comment", "bla", new StringParameter(&aStringValueWithAnInlineComment));
-  options.addOption("--pork.another-string-value-with-an-inline-comment", "bla", new StringParameter(&anotherStringValueWithAnInlineComment));
-  options.addOption("--pork.a-string-value-not-set", "bla", new StringParameter(&aStringValueNotSet));
+  options.addOption("--pork.a-string-value-with-an-inline-comment", "bla",
+                    new StringParameter(&aStringValueWithAnInlineComment));
+  options.addOption("--pork.another-string-value-with-an-inline-comment", "bla",
+                    new StringParameter(&anotherStringValueWithAnInlineComment));
+  options.addOption("--pork.a-string-value-not-set", "bla",
+                    new StringParameter(&aStringValueNotSet));
   options.addOption("--pork.sounds", "which sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&porkSounds, soundsPorksMake),
                     arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
 
-  options.addOption("--pork.strange-sounds", "which strange sounds do pigs make?",
+  options.addOption("--pork.strange-sounds",
+                    "which strange sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&strangePorkSounds, soundsPorksMake),
                     arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
-
 
   auto contents = R"data(
 [rocksdb]
@@ -143,7 +164,7 @@ sounds = foo
 sounds = oink
 sounds = snuggles
 )data";
-  
+
   IniFileParser parser(&options);
 
   bool result = parser.parseContent("arangod.conf", contents, true);
@@ -154,7 +175,7 @@ sounds = snuggles
   ASSERT_EQ(1024000U, maxTotalWalSize);
   ASSERT_EQ(268435456U, blockCacheSize);
   ASSERT_TRUE(enforceBlockCacheSizeLimit);
-  
+
   ASSERT_EQ(268435456U, cacheSize);
   ASSERT_EQ(UINT64_MAX, nonoSetOption);
 
@@ -162,7 +183,7 @@ sounds = snuggles
   ASSERT_TRUE(aBooleanTrue);
   ASSERT_FALSE(aBooleanFalse);
   ASSERT_FALSE(aBooleanNotSet);
-  
+
   ASSERT_EQ(1000000U, someValueUsingSuffixes);
   ASSERT_EQ(1048576U, someOtherValueUsingSuffixes);
   ASSERT_EQ(12000000U, yetSomeOtherValueUsingSuffixes);
@@ -173,15 +194,15 @@ sounds = snuggles
   ASSERT_DOUBLE_EQ(335.25, aDouble);
   ASSERT_DOUBLE_EQ(2948.434, aDoubleWithAComment);
   ASSERT_DOUBLE_EQ(-2.0, aDoubleNotSet);
-  
+
   ASSERT_EQ("", aStringValueEmpty);
   ASSERT_EQ("486hbsbq,r", aStringValue);
   ASSERT_EQ("abc#def h", aStringValueWithAnInlineComment);
   ASSERT_EQ("abc  #def h", anotherStringValueWithAnInlineComment);
   ASSERT_EQ("meow", aStringValueNotSet);
   auto findPorkSound = [&porkSounds](std::string sound) {
-                         return std::find(porkSounds.begin(), porkSounds.end(), sound);
-                           };
+    return std::find(porkSounds.begin(), porkSounds.end(), sound);
+  };
   ASSERT_EQ(porkSounds.size(), 3);
   ASSERT_EQ(findPorkSound("meow"), porkSounds.end());
   // the default value should have been removed:
@@ -194,8 +215,8 @@ sounds = snuggles
   ASSERT_EQ(findPorkSound("snuggles"), it);
 
   auto findStrangePorkSound = [&strangePorkSounds](std::string sound) {
-                         return std::find(strangePorkSounds.begin(), strangePorkSounds.end(), sound);
-                           };
+    return std::find(strangePorkSounds.begin(), strangePorkSounds.end(), sound);
+  };
   ASSERT_EQ(strangePorkSounds.size(), 2);
   it = strangePorkSounds.begin();
   ASSERT_EQ(findStrangePorkSound("slurp"), it);

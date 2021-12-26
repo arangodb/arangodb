@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IncomingCache.h"
-#include "Pregel/CommonFormats.h"
 #include "Pregel/Algos/AIR/AIR.h"
+#include "Pregel/CommonFormats.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 
@@ -95,7 +95,8 @@ void InCache<M>::storeMessageNoLock(PregelShard shard,
 }
 
 template <typename M>
-void InCache<M>::storeMessage(PregelShard shard, VPackStringRef const& vertexId, M const& data) {
+void InCache<M>::storeMessage(PregelShard shard, VPackStringRef const& vertexId,
+                              M const& data) {
   std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
@@ -143,7 +144,7 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> const* o
     auto const& it = other->_shardMap.find(shardId);
     if (it != other->_shardMap.end() && it->second.size() > 0) {
       std::unique_lock<std::mutex> guard(this->_bucketLocker[shardId], std::try_to_lock);
-      
+
       if (!guard) {
         if (i == 0) {  // eventually we hit the last one
           std::this_thread::sleep_for(std::chrono::microseconds(100));  // don't busy wait
@@ -179,7 +180,7 @@ MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard, VPackStringRe
 
 template <typename M>
 void ArrayInCache<M>::clear() {
-  for (auto& pair : _shardMap) { // keep the keys
+  for (auto& pair : _shardMap) {  // keep the keys
     // MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
     pair.second.clear();
   }
@@ -260,7 +261,7 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> cons
     auto const& it = other->_shardMap.find(shardId);
     if (it != other->_shardMap.end() && it->second.size() > 0) {
       std::unique_lock<std::mutex> guard(this->_bucketLocker[shardId], std::try_to_lock);
-      
+
       if (!guard) {
         if (i == 0) {  // eventually we hit the last one
           std::this_thread::sleep_for(std::chrono::microseconds(100));  // don't busy wait
@@ -285,7 +286,8 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> cons
 }
 
 template <typename M>
-MessageIterator<M> CombiningInCache<M>::getMessages(PregelShard shard, VPackStringRef const& key) {
+MessageIterator<M> CombiningInCache<M>::getMessages(PregelShard shard,
+                                                    VPackStringRef const& key) {
   std::string keyS = key.toString();
   HMap const& vertexMap = _shardMap[shard];
   auto vmsg = vertexMap.find(keyS);
@@ -364,4 +366,3 @@ using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::InCache<MessageData>;
 template class arangodb::pregel::ArrayInCache<MessageData>;
 template class arangodb::pregel::CombiningInCache<MessageData>;
-

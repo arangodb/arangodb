@@ -146,7 +146,8 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
         TRI_ASSERT(!output.isFull());
         // Also this number can be at most remainingOffset.
         TRI_ASSERT(remainingLimit() > numRowsWritten);
-        output.copyRow(inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second);
+        output.copyRow(
+            inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second);
         output.advanceRow();
         numRowsWritten++;
         _didProduceRows = true;

@@ -64,4 +64,3 @@ struct deserialize_plan_executor<context::context_modify_plan<D, Q>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-

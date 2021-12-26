@@ -31,8 +31,8 @@
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
-#include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
@@ -56,7 +56,7 @@ class EdgeDefinition {
 
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_) 
+                 std::set<std::string>&& to_)
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
         _to(std::move(to_)) {}
@@ -351,4 +351,3 @@ void setUnion(std::set<T>& set, C const& container) {
 
 }  // namespace graph
 }  // namespace arangodb
-

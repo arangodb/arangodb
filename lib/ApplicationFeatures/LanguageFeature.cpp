@@ -65,10 +65,10 @@ void setLocale(icu::Locale& locale) {
                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
     locale = icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
                          Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
-                    /*
-                       const   char * variant  = 0,
-                       const   char * keywordsAndValues = 0
-                    */
+                         /*
+                            const   char * variant  = 0,
+                            const   char * keywordsAndValues = 0
+                         */
     );
   } else {
     locale = icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
@@ -105,11 +105,13 @@ void LanguageFeature::collectOptions(std::shared_ptr<options::ProgramOptions> op
   options->addOption("--default-language", "ISO-639 language code",
                      new StringParameter(&_language),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
-  
-  options->addOption("--default-language-check", "check if default language matches stored language",
-                     new BooleanParameter(&_forceLanguageCheck),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30800);
+
+  options
+      ->addOption("--default-language-check",
+                  "check if default language matches stored language",
+                  new BooleanParameter(&_forceLanguageCheck),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30800);
 }
 
 void* LanguageFeature::prepareIcu(std::string const& binaryPath,
@@ -143,9 +145,10 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
     }
 
     if (!TRI_IsRegularFile(path.c_str())) {
-      std::string msg = std::string("failed to initialize ICU library. Could not locate '")
-                        + path + "'. Please make sure it is available. "
-                        "The environment variable ICU_DATA";
+      std::string msg =
+          std::string("failed to initialize ICU library. Could not locate '") + path +
+          "'. Please make sure it is available. "
+          "The environment variable ICU_DATA";
       std::string icupath;
       if (TRI_GETENV("ICU_DATA", icupath)) {
         msg += "='" + icupath + "'";
@@ -170,8 +173,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   void* icuDataPtr = TRI_SlurpFile(path.c_str(), nullptr);
 
   if (icuDataPtr == nullptr) {
-    LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
-                                              << path << "' - " << TRI_last_error();
+    LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME)
+        << "failed to load '" << fn << "' at '" << path << "' - " << TRI_last_error();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
   return icuDataPtr;
@@ -195,9 +198,7 @@ std::string const& LanguageFeature::getDefaultLanguage() const {
   return _language;
 }
 
-bool LanguageFeature::forceLanguageCheck() const {
-  return _forceLanguageCheck;
-}
+bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
 
 std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;

@@ -36,4 +36,3 @@ template <typename Base, typename Derived>
 constexpr bool can_static_cast_v = can_static_cast<Base, Derived>::value;
 
 }  // namespace arangodb
-

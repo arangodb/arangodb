@@ -28,8 +28,8 @@
 
 #include "Basics/Common.h"
 
-#include "Endpoint/Endpoint.h"
 #include <map>
+#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
 class EndpointList {
@@ -54,4 +54,3 @@ class EndpointList {
   std::map<std::string, Endpoint*> _endpoints;
 };
 }  // namespace arangodb
-

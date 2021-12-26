@@ -58,9 +58,7 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slic
 
 SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
                                  Variable const* inVariable, Variable const* outVariable)
-    : ExecutionNode(plan, id),
-      _inVariable(inVariable),
-      _outVariable(outVariable) {
+    : ExecutionNode(plan, id), _inVariable(inVariable), _outVariable(outVariable) {
   // _inVariable might be nullptr
   TRI_ASSERT(_outVariable != nullptr);
 }
@@ -78,7 +76,6 @@ void SubqueryEndNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const 
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -92,11 +89,13 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto outReg = variableToRegisterId(_outVariable);
   outputRegisters.emplace(outReg);
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
+  auto registerInfos =
+      createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   auto const& vpackOptions = engine.getQuery().vpackOptions();
   auto executorInfos =
-      SubqueryEndExecutorInfos(&vpackOptions, engine.getQuery().resourceMonitor(), inReg, outReg);
+      SubqueryEndExecutorInfos(&vpackOptions, engine.getQuery().resourceMonitor(),
+                               inReg, outReg);
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -155,8 +154,8 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
 //       and subquery splicing runs as the *last* optimizer rule in any case.
 //
 //       If this assumption is changed, you will need to make an implementation
-//       of this function that makes sense (for example by deriving the isModificationNode
-//       from the SubqueryNode).
+//       of this function that makes sense (for example by deriving the
+//       isModificationNode from the SubqueryNode).
 bool SubqueryEndNode::isModificationNode() const {
   TRI_ASSERT(false);
   return false;

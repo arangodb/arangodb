@@ -35,7 +35,7 @@ struct ResourceMonitor;
 namespace aql {
 struct AqlValue;
 class PruneExpressionEvaluator;
-}
+}  // namespace aql
 
 namespace velocypack {
 class Builder;
@@ -70,7 +70,7 @@ class EnumeratedPath {
   template <typename T>
   void growStorage(std::vector<T>& data);
 
- private: 
+ private:
   arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<graph::EdgeDocumentToken> _edges;
   std::vector<arangodb::velocypack::StringRef> _vertices;
@@ -103,7 +103,7 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _httpRequests;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Indicates if we issue next() the first time.
   ///        It shall return an empty path in this case.
@@ -137,7 +137,6 @@ class PathEnumerator {
   virtual aql::AqlValue lastVertexToAqlValue() = 0;
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
-
 
   /// @brief validate post filter statement
   /// returns true if the path should be returned
@@ -197,4 +196,3 @@ class DepthFirstEnumerator final : public PathEnumerator {
 };
 }  // namespace traverser
 }  // namespace arangodb
-

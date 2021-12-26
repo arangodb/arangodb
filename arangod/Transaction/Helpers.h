@@ -48,7 +48,7 @@ class Builder;
 namespace transaction {
 class Context;
 class Methods;
-  
+
 namespace helpers {
 /// @brief extract the _key attribute from a slice
 arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
@@ -155,7 +155,6 @@ class BuilderLeaser {
   transaction::Context* _transactionContext;
   arangodb::velocypack::Builder* _builder;
 };
-  
+
 }  // namespace transaction
 }  // namespace arangodb
-

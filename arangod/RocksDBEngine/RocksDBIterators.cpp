@@ -28,8 +28,8 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
-#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -62,15 +62,15 @@ bool RocksDBAllIndexIterator::outOfRange() const {
   TRI_ASSERT(_trx->state()->isRunning());
   TRI_ASSERT(_iterator != nullptr);
   // we can effectively disable the out-of-range checks for read-only
-  // transactions, as our Iterator is a snapshot-based iterator with a 
-  // configured iterate_upper_bound/iterate_lower_bound value. 
+  // transactions, as our Iterator is a snapshot-based iterator with a
+  // configured iterate_upper_bound/iterate_lower_bound value.
   // this makes RocksDB filter out non-matching keys automatically.
-  // however, for a write transaction our Iterator is a rocksdb BaseDeltaIterator,
-  // which will merge the values from a snapshot iterator and the changes in
-  // the current transaction. here rocksdb will only apply the bounds checks
-  // for the base iterator (from the snapshot), but not for the delta iterator
-  // (from the current transaction), so we still have to carry out the checks
-  // ourselves.
+  // however, for a write transaction our Iterator is a rocksdb
+  // BaseDeltaIterator, which will merge the values from a snapshot iterator and
+  // the changes in the current transaction. here rocksdb will only apply the
+  // bounds checks for the base iterator (from the snapshot), but not for the
+  // delta iterator (from the current transaction), so we still have to carry
+  // out the checks ourselves.
 
   // note: this is always a forward iterator
   return _mustCheckBounds && _cmp->Compare(_iterator->key(), _upperBound) > 0;
@@ -131,7 +131,8 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
   TRI_ASSERT(limit > 0);
 
   do {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
+    cb(RocksDBKey::documentId(_iterator->key()),
+       VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _iterator->Next();
 
@@ -142,7 +143,7 @@ bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback c
     } else if (outOfRange()) {
       return false;
     }
-    
+
     if (limit == 0) {
       return true;
     }
@@ -169,7 +170,7 @@ void RocksDBAllIndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
       }
     } while (true);
   }
-    
+
   // validate that Iterator is in a good shape and hasn't failed
   arangodb::rocksutils::checkIteratorStatus(_iterator.get());
 }
@@ -183,7 +184,7 @@ void RocksDBAllIndexIterator::ensureIterator() {
   if (_iterator == nullptr) {
     // acquire rocksdb transaction
     auto* mthds = RocksDBTransactionState::toMethods(_trx);
-    
+
     _iterator = mthds->NewIterator(_bounds.columnFamily(), [&](ReadOptions& ro) {
       TRI_ASSERT(ro.snapshot != nullptr);
       TRI_ASSERT(ro.prefix_same_as_start);
@@ -205,7 +206,7 @@ void RocksDBAllIndexIterator::ensureIterator() {
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
                                                  transaction::Methods* trx)
-    : IndexIterator(col, trx, ReadOwnWrites::no), // any-iterator never needs to observe own writes.
+    : IndexIterator(col, trx, ReadOwnWrites::no),  // any-iterator never needs to observe own writes.
       _cmp(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
                ->GetComparator()),
       _objectId(static_cast<RocksDBMetaCollection*>(col->getPhysical())->objectId()),
@@ -221,7 +222,8 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
   });
   TRI_ASSERT(_iterator != nullptr);
   if (_iterator == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAnyIndexIterator");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAnyIndexIterator");
   }
 
   _total = col->numberDocuments(trx, transaction::CountType::Normal);
@@ -249,18 +251,18 @@ bool RocksDBAnyIndexIterator::checkIter() {
 }
 
 bool RocksDBAnyIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
-  return doNext(limit, [this, &cb]() {
-    cb(RocksDBKey::documentId(_iterator->key()));
-  });
+  return doNext(limit,
+                [this, &cb]() { cb(RocksDBKey::documentId(_iterator->key())); });
 }
 
 bool RocksDBAnyIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback const& cb,
                                                size_t limit) {
   return doNext(limit, [this, &cb]() {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
+    cb(RocksDBKey::documentId(_iterator->key()),
+       VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
   });
 }
-                                                 
+
 template <typename Func>
 bool RocksDBAnyIndexIterator::doNext(size_t limit, Func const& func) {
   TRI_ASSERT(_trx->state()->isRunning());
@@ -299,10 +301,9 @@ void RocksDBAnyIndexIterator::resetImpl() {
     return;
   }
   uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
-  
+
   RocksDBKeyLeaser key(_trx);
-  key->constructDocument(_objectId,
-                         LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
+  key->constructDocument(_objectId, LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
   _iterator->Seek(key->string());
 
   if (checkIter()) {
@@ -322,7 +323,7 @@ void RocksDBAnyIndexIterator::resetImpl() {
       }
     }
   }
-    
+
   // validate that Iterator is in a good shape and hasn't failed
   arangodb::rocksutils::checkIteratorStatus(_iterator.get());
 }
@@ -376,7 +377,7 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
     }
     --limit;
     _iterator->Next();
-    
+
     // validate that Iterator is in a good shape and hasn't failed
     arangodb::rocksutils::checkIteratorStatus(_iterator.get());
   }

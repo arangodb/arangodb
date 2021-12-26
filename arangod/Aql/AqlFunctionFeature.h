@@ -69,4 +69,3 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
 
 }  // namespace aql
 }  // namespace arangodb
-

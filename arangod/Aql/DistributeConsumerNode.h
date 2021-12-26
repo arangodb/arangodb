@@ -79,12 +79,14 @@ class DistributeConsumerNode : public ExecutionNode {
     // This node is not allowed to be cloned.
     // Clone specialization!
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be cloned");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "DistributeConsumerNode cannot be cloned");
   }
 
   CostEstimate estimateCost() const override {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be estimated");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be estimated");
   }
 
  protected:
@@ -104,4 +106,3 @@ class DistributeConsumerNode : public ExecutionNode {
 };
 
 }  // namespace arangodb::aql
-

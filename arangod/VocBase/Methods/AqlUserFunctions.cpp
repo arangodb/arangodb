@@ -82,7 +82,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
                   std::string("error deleting AQL user function: '") +
                       functionName + "' contains invalid characters");
   }
- 
+
   std::string UCFN = basics::StringUtils::toupper(functionName);
   Result res;
   {
@@ -93,15 +93,16 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
     }
 
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection, AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection,
+                                    AccessMode::Type::WRITE);
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     res = trx.begin();
 
     if (res.ok()) {
-      OperationResult result =
-          trx.remove(StaticStrings::AqlFunctionsCollection, builder.slice(), OperationOptions());
+      OperationResult result = trx.remove(StaticStrings::AqlFunctionsCollection,
+                                          builder.slice(), OperationOptions());
       res = trx.finish(result.result);
     }
   }
@@ -110,8 +111,8 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
     reloadAqlUserFunctions(vocbase.server());
   } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     return res.reset(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
-                  std::string("no AQL user function with name '") +
-                      functionName + "' found");
+                     std::string("no AQL user function with name '") +
+                         functionName + "' found");
   }
   return res;
 }
@@ -150,8 +151,9 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
       "REMOVE { _key: fn._key} in @@col RETURN 1");
 
   {
-    auto query = arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                                              arangodb::aql::QueryString(aql), std::move(binds));
+    auto query =
+        arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                                     arangodb::aql::QueryString(aql), std::move(binds));
     aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
@@ -184,7 +186,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   auto& server = vocbase.server();
   if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
       !server.getFeature<V8DealerFeature>().isEnabled()) {
-    return res.reset(TRI_ERROR_DISABLED, "JavaScript operations are not available");
+    return res.reset(TRI_ERROR_DISABLED,
+                     "JavaScript operations are not available");
   }
 
   std::string name;
@@ -229,8 +232,9 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   {
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
-   
-    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+
+    JavaScriptSecurityContext securityContext =
+        JavaScriptSecurityContext::createRestrictedContext();
     V8ConditionalContextGuard contextGuard(res, isolate, &vocbase, securityContext);
 
     if (res.fail()) {
@@ -293,7 +297,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
 
     // find and load collection given by name or identifier
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection, AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(ctx, StaticStrings::AqlFunctionsCollection,
+                                    AccessMode::Type::WRITE);
 
     res = trx.begin();
     if (res.fail()) {
@@ -301,7 +306,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
     }
 
     arangodb::OperationResult result =
-        trx.insert(StaticStrings::AqlFunctionsCollection, oneFunctionDocument.slice(), opOptions);
+        trx.insert(StaticStrings::AqlFunctionsCollection,
+                   oneFunctionDocument.slice(), opOptions);
 
     if (result.ok()) {
       VPackSlice oldSlice = result.slice().get(StaticStrings::Old);
@@ -349,8 +355,9 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   binds->add("@col", VPackValue(StaticStrings::AqlFunctionsCollection));
   binds->close();
 
-  auto query = arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                                            arangodb::aql::QueryString(aql), std::move(binds));
+  auto query =
+      arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                                   arangodb::aql::QueryString(aql), std::move(binds));
   aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {

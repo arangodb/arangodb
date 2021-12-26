@@ -148,10 +148,10 @@ EvalResult Prim_DictDirectory(Machine& ctx, VPackSlice const params, VPackBuilde
 
 namespace {
 void MergeObjectSlice(VPackBuilder& result, VPackSlice const& sliceA,
-                            VPackSlice const& sliceB) {
+                      VPackSlice const& sliceB) {
   VPackCollection::merge(result, sliceA, sliceB, true, false);
 }
-}
+}  // namespace
 
 EvalResult Prim_MergeDict(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
@@ -205,7 +205,8 @@ EvalResult Prim_AttribRef(Machine& ctx, VPackSlice const params, VPackBuilder& r
     return EvalError("expected exactly two parameters");
   }
 
-  auto const& [slice, key] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
+  auto const& [slice, key] =
+      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   auto res = ReadAttribute(slice, key);
   if (res.fail()) {
     return res.error();
@@ -245,7 +246,8 @@ EvalResult Prim_AttribRefOrFail(Machine& ctx, VPackSlice const params, VPackBuil
     return EvalError("expected exactly two parameters");
   }
 
-  auto const& [slice, key] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
+  auto const& [slice, key] =
+      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expected first parameter to be an object");
   }

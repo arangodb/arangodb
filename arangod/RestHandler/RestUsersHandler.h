@@ -45,8 +45,7 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   bool canAccessUser(std::string const& user) const;
 
   /// helper to generate a compliant response for individual user requests
-  void generateUserResult(rest::ResponseCode code,
-                          velocypack::Builder const& doc);
+  void generateUserResult(rest::ResponseCode code, velocypack::Builder const& doc);
 
   void generateDatabaseResult(auth::UserManager*, std::string const& user, bool full);
 
@@ -57,4 +56,3 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus deleteRequest(auth::UserManager*);
 };
 }  // namespace arangodb
-

@@ -92,8 +92,7 @@ class CollectNode : public ExecutionNode {
                               RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the collect register
-  void calcCollectRegister(RegisterId& collectRegister,
-                           RegIdSet& writeableOutputRegisters) const;
+  void calcCollectRegister(RegisterId& collectRegister, RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
   void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
@@ -133,12 +132,10 @@ class CollectNode : public ExecutionNode {
   /// @brief clear all keep variables
   void clearKeepVariables();
 
-  void setAggregateVariables(
-      std::vector<AggregateVarInfo>&& aggregateVariables);
+  void setAggregateVariables(std::vector<AggregateVarInfo>&& aggregateVariables);
 
   /// @brief clear one of the aggregates
-  void clearAggregates(
-      std::function<bool(AggregateVarInfo const&)> cb);
+  void clearAggregates(std::function<bool(AggregateVarInfo const&)> cb);
 
   /// @brief whether or not the node has an expression variable (i.e. INTO ...
   /// = expr)
@@ -171,7 +168,7 @@ class CollectNode : public ExecutionNode {
 
   /// @brief get all aggregate variables (out, in)
   std::vector<AggregateVarInfo>& aggregateVariables();
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -218,4 +215,3 @@ class CollectNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

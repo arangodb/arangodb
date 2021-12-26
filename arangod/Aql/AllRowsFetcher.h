@@ -122,4 +122,3 @@ class AllRowsFetcher {
 
 }  // namespace aql
 }  // namespace arangodb
-

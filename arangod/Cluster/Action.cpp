@@ -132,7 +132,8 @@ void Action::create(MaintenanceFeature& feature, ActionDescription const& descri
   auto factory = factories.find(description.name());
 
   if (ADB_UNLIKELY(factory == factories.end())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid action type: " + description.name());
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid action type: " + description.name());
   }
   _action = factory->second(feature, description);
 }
@@ -213,8 +214,9 @@ bool Action::operator<(Action const& other) const {
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-void Action::addNewFactoryForTest(std::string const& name,
-      std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& factory) {
+void Action::addNewFactoryForTest(
+    std::string const& name,
+    std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& factory) {
   factories.emplace(name, std::move(factory));
 }
 #endif

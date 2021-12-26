@@ -24,12 +24,12 @@
 
 #include "HttpResponse.h"
 
+#include <time.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
-#include <time.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
@@ -47,11 +47,9 @@ bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
                            std::unique_ptr<basics::StringBuffer> buffer)
-: GeneralResponse(code, mid),
-  _body(std::move(buffer)),
-  _bodySize(0) {
+    : GeneralResponse(code, mid), _body(std::move(buffer)), _bodySize(0) {
   _contentType = ContentType::TEXT;
-    
+
   if (!_body) {
     _body = std::make_unique<basics::StringBuffer>(false);
   }
@@ -288,8 +286,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayload(VPackSlice const& slice, 
-                              velocypack::Options const* options,
+void HttpResponse::addPayload(VPackSlice const& slice, velocypack::Options const* options,
                               bool resolveExternals) {
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
@@ -302,8 +299,7 @@ void HttpResponse::addPayload(VPackSlice const& slice,
 }
 
 void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
-                              velocypack::Options const* options, 
-                              bool resolveExternals) {
+                              velocypack::Options const* options, bool resolveExternals) {
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
     // content type was set by a handler to Json but the client wants VPACK
@@ -352,7 +348,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
           tmpBuffer.reserve(inputLength);  // reserve space already
           VPackBuilder builder(tmpBuffer, options);
           VelocyPackHelper::sanitizeNonClientTypes(currentData, VPackSlice::noneSlice(),
-              builder, options, true, true);
+                                                   builder, options, true, true);
           currentData = VPackSlice(tmpBuffer.data());
           outputLength = currentData.byteSize();
         }
@@ -362,14 +358,14 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
         _body->appendText(currentData.startAs<const char>(), outputLength);
       }
       resultLength += outputLength;
-      
+
       // advance to next slice (if any)
       if (length < inputLength) {
         // oops, length specification may be wrong?!
         break;
       }
 
-      data += inputLength; 
+      data += inputLength;
       length -= inputLength;
     }
 
@@ -380,7 +376,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   }
 
   setContentType(rest::ContentType::JSON);
-  
+
   /// dump options contain have the escapeUnicode attribute set to true
   /// this allows dumping of string values as plain 7-bit ASCII values.
   /// for example, the string "möter" will be dumped as "m\u00F6ter".
@@ -390,11 +386,11 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   VPackOptions tmpOpts = *options;
   tmpOpts.escapeUnicode = true;
 
-  // here, the input (data) must **not** contain multiple velocypack values, 
+  // here, the input (data) must **not** contain multiple velocypack values,
   // written one after the other
   VPackSlice current(data);
   TRI_ASSERT(current.byteSize() == length);
-  
+
   if (_generateBody) {
     // convert object to JSON string
     VPackStringBufferAdapter buffer(_body->stringBuffer());

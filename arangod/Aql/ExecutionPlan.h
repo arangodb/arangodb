@@ -60,7 +60,7 @@ class ExecutionPlan {
 
   /// @brief destroy the plan, frees all assigned nodes
   ~ExecutionPlan();
- 
+
   /// @brief maximum number of execution nodes allowed per query
   /// (at the time the initial execution plan is created). we have to limit
   /// this to prevent super-long runtimes for query optimization and
@@ -73,10 +73,12 @@ class ExecutionPlan {
   static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*, bool trackMemoryUsage);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(aql::Collections&,
+                                           arangodb::velocypack::Slice const);
 
   /// @brief create an execution plan from VelocyPack
-  static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(Ast* ast,
+                                                                  arangodb::velocypack::Slice const);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
@@ -171,8 +173,10 @@ class ExecutionPlan {
   }
 
   void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
-  
-  bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
+
+  bool isAsyncPrefetchEnabled() const noexcept {
+    return _isAsyncPrefetchEnabled;
+  }
 
   /// @brief get the node where variable with id <id> is introduced . . .
   ExecutionNode* getVarSetBy(VariableId id) const {
@@ -288,15 +292,15 @@ class ExecutionPlan {
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
 
   bool fullCount() const noexcept;
-  
+
   /// @brief parses modification options from an AST node
   static ModificationOptions parseModificationOptions(QueryContext& query,
-                                                      char const* operationNode, AstNode const*,
-                                                      bool addWarnings);
-  
+                                                      char const* operationNode,
+                                                      AstNode const*, bool addWarnings);
+
   /// @brief registers a warning for an invalid OPTIONS attribute
-  static void invalidOptionAttribute(QueryContext& query,
-                                     char const* operationName, char const* name, size_t length);
+  static void invalidOptionAttribute(QueryContext& query, char const* operationName,
+                                     char const* name, size_t length);
 
  private:
   template <WalkerUniqueness U>
@@ -348,7 +352,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST LET node
   ExecutionNode* fromNodeLet(ExecutionNode*, AstNode const*);
-  
+
   /// @brief create an execution plan element from an AST SORT node
   ExecutionNode* fromNodeSort(ExecutionNode*, AstNode const*);
 
@@ -375,14 +379,15 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
-  
+
   /// @brief create an execution plan element from an AST WINDOW node
   ExecutionNode* fromNodeWindow(ExecutionNode*, AstNode const*);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
-  
-  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous, AstNode const* node);
+
+  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous,
+                                                     AstNode const* node);
 
  private:
   /// @brief map from node id to the actual node
@@ -448,4 +453,3 @@ Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
   auto node = std::make_unique<Node>(std::forward<Args>(args)...);
   return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
 }
-

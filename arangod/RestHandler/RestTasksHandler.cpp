@@ -50,7 +50,8 @@ RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& serv
 
 RestStatus RestTasksHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                  "JavaScript operations are disabled");
     return RestStatus::DONE;
   }
 
@@ -188,7 +189,8 @@ void RestTasksHandler::registerTask(bool byId) {
   std::string name =
       VelocyPackHelper::getStringValue(body, "name", "user-defined task");
 
-  bool isSystem = VelocyPackHelper::getBooleanValue(body, StaticStrings::DataSourceSystem, false);
+  bool isSystem =
+      VelocyPackHelper::getBooleanValue(body, StaticStrings::DataSourceSystem, false);
 
   // offset in seconds into period or from now on if no period
   double offset = VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);
@@ -227,15 +229,18 @@ void RestTasksHandler::registerTask(bool byId) {
   }
 
   try {
-    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+    JavaScriptSecurityContext securityContext =
+        JavaScriptSecurityContext::createRestrictedContext();
     V8ContextGuard guard(&_vocbase, securityContext);
-   
+
     v8::Isolate* isolate = guard.isolate();
     v8::HandleScope scope(isolate);
     auto context = TRI_IGETC;
     v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
 
-    if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command")).FromMaybe(v8::Handle<v8::Value>())->IsFunction()) {
+    if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command"))
+            .FromMaybe(v8::Handle<v8::Value>())
+            ->IsFunction()) {
       // need to add ( and ) around function because call will otherwise break
       command = "(" + cmdSlice.copyString() + ")(params)";
     } else {

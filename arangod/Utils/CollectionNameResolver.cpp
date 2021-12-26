@@ -41,7 +41,7 @@ std::string const UNKNOWN("_unknown");
 namespace arangodb {
 
 // copy an existing resolver
-CollectionNameResolver::CollectionNameResolver(CollectionNameResolver const& other) 
+CollectionNameResolver::CollectionNameResolver(CollectionNameResolver const& other)
     : CollectionNameResolver(other._vocbase) {
   READ_LOCKER(locker, other._lock);
   _resolvedIds = other._resolvedIds;
@@ -264,7 +264,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(DataSou
       return itr->second;
     }
   }
-  
+
   // db server / standalone
   auto ptr = ServerState::isCoordinator(_serverRole)
                  ? getDataSource(std::to_string(id.id()))
@@ -280,7 +280,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(DataSou
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(std::string const& nameOrId) const {
   decltype(_dataSourceByName)::iterator itr;
-  
+
   {
     READ_LOCKER(guard, _lock);
     itr = _dataSourceByName.find(nameOrId);

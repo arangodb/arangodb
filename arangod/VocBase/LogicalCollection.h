@@ -191,8 +191,8 @@ class LogicalCollection : public LogicalDataSource {
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
-  ErrorCode getResponsibleShard(velocypack::Slice slice,
-                                bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
+                                std::string& shardID);
   ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
 
   ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
@@ -205,7 +205,8 @@ class LogicalCollection : public LogicalDataSource {
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites);
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
+                                                ReadOwnWrites readOwnWrites);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
   /// @brief fetches current index selectivity estimates
@@ -453,4 +454,3 @@ class LogicalCollection : public LogicalDataSource {
 };
 
 }  // namespace arangodb
-

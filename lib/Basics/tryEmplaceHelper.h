@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <type_traits>
 #include <memory>
+#include <type_traits>
 
 namespace arangodb {
 template <class Lambda>
@@ -36,4 +36,4 @@ struct lazyConstruct {
   }
   Lambda factory_;
 };
-}
+}  // namespace arangodb

@@ -48,23 +48,21 @@ std::mutex RestSystemReportHandler::_exclusive;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestSystemReportHandler::RestSystemReportHandler(
-  application_features::ApplicationServer& server, GeneralRequest* request,
-  GeneralResponse* response) :
-  RestBaseHandler(server, request, response),
-  cmds ({
-      {"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>&1"},
-      {"dmesg", "time dmesg 2>&1"},
-      {"df", "time df -h 2>&1"},
-      {"memory", "time cat /proc/meminfo 2>&1"},
-      {"uptime", "time uptime 2>&1"},
-      {"uname", "time uname -a 2>&1"},
-      {"topp", std::string("time top -b -n 1 -H -p ") +
-          std::to_string(Thread::currentProcessId()) + " 2>&1"},
-      {"top", "time top -b -n 1 2>&1"}
-    }) {}
+RestSystemReportHandler::RestSystemReportHandler(application_features::ApplicationServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
+    : RestBaseHandler(server, request, response),
+      cmds({{"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>&1"},
+            {"dmesg", "time dmesg 2>&1"},
+            {"df", "time df -h 2>&1"},
+            {"memory", "time cat /proc/meminfo 2>&1"},
+            {"uptime", "time uptime 2>&1"},
+            {"uname", "time uname -a 2>&1"},
+            {"topp", std::string("time top -b -n 1 -H -p ") +
+                         std::to_string(Thread::currentProcessId()) + " 2>&1"},
+            {"top", "time top -b -n 1 2>&1"}}) {}
 
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 namespace {
 std::string exec(std::string const& cmd) {
   std::array<char, 128> buffer;
@@ -78,7 +76,7 @@ std::string exec(std::string const& cmd) {
   }
   return result;
 }
-}
+}  // namespace
 #endif
 
 bool RestSystemReportHandler::isAdminUser() const {
@@ -90,7 +88,6 @@ bool RestSystemReportHandler::isAdminUser() const {
 }
 
 RestStatus RestSystemReportHandler::execute() {
-
   ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
@@ -108,11 +105,11 @@ RestStatus RestSystemReportHandler::execute() {
   auto start = steady_clock::now();
 
   VPackBuilder result;
-  { VPackObjectBuilder o(&result);
+  {
+    VPackObjectBuilder o(&result);
 
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
     while (true) {
-
       if (steady_clock::now() - start > seconds(60)) {
         generateError(ResponseCode::BAD, TRI_ERROR_LOCK_TIMEOUT);
         return RestStatus::DONE;
@@ -141,14 +138,14 @@ RestStatus RestSystemReportHandler::execute() {
         generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
         return RestStatus::DONE;
       }
-
     }
 
 #else
-    result.add("result", VPackValue("not supported on POSIX uncompliant systems"));
+    result.add("result",
+               VPackValue("not supported on POSIX uncompliant systems"));
 #endif
 
-  } // result
+  }  // result
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;

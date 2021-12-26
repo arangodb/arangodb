@@ -50,4 +50,3 @@ class ArangoClientHelper {
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
 };
 }  // namespace arangodb
-

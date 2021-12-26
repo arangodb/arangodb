@@ -23,8 +23,8 @@
 
 #include "TraversalExecutor.h"
 
-#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
@@ -43,8 +43,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     std::unique_ptr<Traverser>&& traverser,
     std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
     std::string fixedSource, RegisterId inputRegister,
-    std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables,
-    Ast* ast)
+    std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables, Ast* ast)
     : _traverser(std::move(traverser)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
@@ -81,9 +80,7 @@ bool TraversalExecutorInfos::usePathOutput() const {
   return usesOutputRegister(OutputName::PATH);
 }
 
-Ast* TraversalExecutorInfos::getAst() const {
-  return _ast;
-}
+Ast* TraversalExecutorInfos::getAst() const { return _ast; }
 
 static std::string typeToString(TraversalExecutorInfos::OutputName type) {
   switch (type) {

@@ -42,8 +42,10 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId)
-    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
+IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection,
+                                           uint64_t objectId)
+    : RocksDBIndex(iid, collection,
+                   IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
                    RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
                    false),
       IResearchLink(iid, collection) {
@@ -52,12 +54,11 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& colle
   _sparse = true;   // always sparse
 }
 
-void IResearchRocksDBLink::toVelocyPack(
-    VPackBuilder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
+void IResearchRocksDBLink::toVelocyPack(VPackBuilder& builder,
+                                        std::underlying_type<Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(Result(  // result
-        TRI_ERROR_BAD_PARAMETER,              // code
+        TRI_ERROR_BAD_PARAMETER,    // code
         std::string("failed to generate link definition for arangosearch view "
                     "RocksDB link '") +
             std::to_string(Index::id().id()) + "'"));
@@ -68,11 +69,12 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.openObject();
 
   if (!IResearchLink::properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to generate link definition for arangosearch view "
-                    "RocksDB link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION(
+        Result(TRI_ERROR_INTERNAL,
+               std::string(
+                   "failed to generate link definition for arangosearch view "
+                   "RocksDB link '") +
+                   std::to_string(Index::id().id()) + "'"));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
@@ -155,17 +157,16 @@ class RocksDBEncryptionProvider final : public irs::encryption {
 IResearchRocksDBLink::IndexFactory::IndexFactory(application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
-bool IResearchRocksDBLink::IndexFactory::equal(
-    VPackSlice lhs,
-    VPackSlice rhs,
-    std::string const& dbname) const {
+bool IResearchRocksDBLink::IndexFactory::equal(VPackSlice lhs, VPackSlice rhs,
+                                               std::string const& dbname) const {
   return IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
-    LogicalCollection& collection, VPackSlice definition,
-    IndexId id, bool /*isClusterConstructor*/) const {
-  uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
+    LogicalCollection& collection, VPackSlice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  uint64_t objectId =
+      basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
 
   auto const res = link->init(definition, [this]() -> irs::directory_attributes {
@@ -174,8 +175,8 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
     auto& engine = selector.engine<RocksDBEngine>();
     auto* encryption = engine.encryptionProvider();
     if (encryption) {
-      return irs::directory_attributes{0, std::make_unique<RocksDBEncryptionProvider>(*encryption,
-                                                          engine.rocksDBOptions())};
+      return irs::directory_attributes{0, std::make_unique<RocksDBEncryptionProvider>(
+                                              *encryption, engine.rocksDBOptions())};
     }
     return irs::directory_attributes{};
   });
@@ -187,16 +188,14 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
   return link;
 }
 
-Result IResearchRocksDBLink::IndexFactory::normalize(
-    VPackBuilder& normalized,
-    VPackSlice definition,
-    bool isCreation,
-    TRI_vocbase_t const& vocbase) const {
+Result IResearchRocksDBLink::IndexFactory::normalize(VPackBuilder& normalized,
+                                                     VPackSlice definition, bool isCreation,
+                                                     TRI_vocbase_t const& vocbase) const {
   // no attribute set in a definition -> old version
   constexpr LinkVersion defaultVersion = LinkVersion::MIN;
 
-  return IResearchLinkHelper::normalize(
-      normalized, definition, isCreation, vocbase, defaultVersion);
+  return IResearchLinkHelper::normalize(normalized, definition, isCreation,
+                                        vocbase, defaultVersion);
 }
 
 std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::createFactory(
@@ -211,7 +210,7 @@ std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::create
 namespace iresearch {
 
 // use base irs::encryption type for ancestors
-template<>
-struct type<arangodb::iresearch::RocksDBEncryptionProvider> : type<irs::encryption> { };
+template <>
+struct type<arangodb::iresearch::RocksDBEncryptionProvider> : type<irs::encryption> {};
 
-}
+}  // namespace iresearch

@@ -93,8 +93,7 @@ class PathValidator {
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;
 
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
-                          arangodb::velocypack::Slice value) -> bool;
+                                arangodb::velocypack::Slice value) -> bool;
 };
 }  // namespace graph
 }  // namespace arangodb
-

@@ -38,9 +38,9 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
-#include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
+#include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -80,7 +80,8 @@ RocksDBTransactionState::RocksDBTransactionState(TRI_vocbase_t& vocbase, Transac
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _users(0),
 #endif
-      _parallel(false) {}
+      _parallel(false) {
+}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -94,7 +95,7 @@ void RocksDBTransactionState::use() noexcept {
 }
 
 void RocksDBTransactionState::unuse() noexcept {
-  TRI_ASSERT(_users.fetch_sub(1, std::memory_order_relaxed) == 1); 
+  TRI_ASSERT(_users.fetch_sub(1, std::memory_order_relaxed) == 1);
 }
 #endif
 
@@ -120,12 +121,12 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     // responsible for acquring locks as well
     double start = TRI_microtime();
     res = useCollections();
-    
+
     double diff = TRI_microtime() - start;
     stats._lockTimeMicros += static_cast<uint64_t>(1000000.0 * diff);
     stats._lockTimes.count(diff);
   }
-  
+
   if (res.fail()) {
     // something is wrong
     updateStatus(transaction::Status::ABORTED);
@@ -133,7 +134,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   // register with manager
-  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
+  transaction::ManagerFeature::manager()->registerTransaction(
+      id(), isReadOnlyTransaction(), hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
   updateStatus(transaction::Status::RUNNING);
   if (isReadOnlyTransaction()) {
     ++stats._readTransactions;
@@ -168,12 +170,12 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
     }
   }
-  
+
   res = _rocksMethods->beginTransaction();
   if (res.ok()) {
     maybeDisableIndexing();
   }
-  
+
   return res;
 }
 
@@ -181,7 +183,7 @@ void RocksDBTransactionState::maybeDisableIndexing() {
   if (!hasHint(transaction::Hints::Hint::NO_INDEXING)) {
     return;
   }
-  
+
   TRI_ASSERT(!isReadOnlyTransaction());
   // do not track our own writes... we can only use this in very
   // specific scenarios, i.e. when we are sure that we will have a
@@ -220,7 +222,8 @@ void RocksDBTransactionState::maybeDisableIndexing() {
 }
 
 rocksdb::SequenceNumber RocksDBTransactionState::prepareCollections() {
-  auto& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  auto& engine =
+      vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
 
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
@@ -285,15 +288,15 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
   TRI_ASSERT(!_cacheTx);
 
   return res;
-  
 }
 
 /// @brief abort and rollback a transaction
 Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX("5b226", TRACE, this) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX("5b226", TRACE, this)
+      << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_ASSERT(activeTrx->isMainTransaction());
-  
+
   Result result = _rocksMethods->abortTransaction();
 
   cleanupTransaction();  // deletes trx
@@ -336,7 +339,7 @@ bool RocksDBTransactionState::iteratorMustCheckBounds(ReadOwnWrites readOwnWrite
 TRI_voc_tick_t RocksDBTransactionState::lastOperationTick() const noexcept {
   return _rocksMethods->lastOperationTick();
 }
-  
+
 uint64_t RocksDBTransactionState::numCommits() const {
   return _rocksMethods->numCommits();
 }
@@ -382,7 +385,7 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
     if (queryCache->mayBeActive() && tcoll->collection()) {
       queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
     }
-    
+
     result = _rocksMethods->checkIntermediateCommit(hasPerformedIntermediateCommit);
   }
   return result;

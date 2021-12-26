@@ -33,25 +33,23 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 const char RocksDBKey::_stringSeparator = '\0';
-  
+
 RocksDBKey::RocksDBKey(std::string* leased)
-      : _type(RocksDBEntryType::Document),  // placeholder
-        _local(),
-        _buffer(leased != nullptr ? leased : &_local) {}
+    : _type(RocksDBEntryType::Document),  // placeholder
+      _local(),
+      _buffer(leased != nullptr ? leased : &_local) {}
 
 RocksDBKey::RocksDBKey(rocksdb::Slice slice)
-      : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
-        _local(slice.data(), slice.size()),
-        _buffer(&_local) {}
-  
+    : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
+      _local(slice.data(), slice.size()),
+      _buffer(&_local) {}
+
 RocksDBKey::RocksDBKey(RocksDBKey&& other) noexcept
-      : _type(other._type),
-        _local(),
-        _buffer(&_local) {
+    : _type(other._type), _local(), _buffer(&_local) {
   _local.assign(std::move(*(other._buffer)));
   other._buffer = &(other._local);
 }
-  
+
 /// @brief verify that a key actually contains the given local document id
 bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) const {
   switch (_type) {
@@ -87,7 +85,8 @@ void RocksDBKey::constructZkdIndexValue(uint64_t indexId, const zkd::byte_string
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructZkdIndexValue(uint64_t indexId, zkd::byte_string const& value, LocalDocumentId documentId) {
+void RocksDBKey::constructZkdIndexValue(uint64_t indexId, zkd::byte_string const& value,
+                                        LocalDocumentId documentId) {
   _type = RocksDBEntryType::ZkdIndexValue;
   size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
   _buffer->clear();
@@ -151,7 +150,8 @@ void RocksDBKey::constructPrimaryIndexValue(uint64_t indexId, char const* primar
   constructPrimaryIndexValue(indexId, keyRef);
 }
 
-void RocksDBKey::constructEdgeIndexValue(uint64_t indexId, arangodb::velocypack::StringRef const& vertexId,
+void RocksDBKey::constructEdgeIndexValue(uint64_t indexId,
+                                         arangodb::velocypack::StringRef const& vertexId,
                                          LocalDocumentId documentId) {
   TRI_ASSERT(indexId != 0 && !vertexId.empty());
   _type = RocksDBEntryType::EdgeIndexValue;
@@ -218,7 +218,7 @@ void RocksDBKey::constructGeoIndexValue(uint64_t indexId, uint64_t value,
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  uintToPersistentBigEndian<uint64_t>(*_buffer, value); // always big endian
+  uintToPersistentBigEndian<uint64_t>(*_buffer, value);  // always big endian
   uint64ToPersistent(*_buffer, documentId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
@@ -314,15 +314,15 @@ void RocksDBKey::constructLogEntry(uint64_t objectId, replication2::LogIndex idx
 
 void RocksDBKey::constructReplicatedLog(TRI_voc_tick_t databaseId,
                                         arangodb::replication2::LogId logId) {
-    TRI_ASSERT(databaseId != 0);
-    _type = RocksDBEntryType::ReplicatedLog;
-    size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
-    _buffer->clear();
-    _buffer->reserve(keyLength);
-    _buffer->push_back(static_cast<char>(_type));
-    uint64ToPersistent(*_buffer, databaseId);
-    uint64ToPersistent(*_buffer, logId.id());
-    TRI_ASSERT(_buffer->size() == keyLength);
+  TRI_ASSERT(databaseId != 0);
+  _type = RocksDBEntryType::ReplicatedLog;
+  size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  _buffer->push_back(static_cast<char>(_type));
+  uint64ToPersistent(*_buffer, databaseId);
+  uint64ToPersistent(*_buffer, logId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
 }
 
 // ========================= Member methods ===========================

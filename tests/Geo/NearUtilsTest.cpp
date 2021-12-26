@@ -298,7 +298,7 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_descending_with_limit_and_max_dis
 /* the same run with full table scan               */
 
 class QueryPointAroundTest : public ::testing::Test {
-protected:
+ protected:
   index_t index;
   coords_t docs;
   size_t counter;
@@ -382,7 +382,7 @@ static std::shared_ptr<VPackBuilder> createBuilder(char const* c) {
 }
 
 class QueryPointsContainedInTest : public ::testing::Test {
-protected:
+ protected:
   index_t index;
   coords_t docs;
   size_t counter;

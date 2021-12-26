@@ -39,4 +39,3 @@ void RegisterAllPrimitives(Machine& ctx);
 
 }  // namespace greenspun
 }  // namespace arangodb
-

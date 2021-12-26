@@ -24,8 +24,8 @@
 #include <fuerte/requests.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "gtest/gtest.h"
 #include "common.h"
+#include "gtest/gtest.h"
 
 namespace fu = ::arangodb::fuerte;
 
@@ -52,16 +52,16 @@ void performRequests(fu::ProtocolType pt) {
   fu::ConnectionBuilder cbuilder;
   setupEndpointFromEnv(cbuilder);
   setupAuthenticationFromEnv(cbuilder);
-  
+
   cbuilder.protocolType(pt);
-  
+
   // make connection
   auto connection = cbuilder.connect(loop);
-  
+
   // should fail after 1s
   auto req = ::sleepRequest(10.0);
   req->timeout(std::chrono::seconds(1));
-  
+
   fu::WaitGroup wg;
   wg.add();
   connection->sendRequest(std::move(req), [&](fu::Error e, std::unique_ptr<fu::Request> req,
@@ -70,14 +70,14 @@ void performRequests(fu::ProtocolType pt) {
     ASSERT_EQ(e, fu::Error::RequestTimeout);
   });
   ASSERT_TRUE(wg.wait_for(std::chrono::seconds(5)));
-  
+
   if (pt == fu::ProtocolType::Http) {
     ASSERT_EQ(connection->state(), fu::Connection::State::Closed);
     return;
   }
   // http 1.1 connection is broken after timeout, others must still work
   ASSERT_EQ(connection->state(), fu::Connection::State::Connected);
-  
+
   req = fu::createRequest(fu::RestVerb::Post, "/_api/version");
   wg.add();
   connection->sendRequest(std::move(req), [&](fu::Error e, std::unique_ptr<fu::Request> req,
@@ -91,16 +91,16 @@ void performRequests(fu::ProtocolType pt) {
       auto version = slice.get("version").copyString();
       auto server = slice.get("server").copyString();
       ASSERT_EQ(server, "arango");
-      ASSERT_EQ(version[0], '3'); // major version
+      ASSERT_EQ(version[0], '3');  // major version
     }
   });
   wg.wait();
-  
+
   for (int i = 0; i < 8; i++) {
     // should not fail
     req = ::sleepRequest(4.0);
     req->timeout(std::chrono::seconds(60));
-    
+
     wg.add();
     connection->sendRequest(std::move(req), [&](fu::Error e, std::unique_ptr<fu::Request> req,
                                                 std::unique_ptr<fu::Response> res) {
@@ -108,11 +108,11 @@ void performRequests(fu::ProtocolType pt) {
       ASSERT_EQ(e, fu::Error::NoError);
       ASSERT_TRUE(res != nullptr);
     });
-    
+
     // should fail
     req = ::sleepRequest(4.0);
     req->timeout(std::chrono::milliseconds(100));
-    
+
     wg.add();
     connection->sendRequest(std::move(req), [&](fu::Error e, std::unique_ptr<fu::Request> req,
                                                 std::unique_ptr<fu::Response> res) {
@@ -121,20 +121,14 @@ void performRequests(fu::ProtocolType pt) {
       ASSERT_EQ(res, nullptr);
     });
   }
-  
+
   ASSERT_TRUE(wg.wait_for(std::chrono::seconds(120)));
 }
 
-}
+}  // namespace
 
-TEST(RequestTimeout, VelocyStream){
-  ::performRequests(fu::ProtocolType::Vst);
-}
+TEST(RequestTimeout, VelocyStream) { ::performRequests(fu::ProtocolType::Vst); }
 
-TEST(RequestTimeout, HTTP) {
-  ::performRequests(fu::ProtocolType::Http);
-}
+TEST(RequestTimeout, HTTP) { ::performRequests(fu::ProtocolType::Http); }
 
-TEST(RequestTimeout, HTTP2) {
-  ::performRequests(fu::ProtocolType::Http2);
-}
+TEST(RequestTimeout, HTTP2) { ::performRequests(fu::ProtocolType::Http2); }

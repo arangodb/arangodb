@@ -97,4 +97,3 @@ class ParallelUnsortedGatherExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

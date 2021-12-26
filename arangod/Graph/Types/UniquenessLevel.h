@@ -41,4 +41,3 @@ std::ostream& operator<<(std::ostream& stream, EdgeUniquenessLevel const& level)
 
 }  // namespace graph
 }  // namespace arangodb
-

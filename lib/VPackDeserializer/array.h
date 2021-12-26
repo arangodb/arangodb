@@ -50,10 +50,9 @@ struct array_deserializer {
 
 namespace executor {
 
-template<typename T>
+template <typename T>
 struct inserter {
-
-  template<typename V>
+  template <typename V>
   void insert(V&& v) {
     t.emplace_back(std::forward<V>(v));
   }
@@ -63,11 +62,11 @@ struct inserter {
   T t;
 };
 
-template<typename D>
+template <typename D>
 struct inserter<std::unordered_set<D>> {
   using T = std::unordered_set<D>;
 
-  template<typename V>
+  template <typename V>
   void insert(V&& v) {
     t.emplace(std::forward<V>(v));
   }
@@ -117,4 +116,3 @@ struct deserialize_plan_executor<array_deserializer<D, C, F>, H> {
 }  // namespace deserializer
 }  // namespace velocypack
 }  // namespace arangodb
-

@@ -412,7 +412,8 @@ std::shared_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
 
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-      aql::QueryString(queryString), nullptr, arangodb::aql::QueryOptions(queryOptions.slice()));
+      aql::QueryString(queryString), nullptr,
+      arangodb::aql::QueryOptions(queryOptions.slice()));
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
@@ -439,7 +440,8 @@ std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> AgencyCache::
     std::lock_guard g(_storeLock);
     ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
-      _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true,true}), _commitIndex}; // apply logs
+        _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
+        _commitIndex};  // apply logs
   }
   {
     std::lock_guard g(_callbacksLock);
@@ -540,7 +542,8 @@ std::shared_ptr<arangodb::aql::Query> MockClusterServer::createFakeQuery(
 
   auto query = arangodb::aql::Query::create(
       arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
-      aql::QueryString(queryString), nullptr, arangodb::aql::QueryOptions(queryOptions.slice()));
+      aql::QueryString(queryString), nullptr,
+      arangodb::aql::QueryOptions(queryOptions.slice()));
   callback(*query);
   query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
@@ -569,7 +572,6 @@ consensus::index_t MockClusterServer::agencyTrx(std::string const& key,
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   TemplateSpecializer ts(name);
   std::string st = ts.specialize(plan_dbs_string);
-
 
   agencyTrx("/arango/Plan/Databases/" + name, st);
   st = ts.specialize(current_dbs_string);

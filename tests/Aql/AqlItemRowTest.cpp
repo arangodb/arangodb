@@ -257,12 +257,7 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
   nrOutputRegisters = 5;
 
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 5)};
-  RegisterInfos executorInfos{{},
-                              outputRegisters,
-                              nrInputRegisters,
-                              nrOutputRegisters,
-                              registersToClear,
-                              registersToKeep};
+  RegisterInfos executorInfos{{}, outputRegisters, nrInputRegisters, nrOutputRegisters, registersToClear, registersToKeep};
 
   OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                           registersToKeep, executorInfos.registersToClear());
@@ -321,18 +316,23 @@ using RowTypes = ::testing::Types<InputAqlItemRow, ShadowAqlItemRow>;
 
 TYPED_TEST_CASE(AqlItemRowsCommonEqTest, RowTypes);
 
-template <class T> T createInvalidRow();
-template <> InputAqlItemRow createInvalidRow<InputAqlItemRow>() { return InputAqlItemRow{CreateInvalidInputRowHint{}}; }
-template <> ShadowAqlItemRow createInvalidRow<ShadowAqlItemRow>() { return ShadowAqlItemRow{CreateInvalidShadowRowHint{}}; }
+template <class T>
+T createInvalidRow();
+template <>
+InputAqlItemRow createInvalidRow<InputAqlItemRow>() {
+  return InputAqlItemRow{CreateInvalidInputRowHint{}};
+}
+template <>
+ShadowAqlItemRow createInvalidRow<ShadowAqlItemRow>() {
+  return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+}
 
 TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
   using RowType = TypeParam;
   // We use the same value (and shadow row depth) for all rows, so we surely
   // test identicality.
-  SharedAqlItemBlockPtr block =
-      buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
-  SharedAqlItemBlockPtr otherBlock =
-      buildBlock<1>(this->itemBlockManager, {{{0}}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
+  SharedAqlItemBlockPtr otherBlock = buildBlock<1>(this->itemBlockManager, {{{0}}});
   if (std::is_same<RowType, ShadowAqlItemRow>::value) {
     block->makeShadowRow(0, 0);
     block->makeShadowRow(1, 0);
@@ -367,10 +367,8 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
 TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
   using RowType = TypeParam;
   auto const options = this->options;
-  SharedAqlItemBlockPtr block =
-      buildBlock<1>(this->itemBlockManager, {{{0}}, {{1}}});
-  SharedAqlItemBlockPtr otherBlock =
-      buildBlock<1>(this->itemBlockManager, {{{1}}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(this->itemBlockManager, {{{0}}, {{1}}});
+  SharedAqlItemBlockPtr otherBlock = buildBlock<1>(this->itemBlockManager, {{{1}}});
   if (std::is_same<RowType, ShadowAqlItemRow>::value) {
     block->makeShadowRow(0, 0);
     block->makeShadowRow(1, 0);
@@ -416,10 +414,8 @@ TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
   // In this test, we check for (non-)equivalence of shadow row depth.
   // This is essentially the same test as (AqlItemRowsCommonEqTest, row_equivalence),
   // but instead of the values differing, the shadow row depth does.
-  SharedAqlItemBlockPtr block =
-      buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
-  SharedAqlItemBlockPtr otherBlock =
-      buildBlock<1>(this->itemBlockManager, {{{0}}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
+  SharedAqlItemBlockPtr otherBlock = buildBlock<1>(this->itemBlockManager, {{{0}}});
   block->makeShadowRow(0, 0);
   block->makeShadowRow(1, 1);
   otherBlock->makeShadowRow(0, 1);

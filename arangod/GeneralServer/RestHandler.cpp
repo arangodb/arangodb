@@ -55,8 +55,7 @@ using namespace arangodb::rest;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
-    :
-      _request(request),
+    : _request(request),
       _response(response),
       _server(server),
       _statistics(),
@@ -119,9 +118,7 @@ void RestHandler::trackQueueStart() noexcept {
   _statistics.SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 }
 
-void RestHandler::trackQueueEnd() noexcept {
-  _statistics.SET_QUEUE_END();
-}
+void RestHandler::trackQueueEnd() noexcept { _statistics.SET_QUEUE_END(); }
 
 void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
@@ -143,7 +140,8 @@ void RestHandler::trackTaskEnd() noexcept {
     // update the time the last low priority item spent waiting in the queue.
 
     // the queueing time is in ms
-    uint64_t queueTimeMs = static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
+    uint64_t queueTimeMs =
+        static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
     SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
   }
 }
@@ -219,7 +217,9 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       std::string const& username = _request->user();
       if (!username.empty()) {
         headers.emplace(StaticStrings::Authorization,
-                        "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
+                        "bearer " +
+                            fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(),
+                                                           username));
       }
     }
   }
@@ -255,9 +255,12 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
   // Should the coordinator be gone by now, we'll respond with 404.
   // There is no point forwarding requests. This affects transactions, cursors, ...
-  if (server().getFeature<ClusterFeature>().clusterInfo().getServerEndpoint(serverId).empty()) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
+  if (server()
+          .getFeature<ClusterFeature>()
+          .clusterInfo()
+          .getServerEndpoint(serverId)
+          .empty()) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
                   std::string("cluster server ") + serverId + " unknown");
     return Result(TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
   }
@@ -287,7 +290,6 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       _response->setPayload(std::move(*response.response().stealPayload()));
     }
 
-
     auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
       if (it.first == "http/1.1") {
@@ -312,45 +314,46 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-      << "maintainer mode: caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
-      << "maintainer mode: caught velocypack exception in " << name() << ": "
-      << ex.what();
+        << "maintainer mode: caught velocypack exception in " << name() << ": "
+        << ex.what();
 #endif
     bool const isParseError =
-      (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
-       ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
+        (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
+         ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
     Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
                   std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
-      << "maintainer mode: caught memory exception in " << name() << ": "
-      << ex.what();
+        << "maintainer mode: caught memory exception in " << name() << ": "
+        << ex.what();
 #endif
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-      << "maintainer mode: caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "maintainer mode: caught unknown exception in " << name();
+    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME)
+        << "maintainer mode: caught unknown exception in " << name();
 #endif
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 } catch (...) {
-  // we can only get here if putting together an error response or an 
+  // we can only get here if putting together an error response or an
   // error log message failed with an exception. there is nothing we
   // can do here to signal this problem.
 }
@@ -366,7 +369,7 @@ void RestHandler::runHandlerStateMachine() {
         break;
 
       case HandlerState::EXECUTE: {
-        executeEngine(/*isContinue*/false);
+        executeEngine(/*isContinue*/ false);
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
@@ -377,9 +380,9 @@ void RestHandler::runHandlerStateMachine() {
       }
 
       case HandlerState::CONTINUED: {
-        executeEngine(/*isContinue*/true);
+        executeEngine(/*isContinue*/ true);
         if (_state == HandlerState::PAUSED) {
-          shutdownExecute(/*isFinalized*/false);
+          shutdownExecute(/*isFinalized*/ false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
           return;  // stop state machine
@@ -397,7 +400,7 @@ void RestHandler::runHandlerStateMachine() {
         _statistics.SET_REQUEST_END();
 
         // shutdownExecute is noexcept
-        shutdownExecute(true); // may not be moved down
+        shutdownExecute(true);  // may not be moved down
 
         _state = HandlerState::DONE;
 
@@ -459,7 +462,7 @@ void RestHandler::prepareEngine() {
 bool RestHandler::wakeupHandler() {
   RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
   if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine(); // may change _state
+    runHandlerStateMachine();  // may change _state
     return _state == HandlerState::PAUSED;
   }
   return false;
@@ -530,7 +533,8 @@ void RestHandler::executeEngine(bool isContinue) {
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "maintainer mode: caught unknown exception in " << name();
+    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME)
+        << "maintainer mode: caught unknown exception in " << name();
 #endif
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
@@ -567,7 +571,6 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
 
 void RestHandler::compressResponse() {
   if (_response->isCompressionAllowed()) {
-
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
@@ -577,7 +580,6 @@ void RestHandler::compressResponse() {
       default:
         break;
     }
-
   }
 }
 

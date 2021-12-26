@@ -52,13 +52,14 @@ struct ClusterFeatureScale {
   static log_scale_t<uint64_t> scale() { return {2, 58, 120000, 10}; }
 };
 
-DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "Request time for Agency requests [ms]");
+DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
+                  "Request time for Agency requests [ms]");
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Cluster"),
-    _apiJwtPolicy("jwt-compat"),
-    _agency_comm_request_time_ms(
-      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agencycomm_request_time_msec{})) {
+    : ApplicationFeature(server, "Cluster"),
+      _apiJwtPolicy("jwt-compat"),
+      _agency_comm_request_time_ms(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -68,13 +69,13 @@ ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
     // force shutdown of Plan/Current syncers. under normal circumstances they
     // have been shut down already when we get here, but there are rare cases in
-    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if
     // something goes very wrong at startup)
     waitForSyncersToStop();
 
     // force shutdown of AgencyCache. under normal circumstances the cache will
     // have been shut down already when we get here, but there are rare cases in
-    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if
     // something goes very wrong at startup)
     shutdownAgencyCache();
 
@@ -114,7 +115,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
   options->addObsoleteOption("--cluster.agency-prefix", "agency prefix", false);
-  
+
   options->addOption(
       "--cluster.require-persisted-id",
       "if set to true, then the instance will only start if a UUID file is "
@@ -131,7 +132,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                                   arangodb::options::Flags::OnCoordinator,
                                                   arangodb::options::Flags::OnDBServer));
-
 
   options->addOption("--cluster.my-role", "this server's role",
                      new StringParameter(&_myRole));
@@ -159,7 +159,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                                                arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600);
-
 
   options->addOption("--cluster.system-replication-factor",
                      "default replication factor for system collections",
@@ -228,15 +227,19 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                    arangodb::options::Flags::Hidden));
 
   options
-      ->addOption("--cluster.api-jwt-policy",
-                  "access permissions required for accessing /_admin/cluster REST APIs "
-                  "(jwt-all = JWT required to access all operations, jwt-write = JWT required "
-                  "for post/put/delete operations, jwt-compat = 3.7 compatibility mode)",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_apiJwtPolicy,
-                      std::unordered_set<std::string>{"jwt-all", "jwt-write", "jwt-compat"}),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator))
+      ->addOption(
+          "--cluster.api-jwt-policy",
+          "access permissions required for accessing /_admin/cluster REST APIs "
+          "(jwt-all = JWT required to access all operations, jwt-write = JWT "
+          "required "
+          "for post/put/delete operations, jwt-compat = 3.7 compatibility "
+          "mode)",
+          new DiscreteValuesParameter<StringParameter>(
+              &_apiJwtPolicy,
+              std::unordered_set<std::string>{"jwt-all", "jwt-write",
+                                              "jwt-compat"}),
+          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                       arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30800);
   options
       ->addOption("--cluster.max-number-of-move-shards",
@@ -342,8 +345,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
            "be higher than `--cluster.max-replication-factor`";
     FATAL_ERROR_EXIT();
   }
-  if (_systemReplicationFactor > 0 &&
-      _systemReplicationFactor < _minReplicationFactor) {
+  if (_systemReplicationFactor > 0 && _systemReplicationFactor < _minReplicationFactor) {
     LOG_TOPIC("dfc38", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.system-replication-factor`. Must not "
            "be lower than `--cluster.min-replication-factor`";
@@ -470,8 +472,8 @@ void ClusterFeature::prepare() {
   if (!_enableCluster) {
     reportRole(ServerState::instance()->getRole());
     return;
-  } 
-    
+  }
+
   reportRole(_requestedRole);
 
   network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
@@ -483,7 +485,6 @@ void ClusterFeature::prepare() {
   config.name = "AgencyComm";
 
   _asyncAgencyCommPool = std::make_unique<network::ConnectionPool>(config);
-
 
   // register the prefix with the communicator
   AgencyCommHelper::initialize(_agencyPrefix);
@@ -520,7 +521,8 @@ void ClusterFeature::prepare() {
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
     _agencyCache->start();
-    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
+    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER)
+        << "Waiting for agency cache to become ready.";
   }
 
   if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myEndpoint,
@@ -540,18 +542,23 @@ void ClusterFeature::prepare() {
         << "'. No role configured in agency (" << endpoints << ")";
     FATAL_ERROR_EXIT();
   }
-
 }
 
-DECLARE_COUNTER(arangodb_dropped_followers_total, "Number of drop-follower events");
-DECLARE_COUNTER(arangodb_refused_followers_total, "Number of refusal answers from a follower during synchronous replication");
-DECLARE_COUNTER(arangodb_sync_wrong_checksum_total, "Number of times a mismatching shard checksum was detected when syncing shards");
-DECLARE_COUNTER(arangodb_sync_rebuilds_total, "Number of times a follower shard needed to be completely rebuilt because of too many synchronization failures");
+DECLARE_COUNTER(arangodb_dropped_followers_total,
+                "Number of drop-follower events");
+DECLARE_COUNTER(
+    arangodb_refused_followers_total,
+    "Number of refusal answers from a follower during synchronous replication");
+DECLARE_COUNTER(arangodb_sync_wrong_checksum_total,
+                "Number of times a mismatching shard checksum was detected "
+                "when syncing shards");
+DECLARE_COUNTER(arangodb_sync_rebuilds_total,
+                "Number of times a follower shard needed to be completely "
+                "rebuilt because of too many synchronization failures");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
 void ClusterFeature::start() {
-
   // return if cluster is disabled
   if (!_enableCluster) {
     startHeartbeatThread(nullptr, 5000, 5, std::string());
@@ -569,7 +576,7 @@ void ClusterFeature::start() {
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
     _agencyCache->waitFor(1).get();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
-      << "Agency cache is ready. Starting cluster cache syncers";
+        << "Agency cache is ready. Starting cluster cache syncers";
   }
 
   // If we are a coordinator, we wait until at least one DBServer is there,
@@ -586,14 +593,14 @@ void ClusterFeature::start() {
 #endif
     while (true) {
       LOG_TOPIC("d4db4", INFO, arangodb::Logger::CLUSTER)
-        << "Waiting for DBservers to show up...";
+          << "Waiting for DBservers to show up...";
 
       _clusterInfo->loadCurrentDBServers();
       std::vector<ServerID> DBServers = _clusterInfo->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
           (DBServers.size() > 1 || TRI_microtime() - start > waitTime)) {
         LOG_TOPIC("22f55", INFO, arangodb::Logger::CLUSTER)
-          << "Found " << DBServers.size() << " DBservers.";
+            << "Found " << DBServers.size() << " DBservers.";
         break;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -615,14 +622,15 @@ void ClusterFeature::start() {
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
-    _followersDroppedCounter =
-      server().getFeature<arangodb::MetricsFeature>().add(arangodb_dropped_followers_total{});
-    _followersRefusedCounter =
-      server().getFeature<arangodb::MetricsFeature>().add(arangodb_refused_followers_total{});
+    _followersDroppedCounter = server().getFeature<arangodb::MetricsFeature>().add(
+        arangodb_dropped_followers_total{});
+    _followersRefusedCounter = server().getFeature<arangodb::MetricsFeature>().add(
+        arangodb_refused_followers_total{});
     _followersWrongChecksumCounter =
-      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
+        server().getFeature<arangodb::MetricsFeature>().add(
+            arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
-      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_rebuilds_total{});
+        server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_rebuilds_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -630,15 +638,16 @@ void ClusterFeature::start() {
       << (_forceOneShard ? " with one-shard mode" : "")
       << ". Agency version: " << version << ", Agency endpoints: " << endpoints
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
-      << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << ServerState::roleToString(role);
+      << "', advertised endpoint: " << _myAdvertisedEndpoint
+      << ", role: " << ServerState::roleToString(role);
 
-  auto [acb, idx] = _agencyCache->read(
-    std::vector<std::string>{AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
+  auto [acb, idx] = _agencyCache->read(std::vector<std::string>{
+      AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
   auto result = acb->slice();
 
   if (result.isArray()) {
-    velocypack::Slice HeartbeatIntervalMs = result[0].get(
-      std::vector<std::string>({AgencyCommHelper::path(), "Sync", "HeartbeatIntervalMs"}));
+    velocypack::Slice HeartbeatIntervalMs = result[0].get(std::vector<std::string>(
+        {AgencyCommHelper::path(), "Sync", "HeartbeatIntervalMs"}));
 
     if (HeartbeatIntervalMs.isInteger()) {
       try {
@@ -674,20 +683,21 @@ void ClusterFeature::start() {
   if (role == ServerState::ROLE_COORDINATOR) {
     auto hotBackupRestoreDone = [this](VPackSlice const& result) -> bool {
       if (!server().isStopping()) {
-        LOG_TOPIC("12636", INFO, Logger::BACKUP) << "Got a hotbackup restore "
-          "event, getting new cluster-wide unique IDs...";
+        LOG_TOPIC("12636", INFO, Logger::BACKUP)
+            << "Got a hotbackup restore "
+               "event, getting new cluster-wide unique IDs...";
         this->_clusterInfo->uniqid(1000000);
       }
       return true;
     };
     _hotbackupRestoreCallback =
-      std::make_shared<AgencyCallback>(
-        server(), "Sync/HotBackupRestoreDone", hotBackupRestoreDone, true, false);
-    Result r =_agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback, true);
+        std::make_shared<AgencyCallback>(server(), "Sync/HotBackupRestoreDone",
+                                         hotBackupRestoreDone, true, false);
+    Result r = _agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback, true);
     if (r.fail()) {
       LOG_TOPIC("82516", WARN, Logger::BACKUP)
-        << "Could not register hotbackup restore callback, this could lead "
-           "to problems after a restore!";
+          << "Could not register hotbackup restore callback, this could lead "
+             "to problems after a restore!";
     }
   }
 #endif
@@ -715,8 +725,9 @@ void ClusterFeature::stop() {
 #ifdef USE_ENTERPRISE
   if (_hotbackupRestoreCallback != nullptr) {
     if (!_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
-      LOG_TOPIC("84152", DEBUG, Logger::BACKUP) << "Strange, we could not "
-        "unregister the hotbackup restore callback.";
+      LOG_TOPIC("84152", DEBUG, Logger::BACKUP)
+          << "Strange, we could not "
+             "unregister the hotbackup restore callback.";
     }
   }
 #endif
@@ -744,7 +755,7 @@ void ClusterFeature::stop() {
     // the cluster setup.
     ServerState::instance()->logoff(10.0);
   }
-  
+
   // Make sure ClusterInfo's syncer threads have stopped.
   waitForSyncersToStop();
 
@@ -760,7 +771,6 @@ void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
 void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                                           std::string const& endpoints) {
-
   _heartbeatThread =
       std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
@@ -789,12 +799,13 @@ void ClusterFeature::shutdownHeartbeatThread() {
   while (_heartbeatThread->isRunning()) {
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
       LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
-        << "exiting prematurely as we failed terminating the heartbeat thread";
+          << "exiting prematurely as we failed terminating the heartbeat "
+             "thread";
       FATAL_ERROR_EXIT();
     }
     if (++counter % 50 == 0) {
       LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
-        << "waiting for heartbeat thread to finish";
+          << "waiting for heartbeat thread to finish";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
@@ -820,12 +831,12 @@ void ClusterFeature::shutdownAgencyCache() {
   while (_agencyCache != nullptr && _agencyCache->isRunning()) {
     if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
       LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
-        << "exiting prematurely as we failed terminating the agency cache";
+          << "exiting prematurely as we failed terminating the agency cache";
       FATAL_ERROR_EXIT();
     }
     if (++counter % 50 == 0) {
       LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)
-        << "waiting for agency cache thread to finish";
+          << "waiting for agency cache thread to finish";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
@@ -838,11 +849,9 @@ void ClusterFeature::notify() {
   }
 }
 
-
 std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
   return _heartbeatThread;
 }
-
 
 ClusterInfo& ClusterFeature::clusterInfo() {
   if (!_clusterInfo) {
@@ -851,7 +860,6 @@ ClusterInfo& ClusterFeature::clusterInfo() {
   return *_clusterInfo;
 }
 
-
 AgencyCache& ClusterFeature::agencyCache() {
   if (_agencyCache == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -859,11 +867,13 @@ AgencyCache& ClusterFeature::agencyCache() {
   return *_agencyCache;
 }
 
-
 void ClusterFeature::allocateMembers() {
-  _agencyCallbackRegistry = std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
-  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
-  _agencyCache = std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry, _syncerShutdownCode);
+  _agencyCallbackRegistry =
+      std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(),
+                                               _syncerShutdownCode);
+  _agencyCache = std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry,
+                                               _syncerShutdownCode);
 }
 
 void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
@@ -872,7 +882,7 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, 
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database).second) {
         LOG_TOPIC("35b75", DEBUG, Logger::MAINTENANCE)
-          << "adding " << database << " to dirty databases";
+            << "adding " << database << " to dirty databases";
       }
     }
     if (callNotify) {
@@ -889,7 +899,7 @@ void ClusterFeature::addDirty(std::unordered_map<std::string, std::shared_ptr<VP
       if (_dirtyDatabases.emplace(database.first).second) {
         addedAny = true;
         LOG_TOPIC("35b77", DEBUG, Logger::MAINTENANCE)
-          << "adding " << database << " to dirty databases";
+            << "adding " << database << " to dirty databases";
       }
     }
     if (addedAny) {
@@ -901,7 +911,8 @@ void ClusterFeature::addDirty(std::unordered_map<std::string, std::shared_ptr<VP
 void ClusterFeature::addDirty(std::string const& database) {
   MUTEX_LOCKER(guard, _dirtyLock);
   if (_dirtyDatabases.emplace(database).second) {
-    LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
+    LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE)
+        << "adding " << database << " to dirty databases";
   }
   // This notify is needed even if no database is added
   notify();

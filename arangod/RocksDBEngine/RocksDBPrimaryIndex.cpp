@@ -70,8 +70,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-std::string const lowest;            // smallest possible key
-std::string const highest(KeyGenerator::maxKeyLength, std::numeric_limits<std::string::value_type>::max());  // greatest possible key
+std::string const lowest;  // smallest possible key
+std::string const highest(KeyGenerator::maxKeyLength,
+                          std::numeric_limits<std::string::value_type>::max());  // greatest possible key
 }  // namespace
 
 // ================ Primary Index Iterators ================
@@ -83,8 +84,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   RocksDBPrimaryIndexEqIterator(LogicalCollection* collection,
                                 transaction::Methods* trx, RocksDBPrimaryIndex* index,
                                 std::unique_ptr<VPackBuilder> key,
-                                bool allowCoveringIndexOptimization,
-                                ReadOwnWrites readOwnWrites)
+                                bool allowCoveringIndexOptimization, ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _key(std::move(key)),
@@ -135,7 +135,8 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
 
     _done = true;
     LocalDocumentId documentId =
-        _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()), canReadOwnWrites());
+        _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()),
+                          canReadOwnWrites());
     if (documentId.isSet()) {
       cb(documentId);
     }
@@ -154,7 +155,8 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
 
     _done = true;
     LocalDocumentId documentId =
-        _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()), canReadOwnWrites());
+        _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()),
+                          canReadOwnWrites());
     if (documentId.isSet()) {
       cb(documentId, _key->slice());
     }
@@ -180,7 +182,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
                                 transaction::Methods* trx, RocksDBPrimaryIndex* index,
                                 std::unique_ptr<VPackBuilder> keys,
                                 bool allowCoveringIndexOptimization)
-      : IndexIterator(collection, trx, ReadOwnWrites::no), // "in"-checks never need to observe own writes.
+      : IndexIterator(collection, trx, ReadOwnWrites::no),  // "in"-checks never need to observe own writes.
         _index(index),
         _keys(std::move(keys)),
         _iterator(_keys->slice()),
@@ -230,7 +232,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     while (limit > 0) {
       // This is an in-iterator, and "in"-checks never need to observe own writes.
       LocalDocumentId documentId =
-          _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator), ReadOwnWrites::no);
+          _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator),
+                            ReadOwnWrites::no);
       if (documentId.isSet()) {
         cb(documentId);
         --limit;
@@ -256,7 +259,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     while (limit > 0) {
       // This is an in-iterator, and "in"-checks never need to observe own writes.
       LocalDocumentId documentId =
-          _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator), ReadOwnWrites::no);
+          _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator),
+                            ReadOwnWrites::no);
       if (documentId.isSet()) {
         cb(documentId, *_iterator);
         --limit;
@@ -307,7 +311,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   char const* typeName() const override {
     return "primary-index-range-iterator";
   }
-  
+
   /// @brief index does not support rearming
   bool canRearm() const override { return false; }
 
@@ -353,7 +357,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       }
     } while (true);
   }
-  
+
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     ensureIterator();
     TRI_ASSERT(_trx->state()->isRunning());
@@ -386,7 +390,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       } else {
         _iterator->Next();
       }
-      
+
       if (ADB_UNLIKELY(!_iterator->Valid())) {
         // validate that Iterator is in a good shape and hasn't failed
         arangodb::rocksutils::checkIteratorStatus(_iterator.get());
@@ -417,7 +421,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         } else {
           _iterator->Next();
         }
-      
+
         if (!_iterator->Valid() || outOfRange()) {
           break;
         }
@@ -427,7 +431,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         }
       } while (true);
     }
-  
+
     // validate that Iterator is in a good shape and hasn't failed
     arangodb::rocksutils::checkIteratorStatus(_iterator.get());
   }
@@ -437,7 +441,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
     _mustSeek = true;
   }
-  
+
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override { return true; }
@@ -458,7 +462,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         }
       });
     }
-  
+
     TRI_ASSERT(_iterator != nullptr);
     if (_mustSeek) {
       if constexpr (reverse) {
@@ -474,15 +478,15 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   inline bool outOfRange() const {
     TRI_ASSERT(_trx->state()->isRunning());
     // we can effectively disable the out-of-range checks for read-only
-    // transactions, as our Iterator is a snapshot-based iterator with a 
-    // configured iterate_upper_bound/iterate_lower_bound value. 
+    // transactions, as our Iterator is a snapshot-based iterator with a
+    // configured iterate_upper_bound/iterate_lower_bound value.
     // this makes RocksDB filter out non-matching keys automatically.
-    // however, for a write transaction our Iterator is a rocksdb BaseDeltaIterator,
-    // which will merge the values from a snapshot iterator and the changes in
-    // the current transaction. here rocksdb will only apply the bounds checks
-    // for the base iterator (from the snapshot), but not for the delta iterator
-    // (from the current transaction), so we still have to carry out the checks
-    // ourselves.
+    // however, for a write transaction our Iterator is a rocksdb
+    // BaseDeltaIterator, which will merge the values from a snapshot iterator
+    // and the changes in the current transaction. here rocksdb will only apply
+    // the bounds checks for the base iterator (from the snapshot), but not for
+    // the delta iterator (from the current transaction), so we still have to
+    // carry out the checks ourselves.
     if constexpr (reverse) {
       return _mustCheckBounds && (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
@@ -605,8 +609,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 /// document
 bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
                                          arangodb::velocypack::StringRef keyRef,
-                                         LocalDocumentId& documentId,
-                                         RevisionId& revisionId,
+                                         LocalDocumentId& documentId, RevisionId& revisionId,
                                          ReadOwnWrites readOwnWrites) const {
   documentId = LocalDocumentId::none();
   revisionId = RevisionId::none();
@@ -630,17 +633,15 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   return true;
 }
 
-Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx, 
-                                     RocksDBMethods* mthd,
+Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx, RocksDBMethods* mthd,
                                      RocksDBKeyLeaser const& key,
                                      arangodb::velocypack::Slice keySlice,
-                                     OperationOptions const& options,
-                                     bool insert) {
+                                     OperationOptions const& options, bool insert) {
   TRI_ASSERT(keySlice.isString());
 
   bool const lock = !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
   IndexOperationMode mode = options.indexOperationMode;
-  
+
   transaction::StringLeaser leased(&trx);
   rocksdb::PinnableSlice ps(leased.get());
   Result res;
@@ -656,8 +657,8 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
     // INSERT case
     if (s.ok()) {  // detected conflicting primary key
       if (mode == IndexOperationMode::internal) {
-      // in this error mode, we return the conflicting document's key
-      // inside the error message string (and nothing else)!
+        // in this error mode, we return the conflicting document's key
+        // inside the error message string (and nothing else)!
         return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
       }
       // build a proper error message
@@ -677,8 +678,7 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
   return res;
 }
 
-Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx, 
-                                        RocksDBMethods* mthd,
+Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx, RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
                                         velocypack::Slice slice,
                                         OperationOptions const& options) {
@@ -693,8 +693,7 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
   return probeKey(trx, mthd, key, keySlice, options, /*insert*/ true);
 }
 
-Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx, 
-                                         RocksDBMethods* mthd,
+Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx, RocksDBMethods* mthd,
                                          LocalDocumentId const& documentId,
                                          velocypack::Slice slice,
                                          OperationOptions const& options) {
@@ -709,20 +708,17 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
   return probeKey(trx, mthd, key, keySlice, options, /*insert*/ false);
 }
 
-Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, 
-                                   RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
-                                   velocypack::Slice slice,
-                                   OperationOptions const& options,
-                                   bool performChecks) {
+Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+                                   LocalDocumentId const& documentId, velocypack::Slice slice,
+                                   OperationOptions const& options, bool performChecks) {
   VPackSlice keySlice;
   RevisionId revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
   TRI_ASSERT(keySlice.isString());
-  
+
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
-  
+
   Result res;
 
   if (performChecks) {
@@ -735,7 +731,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // invalidate new index cache entry to avoid caching without committing first
-    invalidateCacheEntry(key->string().data(), static_cast<uint32_t>(key->string().size()));
+    invalidateCacheEntry(key->string().data(),
+                         static_cast<uint32_t>(key->string().size()));
   }
 
   TRI_ASSERT(revision.isSet());
@@ -750,10 +747,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& oldDocumentId,
-                                   velocypack::Slice oldDoc,
-                                   LocalDocumentId const& newDocumentId,
-                                   velocypack::Slice newDoc,
-                                   OperationOptions const& /*options*/,
+                                   velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
+                                   velocypack::Slice newDoc, OperationOptions const& /*options*/,
                                    bool /*performChecks*/) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
@@ -827,14 +822,12 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false>>(
           &_collection /*logical collection*/, trx, this,
-          RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
-          readOwnWrites);
+          RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest), readOwnWrites);
     }
     // reverse version
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true>>(
         &_collection /*logical collection*/, trx, this,
-        RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest),
-        readOwnWrites);
+        RocksDBKeyBounds::PrimaryIndex(objectId(), ::lowest, ::highest), readOwnWrites);
   }
 
   TRI_ASSERT(node != nullptr);
@@ -961,7 +954,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
           // modify upper bound so that it is not included
           // primary keys are ASCII only, so we don't need to care about UTF-8 characters here
           if (value.back() >= static_cast<std::string::value_type>(0x02)) {
-            value.back() -= 0x01;  
+            value.back() -= 0x01;
             value.append(::highest);
           }
         }
@@ -984,7 +977,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
           // modify lower bound so it is included in the results
           // primary keys are ASCII only, so we don't need to care about UTF-8 characters here
           if (value.back() >= static_cast<std::string::value_type>(0x02)) {
-            value.back() -= 0x01;  
+            value.back() -= 0x01;
             value.append(::highest);
           }
         }
@@ -1065,8 +1058,9 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createEqIterator(
   }
 
   if (!key->isEmpty()) {
-    return std::make_unique<RocksDBPrimaryIndexEqIterator>(&_collection, trx, this,
-                                                           std::move(key), !isId, readOwnWrites);
+    return std::make_unique<RocksDBPrimaryIndexEqIterator>(&_collection, trx,
+                                                           this, std::move(key),
+                                                           !isId, readOwnWrites);
   }
 
   return std::make_unique<EmptyIndexIterator>(&_collection, trx);

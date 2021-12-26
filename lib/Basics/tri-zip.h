@@ -49,4 +49,3 @@ ErrorCode TRI_ZipFile(char const* filename, char const* dir,
 
 ErrorCode TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
                         bool overwrite, char const* password, std::string& errorMessage);
-

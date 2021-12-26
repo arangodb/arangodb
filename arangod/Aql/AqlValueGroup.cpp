@@ -32,7 +32,8 @@ AqlValueGroupHash::AqlValueGroupHash([[maybe_unused]] size_t num)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     : _num(num)
 #endif
-{}
+{
+}
 
 size_t AqlValueGroupHash::operator()(const std::vector<AqlValue>& value) const {
   uint64_t hash = 0x12345678;
@@ -83,7 +84,8 @@ bool AqlValueGroupEqual::operator()(AqlValue const& lhs, AqlValue const& rhs) co
   return AqlValue::Compare(_vpackOptions, lhs, rhs, false) == 0;
 }
 
-bool AqlValueGroupEqual::operator()(HashedAqlValueGroup const& lhs, HashedAqlValueGroup const& rhs) const {
+bool AqlValueGroupEqual::operator()(HashedAqlValueGroup const& lhs,
+                                    HashedAqlValueGroup const& rhs) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   AqlValueGroupHash hasher(lhs.values.size());
   TRI_ASSERT(hasher(lhs.values) == lhs.hash);

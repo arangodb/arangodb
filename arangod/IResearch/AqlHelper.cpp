@@ -22,8 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
 #include "AqlHelper.h"
+#include <string>
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -159,7 +159,9 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
       return lhs->value.value._int == rhs->value.value._int;
     }
 
-    default: { return false; }
+    default: {
+      return false;
+    }
   }
 }
 
@@ -336,9 +338,9 @@ void visitReferencedVariables(aql::AstNode const& root,
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
 
 /*static*/ irs::string_ref const& ScopedAqlValue::typeString(ScopedValueType type) noexcept {
-  static irs::string_ref const TYPE_NAMES[] = {
-    "invalid", "null", "boolean", "double", "string", "array", "range", "object"
-  };
+  static irs::string_ref const TYPE_NAMES[] = {"invalid", "null",   "boolean",
+                                               "double",  "string", "array",
+                                               "range",   "object"};
 
   TRI_ASSERT(size_t(type) < IRESEARCH_COUNTOF(TYPE_NAMES));
 
@@ -387,14 +389,12 @@ bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
   return true;
 }
 
-bool normalizeGeoDistanceCmpNode(
-    aql::AstNode const& in,
-    aql::Variable const& ref,
-    NormalizedCmpNode& out) {
+bool normalizeGeoDistanceCmpNode(aql::AstNode const& in, aql::Variable const& ref,
+                                 NormalizedCmpNode& out) {
   static_assert(adjacencyChecker<aql::AstNodeType>::checkAdjacency<
-                aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
-                aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
-                aql::NODE_TYPE_OPERATOR_BINARY_NE, aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
+                    aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
+                    aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
+                    aql::NODE_TYPE_OPERATOR_BINARY_NE, aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
                 "Values are not adjacent");
 
   auto checkFCallGeoDistance = [](aql::AstNode const* node, aql::Variable const& ref) {
@@ -404,7 +404,7 @@ bool normalizeGeoDistanceCmpNode(
 
     auto* impl = reinterpret_cast<aql::Function const*>(node->getData())->implementation;
 
-   if (impl != &aql::Functions::GeoDistance) {
+    if (impl != &aql::Functions::GeoDistance) {
       return false;
     }
 
@@ -420,8 +420,7 @@ bool normalizeGeoDistanceCmpNode(
   auto cmp = in.type;
 
   if (cmp < aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-      cmp > aql::NODE_TYPE_OPERATOR_BINARY_GE ||
-      in.numMembers() != 2) {
+      cmp > aql::NODE_TYPE_OPERATOR_BINARY_GE || in.numMembers() != 2) {
     // wrong `in` type
     return false;
   }
@@ -452,12 +451,12 @@ bool normalizeGeoDistanceCmpNode(
   return true;
 }
 
-bool normalizeCmpNode(aql::AstNode const& in,
-                      aql::Variable const& ref, NormalizedCmpNode& out) {
+bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
+                      NormalizedCmpNode& out) {
   static_assert(adjacencyChecker<aql::AstNodeType>::checkAdjacency<
-                aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
-                aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
-                aql::NODE_TYPE_OPERATOR_BINARY_NE, aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
+                    aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
+                    aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
+                    aql::NODE_TYPE_OPERATOR_BINARY_NE, aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
                 "Values are not adjacent");
 
   if (!in.isDeterministic()) {
@@ -500,8 +499,8 @@ bool normalizeCmpNode(aql::AstNode const& in,
   return true;
 }
 
-bool attributeAccessEqual(aql::AstNode const* lhs,
-                          aql::AstNode const* rhs, QueryContext const* ctx) {
+bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
+                          QueryContext const* ctx) {
   struct NodeValue {
     enum class Type {
       INVALID = 0,
@@ -621,7 +620,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs,
   } lhsValue, rhsValue;
 
   // TODO: is the "&" intionally. If yes: why?
-  //cppcheck-suppress uninitvar; false positive
+  // cppcheck-suppress uninitvar; false positive
   while (lhsValue.read(lhs, ctx) & rhsValue.read(rhs, ctx)) {
     if (lhsValue != rhsValue) {
       return false;

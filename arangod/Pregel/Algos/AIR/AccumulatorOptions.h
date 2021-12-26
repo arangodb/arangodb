@@ -29,8 +29,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <map>
-#include <unordered_set>
 #include <string>
+#include <unordered_set>
 
 #include <VPackDeserializer/errors.h>
 #include <VPackDeserializer/types.h>
@@ -99,7 +99,8 @@ struct CustomAccumulatorDefinition {
 // and a struct of options
 using AccumulatorsDeclaration = std::unordered_map<std::string, AccumulatorOptions>;
 using BindingDeclarations = std::unordered_map<std::string, VPackBuilder>;
-using CustomAccumulatorDefinitions = std::unordered_map<std::string, CustomAccumulatorDefinition>;
+using CustomAccumulatorDefinitions =
+    std::unordered_map<std::string, CustomAccumulatorDefinition>;
 using DataAccessDefinitions = DataAccessDefinition;
 
 struct AlgorithmPhase {

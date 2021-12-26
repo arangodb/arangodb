@@ -157,7 +157,9 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
       // We must see our own writes, because we may have to remove conflicting documents
       // (that we just inserted) as documents may be replicated in unexpected order.
-      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult, arangodb::ReadOwnWrites::yes).ok()) {
+      if (coll->getPhysical()
+              ->lookupKey(&trx, keySlice.stringRef(), lookupResult, arangodb::ReadOwnWrites::yes)
+              .ok()) {
         // determine if we already have this revision or need to replace the
         // one we have
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
@@ -213,14 +215,13 @@ arangodb::Result applyCollectionDumpMarkerInternal(
             opRes = trx.insert(coll->name(), slice, options);
           }
 
-          if (opRes.ok() || 
-              !opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+          if (opRes.ok() || !opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
               trx.isSingleOperationTransaction()) {
             break;
           }
 
-          // in case we get a unique constraint violation in a multi-document transaction,
-          // we can remove the conflicting document and try again
+          // in case we get a unique constraint violation in a multi-document
+          // transaction, we can remove the conflicting document and try again
           options.indexOperationMode = arangodb::IndexOperationMode::normal;
 
           VPackBuilder tmp;
@@ -307,8 +308,8 @@ bool Syncer::JobSynchronizer::gotResponse() const noexcept {
 }
 
 /// @brief will be called whenever a response for the job comes in
-void Syncer::JobSynchronizer::gotResponse(
-    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept {
+void Syncer::JobSynchronizer::gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response,
+                                          double time) noexcept {
   CONDITION_LOCKER(guard, _condition);
   _res.reset();  // no error!
   _response = std::move(response);
@@ -376,7 +377,8 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(),
+                                                                 cb]() {
     // whatever happens next, when we leave this here, we need to indicate
     // that there is no more posted job.
     // otherwise the calling thread may block forever waiting on the
@@ -458,10 +460,7 @@ SyncerId newSyncerId() {
 }
 
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : syncerId{newSyncerId()}, 
-      applier{configuration}, 
-      connection{syncer, configuration}, 
-      leader{configuration} {}
+    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, leader{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
@@ -481,7 +480,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   } else if (_state.applier._chunkSize < 16 * 1024) {
     _state.applier._chunkSize = 16 * 1024;
   }
-    
+
   // get our own server-id
   _state.localServerId = ServerIdFeature::getId();
   _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId.id());
@@ -537,9 +536,10 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
     TRI_vocbase_t* vocbase = server.getFeature<DatabaseFeature>().lookupDatabase(name);
 
     if (vocbase != nullptr) {
-      _state.vocbases.try_emplace(name, *vocbase); //we can not be lazy because of the guard requires a valid ref
+      _state.vocbases.try_emplace(name, *vocbase);  // we can not be lazy because of the guard requires a valid ref
     } else {
-      LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
+      LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION)
+          << "could not find database '" << name << "'";
     }
 
     return vocbase;
@@ -550,7 +550,6 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-
   VPackSlice uuid;
 
   if ((uuid = slice.get(::cuidRef)).isString()) {
@@ -558,7 +557,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
     return vocbase.lookupCollectionByUuid(uuid.copyString());
   }
-  
+
   // extract "cid"
   DataSourceId cid = ::getCid(slice);
 
@@ -963,8 +962,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 
   try {
     LogicalView::ptr empty;  // ignore result
-    return LogicalView::create(
-      empty, vocbase, merged.slice(), false);
+    return LogicalView::create(empty, vocbase, merged.slice(), false);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -975,8 +973,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
 }
 
 /// @brief drops a view, based on the VelocyPack provided
-Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
-                        bool /*reportError*/) {
+Result Syncer::dropView(arangodb::velocypack::Slice const& slice, bool /*reportError*/) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

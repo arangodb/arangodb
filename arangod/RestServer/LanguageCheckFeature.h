@@ -37,4 +37,3 @@ class LanguageCheckFeature final : public application_features::ApplicationFeatu
 };
 
 }  // namespace arangodb
-

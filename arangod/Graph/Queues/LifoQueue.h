@@ -104,4 +104,3 @@ class LifoQueue {
 
 }  // namespace graph
 }  // namespace arangodb
-

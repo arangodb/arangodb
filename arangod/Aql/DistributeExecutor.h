@@ -123,4 +123,3 @@ class ExecutionBlockImpl<DistributeExecutor>
 
 }  // namespace aql
 }  // namespace arangodb
-

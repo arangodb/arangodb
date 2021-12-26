@@ -109,8 +109,7 @@ void ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
   std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap);
 }
 
-bool ConstrainedSortExecutor::compareInput(size_t rowPos,
-                                           InputAqlItemRow const& row) const {
+bool ConstrainedSortExecutor::compareInput(size_t rowPos, InputAqlItemRow const& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);
@@ -158,9 +157,9 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
     arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForSort());
 
     _rows.reserve(infos.limit());
-    
+
     // now we are responsible for memory tracking
-    guard.steal(); 
+    guard.steal();
   }
 
   _cmpHeap->setBuffer(_heapBuffer.get());
@@ -188,7 +187,8 @@ ExecutorState ConstrainedSortExecutor::consumeInput(AqlItemBlockInputRange& inpu
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    auto const& [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    auto const& [state, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     // Otherwise we would have left the loop
     TRI_ASSERT(input.isInitialized());
     ++_rowsRead;

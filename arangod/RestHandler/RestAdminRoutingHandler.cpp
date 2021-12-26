@@ -37,7 +37,8 @@ RestAdminRoutingHandler::RestAdminRoutingHandler(application_features::Applicati
 
 RestStatus RestAdminRoutingHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                  "JavaScript operations are disabled");
     return RestStatus::DONE;
   }
 

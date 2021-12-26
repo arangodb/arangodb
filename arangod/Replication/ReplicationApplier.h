@@ -159,8 +159,8 @@ class ReplicationApplier {
   void setProgress(std::string const& msg);
 
   virtual std::shared_ptr<InitialSyncer> buildInitialSyncer() const = 0;
-  virtual std::shared_ptr<TailingSyncer> buildTailingSyncer(
-      TRI_voc_tick_t initialTick, bool useTick) const = 0;
+  virtual std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
+                                                            bool useTick) const = 0;
 
  protected:
   virtual std::string getStateFilename() const = 0;
@@ -192,4 +192,3 @@ class ReplicationApplier {
 };
 
 }  // namespace arangodb
-

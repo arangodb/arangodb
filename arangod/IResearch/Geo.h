@@ -30,9 +30,9 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 class Builder;
-}
+}  // namespace velocypack
 
-namespace geo{
+namespace geo {
 class ShapeContainer;
 }
 
@@ -45,7 +45,7 @@ struct GeoOptions {
 
   static constexpr int32_t DEFAULT_MAX_CELLS = 20;
   static constexpr int32_t DEFAULT_MIN_LEVEL = 4;
-  static constexpr int32_t DEFAULT_MAX_LEVEL = 23; // ~1m
+  static constexpr int32_t DEFAULT_MAX_LEVEL = 23;  // ~1m
 
   int32_t maxCells{DEFAULT_MAX_CELLS};
   int32_t minLevel{DEFAULT_MIN_LEVEL};
@@ -66,7 +66,5 @@ bool parsePoint(velocypack::Slice latSlice, velocypack::Slice lngSlice, S2LatLng
 
 void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point);
 
-} // iresearch
-} // arangodb
-
-
+}  // namespace iresearch
+}  // namespace arangodb

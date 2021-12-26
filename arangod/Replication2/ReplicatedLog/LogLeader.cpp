@@ -282,11 +282,11 @@ auto replicated_log::LogLeader::construct(
     // because we must not commit entries of older terms, but do not want to
     // wait with committing until the next insert.
 
-    // Also make sure that this entry is written with waitForSync = true to ensure
-    // that entries of the previous term are synced as well.
+    // Also make sure that this entry is written with waitForSync = true to
+    // ensure that entries of the previous term are synced as well.
     log.appendInPlace(logContext,
-                      InMemoryLogEntry(PersistingLogEntry(term, lastIndex.index + 1,
-                                                          std::nullopt), true));
+                      InMemoryLogEntry(PersistingLogEntry(term, lastIndex.index + 1, std::nullopt),
+                                       true));
     // Note that we do still want to use the unchanged lastIndex to initialize
     // our followers with, as none of them can possibly have this entry.
     // This is particularly important for the LocalFollower, which blindly
@@ -542,7 +542,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(FollowerIn
     LOG_CTX("74b71", TRACE, follower.logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
   }
-
 
   auto const executionDelay = std::invoke([&] {
     using namespace std::chrono_literals;
@@ -856,7 +855,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag() const no
   auto memtry = _inMemoryLog.getEntryByIndex(_commitIndex + 1);
   if (memtry.has_value()) {
     return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
-               std::chrono::steady_clock::now() - memtry->insertTp());
+        std::chrono::steady_clock::now() - memtry->insertTp());
   } else {
     TRI_ASSERT(_commitIndex == _inMemoryLog.getLastIndex())
         << "If there is no entry following the commitIndex the last index "

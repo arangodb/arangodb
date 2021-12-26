@@ -29,11 +29,11 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/WindowExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/WindowExecutor.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -65,7 +65,7 @@ const WindowSplitType splitStep = WindowSplitType{step};
 struct WindowInput {
   WindowBounds bounds;
   RegisterId rangeReg;
-  
+
   std::string name;  // aggregation function
   RegisterId inReg;  // aggregation in register
   MatrixBuilder<2> input;
@@ -87,8 +87,7 @@ std::ostream& operator<<(std::ostream& out, WindowInput const& agg) {
 
 using WindowAggregateInputParam = std::tuple<WindowSplitType, WindowInput>;
 
-class WindowExecutorTest
-    : public AqlExecutorTestCaseWithParam<WindowAggregateInputParam> {
+class WindowExecutorTest : public AqlExecutorTestCaseWithParam<WindowAggregateInputParam> {
  protected:
   auto getSplit() -> WindowSplitType {
     auto [split, unused] = GetParam();
@@ -101,8 +100,7 @@ class WindowExecutorTest
   }
 
   auto buildRegisterInfos(RegisterCount nrInputRegisters,
-                          RegisterCount nrOutputRegisters)
-      -> RegisterInfos {
+                          RegisterCount nrOutputRegisters) -> RegisterInfos {
     RegIdSet registersToClear{};
     RegIdSetStack registersToKeep{{}};
     auto readableInputRegisters = RegIdSet{};
@@ -123,7 +121,7 @@ class WindowExecutorTest
       readableInputRegisters.emplace(input.rangeReg);
     }
 
-    writeableOutputRegisters.emplace(2); // same as in buildExecutorInfos()
+    writeableOutputRegisters.emplace(2);  // same as in buildExecutorInfos()
 
     return RegisterInfos{std::move(readableInputRegisters),
                          std::move(writeableOutputRegisters),
@@ -138,13 +136,11 @@ class WindowExecutorTest
     std::vector<std::string> aggregateTypes{input.name};
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{2, input.inReg}};
 
-    return WindowExecutorInfos(input.bounds, input.rangeReg,
-                               std::move(aggregateTypes),
-                               std::move(aggregateRegisters),
-                               warnings,
+    return WindowExecutorInfos(input.bounds, input.rangeReg, std::move(aggregateTypes),
+                               std::move(aggregateRegisters), warnings,
                                &VPackOptions::Defaults);
   };
-      
+
   arangodb::aql::QueryWarnings warnings;
 };
 
@@ -178,55 +174,116 @@ class WindowExecutorTest
  */
 
 auto inputRows = MatrixBuilder<2>{RowBuilder<2>{1, 5}, RowBuilder<2>{1, 1},
-                                RowBuilder<2>{2, 2}, RowBuilder<2>{1, 5},
-                                RowBuilder<2>{6, 1}, RowBuilder<2>{2, 2},
-                                RowBuilder<2>{3, 1}};
+                                  RowBuilder<2>{2, 2}, RowBuilder<2>{1, 5},
+                                  RowBuilder<2>{6, 1}, RowBuilder<2>{2, 2},
+                                  RowBuilder<2>{3, 1}};
 auto sortedRows = MatrixBuilder<2>{RowBuilder<2>{1, 5}, RowBuilder<2>{1, 1},
-                                RowBuilder<2>{1, 5}, RowBuilder<2>{2, 2},
-                                RowBuilder<2>{2, 2}, RowBuilder<2>{3, 1},
-                                RowBuilder<2>{6, 1}};
+                                   RowBuilder<2>{1, 5}, RowBuilder<2>{2, 2},
+                                   RowBuilder<2>{2, 2}, RowBuilder<2>{3, 1},
+                                   RowBuilder<2>{6, 1}};
 
-int t0 = 698976; // 01/09/1970
-int t1 = t0 + 1 * 01 * 02 * 1000; //+ 2s
-int t2 = t1 + 1 * 05 * 60 * 1000; //+ 5m
-int t3 = t2 + 1 * 10 * 60 * 1000; //+ 10m
-int t4 = t3 + 1 * 60 * 60 * 1000; //+ 1h
-int t5 = t4 + 5 * 60 * 60 * 1000; //+ 5h
+int t0 = 698976;                   // 01/09/1970
+int t1 = t0 + 1 * 01 * 02 * 1000;  //+ 2s
+int t2 = t1 + 1 * 05 * 60 * 1000;  //+ 5m
+int t3 = t2 + 1 * 10 * 60 * 1000;  //+ 10m
+int t4 = t3 + 1 * 60 * 60 * 1000;  //+ 1h
+int t5 = t4 + 5 * 60 * 60 * 1000;  //+ 5h
 
-auto sortedDateRows = MatrixBuilder<2>{RowBuilder<2>{t0, 5}, RowBuilder<2>{t1, 1},
-                                       RowBuilder<2>{t2, 5}, RowBuilder<2>{t3, 2},
-                                       RowBuilder<2>{t4, 2}, RowBuilder<2>{t5, 1},
-                                       RowBuilder<2>{t5, 1}};
-
+auto sortedDateRows =
+    MatrixBuilder<2>{RowBuilder<2>{t0, 5}, RowBuilder<2>{t1, 1},
+                     RowBuilder<2>{t2, 5}, RowBuilder<2>{t3, 2},
+                     RowBuilder<2>{t4, 2}, RowBuilder<2>{t5, 1},
+                     RowBuilder<2>{t5, 1}};
 
 auto vpackOptions = VPackOptions();
 auto inf = VPackParser::fromJson("\"inf\"", &vpackOptions);
 auto duration1h10m = VPackParser::fromJson("\"PT1H10M\"", &vpackOptions);
 auto duration3s = VPackParser::fromJson("\"PT3S\"", &vpackOptions);
 
-auto boundsRow1 = WindowBounds(WindowBounds::Type::Row, AqlValue(AqlValueHintInt(1)), AqlValue(AqlValueHintInt(1)));
-auto boundsRowAccum = WindowBounds(WindowBounds::Type::Row, AqlValue(inf->slice()), AqlValue(AqlValueHintInt(0)));
-auto boundsRange1 = WindowBounds(WindowBounds::Type::Range, AqlValue(AqlValueHintInt(1)), AqlValue(AqlValueHintInt(1)));
-auto boundsRangeP3 = WindowBounds(WindowBounds::Type::Range, AqlValue(AqlValueHintInt(3)), AqlValue(AqlValueHintInt(0)));
-//auto boundsDateRange = WindowBounds(WindowBounds::Type::Range, AqlValue(duration1h10m->slice()), AqlValue(duration3s->slice()));
+auto boundsRow1 = WindowBounds(WindowBounds::Type::Row, AqlValue(AqlValueHintInt(1)),
+                               AqlValue(AqlValueHintInt(1)));
+auto boundsRowAccum = WindowBounds(WindowBounds::Type::Row, AqlValue(inf->slice()),
+                                   AqlValue(AqlValueHintInt(0)));
+auto boundsRange1 =
+    WindowBounds(WindowBounds::Type::Range, AqlValue(AqlValueHintInt(1)),
+                 AqlValue(AqlValueHintInt(1)));
+auto boundsRangeP3 =
+    WindowBounds(WindowBounds::Type::Range, AqlValue(AqlValueHintInt(3)),
+                 AqlValue(AqlValueHintInt(0)));
+// auto boundsDateRange = WindowBounds(WindowBounds::Type::Range, AqlValue(duration1h10m->slice()), AqlValue(duration3s->slice()));
 
-auto WindowInputs =
-    ::testing::Values(WindowInput{boundsRow1, RegisterPlan::MaxRegisterId, "SUM", 0, inputRows, {{1, 5, 2}, {1, 1, 4}, {2, 2, 4}, {1, 5, 9}, {6, 1, 9}, {2, 2, 11}, {3, 1, 5}}},
-                      WindowInput{boundsRow1, RegisterPlan::MaxRegisterId, "SUM", 1, inputRows, {{1, 5, 6}, {1, 1, 8}, {2, 2, 8}, {1, 5, 8}, {6, 1, 8}, {2, 2, 4}, {3, 1, 3}}},
-                      WindowInput{boundsRow1, RegisterPlan::MaxRegisterId, "MAX", 1, inputRows, {{1, 5, 5}, {1, 1, 5}, {2, 2, 5}, {1, 5, 5}, {6, 1, 5}, {2, 2, 2}, {3, 1, 2}}},
-                      WindowInput{boundsRow1, RegisterPlan::MaxRegisterId, "MIN", 0, inputRows, {{1, 5, 1}, {1, 1, 1}, {2, 2, 1}, {1, 5, 1}, {6, 1, 1}, {2, 2, 2}, {3, 1, 2}}},
-                      WindowInput{boundsRowAccum, RegisterPlan::MaxRegisterId, "SUM", 0, inputRows, {{1, 5, 1}, {1, 1, 2}, {2, 2, 4}, {1, 5, 5}, {6, 1, 11}, {2, 2, 13}, {3, 1, 16}}},
-                      WindowInput{boundsRowAccum, RegisterPlan::MaxRegisterId, "MAX", 0, inputRows, {{1, 5, 1}, {1, 1, 1}, {2, 2, 2}, {1, 5, 2}, {6, 1, 6}, {2, 2, 6}, {3, 1, 6}}},
-                      WindowInput{boundsRowAccum, RegisterPlan::MaxRegisterId, "MIN", 0, inputRows, {{1, 5, 1}, {1, 1, 1}, {2, 2, 1}, {1, 5, 1}, {6, 1, 1}, {2, 2, 1}, {3, 1, 1}}},
-                      // range based input, offset of one each way
-                      WindowInput{boundsRange1, 0, "SUM", 1, sortedRows, {{1, 5, 15}, {1, 1, 15}, { 1, 5, 15}, {2, 2, 16}, {2, 2, 16}, {3, 1, 5}, {6, 1, 1}}},
-                      WindowInput{boundsRange1, 0, "MIN", 1, sortedRows, {{1, 5, 1}, {1, 1, 1}, { 1, 5, 1}, {2, 2, 1}, {2, 2, 1}, {3, 1, 1}, {6, 1, 1}}},
-                      // range based input, offset of offset 3 preceding
-                      WindowInput{boundsRangeP3, 0, "SUM", 1, sortedRows, {{1, 5, 11}, {1, 1, 11}, { 1, 5, 11}, {2, 2, 15}, {2, 2, 15}, {3, 1, 16}, {6, 1, 2}}},
-                      WindowInput{boundsRangeP3, 0, "SUM", 1, sortedRows, {{1, 5, 11}, {1, 1, 11}, { 1, 5, 11}, {2, 2, 15}, {2, 2, 15}, {3, 1, 16}, {6, 1, 2}}}
-                      // TODO: fix ISO duration regex to enable date range test
-                      //WindowInput{boundsDateRange, 0, "SUM", 1, sortedRows, {{t0, 5, 6}, {t1, 1, 6}, { t2, 5, 11}, {t3, 2, 13}, {t4, 2, 15}, {t5, 1, 3}, {t5, 1, 1}}}
-                      );
+auto WindowInputs = ::testing::Values(
+    WindowInput{boundsRow1,
+                RegisterPlan::MaxRegisterId,
+                "SUM",
+                0,
+                inputRows,
+                {{1, 5, 2}, {1, 1, 4}, {2, 2, 4}, {1, 5, 9}, {6, 1, 9}, {2, 2, 11}, {3, 1, 5}}},
+    WindowInput{boundsRow1,
+                RegisterPlan::MaxRegisterId,
+                "SUM",
+                1,
+                inputRows,
+                {{1, 5, 6}, {1, 1, 8}, {2, 2, 8}, {1, 5, 8}, {6, 1, 8}, {2, 2, 4}, {3, 1, 3}}},
+    WindowInput{boundsRow1,
+                RegisterPlan::MaxRegisterId,
+                "MAX",
+                1,
+                inputRows,
+                {{1, 5, 5}, {1, 1, 5}, {2, 2, 5}, {1, 5, 5}, {6, 1, 5}, {2, 2, 2}, {3, 1, 2}}},
+    WindowInput{boundsRow1,
+                RegisterPlan::MaxRegisterId,
+                "MIN",
+                0,
+                inputRows,
+                {{1, 5, 1}, {1, 1, 1}, {2, 2, 1}, {1, 5, 1}, {6, 1, 1}, {2, 2, 2}, {3, 1, 2}}},
+    WindowInput{boundsRowAccum,
+                RegisterPlan::MaxRegisterId,
+                "SUM",
+                0,
+                inputRows,
+                {{1, 5, 1}, {1, 1, 2}, {2, 2, 4}, {1, 5, 5}, {6, 1, 11}, {2, 2, 13}, {3, 1, 16}}},
+    WindowInput{boundsRowAccum,
+                RegisterPlan::MaxRegisterId,
+                "MAX",
+                0,
+                inputRows,
+                {{1, 5, 1}, {1, 1, 1}, {2, 2, 2}, {1, 5, 2}, {6, 1, 6}, {2, 2, 6}, {3, 1, 6}}},
+    WindowInput{boundsRowAccum,
+                RegisterPlan::MaxRegisterId,
+                "MIN",
+                0,
+                inputRows,
+                {{1, 5, 1}, {1, 1, 1}, {2, 2, 1}, {1, 5, 1}, {6, 1, 1}, {2, 2, 1}, {3, 1, 1}}},
+    // range based input, offset of one each way
+    WindowInput{boundsRange1,
+                0,
+                "SUM",
+                1,
+                sortedRows,
+                {{1, 5, 15}, {1, 1, 15}, {1, 5, 15}, {2, 2, 16}, {2, 2, 16}, {3, 1, 5}, {6, 1, 1}}},
+    WindowInput{boundsRange1,
+                0,
+                "MIN",
+                1,
+                sortedRows,
+                {{1, 5, 1}, {1, 1, 1}, {1, 5, 1}, {2, 2, 1}, {2, 2, 1}, {3, 1, 1}, {6, 1, 1}}},
+    // range based input, offset of offset 3 preceding
+    WindowInput{boundsRangeP3,
+                0,
+                "SUM",
+                1,
+                sortedRows,
+                {{1, 5, 11}, {1, 1, 11}, {1, 5, 11}, {2, 2, 15}, {2, 2, 15}, {3, 1, 16}, {6, 1, 2}}},
+    WindowInput{boundsRangeP3,
+                0,
+                "SUM",
+                1,
+                sortedRows,
+                {{1, 5, 11}, {1, 1, 11}, {1, 5, 11}, {2, 2, 15}, {2, 2, 15}, {3, 1, 16}, {6, 1, 2}}}
+    // TODO: fix ISO duration regex to enable date range test
+    // WindowInput{boundsDateRange, 0, "SUM", 1, sortedRows, {{t0, 5, 6}, {t1, 1, 6}, { t2, 5, 11}, {t3, 2, 13}, {t4, 2, 15}, {t5, 1, 3}, {t5, 1, 1}}}
+);
 
 INSTANTIATE_TEST_CASE_P(Window, WindowExecutorTest,
                         ::testing::Combine(::testing::Values(splitIntoBlocks<2, 3>,
@@ -252,14 +309,14 @@ TEST_P(WindowExecutorTest, runWindowExecutor) {
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
       // .expectedStats(stats)
-      .run(/*loop*/true);
+      .run(/*loop*/ true);
 }
 
 // test AccuWindowExecutor
 TEST_P(WindowExecutorTest, runAccuWindowExecutor) {
   auto const& params = getWindowParams();
   if (!params.bounds.unboundedPreceding()) {
-    return; // skip
+    return;  // skip
   }
   // range based variant needs sorted input
   // AccuWindowExecutor is passthrough, needs 3 input registers
@@ -281,7 +338,7 @@ TEST_P(WindowExecutorTest, runAccuWindowExecutor) {
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
       // .expectedStats(stats)
-      .run(/*loop*/true);
+      .run(/*loop*/ true);
 }
 
 }  // namespace aql

@@ -29,21 +29,17 @@
 
 using namespace arangodb;
 
-Result RocksDBSingleOperationReadOnlyMethods::beginTransaction() {
-  return {};
-}
+Result RocksDBSingleOperationReadOnlyMethods::beginTransaction() { return {}; }
 
-Result RocksDBSingleOperationReadOnlyMethods::commitTransaction() {
-  return {};
-}
+Result RocksDBSingleOperationReadOnlyMethods::commitTransaction() { return {}; }
 
-Result RocksDBSingleOperationReadOnlyMethods::abortTransaction() {
-  return {};
-}
+Result RocksDBSingleOperationReadOnlyMethods::abortTransaction() { return {}; }
 
 rocksdb::ReadOptions RocksDBSingleOperationReadOnlyMethods::iteratorReadOptions() const {
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call iteratorReadOptions for single operation methods");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "should not call iteratorReadOptions for single operation methods");
 }
 
 rocksdb::Status RocksDBSingleOperationReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -58,5 +54,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationReadOnlyMethods::NewIte
     rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call NewIterator for single operation methods");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "should not call NewIterator for single operation methods");
 }

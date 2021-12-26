@@ -58,7 +58,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   std::pair<Result, uint64_t> startExecution(
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
-      std::vector<std::string> const& edgeCollections, 
+      std::vector<std::string> const& edgeCollections,
       std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
       VPackSlice const& params);
 
@@ -67,7 +67,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   bool isStopping() const noexcept;
-  
+
   uint64_t createExecutionNumber();
   void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
   std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
@@ -102,7 +102,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void scheduleGarbageCollection();
 
   mutable Mutex _mutex;
-  
+
   std::unique_ptr<RecoveryManager> _recoveryManager;
   /// @brief _recoveryManagerPtr always points to the same object as _recoveryManager, but allows
   /// the pointer to be read atomically. This is necessary because _recoveryManager is initialized
@@ -110,7 +110,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   /// pointer. This only works because _recoveryManager is only initialzed once and lives until the
   /// owning PregelFeature instance is also destroyed.
   std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
-  
+
   Scheduler::WorkHandle _gcHandle;
 
   struct ConductorEntry {
@@ -127,4 +127,3 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
 }  // namespace pregel
 }  // namespace arangodb
-

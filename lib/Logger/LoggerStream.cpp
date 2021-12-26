@@ -41,10 +41,10 @@ LoggerStreamBase::LoggerStreamBase(bool enabled)
 #endif
       _logid(nullptr),
       _file(nullptr),
-      _function(nullptr) {}
+      _function(nullptr) {
+}
 
-LoggerStreamBase::LoggerStreamBase()
-    : LoggerStreamBase(true) {}
+LoggerStreamBase::LoggerStreamBase() : LoggerStreamBase(true) {}
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
   _level = level;
@@ -136,12 +136,10 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexc
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-LoggerStream::LoggerStream(bool enabled)
-    : LoggerStreamBase(enabled) {}
+LoggerStream::LoggerStream(bool enabled) : LoggerStreamBase(enabled) {}
 #endif
 
-LoggerStream::LoggerStream() 
-    : LoggerStreamBase(true) {}
+LoggerStream::LoggerStream() : LoggerStreamBase(true) {}
 
 LoggerStream::~LoggerStream() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -151,7 +149,7 @@ LoggerStream::~LoggerStream() {
     return;
   }
 #endif
-    
+
   try {
     // TODO: with c++20, we can get a view on the stream's underlying buffer,
     // without copying it

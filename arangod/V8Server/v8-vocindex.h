@@ -36,4 +36,3 @@ class LogicalCollection;
 void TRI_InitV8IndexArangoDB(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 
 void TRI_InitV8IndexCollection(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> rt);
-

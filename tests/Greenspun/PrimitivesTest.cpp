@@ -1937,7 +1937,7 @@ TEST_F(GreenspunTest, rand_range) {
 }
 
 #ifdef AIR_PRIMITIVE_TESTS_MAIN
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

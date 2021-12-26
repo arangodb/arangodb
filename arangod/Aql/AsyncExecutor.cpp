@@ -24,14 +24,14 @@
 #include "AsyncExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/Query.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/SharedQueryState.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
 #include "Logger/LogMacros.h"
@@ -42,12 +42,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
-    ExecutionEngine* engine, AsyncNode const* node)
-    : ExecutionBlock(engine, node),
-      _sharedState(engine->sharedState()) {}
+ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
+                                                      AsyncNode const* node)
+    : ExecutionBlock(engine, node), _sharedState(engine->sharedState()) {}
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -60,14 +60,14 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
   return res;
 }
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack const& stack) {
-  
-//  if (getQuery().killed()) {
-//    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-//  }
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack const& stack) {
+  //  if (getQuery().killed()) {
+  //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  //  }
 
   std::lock_guard<std::mutex> guard(_mutex);
-  
+
   TRI_ASSERT(_dependencies.size() == 1);
 
   if (_internalState == AsyncState::InProgress) {
@@ -98,9 +98,9 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
       _returnState = state;
       _returnSkip = std::move(skip);
       _returnBlock = std::move(block);
-      
+
       _internalState = AsyncState::GotResult;
-    } catch(...) {
+    } catch (...) {
       if (isAsync) {
         guard.lock();
       }
@@ -118,13 +118,13 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
 
 std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeCursor(
     InputAqlItemRow const& input) {
-//
-//  if (getQuery().killed()) {
-//    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-//  }
-  
+  //
+  //  if (getQuery().killed()) {
+  //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  //  }
+
   TRI_ASSERT(_dependencies.size() == 1);
-  
+
   std::lock_guard<std::mutex> guard(_mutex);
   auto res = ExecutionBlock::initializeCursor(input);
   _returnBlock = nullptr;

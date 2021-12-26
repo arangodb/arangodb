@@ -67,7 +67,7 @@ class MutexExecutor {
    */
   auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                        std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
-  
+
   void acquireLock() noexcept {
     // don't continue if locking fails
     _mutex.lock();
@@ -98,8 +98,7 @@ class MutexExecutor {
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<MutexExecutor>
-    : public BlocksWithClientsImpl<MutexExecutor> {
+class ExecutionBlockImpl<MutexExecutor> : public BlocksWithClientsImpl<MutexExecutor> {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, MutexNode const* node,
                      RegisterInfos registerInfos, MutexExecutorInfos&& executorInfos);
@@ -109,4 +108,3 @@ class ExecutionBlockImpl<MutexExecutor>
 
 }  // namespace aql
 }  // namespace arangodb
-

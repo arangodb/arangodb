@@ -69,4 +69,3 @@ static T binaryGcd(T u, T v) {
 }
 }  // namespace basics
 }  // namespace arangodb
-

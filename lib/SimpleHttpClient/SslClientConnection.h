@@ -63,7 +63,7 @@ class SslClientConnection final : public GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   ~SslClientConnection();
-  
+
   uint64_t sslProtocol() const { return _sslProtocol; }
 
  protected:
@@ -124,4 +124,3 @@ class SslClientConnection final : public GeneralClientConnection {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

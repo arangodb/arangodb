@@ -34,7 +34,7 @@ class MaxMapCountFeature final : public application_features::ApplicationFeature
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  static bool needsChecking() { 
+  static bool needsChecking() {
 #ifdef __linux__
     return true;
 #else
@@ -47,4 +47,3 @@ class MaxMapCountFeature final : public application_features::ApplicationFeature
 };
 
 }  // namespace arangodb
-

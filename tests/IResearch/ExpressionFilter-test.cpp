@@ -60,6 +60,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -69,7 +70,6 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -104,7 +104,7 @@ struct custom_sort : public irs::sort {
 
       virtual void collect(const irs::bytes_ref& in) override {}
 
-      virtual void reset() override { }
+      virtual void reset() override {}
 
       virtual void write(irs::data_output& out) const override {}
 
@@ -125,7 +125,7 @@ struct custom_sort : public irs::sort {
 
       virtual void collect(const irs::bytes_ref& in) override {}
 
-      virtual void reset() override { }
+      virtual void reset() override {}
 
       virtual void write(irs::data_output& out) const override {}
 
@@ -176,18 +176,20 @@ struct custom_sort : public irs::sort {
       return irs::memory::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
-    virtual irs::score_function prepare_scorer(
-        irs::sub_reader const& segment_reader, irs::term_reader const& term_reader,
-        irs::byte_type const* filter_node_attrs, irs::byte_type* score_buf,
-        irs::attribute_provider const& document_attrs, irs::boost_t boost) const override {
+    virtual irs::score_function prepare_scorer(irs::sub_reader const& segment_reader,
+                                               irs::term_reader const& term_reader,
+                                               irs::byte_type const* filter_node_attrs,
+                                               irs::byte_type* score_buf,
+                                               irs::attribute_provider const& document_attrs,
+                                               irs::boost_t boost) const override {
       if (sort_.prepare_scorer) {
-        return sort_.prepare_scorer(segment_reader, term_reader,
-                                    filter_node_attrs, score_buf, document_attrs, boost);
+        return sort_.prepare_scorer(segment_reader, term_reader, filter_node_attrs,
+                                    score_buf, document_attrs, boost);
       }
 
-      return {
-        std::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader, term_reader,
-                                                        filter_node_attrs, score_buf, document_attrs),
+      return {std::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader,
+                                                              term_reader, filter_node_attrs,
+                                                              score_buf, document_attrs),
               [](irs::score_ctx* ctx) -> const irs::byte_type* {
                 auto& ctxImpl =
                     *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
@@ -214,7 +216,9 @@ struct custom_sort : public irs::sort {
     }
 
     virtual bool less(irs::byte_type const* lhs, const irs::byte_type* rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(traits_t::score_cast(lhs), traits_t::score_cast(rhs)) : false;
+      return sort_.scorer_less ? sort_.scorer_less(traits_t::score_cast(lhs),
+                                                   traits_t::score_cast(rhs))
+                               : false;
     }
 
    private:
@@ -225,10 +229,9 @@ struct custom_sort : public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_provider&)> term_collector_collect;
   std::function<void(irs::byte_type*, const irs::index_reader&)> collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<irs::score_function(
-      const irs::sub_reader&, const irs::term_reader&,
-      const irs::byte_type*, irs::byte_type*,
-      const irs::attribute_provider&, irs::boost_t)> prepare_scorer;
+  std::function<irs::score_function(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+                                    irs::byte_type*, const irs::attribute_provider&, irs::boost_t)>
+      prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
@@ -258,8 +261,10 @@ struct IResearchExpressionFilterTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   IResearchExpressionFilterTest()
-    : server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""), nullptr),
-      engine(server) {
+      : server(std::make_shared<arangodb::options::ProgramOptions>("", "", "",
+                                                                   ""),
+               nullptr),
+        engine(server) {
     arangodb::tests::init(true);
 
     // setup required application features
@@ -284,8 +289,10 @@ struct IResearchExpressionFilterTest
     features.emplace_back(server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
                           true);
 
-
-    auto& feature = features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true).first;
+    auto& feature =
+        features
+            .emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true)
+            .first;
     feature.collectOptions(server.options());
     feature.validateOptions(server.options());
 
@@ -340,17 +347,16 @@ struct IResearchExpressionFilterTest
 
 struct FilterCtx : irs::attribute_provider {
   explicit FilterCtx(arangodb::iresearch::ExpressionExecutionContext& ctx) noexcept
-    : _execCtx(&ctx) {
-  }
+      : _execCtx(&ctx) {}
 
   irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<arangodb::iresearch::ExpressionExecutionContext>::id() == type
-      ? _execCtx
-      : nullptr;
+               ? _execCtx
+               : nullptr;
   }
 
   arangodb::iresearch::ExpressionExecutionContext* _execCtx;  // expression execution context
-}; // FilterCtx
+};                                                            // FilterCtx
 
 }  // namespace
 
@@ -439,9 +445,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
   {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -455,7 +462,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("b", value);
     }
-    
+
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -511,11 +518,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
   {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
-    
+
     ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
@@ -583,9 +591,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
   {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -672,9 +681,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
   {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -762,8 +772,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -777,7 +788,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("b", value);
     }
-    
+
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -823,7 +834,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     FilterCtx queryCtx(execCtx);
 
     auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(),
-                                   &queryCtx);       // invalid context provided
+                                   &queryCtx);      // invalid context provided
     EXPECT_EQ(irs::no_boost(), prepared->boost());  // no boost set
     auto column = segment.column_reader("name");
     ASSERT_TRUE(column);
@@ -851,9 +862,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
   {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -923,9 +935,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
   {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -996,9 +1009,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1133,9 +1147,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1254,10 +1269,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
-    
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString),
-                               bindVars);
+
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), bindVars);
     query->initTrxForTests();
 
     ExpressionContextMock ctx;
@@ -1266,7 +1281,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("b", value);
     }
-    
+
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
 

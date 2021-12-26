@@ -47,9 +47,9 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchQueryCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchQueryCommon.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogTopic.h"
@@ -152,7 +152,8 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     \"primarySort\": [ { \"field\" : \"seq\", \"direction\": \"desc\" } ] \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -185,16 +186,20 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
-        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " },"
+        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " }"
         "}}");
-    EXPECT_TRUE(view->properties(
-      updateJson->slice(), true, true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -236,8 +241,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -442,7 +446,8 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     \"primarySort\": [ { \"field\": \"same\", \"asc\": true }, { \"field\": \"same\", \"asc\": false }, { \"field\" : \"seq\", \"direction\": \"desc\" }, { \"field\" : \"name\", \"direction\": \"asc\" } ] \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -475,16 +480,20 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
-        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " },"
+        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " }"
         "}}");
-    EXPECT_TRUE(view->properties(
-      updateJson->slice(), true, true).ok());
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -526,8 +535,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -819,7 +827,4 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchViewSortedTest,
-  IResearchViewSortedTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchViewSortedTest, IResearchViewSortedTest, GetLinkVersions());

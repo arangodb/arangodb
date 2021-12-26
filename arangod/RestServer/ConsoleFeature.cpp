@@ -65,7 +65,8 @@ void ConsoleFeature::start() {
     return;
   }
 
-  LOG_TOPIC("a4313", TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
+  LOG_TOPIC("a4313", TRACE, Logger::STARTUP)
+      << "server operation mode: CONSOLE";
 
   auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
   auto database = sysDbFeature.use();

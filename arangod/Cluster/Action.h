@@ -185,33 +185,22 @@ class Action {
   }
 
   /// @brief fastTrack
-  bool fastTrack() const {
-    return _action->fastTrack();
-  }
+  bool fastTrack() const { return _action->fastTrack(); }
 
   /// @brief priority
-  int priority() const {
-    return _action->priority();
-  }
+  int priority() const { return _action->priority(); }
 
-  bool requeueRequested() const {
-    return _action->requeueRequested();
-  }
+  bool requeueRequested() const { return _action->requeueRequested(); }
 
-  int requeuePriority() const {
-    return _action->requeuePriority();
-  }
+  int requeuePriority() const { return _action->requeuePriority(); }
 
-  void requeueMe(int requeuePriority) {
-    _action->requeueMe(requeuePriority);
-  }
+  void requeueMe(int requeuePriority) { _action->requeueMe(requeuePriority); }
 
-  void setPriority(int newPriority) {
-    _action->setPriority(newPriority);
-  }
+  void setPriority(int newPriority) { _action->setPriority(newPriority); }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  static void addNewFactoryForTest(std::string const& name,
+  static void addNewFactoryForTest(
+      std::string const& name,
       std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>&& factory);
 #endif
 

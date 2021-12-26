@@ -48,4 +48,3 @@ inline void cpu_relax() noexcept {
 }
 
 }  // namespace arangodb::basics
-

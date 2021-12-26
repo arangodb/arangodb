@@ -69,10 +69,10 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
       name == "_routing") {
     // these system collections will always be excluded
     return true;
-  } 
-  
-  if (!includeFoxxQueues && 
-      (name == StaticStrings::JobsCollection || name == StaticStrings::QueuesCollection)) {
+  }
+
+  if (!includeFoxxQueues && (name == StaticStrings::JobsCollection ||
+                             name == StaticStrings::QueuesCollection)) {
     return true;
   }
 

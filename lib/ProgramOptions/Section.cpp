@@ -48,20 +48,16 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool co
     return;
   }
 
-  std::cout 
-    << "Section '" 
-    << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
-    << displayName() 
-    << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
-    << "' (configure " << description << ")";
+  std::cout << "Section '" << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
+            << displayName() << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
+            << "' (configure " << description << ")";
 
   if (!link.empty()) {
     std::cout << " [";
     if (colors) {
-      std::cout 
-        << ShellColorsFeature::SHELL_COLOR_LINK_START << link 
-        << ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE << link 
-        << ShellColorsFeature::SHELL_COLOR_LINK_END;
+      std::cout << ShellColorsFeature::SHELL_COLOR_LINK_START << link
+                << ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE << link
+                << ShellColorsFeature::SHELL_COLOR_LINK_END;
     } else {
       std::cout << link;
     }
@@ -78,19 +74,19 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool co
       std::cout << " # " << (*hl).second << std::endl;
       ++hl;
     }
-    
+
     if (it.second.hasFlag(arangodb::options::Flags::Obsolete)) {
       // skip obsolete options
       continue;
     }
-    
+
     // print help for option
     it.second.printHelp(search, tw, ow, colors);
   }
 
   std::cout << std::endl;
 }
-  
+
 // determine display width for a section
 size_t Section::optionsWidth() const {
   size_t width = 0;

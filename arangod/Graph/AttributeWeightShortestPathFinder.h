@@ -155,9 +155,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
                     arangodb::graph::ShortestPathResult& result) override;
-  
- private:
 
+ private:
   void inserter(std::vector<std::unique_ptr<Step>>& result,
                 arangodb::velocypack::StringRef const& s,
                 arangodb::velocypack::StringRef const& t, double currentWeight,
@@ -197,15 +196,14 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   bool _intermediateSet;
   arangodb::velocypack::StringRef _intermediate;
-  
+
   /// @brief temporary value, which is going to be populate in  inserter,
   /// and recycled between calls
   std::unordered_map<arangodb::velocypack::StringRef, size_t> _candidates;
-  
+
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-

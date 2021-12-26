@@ -185,8 +185,8 @@ class SortingGatherExecutor {
 
   [[nodiscard]] auto limitReached() const noexcept -> bool;
 
-  [[nodiscard]] auto calculateUpstreamCall(AqlCall const& clientCall) const
-      noexcept -> AqlCallList;
+  [[nodiscard]] auto calculateUpstreamCall(AqlCall const& clientCall) const noexcept
+      -> AqlCallList;
 
  private:
   // Flag if we are past the initialize phase (fetched one block for every dependency).
@@ -216,4 +216,3 @@ class SortingGatherExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

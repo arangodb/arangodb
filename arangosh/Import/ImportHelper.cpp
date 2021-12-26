@@ -23,11 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ImportHelper.h"
-#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
@@ -296,7 +296,6 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
     _outputBuffer.appendChar('\n');
   }
 
-
   if (_rowsRead > 2) {
     _errorMessages.push_back("headers file '" + headersFile +
                              "' contained more than a single line of headers");
@@ -313,7 +312,6 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   // restore copy of _rowsToSkip
   _rowsToSkip = rowsToSkip;
   _outputBuffer.reset();
-
 
   return true;
 }
@@ -428,7 +426,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     }
     reportProgress(totalLength, fd->offset(), nextProgress);
     TRI_ParseCsvString(&parser, buffer, n);
-
   }
 
   // trailing buffer items than can be accumulated because buffer length is
@@ -615,7 +612,8 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
   }
 }
 
-void ImportHelper::verifyNestedAttributes(std::string const& input, std::string const& key) const {
+void ImportHelper::verifyNestedAttributes(std::string const& input,
+                                          std::string const& key) const {
   if (input == key) {
     LOG_TOPIC("4f701", FATAL, arangodb::Logger::FIXME)
         << "Wrong syntax in --merge-attributes: cannot nest attributes";
@@ -626,12 +624,14 @@ void ImportHelper::verifyNestedAttributes(std::string const& input, std::string 
 void ImportHelper::verifyMergeAttributesSyntax(std::string const& input) const {
   if (input.find_first_of("[]=") != std::string::npos) {
     LOG_TOPIC("0b9e2", FATAL, arangodb::Logger::FIXME)
-        << "Wrong syntax in --merge-attributes: attribute names and literals cannot contain any of '[', ']' or '='";
+        << "Wrong syntax in --merge-attributes: attribute names and literals "
+           "cannot contain any of '[', ']' or '='";
     FATAL_ERROR_EXIT();
   }
 }
 
-std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(std::string const& input, std::string const& key) const {
+std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(std::string const& input,
+                                                            std::string const& key) const {
   std::vector<Step> steps;
   std::size_t pos = 0;
 
@@ -682,14 +682,18 @@ std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(std::string const& i
 
 void ImportHelper::parseMergeAttributes(std::vector<std::string> const& args) {
   for (auto const& arg : args) {
-    std::vector<std::string> tokenizedArgByAssignment = StringUtils::split(arg, "=");
+    std::vector<std::string> tokenizedArgByAssignment =
+        StringUtils::split(arg, "=");
     if (tokenizedArgByAssignment.size() != 2) {
       LOG_TOPIC("ae6dc", FATAL, arangodb::Logger::FIXME)
-          << "Wrong syntax in --merge-attributes: Unexpected number of '=' characters found";
+          << "Wrong syntax in --merge-attributes: Unexpected number of '=' "
+             "characters found";
       FATAL_ERROR_EXIT();
     }
-    std::vector<ImportHelper::Step> tokenizedArg = tokenizeInput(tokenizedArgByAssignment[1], tokenizedArgByAssignment[0]);
-    _mergeAttributesInstructions.emplace_back(tokenizedArgByAssignment[0], std::move(tokenizedArg));
+    std::vector<ImportHelper::Step> tokenizedArg =
+        tokenizeInput(tokenizedArgByAssignment[1], tokenizedArgByAssignment[0]);
+    _mergeAttributesInstructions.emplace_back(tokenizedArgByAssignment[0],
+                                              std::move(tokenizedArg));
   }
 }
 
@@ -952,22 +956,26 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   if (!_mergeAttributesInstructions.empty()) {
     for (auto& [key, value] : _mergeAttributesInstructions) {
       if (row == _rowsToSkip) {
-        std::for_each(value.begin(), value.end(), [this, key=&key](Step const& attrProperties) {
-          if (!attrProperties.isLiteral) {
-            if (std::find(_columnNames.begin(), _columnNames.end(),
-                          attrProperties.value) == _columnNames.end()) {
-              LOG_TOPIC("ab353", WARN, arangodb::Logger::FIXME)
-                  << "In --merge-attributes: No matching value for attribute name "
-                  << attrProperties.value << " to populate attribute " << key;
-            }
-          }
-        });
+        std::for_each(value.begin(), value.end(),
+                      [this, key = &key](Step const& attrProperties) {
+                        if (!attrProperties.isLiteral) {
+                          if (std::find(_columnNames.begin(), _columnNames.end(),
+                                        attrProperties.value) == _columnNames.end()) {
+                            LOG_TOPIC("ab353", WARN, arangodb::Logger::FIXME) << "In --merge-attributes: No matching value for attribute name "
+                                                                              << attrProperties
+                                                                                     .value
+                                                                              << " to populate attribute "
+                                                                              << key;
+                          }
+                        }
+                      });
         addField(key.c_str(), key.size(), row, column, escaped);
       } else {
         std::string attrsToMerge;
         std::for_each(value.begin(), value.end(), [this, &attrsToMerge](Step const& attrProperties) {
           if (!attrProperties.isLiteral) {
-            if (auto it = _fieldsLookUpTable.find(attrProperties.value); it != _fieldsLookUpTable.end()) {
+            if (auto it = _fieldsLookUpTable.find(attrProperties.value);
+                it != _fieldsLookUpTable.end()) {
               attrsToMerge += it->second;
             }
           } else {
@@ -975,7 +983,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
           }
         });
         bool tmp = _convert;
-        _convert = false; // force only --merge-attribute arguments to be treated as string then switch back to normal conversion
+        _convert = false;  // force only --merge-attribute arguments to be treated as string then switch back to normal conversion
         addField(attrsToMerge.c_str(), attrsToMerge.size(), row, column, escaped);
         _convert = tmp;
       }

@@ -103,4 +103,3 @@ std::ostream& operator<<(std::ostream&, arangodb::Endpoint::TransportType);
 std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EndpointType);
 std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EncryptionType);
 std::ostream& operator<<(std::ostream&, arangodb::Endpoint::DomainType);
-

@@ -38,9 +38,11 @@ class SortCondition;
 struct Variable;
 
 /// @brief condition finder
-class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+class ConditionFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  ConditionFinder(ExecutionPlan* plan, std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes);
+  ConditionFinder(ExecutionPlan* plan,
+                  std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes);
 
   ~ConditionFinder() = default;
 
@@ -67,4 +69,3 @@ class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniquenes
 };
 }  // namespace aql
 }  // namespace arangodb
-

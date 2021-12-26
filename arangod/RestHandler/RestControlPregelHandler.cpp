@@ -48,7 +48,8 @@ namespace arangodb {
 RestControlPregelHandler::RestControlPregelHandler(application_features::ApplicationServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response), _pregel(server.getFeature<pregel::PregelFeature>()) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _pregel(server.getFeature<pregel::PregelFeature>()) {}
 
 RestStatus RestControlPregelHandler::execute() {
   auto const type = _request->requestType();
@@ -174,8 +175,8 @@ void RestControlPregelHandler::startExecution() {
     }
   }
 
-  auto res = _pregel.startExecution(_vocbase, algorithm, vertexCollections,
-                                    edgeCollections, edgeCollectionRestrictions, parameters);
+  auto res = _pregel.startExecution(_vocbase, algorithm, vertexCollections, edgeCollections,
+                                    edgeCollectionRestrictions, parameters);
   if (res.first.fail()) {
     generateError(res.first);
     return;
@@ -191,7 +192,8 @@ void RestControlPregelHandler::getExecutionStatus() {
 
   if (suffixes.empty()) {
     bool const allDatabases = _request->parsedValue("all", false);
-    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+    bool const fanout = ServerState::instance()->isCoordinator() &&
+                        !_request->parsedValue("local", false);
 
     VPackBuilder builder;
     _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);

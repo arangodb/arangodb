@@ -95,9 +95,10 @@ void RestQueryHandler::readQueryProperties() {
 void RestQueryHandler::readQuery(bool slow) {
   Result res;
   VPackBuilder result;
-    
+
   bool const allDatabases = _request->parsedValue("all", false);
-  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+  bool const fanout = ServerState::instance()->isCoordinator() &&
+                      !_request->parsedValue("local", false);
   if (slow) {
     res = methods::Queries::listSlow(_vocbase, result, allDatabases, fanout);
   } else {
@@ -138,8 +139,9 @@ void RestQueryHandler::readQuery() {
 
 void RestQueryHandler::deleteQuerySlow() {
   bool const allDatabases = _request->parsedValue("all", false);
-  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
-  
+  bool const fanout = ServerState::instance()->isCoordinator() &&
+                      !_request->parsedValue("local", false);
+
   Result res = methods::Queries::clearSlow(_vocbase, allDatabases, fanout);
 
   if (res.ok()) {

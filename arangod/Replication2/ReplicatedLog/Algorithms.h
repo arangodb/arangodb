@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include <variant>
 #include <unordered_map>
+#include <variant>
 
 #include "Cluster/ClusterTypes.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 namespace arangodb::replication2::algorithms {
 

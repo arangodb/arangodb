@@ -42,14 +42,14 @@ namespace maintenance {
 //  (some require time checks and/or combination tests)
 //
 enum ActionState {
-  READY = 1,        // waiting for a worker on the deque
-  EXECUTING = 2,    // user or worker thread currently executing
-  WAITING = 3,      // initiated a pre-task, waiting for its completion
-  WAITINGPRE = 4,   // parent task created, about to execute on parent's thread - not used
+  READY = 1,      // waiting for a worker on the deque
+  EXECUTING = 2,  // user or worker thread currently executing
+  WAITING = 3,    // initiated a pre-task, waiting for its completion
+  WAITINGPRE = 4,  // parent task created, about to execute on parent's thread - not used
   WAITINGPOST = 5,  // parent task created, will execute after parent's success - not used
-  PAUSED = 6,       // (not implemented) user paused task - not used
-  COMPLETE = 7,     // task completed successfully
-  FAILED = 8,       // task failed, no longer executing
+  PAUSED = 6,    // (not implemented) user paused task - not used
+  COMPLETE = 7,  // task completed successfully
+  FAILED = 8,    // task failed, no longer executing
 };
 
 /**
@@ -64,11 +64,9 @@ struct ActionDescription final {
    * @param  desc  Descriminatory properties, which are considered for hash
    * @param  properties  Non discriminatory properties
    */
-  ActionDescription(
-      std::map<std::string, std::string> description,
-      int priority,
-      bool runEvenIfDuplicate,
-      std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
+  ActionDescription(std::map<std::string, std::string> description,
+                    int priority, bool runEvenIfDuplicate,
+                    std::shared_ptr<VPackBuilder> properties = std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up
@@ -97,7 +95,7 @@ struct ActionDescription final {
    * @return       true if key is found
    */
   bool has(std::string const& key) const noexcept;
-  
+
   /**
    * @brief Check if key exists in discriminatory container and if it has the specified value
    * @param  key   Key to lookup
@@ -168,18 +166,14 @@ struct ActionDescription final {
    * @brief Get priority, the higher the more priority, 1 is default
    * @return int
    */
-  int priority() const {
-    return _priority;
-  }
+  int priority() const { return _priority; }
 
   /**
-   * @brief Get the fact if it is forced or not. If forced, the MaintenanceFeature
-   * will not sort out duplicates by hashing the description. Rather, the action
-   * will always be submitted.
+   * @brief Get the fact if it is forced or not. If forced, the
+   * MaintenanceFeature will not sort out duplicates by hashing the description.
+   * Rather, the action will always be submitted.
    */
-  bool isRunEvenIfDuplicate() const {
-    return _runEvenIfDuplicate;
-  }
+  bool isRunEvenIfDuplicate() const { return _runEvenIfDuplicate; }
 
  private:
   /** @brief discriminatory properties */
@@ -209,4 +203,3 @@ struct hash<arangodb::maintenance::ActionDescription> {
 };
 
 }  // namespace std
-

@@ -74,7 +74,8 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
     NextEdge() = delete;
 
    public:
-    explicit NextEdge(size_t fromIndex, double accumWeight, size_t depth, graph::EdgeDocumentToken forwardEdgeToken,
+    explicit NextEdge(size_t fromIndex, double accumWeight, size_t depth,
+                      graph::EdgeDocumentToken forwardEdgeToken,
                       arangodb::velocypack::StringRef forwardVertexId)
         : fromIndex(fromIndex),
           accumWeight(accumWeight),
@@ -146,7 +147,8 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   aql::AqlValue vertexToAqlValue(size_t index);
   aql::AqlValue edgeToAqlValue(size_t index);
   aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
-  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index, bool fromPrune);
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result,
+                                       size_t index, bool fromPrune);
 
   bool shouldPrune();
   double weightEdge(arangodb::velocypack::Slice edge) const;

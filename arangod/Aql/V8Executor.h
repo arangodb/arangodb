@@ -42,4 +42,3 @@ class V8Executor {
 };
 }  // namespace aql
 }  // namespace arangodb
-

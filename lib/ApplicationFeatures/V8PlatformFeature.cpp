@@ -115,12 +115,10 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   }
 
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
-    const char* whereFreed = (v8g->_inForcedCollect)? "Forced collect": "V8 internal collection";
+    const char* whereFreed = (v8g->_inForcedCollect) ? "Forced collect" : "V8 internal collection";
     LOG_TOPIC("95f66", WARN, arangodb::Logger::V8)
-        << "reached heap-size limit of #" << v8g->_id
-        << " interrupting V8 execution ("
-        << "heap size limit " << heapSizeLimit
-        << ", used " << usedHeapSize
+        << "reached heap-size limit of #" << v8g->_id << " interrupting V8 execution ("
+        << "heap size limit " << heapSizeLimit << ", used " << usedHeapSize
         << ") during " << whereFreed;
 
     isolate->TerminateExecution();
@@ -136,7 +134,8 @@ static void oomCallback(char const* location, bool isHeapOOM) {
     LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::V8)
         << "out of heap hemory in V8 (" << location << ")";
   } else {
-    LOG_TOPIC("5d980", FATAL, arangodb::Logger::V8) << "out of memory in V8 (" << location << ")";
+    LOG_TOPIC("5d980", FATAL, arangodb::Logger::V8)
+        << "out of memory in V8 (" << location << ")";
   }
   FATAL_ERROR_EXIT();
 }
@@ -199,7 +198,8 @@ void V8PlatformFeature::start() {
 
   // explicit option --javascript.v8-options used
   if (!_v8CombinedOptions.empty()) {
-    LOG_TOPIC("d064a", INFO, Logger::V8) << "using V8 options '" << _v8CombinedOptions << "'";
+    LOG_TOPIC("d064a", INFO, Logger::V8)
+        << "using V8 options '" << _v8CombinedOptions << "'";
     v8::V8::SetFlagsFromString(_v8CombinedOptions.c_str(),
                                (int)_v8CombinedOptions.size());
   }

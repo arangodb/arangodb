@@ -70,11 +70,11 @@ void ProgramOptions::setTranslator(
     std::function<std::string(std::string const&, char const*)> const& translator) {
   _translator = translator;
 }
-  
+
 // adds a sub-headline for one option or a group of options
 void ProgramOptions::addHeadline(std::string const& prefix, std::string const& description) {
   checkIfSealed();
-  
+
   auto parts = Option::splitName(prefix);
   if (parts.first.empty()) {
     std::swap(parts.first, parts.second);
@@ -82,9 +82,10 @@ void ProgramOptions::addHeadline(std::string const& prefix, std::string const& d
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-    throw std::logic_error(std::string("section '") + parts.first + "' not found");
+    throw std::logic_error(std::string("section '") + parts.first +
+                           "' not found");
   }
-    
+
   (*it).second.headlines[parts.second] = description;
 }
 
@@ -126,7 +127,7 @@ void ProgramOptions::printHelp(std::string const& search) const {
   if (normalized == "*") {
     printSectionsHelp();
   }
-  
+
   std::cout << std::endl;
   if (!showHidden) {
     char const* colorStart = "";
@@ -136,8 +137,9 @@ void ProgramOptions::printHelp(std::string const& search) const {
       colorStart = ShellColorsFeature::SHELL_COLOR_BRIGHT;
       colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
     }
-    std::cout << "More uncommon options are not shown by default. " 
-              << "To show these options, use  " << colorStart << "--help-uncommon" << colorEnd << std::endl;
+    std::cout << "More uncommon options are not shown by default. "
+              << "To show these options, use  " << colorStart
+              << "--help-uncommon" << colorEnd << std::endl;
   }
   std::cout << std::endl;
 }
@@ -163,7 +165,7 @@ void ProgramOptions::printSectionsHelp() const {
 }
 
 // returns a VPack representation of the option values, with optional
-// filters applied to filter out specific options. 
+// filters applied to filter out specific options.
 // the filter function is expected to return true
 // for any options that should become part of the result
 VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
@@ -174,7 +176,7 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
   walk(
       [this, &builder, &filter, &detailed](Section const& section, Option const& option) {
         std::string full(option.fullName());
-        
+
         if (!filter(full)) {
           return;
         }
@@ -203,7 +205,7 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
                       VPackValue(section.enterpriseOnly ||
                                  option.hasFlag(arangodb::options::Flags::Enterprise)));
           builder.add("requiresValue", VPackValue(option.parameter->requiresValue()));
-         
+
           // OS support
           builder.add("os", VPackValue(VPackValueType::Array));
           if (option.hasFlag(arangodb::options::Flags::OsLinux)) {
@@ -216,11 +218,12 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
             builder.add(VPackValue("windows"));
           }
           builder.close();
-          
+
           // component support
           char const* arangod = "arangod";
           if (_progname.size() >= strlen(arangod) &&
-              _progname.compare(_progname.size() - strlen(arangod), strlen(arangod), arangod) == 0) {
+              _progname.compare(_progname.size() - strlen(arangod),
+                                strlen(arangod), arangod) == 0) {
             builder.add("component", VPackValue(VPackValueType::Array));
             if (option.hasFlag(arangodb::options::Flags::OnCoordinator)) {
               builder.add(VPackValue("coordinator"));
@@ -389,7 +392,8 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
       colorStart2 = ShellColorsFeature::SHELL_COLOR_BOLD_RED;
       colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
     }
-    return fail(std::string("error setting value for option '") + colorStart2 + "--" + modernized + colorEnd + "': " + colorStart1 + result + colorEnd);
+    return fail(std::string("error setting value for option '") + colorStart2 +
+                "--" + modernized + colorEnd + "': " + colorStart1 + result + colorEnd);
   }
 
   _processingResult.touch(modernized);
@@ -417,7 +421,7 @@ std::unordered_map<std::string, std::string> ProgramOptions::modernizedOptions()
   }
   return result;
 }
-  
+
 // sets a single old option and its replacement name
 void ProgramOptions::addOldOption(std::string const& old, std::string const& replacement) {
   _oldOptions[Option::stripPrefix(old)] = Option::stripPrefix(replacement);
@@ -503,7 +507,8 @@ bool ProgramOptions::unknownOption(std::string const& name) {
     colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
   }
 
-  fail(std::string(colorStart1) + "unknown option '" + colorStart2 + "--" + name + colorStart1 + "'" + colorEnd);
+  fail(std::string(colorStart1) + "unknown option '" + colorStart2 + "--" +
+       name + colorStart1 + "'" + colorEnd);
 
   auto similarOptions = similar(name, 8, 4);
   if (!similarOptions.empty()) {
@@ -536,7 +541,7 @@ bool ProgramOptions::unknownOption(std::string const& name) {
 // report an error (callback from parser)
 bool ProgramOptions::fail(std::string const& message) {
   _processingResult.failed(true);
-  
+
   char const* colorStart = "";
   char const* colorEnd = "";
 
@@ -576,7 +581,8 @@ void ProgramOptions::addPositional(std::string const& value) {
 // adds an option to the list of options
 void ProgramOptions::addOption(Option const& option) {
   checkIfSealed();
-  std::map<std::string, Section>::iterator sectionIt = addSection(option.section, "");
+  std::map<std::string, Section>::iterator sectionIt =
+      addSection(option.section, "");
 
   if (!option.shorthand.empty()) {
     if (!_shorthands.try_emplace(option.shorthand, option.fullName()).second) {
@@ -588,7 +594,7 @@ void ProgramOptions::addOption(Option const& option) {
   Section& section = (*sectionIt).second;
   section.options.try_emplace(option.name, option);
 }
- 
+
 // modernize an option name
 std::string const& ProgramOptions::modernize(std::string const& name) {
   auto it = _oldOptions.find(Option::stripPrefix(name));

@@ -208,4 +208,3 @@ class TwoSidedEnumerator {
 };
 }  // namespace graph
 }  // namespace arangodb
-

@@ -77,4 +77,3 @@ class BackupFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

@@ -55,7 +55,7 @@ struct Variable {
 
   /// @brief destroy the variable
   ~Variable();
-  
+
   Variable* clone() const;
 
   /// @brief registers a constant value for the variable
@@ -82,9 +82,8 @@ struct Variable {
   static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
                                 char const* variableName, bool optional = false);
 
-
   bool isEqualTo(Variable const& other) const;
-  
+
   /// @brief returns the type of the variable. The type is determined based
   // on the constantValue. If constantValue.isNone, the type is Type::Regular,
   // otherwise it is Type::Const
@@ -104,10 +103,10 @@ struct Variable {
   /// note: this cannot be const as variables can be renamed by the optimizer
   std::string name;
 
-  /// @brief whether or not the source data for this variable is from a collection 
-  /// (i.e. is a document). this is only used for optimizations
+  /// @brief whether or not the source data for this variable is from a
+  /// collection (i.e. is a document). this is only used for optimizations
   bool isDataFromCollection;
- 
+
   /// @brief name of $OLD variable
   static char const* const NAME_OLD;
 
@@ -117,11 +116,11 @@ struct Variable {
   /// @brief name of $CURRENT variable
   static char const* const NAME_CURRENT;
 
-private:
+ private:
   /// @brief constant variable value (points to another AstNode)
   /// Used for constant propagation while creating the AST.
   AstNode* _constAstNode{nullptr};
-  
+
   // TODO - we have two kinds of const values here; this should be cleaned up!
   /// @brief for const variables, this stores the constant value determined while
   /// initializing the plan.
@@ -130,4 +129,3 @@ private:
 };
 }  // namespace aql
 }  // namespace arangodb
-

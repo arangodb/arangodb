@@ -99,7 +99,7 @@ class ShortestPathNode : public virtual GraphNode {
   Variable const* targetInVariable() const { return _inTargetVariable; }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
@@ -147,4 +147,3 @@ class ShortestPathNode : public virtual GraphNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

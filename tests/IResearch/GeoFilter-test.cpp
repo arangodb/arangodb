@@ -67,7 +67,7 @@ struct custom_sort : public irs::sort {
 
       virtual void collect(const irs::bytes_ref& in) override {}
 
-      virtual void reset() override { }
+      virtual void reset() override {}
 
       virtual void write(irs::data_output& out) const override {}
 
@@ -88,7 +88,7 @@ struct custom_sort : public irs::sort {
 
       virtual void collect(const irs::bytes_ref& in) override {}
 
-      virtual void reset() override { }
+      virtual void reset() override {}
 
       virtual void write(irs::data_output& out) const override {}
 
@@ -139,18 +139,20 @@ struct custom_sort : public irs::sort {
       return irs::memory::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
-    virtual irs::score_function prepare_scorer(
-        irs::sub_reader const& segment_reader, irs::term_reader const& term_reader,
-        irs::byte_type const* filter_node_attrs, irs::byte_type* score_buf,
-        irs::attribute_provider const& document_attrs, irs::boost_t boost) const override {
+    virtual irs::score_function prepare_scorer(irs::sub_reader const& segment_reader,
+                                               irs::term_reader const& term_reader,
+                                               irs::byte_type const* filter_node_attrs,
+                                               irs::byte_type* score_buf,
+                                               irs::attribute_provider const& document_attrs,
+                                               irs::boost_t boost) const override {
       if (sort_.prepare_scorer) {
-        sort_.prepare_scorer(segment_reader, term_reader,
-                             filter_node_attrs, score_buf, document_attrs, boost);
+        sort_.prepare_scorer(segment_reader, term_reader, filter_node_attrs,
+                             score_buf, document_attrs, boost);
       }
 
-      return {
-        std::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader, term_reader,
-                                                        filter_node_attrs, score_buf, document_attrs),
+      return {std::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader,
+                                                              term_reader, filter_node_attrs,
+                                                              score_buf, document_attrs),
               [](irs::score_ctx* ctx) -> const irs::byte_type* {
                 auto& ctxImpl =
                     *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
@@ -177,7 +179,9 @@ struct custom_sort : public irs::sort {
     }
 
     virtual bool less(irs::byte_type const* lhs, const irs::byte_type* rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(traits_t::score_cast(lhs), traits_t::score_cast(rhs)) : false;
+      return sort_.scorer_less ? sort_.scorer_less(traits_t::score_cast(lhs),
+                                                   traits_t::score_cast(rhs))
+                               : false;
     }
 
    private:
@@ -186,14 +190,11 @@ struct custom_sort : public irs::sort {
 
   std::function<void(const irs::sub_reader&, const irs::term_reader&)> field_collector_collect;
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_provider&)> term_collector_collect;
-  std::function<void(irs::byte_type*, const irs::index_reader&,
-                     const irs::sort::field_collector*,
-                     const irs::sort::term_collector*)> collector_finish;
+  std::function<void(irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<void(
-      const irs::sub_reader&, const irs::term_reader&,
-      const irs::byte_type*, irs::byte_type*,
-      const irs::attribute_provider&, irs::boost_t)> prepare_scorer;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+                     irs::byte_type*, const irs::attribute_provider&, irs::boost_t)>
+      prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
@@ -369,7 +370,7 @@ TEST(GeoFilterTest, query) {
       auto segment1 = writer->documents();
       {
         size_t i = 0;
-        for (auto docSlice: VPackArrayIterator(docs->slice())) {
+        for (auto docSlice : VPackArrayIterator(docs->slice())) {
           geoField.shapeSlice = docSlice.get("geometry");
           nameField.value = getStringRef(docSlice.get("name"));
 
@@ -388,9 +389,8 @@ TEST(GeoFilterTest, query) {
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
   ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
 
-  auto executeQuery = [&reader](
-      irs::filter const& q,
-      std::vector<irs::cost::cost_t> const& costs) {
+  auto executeQuery = [&reader](irs::filter const& q,
+                                std::vector<irs::cost::cost_t> const& costs) {
     std::set<std::string> actualResults;
 
     auto prepared = q.prepare(*reader);
@@ -453,7 +453,9 @@ TEST(GeoFilterTest, query) {
           do {
             EXPECT_EQ(seek_it->value(), column_it->seek(seek_it->value()));
             if (!irs::doc_limits::eof(column_it->value())) {
-              EXPECT_NE(actualResults.end(), actualResults.find(irs::to_string<std::string>(payload->value.c_str())));
+              EXPECT_NE(actualResults.end(),
+                        actualResults.find(
+                            irs::to_string<std::string>(payload->value.c_str())));
             }
           } while (seek_it->next());
           EXPECT_TRUE(irs::doc_limits::eof(seek_it->value()));
@@ -467,9 +469,7 @@ TEST(GeoFilterTest, query) {
   };
 
   {
-    std::set<std::string> const expected{
-      "Q"
-    };
+    std::set<std::string> const expected{"Q"};
 
     auto json = VPackParser::fromJson(R"({
       "type": "Point",
@@ -478,7 +478,8 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_TRUE(
+        geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
     ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
@@ -486,9 +487,7 @@ TEST(GeoFilterTest, query) {
   }
 
   {
-    std::set<std::string> const expected{
-      "Q", "R"
-    };
+    std::set<std::string> const expected{"Q", "R"};
 
     auto json = VPackParser::fromJson(R"({
       "type": "Polygon",
@@ -505,8 +504,10 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
-    ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, q.mutable_options()->shape.type());
+    ASSERT_TRUE(
+        geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT,
+              q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
     ASSERT_EQ(expected, executeQuery(q, {2, 2}));
@@ -514,14 +515,12 @@ TEST(GeoFilterTest, query) {
 
   {
     auto const origin = docs->slice().at(7);
-    std::set<std::string> expected {
-      origin.get("name").copyString()
-    };
+    std::set<std::string> expected{origin.get("name").copyString()};
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    ASSERT_TRUE(arangodb::iresearch::parseShape(
-      origin.get("geometry"), q.mutable_options()->shape, true));
+    ASSERT_TRUE(arangodb::iresearch::parseShape(origin.get("geometry"),
+                                                q.mutable_options()->shape, true));
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -530,14 +529,12 @@ TEST(GeoFilterTest, query) {
 
   {
     auto const origin = docs->slice().at(7);
-    std::set<std::string> expected {
-      origin.get("name").copyString()
-    };
+    std::set<std::string> expected{origin.get("name").copyString()};
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    ASSERT_TRUE(arangodb::iresearch::parseShape(
-      origin.get("geometry"), q.mutable_options()->shape, true));
+    ASSERT_TRUE(arangodb::iresearch::parseShape(origin.get("geometry"),
+                                                q.mutable_options()->shape, true));
     q.mutable_options()->type = GeoFilterType::CONTAINS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -546,14 +543,12 @@ TEST(GeoFilterTest, query) {
 
   {
     auto const origin = docs->slice().at(7);
-    std::set<std::string> expected {
-      origin.get("name").copyString()
-    };
+    std::set<std::string> expected{origin.get("name").copyString()};
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    ASSERT_TRUE(arangodb::iresearch::parseShape(
-      origin.get("geometry"), q.mutable_options()->shape, true));
+    ASSERT_TRUE(arangodb::iresearch::parseShape(origin.get("geometry"),
+                                                q.mutable_options()->shape, true));
     q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -593,8 +588,8 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    ASSERT_TRUE(arangodb::iresearch::parseShape(
-      shapeJson->slice(), q.mutable_options()->shape, false));
+    ASSERT_TRUE(arangodb::iresearch::parseShape(shapeJson->slice(),
+                                                q.mutable_options()->shape, false));
     q.mutable_options()->type = GeoFilterType::CONTAINS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -634,8 +629,8 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    ASSERT_TRUE(arangodb::iresearch::parseShape(
-      shapeJson->slice(), q.mutable_options()->shape, false));
+    ASSERT_TRUE(arangodb::iresearch::parseShape(shapeJson->slice(),
+                                                q.mutable_options()->shape, false));
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
 
     EXPECT_EQ(expected, executeQuery(q, {18, 18}));
@@ -661,8 +656,8 @@ TEST(GeoFilterTest, query) {
 
     GeoFilter q;
     *q.mutable_field() = "geometry";
-    ASSERT_TRUE(arangodb::iresearch::parseShape(
-      shapeJson->slice(), q.mutable_options()->shape, false));
+    ASSERT_TRUE(arangodb::iresearch::parseShape(shapeJson->slice(),
+                                                q.mutable_options()->shape, false));
     q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
 
     EXPECT_EQ(expected, executeQuery(q, {18, 18}));
@@ -719,7 +714,7 @@ TEST(GeoFilterTest, checkScorer) {
       auto segment1 = writer->documents();
       {
         size_t i = 0;
-        for (auto docSlice: VPackArrayIterator(docs->slice())) {
+        for (auto docSlice : VPackArrayIterator(docs->slice())) {
           geoField.shapeSlice = docSlice.get("geometry");
           nameField.value = getStringRef(docSlice.get("name"));
 
@@ -799,7 +794,9 @@ TEST(GeoFilterTest, checkScorer) {
           do {
             EXPECT_EQ(seek_it->value(), column_it->seek(seek_it->value()));
             if (!irs::doc_limits::eof(column_it->value())) {
-              EXPECT_NE(actualResults.end(), actualResults.find(irs::to_string<std::string>(payload->value.c_str())));
+              EXPECT_NE(actualResults.end(),
+                        actualResults.find(
+                            irs::to_string<std::string>(payload->value.c_str())));
             }
           } while (seek_it->next());
           EXPECT_TRUE(irs::doc_limits::eof(seek_it->value()));
@@ -833,8 +830,10 @@ TEST(GeoFilterTest, checkScorer) {
 
     GeoFilter q;
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
-    ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, q.mutable_options()->shape.type());
+    ASSERT_TRUE(
+        geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT,
+              q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
     irs::order order;
@@ -845,43 +844,48 @@ TEST(GeoFilterTest, checkScorer) {
     size_t prepare_scorer_count = 0;
     auto& sort = order.add<::custom_sort>(false);
 
-    sort.field_collector_collect = [&collector_collect_field_count, &q](
-        const irs::sub_reader&,
-        const irs::term_reader& field)->void {
+    sort.field_collector_collect = [&collector_collect_field_count,
+                                    &q](const irs::sub_reader&,
+                                        const irs::term_reader& field) -> void {
       collector_collect_field_count += (q.field() == field.meta().name);
     };
-    sort.term_collector_collect = [&collector_collect_term_count, &q](
-        const irs::sub_reader&,
-        const irs::term_reader& field,
-        const irs::attribute_provider&)->void {
+    sort.term_collector_collect = [&collector_collect_term_count,
+                                   &q](const irs::sub_reader&, const irs::term_reader& field,
+                                       const irs::attribute_provider&) -> void {
       collector_collect_term_count += (q.field() == field.meta().name);
     };
-    sort.collector_finish = [&collector_finish_count](
-        irs::byte_type*,
-        const irs::index_reader&,
-        const irs::sort::field_collector*,
-        const irs::sort::term_collector*)->void {
+    sort.collector_finish =
+        [&collector_finish_count](irs::byte_type*, const irs::index_reader&,
+                                  const irs::sort::field_collector*,
+                                  const irs::sort::term_collector*) -> void {
       ++collector_finish_count;
     };
-    sort.prepare_scorer = [&prepare_scorer_count, &q](
-        const irs::sub_reader&, const irs::term_reader&,
-        const irs::byte_type*, irs::byte_type*,
-        const irs::attribute_provider&, irs::boost_t boost) {
+    sort.prepare_scorer = [&prepare_scorer_count,
+                           &q](const irs::sub_reader&, const irs::term_reader&,
+                               const irs::byte_type*, irs::byte_type*,
+                               const irs::attribute_provider&, irs::boost_t boost) {
       EXPECT_EQ(q.boost(), boost);
       ++prepare_scorer_count;
     };
 
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
-
-    std::map<std::string, irs::bstring> const expected {
-      { "Q", encodeDocId(9) },
-      { "R", encodeDocId(9) }
+    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src) -> void {
+      ASSERT_TRUE(&dst);
+      ASSERT_TRUE(&src);
+      dst = src;
+    };
+    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs) -> bool {
+      return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA);
+    };
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score) -> void {
+      ASSERT_TRUE(&score);
+      ++scorer_score_count;
     };
 
+    std::map<std::string, irs::bstring> const expected{{"Q", encodeDocId(9)},
+                                                       {"R", encodeDocId(9)}};
+
     ASSERT_EQ(expected, executeQuery(q, order.prepare()));
-    ASSERT_EQ(2, collector_collect_field_count); // 2 segments
+    ASSERT_EQ(2, collector_collect_field_count);  // 2 segments
     ASSERT_EQ(0, collector_collect_term_count);
     ASSERT_EQ(1, collector_finish_count);
     ASSERT_EQ(2, scorer_score_count);
@@ -904,8 +908,10 @@ TEST(GeoFilterTest, checkScorer) {
     GeoFilter q;
     q.boost(1.5f);
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
-    ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
-    ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, q.mutable_options()->shape.type());
+    ASSERT_TRUE(
+        geo::geojson::parseRegion(json->slice(), q.mutable_options()->shape).ok());
+    ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT,
+              q.mutable_options()->shape.type());
     *q.mutable_field() = "geometry";
 
     irs::order order;
@@ -916,43 +922,48 @@ TEST(GeoFilterTest, checkScorer) {
     size_t prepare_scorer_count = 0;
     auto& sort = order.add<::custom_sort>(false);
 
-    sort.field_collector_collect = [&collector_collect_field_count, &q](
-        const irs::sub_reader&,
-        const irs::term_reader& field)->void {
+    sort.field_collector_collect = [&collector_collect_field_count,
+                                    &q](const irs::sub_reader&,
+                                        const irs::term_reader& field) -> void {
       collector_collect_field_count += (q.field() == field.meta().name);
     };
-    sort.term_collector_collect = [&collector_collect_term_count, &q](
-        const irs::sub_reader&,
-        const irs::term_reader& field,
-        const irs::attribute_provider&)->void {
+    sort.term_collector_collect = [&collector_collect_term_count,
+                                   &q](const irs::sub_reader&, const irs::term_reader& field,
+                                       const irs::attribute_provider&) -> void {
       collector_collect_term_count += (q.field() == field.meta().name);
     };
-    sort.collector_finish = [&collector_finish_count](
-        irs::byte_type*,
-        const irs::index_reader&,
-        const irs::sort::field_collector*,
-        const irs::sort::term_collector*)->void {
+    sort.collector_finish =
+        [&collector_finish_count](irs::byte_type*, const irs::index_reader&,
+                                  const irs::sort::field_collector*,
+                                  const irs::sort::term_collector*) -> void {
       ++collector_finish_count;
     };
-    sort.prepare_scorer = [&prepare_scorer_count, &q](
-        const irs::sub_reader&, const irs::term_reader&,
-        const irs::byte_type*, irs::byte_type*,
-        const irs::attribute_provider&, irs::boost_t boost) {
+    sort.prepare_scorer = [&prepare_scorer_count,
+                           &q](const irs::sub_reader&, const irs::term_reader&,
+                               const irs::byte_type*, irs::byte_type*,
+                               const irs::attribute_provider&, irs::boost_t boost) {
       EXPECT_EQ(q.boost(), boost);
       ++prepare_scorer_count;
     };
 
-    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
-
-    std::map<std::string, irs::bstring> const expected {
-      { "Q", encodeDocId(9) },
-      { "R", encodeDocId(9) }
+    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src) -> void {
+      ASSERT_TRUE(&dst);
+      ASSERT_TRUE(&src);
+      dst = src;
+    };
+    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs) -> bool {
+      return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA);
+    };
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score) -> void {
+      ASSERT_TRUE(&score);
+      ++scorer_score_count;
     };
 
+    std::map<std::string, irs::bstring> const expected{{"Q", encodeDocId(9)},
+                                                       {"R", encodeDocId(9)}};
+
     ASSERT_EQ(expected, executeQuery(q, order.prepare()));
-    ASSERT_EQ(2, collector_collect_field_count); // 2 segments
+    ASSERT_EQ(2, collector_collect_field_count);  // 2 segments
     ASSERT_EQ(0, collector_collect_term_count);
     ASSERT_EQ(1, collector_finish_count);
     ASSERT_EQ(2, scorer_score_count);

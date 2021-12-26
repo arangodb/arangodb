@@ -72,14 +72,12 @@ arangodb::ResourceMonitor& SubqueryEndExecutorInfos::getResourceMonitor() const 
 }
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&, SubqueryEndExecutorInfos& infos)
-    : _infos(infos), 
+    : _infos(infos),
       _accumulator(_infos.getResourceMonitor(), _infos.vpackOptions()) {}
 
 SubqueryEndExecutor::~SubqueryEndExecutor() = default;
 
-void SubqueryEndExecutor::initializeCursor() {
-  _accumulator.reset();
-}
+void SubqueryEndExecutor::initializeCursor() { _accumulator.reset(); }
 
 auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
@@ -150,13 +148,13 @@ void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
 
   TRI_ASSERT(_builder.isOpenArray());
   value.toVelocyPack(_options, _builder,
-                     /*resolveExternals*/false,
-                     /*allowUnindexed*/false);
+                     /*resolveExternals*/ false,
+                     /*allowUnindexed*/ false);
   ++_numValues;
 
   size_t currentLength = _builder.bufferRef().byteSize();
   TRI_ASSERT(currentLength >= previousLength);
-  
+
   // per-item overhead (this is because we have to account for the index
   // table entries as well, which are only added later in VelocyPack when
   // the array is closed). this is approximately only, but that should be
@@ -175,10 +173,8 @@ void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
 }
 
 SubqueryEndExecutor::Accumulator::Accumulator(arangodb::ResourceMonitor& resourceMonitor,
-                                              VPackOptions const* options) 
-    : _resourceMonitor(resourceMonitor), 
-      _options(options),
-      _builder(_buffer) {
+                                              VPackOptions const* options)
+    : _resourceMonitor(resourceMonitor), _options(options), _builder(_buffer) {
   reset();
 }
 
@@ -213,8 +209,7 @@ size_t SubqueryEndExecutor::Accumulator::numValues() const noexcept {
 
 // We do not write any output for inbound dataRows
 // We will only write output for shadowRows. This is accounted for in ExecutionBlockImpl
-[[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const&,
-                                                                AqlCall const&) const
-    noexcept -> size_t {
+[[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const&, AqlCall const&) const noexcept -> size_t {
   return 0;
 }

@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
-#include <fcntl.h>
-#include <io.h>
 #include <unicode/locid.h>
 #endif
 
@@ -127,11 +127,12 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.audit-file",
                      "audit log file to save commands and results",
                      new StringParameter(&_auditFile));
-  
-  options->addOption("--console.history",
-                     "whether or not to load and persist command-line history",
-                     new BooleanParameter(&_useHistory))
-                     .setIntroducedIn(30405);
+
+  options
+      ->addOption("--console.history",
+                  "whether or not to load and persist command-line history",
+                  new BooleanParameter(&_useHistory))
+      .setIntroducedIn(30405);
 
   options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
 
@@ -336,17 +337,19 @@ void ConsoleFeature::printWelcomeInfo() {
   if (_quiet) {
     return;
   }
-    
+
   std::ostringstream s;
-  
+
   if (_pager) {
     s << "Using pager '" << _pagerCommand << "' for output buffering. ";
   }
 
   if (_useHistory) {
-    s << "Command-line history will be persisted when the shell is exited. You can use `--console.history false` to turn this off";
+    s << "Command-line history will be persisted when the shell is exited. You "
+         "can use `--console.history false` to turn this off";
   } else {
-    s << "Command-line history is enabled for this session only and will *not* be persisted.";
+    s << "Command-line history is enabled for this session only and will *not* "
+         "be persisted.";
   }
 
   printLine(s.str());

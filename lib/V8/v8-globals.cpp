@@ -25,8 +25,8 @@
 
 #include "v8-globals.h"
 
-#include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 
 TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServer& server,
@@ -190,8 +190,10 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
   NameKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "name"));
   OperationIDKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "operationID"));
   OverwriteKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwrite"));
-  OverwriteModeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwriteMode"));
-  SkipDocumentValidationKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "skipDocumentValidation"));
+  OverwriteModeKey.Reset(isolate,
+                         TRI_V8_ASCII_STRING(isolate, "overwriteMode"));
+  SkipDocumentValidationKey.Reset(
+      isolate, TRI_V8_ASCII_STRING(isolate, "skipDocumentValidation"));
   ParametersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "parameters"));
   PathKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "path"));
   PrefixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "prefix"));
@@ -200,7 +202,8 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
   ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "protocol"));
   RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
   RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
-  RawRequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
+  RawRequestBodyKey.Reset(isolate,
+                          TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "responseCode"));
   ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "returnNew"));
@@ -233,26 +236,27 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_to"));
 }
 
-TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent( // constructor
-    v8::Isolate& isolateRef, // isolate
-    std::shared_ptr<void> const& value // value
-): _isolate(isolateRef), _value(value) {
+TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(  // constructor
+    v8::Isolate& isolateRef,                                // isolate
+    std::shared_ptr<void> const& value                      // value
+    )
+    : _isolate(isolateRef), _value(value) {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
   _persistent.Reset(isolate, v8::External::New(isolate, value.get()));
-  _persistent.SetWeak( // set weak reference
-    this, // parameter
-    [](v8::WeakCallbackInfo<SharedPtrPersistent> const& data)->void { // callback
-      auto isolate = data.GetIsolate();
-      auto* persistent = data.GetParameter();
-      TRI_GET_GLOBALS();
+  _persistent.SetWeak(  // set weak reference
+      this,             // parameter
+      [](v8::WeakCallbackInfo<SharedPtrPersistent> const& data) -> void {  // callback
+        auto isolate = data.GetIsolate();
+        auto* persistent = data.GetParameter();
+        TRI_GET_GLOBALS();
 
-      auto* key = persistent->_value.get(); // same key as used in emplace(...)
-      auto count = v8g->JSSharedPtrs.erase(key);
-      TRI_ASSERT(count); // zero indicates that v8g was probably deallocated before calling the v8::WeakCallbackInfo::Callback
-    },
-    v8::WeakCallbackType::kFinalizer // callback type
+        auto* key = persistent->_value.get();  // same key as used in emplace(...)
+        auto count = v8g->JSSharedPtrs.erase(key);
+        TRI_ASSERT(count);  // zero indicates that v8g was probably deallocated before calling the v8::WeakCallbackInfo::Callback
+      },
+      v8::WeakCallbackType::kFinalizer  // callback type
   );
   v8g->increaseActiveExternals();
 }
@@ -261,23 +265,23 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
   auto* isolate = &_isolate;
   TRI_GET_GLOBALS();
   v8g->decreaseActiveExternals();
-  _persistent.Reset(); // dispose and clear the persistent handle (SIGSEGV here may indicate that v8::Isolate was already deallocated)
+  _persistent.Reset();  // dispose and clear the persistent handle (SIGSEGV here may indicate that v8::Isolate was already deallocated)
 }
 
-/*static*/ std::pair<TRI_v8_global_t::SharedPtrPersistent&, bool> TRI_v8_global_t::SharedPtrPersistent::emplace( // emplace a persistent shared pointer
-    v8::Isolate& isolateRef, // isolate
-    std::shared_ptr<void> const& value // persistent pointer
+/*static*/ std::pair<TRI_v8_global_t::SharedPtrPersistent&, bool> TRI_v8_global_t::SharedPtrPersistent::emplace(  // emplace a persistent shared pointer
+    v8::Isolate& isolateRef,            // isolate
+    std::shared_ptr<void> const& value  // persistent pointer
 ) {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
-  auto entry = v8g->JSSharedPtrs.try_emplace( // ensure shared_ptr is not deallocated
-    value.get(), // key
-    isolateRef, value // value
+  auto entry = v8g->JSSharedPtrs.try_emplace(  // ensure shared_ptr is not deallocated
+      value.get(),                             // key
+      isolateRef, value                        // value
   );
 
-  return std::pair<SharedPtrPersistent&, bool>( // result
-    entry.first->second, entry.second // args
+  return std::pair<SharedPtrPersistent&, bool>(  // result
+      entry.first->second, entry.second          // args
   );
 }
 
@@ -327,14 +331,18 @@ bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
     return isolate->GetCurrentContext()
         ->Global()
         ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, func)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()),
+                            v8::FunctionTemplate::New(isolate, func)
+                                ->GetFunction(TRI_IGETC)
+                                .FromMaybe(v8::Local<v8::Function>()),
                             static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
         .FromMaybe(false);
   } else {
     return isolate->GetCurrentContext()
         ->Global()
         ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, func)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()),
+                            v8::FunctionTemplate::New(isolate, func)
+                                ->GetFunction(TRI_IGETC)
+                                .FromMaybe(v8::Local<v8::Function>()),
                             v8::ReadOnly)
         .FromMaybe(false);
   }

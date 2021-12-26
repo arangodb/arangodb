@@ -20,8 +20,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/debugging.h>
 #include <Basics/StaticStrings.h>
+#include <Basics/debugging.h>
 #include <Basics/overload.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -30,7 +30,6 @@
 #include "LogStatus.h"
 
 using namespace arangodb::replication2::replicated_log;
-
 
 void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
@@ -115,7 +114,8 @@ auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStat
   FollowerStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
-  stats.lastErrorReason = AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
+  stats.lastErrorReason =
+      AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
   stats.lastRequestLatencyMS = std::chrono::duration<double, std::milli>{
       slice.get("lastRequestLatencyMS").getDouble()};
   stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));

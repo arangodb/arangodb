@@ -52,7 +52,8 @@ class Path {
     return std::move(init);
   }
 
-  auto toStream(std::ostream& stream, SkipComponents skip = SkipComponents()) const -> std::ostream& {
+  auto toStream(std::ostream& stream, SkipComponents skip = SkipComponents()) const
+      -> std::ostream& {
     forEach([&stream, &skip](const char* component) {
       if (skip.num == 0) {
         stream << "/" << component;
@@ -63,7 +64,8 @@ class Path {
     return stream;
   }
 
-  [[nodiscard]] auto vec(SkipComponents skip = SkipComponents()) const -> std::vector<std::string> {
+  [[nodiscard]] auto vec(SkipComponents skip = SkipComponents()) const
+      -> std::vector<std::string> {
     std::vector<std::string> res;
     forEach([&res, &skip](const char* component) {
       if (skip.num == 0) {
@@ -157,7 +159,8 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
   }
 
   // shared ptr constructor
-  static auto make_shared(std::shared_ptr<P const> parent, V value) -> std::shared_ptr<T const> {
+  static auto make_shared(std::shared_ptr<P const> parent, V value)
+      -> std::shared_ptr<T const> {
     struct ConstructibleT : public T {
      public:
       explicit ConstructibleT(std::shared_ptr<P const> parent, V value) noexcept
@@ -182,5 +185,4 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
 
 auto operator<<(std::ostream& stream, Path const& path) -> std::ostream&;
 
-}  // namespace arangodb
-
+}  // namespace arangodb::cluster::paths

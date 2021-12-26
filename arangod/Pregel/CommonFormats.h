@@ -141,8 +141,7 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
     arrayBuilder.openArray();
     arrayBuilder.add(VPackValue(senderVal.senderId.shard));
     arrayBuilder.add(VPackValuePair(senderVal.senderId.key.data(),
-                                    senderVal.senderId.key.size(),
-                                    VPackValueType::String));
+                                    senderVal.senderId.key.size(), VPackValueType::String));
     arrayBuilder.add(VPackValue(senderVal.value));
     arrayBuilder.close();
   }

@@ -23,8 +23,8 @@
 
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/StringUtils.h"
 #include "Basics/ResultT.h"
+#include "Basics/StringUtils.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Queues/LifoQueue.h"
 
@@ -175,6 +175,6 @@ TEST_F(LifoQueueTest, it_should_pop_all_loose_ends) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
-}  // namespace queue_graph_cache_test
+}  // namespace lifo_queue_graph_cache_test
 }  // namespace tests
 }  // namespace arangodb

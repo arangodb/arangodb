@@ -188,4 +188,3 @@ class HybridLogicalClock {
 };
 }  // namespace basics
 }  // namespace arangodb
-

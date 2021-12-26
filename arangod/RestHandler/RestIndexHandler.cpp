@@ -59,7 +59,7 @@ using namespace arangodb::rest;
 RestIndexHandler::RestIndexHandler(application_features::ApplicationServer& server,
                                    GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
-  
+
 RestIndexHandler::~RestIndexHandler() {
   std::unique_lock<std::mutex> locker(_mutex);
   shutdownBackgroundThread();
@@ -90,11 +90,12 @@ RestStatus RestIndexHandler::continueExecute() {
   std::unique_lock<std::mutex> locker(_mutex);
 
   shutdownBackgroundThread();
-  
+
   if (_createInBackgroundData.result.ok()) {
     TRI_ASSERT(_createInBackgroundData.response.slice().isObject());
 
-    VPackSlice created = _createInBackgroundData.response.slice().get("isNewlyCreated");
+    VPackSlice created =
+        _createInBackgroundData.response.slice().get("isNewlyCreated");
     auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
                                                    : rest::ResponseCode::OK;
 
@@ -104,8 +105,7 @@ RestStatus RestIndexHandler::continueExecute() {
         _createInBackgroundData.result.is(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
       generateError(_createInBackgroundData.result);
     } else {  // http_server compatibility
-      generateError(rest::ResponseCode::BAD, 
-                    _createInBackgroundData.result.errorNumber(), 
+      generateError(rest::ResponseCode::BAD, _createInBackgroundData.result.errorNumber(),
                     _createInBackgroundData.result.errorMessage());
     }
   }
@@ -114,13 +114,14 @@ RestStatus RestIndexHandler::continueExecute() {
 }
 
 void RestIndexHandler::shutdownExecute(bool isFinalized) noexcept {
-  auto sg = arangodb::scopeGuard([&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
 
   // request not done yet
   if (!isFinalized) {
     return;
   }
-  
+
   if (_request->requestType() == rest::RequestType::POST) {
     std::unique_lock<std::mutex> locker(_mutex);
     shutdownBackgroundThread();
@@ -234,7 +235,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   // .............................................................................
   // /_api/index/selectivity?collection=<collection-name>
   // .............................................................................
-  
+
   bool found = false;
   std::string const& cName = _request->value("collection", found);
   if (cName.empty()) {
@@ -253,7 +254,8 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
       // but the transaction hasn't yet started on the DB server. in
       // this case, we create an ad-hoc transaction on the underlying
       // collection
-      trx = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase), cName, AccessMode::Type::READ);
+      trx = std::make_unique<SingleCollectionTransaction>(
+          transaction::StandaloneContext::Create(_vocbase), cName, AccessMode::Type::READ);
     } else {
       throw;
     }
@@ -266,10 +268,10 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     generateError(res);
     return RestStatus::DONE;
   }
-  
+
   LogicalCollection* coll = trx->documentCollection(cName);
   auto idxs = coll->getIndexes();
-  
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
@@ -289,7 +291,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   }
   builder.close();
   builder.close();
-  
+
   generateResult(rest::ResponseCode::OK, std::move(buffer));
   return RestStatus::DONE;
 }
@@ -313,7 +315,7 @@ RestStatus RestIndexHandler::createIndex() {
   std::string cName = _request->value("collection", found);
   if (!found) {
     events::CreateIndexEnd(_vocbase.name(), "(unknown)", body,
-                        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+                           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
@@ -337,26 +339,30 @@ RestStatus RestIndexHandler::createIndex() {
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
-  auto execContext = std::unique_ptr<VocbaseContext>(VocbaseContext::create(*_request, _vocbase));
+  auto execContext =
+      std::unique_ptr<VocbaseContext>(VocbaseContext::create(*_request, _vocbase));
   // this is necessary, because the execContext will release the vocbase in its dtor
   if (!_vocbase.use()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   std::unique_lock<std::mutex> locker(_mutex);
-    
+
   // the following callback is executed in a background thread
   auto cb = [this, self = shared_from_this(), execContext = std::move(execContext),
-             collection = std::move(coll), body = std::move(indexInfo)]{
+             collection = std::move(coll), body = std::move(indexInfo)] {
     ExecContextScope scope(execContext.get());
     {
       std::unique_lock<std::mutex> locker(_mutex);
 
       try {
-        _createInBackgroundData.result = methods::Indexes::ensureIndex(collection.get(), body.slice(), true, _createInBackgroundData.response);
+        _createInBackgroundData.result =
+            methods::Indexes::ensureIndex(collection.get(), body.slice(), true,
+                                          _createInBackgroundData.response);
 
         if (_createInBackgroundData.result.ok()) {
-          VPackSlice created = _createInBackgroundData.response.slice().get("isNewlyCreated");
+          VPackSlice created =
+              _createInBackgroundData.response.slice().get("isNewlyCreated");
           auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
                                                          : rest::ResponseCode::OK;
 
@@ -365,8 +371,10 @@ RestStatus RestIndexHandler::createIndex() {
           b.add(StaticStrings::Error, VPackValue(false));
           b.add(StaticStrings::Code, VPackValue(static_cast<int>(r)));
           b.close();
-          _createInBackgroundData.response = VPackCollection::merge(_createInBackgroundData.response.slice(), b.slice(), false);
-        } 
+          _createInBackgroundData.response =
+              VPackCollection::merge(_createInBackgroundData.response.slice(),
+                                     b.slice(), false);
+        }
       } catch (basics::Exception const& ex) {
         _createInBackgroundData.result = Result(ex.code(), ex.message());
       } catch (std::exception const& ex) {
@@ -375,14 +383,13 @@ RestStatus RestIndexHandler::createIndex() {
     }
 
     // notify REST handler
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self]() {
-      self->wakeupHandler();
-    });
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                       [self]() { self->wakeupHandler(); });
   };
 
   // start background thread
   _createInBackgroundData.thread = std::make_unique<std::thread>(std::move(cb));
-      
+
   return RestStatus::WAITING;
 }
 

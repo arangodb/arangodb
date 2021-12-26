@@ -59,8 +59,7 @@ uint64_t MaxMapCountFeature::actualMaxMappings() {
 #ifdef __linux__
   // test max_map_count value in /proc/sys/vm
   try {
-    std::string value =
-        basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
+    std::string value = basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
 
     maxMappings = basics::StringUtils::uint64(value);
   } catch (...) {

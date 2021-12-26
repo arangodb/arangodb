@@ -48,13 +48,14 @@ GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& 
   _state.databaseName = StaticStrings::SystemDatabase;
 }
 
-std::shared_ptr<GlobalTailingSyncer> GlobalTailingSyncer::create(ReplicationApplierConfiguration const& configuration,
-                                                                 TRI_voc_tick_t initialTick, bool useTick) {
+std::shared_ptr<GlobalTailingSyncer> GlobalTailingSyncer::create(
+    ReplicationApplierConfiguration const& configuration,
+    TRI_voc_tick_t initialTick, bool useTick) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : GlobalTailingSyncer {
     Enabler(ReplicationApplierConfiguration const& configuration,
-           TRI_voc_tick_t initialTick, bool useTick) 
-      : GlobalTailingSyncer(configuration, initialTick, useTick) {}
+            TRI_voc_tick_t initialTick, bool useTick)
+        : GlobalTailingSyncer(configuration, initialTick, useTick) {}
   };
 
   return std::make_shared<Enabler>(configuration, initialTick, useTick);
@@ -76,7 +77,7 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
 
 /// @brief save the current applier state
 Result GlobalTailingSyncer::saveApplierState() {
-  return  _applier->persistStateResult(false);
+  return _applier->persistStateResult(false);
 }
 
 bool GlobalTailingSyncer::skipMarker(VPackSlice slice) {

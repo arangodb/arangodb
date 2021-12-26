@@ -60,7 +60,7 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
   if (_aqlItemMatrix->numberOfBlocks() == 0) {
     _lastRange = {AqlItemBlockInputRange{upstreamState()}};
   } else {
-    auto [blockPtr, start] =  _aqlItemMatrix->getBlock(_currentBlockRowIndex);
+    auto [blockPtr, start] = _aqlItemMatrix->getBlock(_currentBlockRowIndex);
     ExecutorState state = incrBlockIndex();
     _lastRange = {state, 0, std::move(blockPtr), start};
   }
@@ -86,7 +86,7 @@ ExecutorState AqlItemBlockInputMatrix::upstreamState() const noexcept {
 bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
   return upstreamState() == ExecutorState::HASMORE;
 }
-  
+
 bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
   return _shadowRow.isInitialized() ||
          (_aqlItemMatrix != nullptr && _aqlItemMatrix->size() != 0);

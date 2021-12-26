@@ -36,31 +36,25 @@ class VPackComparer final : public irs::comparer {
   VPackComparer();
 
   explicit VPackComparer(IResearchViewSort const& sort) noexcept
-    : _sort(&sort), _size(sort.size()) {
-  }
+      : _sort(&sort), _size(sort.size()) {}
 
   VPackComparer(IResearchViewSort const& sort, size_t size) noexcept
-    : _sort(&sort), _size(std::min(sort.size(), size)) {
-  }
+      : _sort(&sort), _size(std::min(sort.size(), size)) {}
 
   void reset(IResearchViewSort const& sort) noexcept {
     _sort = &sort;
     _size = sort.size();
   }
 
-  bool empty() const noexcept {
-    return 0 == _size;
-  }
+  bool empty() const noexcept { return 0 == _size; }
 
  protected:
-  virtual bool less(irs::bytes_ref const& lhs,
-                    irs::bytes_ref const& rhs) const override;
+  virtual bool less(irs::bytes_ref const& lhs, irs::bytes_ref const& rhs) const override;
 
  private:
   IResearchViewSort const* _sort;
-  size_t _size; // number of buckets to compare
-}; // VPackComparer
+  size_t _size;  // number of buckets to compare
+};               // VPackComparer
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

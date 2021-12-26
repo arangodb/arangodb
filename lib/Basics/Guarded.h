@@ -193,7 +193,8 @@ Guarded<T, M, L>::Guarded(T&& value) : _value{std::move(value)}, _mutex{} {}
 
 template <class T, class M, template <class> class L>
 template <typename... Args>
-Guarded<T, M, L>::Guarded(Args&&... args) : _value{std::forward<Args>(args)...}, _mutex{} {}
+Guarded<T, M, L>::Guarded(Args&&... args)
+    : _value{std::forward<Args>(args)...}, _mutex{} {}
 
 template <class T, class M, template <class> class L>
 template <class F, class R>
@@ -211,7 +212,8 @@ auto Guarded<T, M, L>::doUnderLock(F&& callback) const -> R {
 
 template <class T, class M, template <class> class L>
 template <class F, class R, class Q>
-auto Guarded<T, M, L>::tryCallUnderLock(M& mutex, F&& callback, T& value) -> std::optional<Q> {
+auto Guarded<T, M, L>::tryCallUnderLock(M& mutex, F&& callback, T& value)
+    -> std::optional<Q> {
   auto guard = lock_type(mutex, std::try_to_lock);
 
   if (guard.owns_lock()) {

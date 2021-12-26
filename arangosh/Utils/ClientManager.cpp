@@ -25,8 +25,8 @@
 #include "ClientManager.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Logger/Logger.h"
@@ -85,14 +85,16 @@ ClientManager::~ClientManager() = default;
 
 Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
                                          bool force, bool logServerVersion,
-                                         bool logDatabaseNotFound, bool quiet, size_t threadNumber) {
+                                         bool logDatabaseNotFound, bool quiet,
+                                         size_t threadNumber) {
   TRI_ASSERT(_server.hasFeature<HttpEndpointProvider>());
   ClientFeature& client = _server.getFeature<HttpEndpointProvider, ClientFeature>();
 
   try {
     httpClient = client.createHttpClient(threadNumber);
   } catch (...) {
-    LOG_TOPIC("2b5fd", FATAL, _topic) << "cannot create server connection, giving up!";
+    LOG_TOPIC("2b5fd", FATAL, _topic)
+        << "cannot create server connection, giving up!";
     return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
@@ -101,7 +103,8 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
   httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
   httpClient->params().setUserNamePassword("/", client.username(), client.password());
   if (!client.jwtSecret().empty()) {
-    httpClient->params().setJwt(fuerte::jwt::generateInternalToken(client.jwtSecret(), client.endpoint()));
+    httpClient->params().setJwt(
+        fuerte::jwt::generateInternalToken(client.jwtSecret(), client.endpoint()));
   }
 
   // now connect by retrieving version
@@ -114,7 +117,8 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
       LOG_TOPIC("775bd", ERR, _topic)
           << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
           << dbName << "', username: '" << client.username() << "'";
-      LOG_TOPIC("b1ad6", ERR, _topic) << "Error message: '" << httpClient->getErrorMessage() << "'";
+      LOG_TOPIC("b1ad6", ERR, _topic)
+          << "Error message: '" << httpClient->getErrorMessage() << "'";
     }
     return {errorCode};
   }
@@ -240,8 +244,8 @@ std::pair<Result, bool> ClientManager::getArangoIsUsingEngine(httpclient::Simple
   } else {
     if (response->wasHttpError()) {
       result = ::getHttpErrorMessage(response.get());
-      LOG_TOPIC("b05c4", ERR, _topic) << "got error while checking storage engine: "
-                             << result.errorMessage();
+      LOG_TOPIC("b05c4", ERR, _topic)
+          << "got error while checking storage engine: " << result.errorMessage();
       client.setErrorMessage(result.errorMessage(), false);
     } else {
       result.reset(TRI_ERROR_INTERNAL);

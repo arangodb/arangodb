@@ -24,16 +24,16 @@
 #include <atomic>
 #include <cstdint>
 
-#include "Cache/BucketState.h"
 #include "Basics/Common.h"
 #include "Basics/cpu-relax.h"
 #include "Basics/debugging.h"
+#include "Cache/BucketState.h"
 
 namespace arangodb::cache {
 
 BucketState::BucketState() noexcept : _state(0) {}
 
-BucketState::BucketState(BucketState const& other) noexcept 
+BucketState::BucketState(BucketState const& other) noexcept
     : _state(other._state.load()) {}
 
 BucketState& BucketState::operator=(BucketState const& other) noexcept {
@@ -96,4 +96,4 @@ void BucketState::clear() noexcept {
   TRI_ASSERT(isLocked());
   _state = static_cast<std::uint32_t>(Flag::locked);
 }
-}
+}  // namespace arangodb::cache

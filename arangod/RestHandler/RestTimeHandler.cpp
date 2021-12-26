@@ -44,7 +44,7 @@ RestStatus RestTimeHandler::execute() {
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   result.add("time", VPackValue(TRI_microtime()));
   result.close();
-  
+
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

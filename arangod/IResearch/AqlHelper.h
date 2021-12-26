@@ -27,13 +27,13 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
-#include "VelocyPackHelper.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "VelocyPackHelper.h"
 
+#include "Cluster/ClusterInfo.h"
 #include "search/sort.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
-#include "Cluster/ClusterInfo.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -198,8 +198,8 @@ struct AqlValueTraits {
 
     underlying_t const typeIndex =
         value.isNull(false) + 2 * value.isBoolean() + 3 * value.isNumber() +
-        4 * value.isString() + 5 * value.isArray() +
-        value.isRange() + 7 * value.isObject();  // isArray() returns `true` in case of range too
+        4 * value.isString() + 5 * value.isArray() + value.isRange() +
+        7 * value.isObject();  // isArray() returns `true` in case of range too
 
     return static_cast<ScopedValueType>(typeIndex);
   }
@@ -243,7 +243,7 @@ struct QueryContext {
   irs::index_reader const* index;
   aql::Variable const* ref;
   /// @brief allow optimize away/modify some conditions during filter building
-  FilterOptimization  filterOptimization {FilterOptimization::MAX};
+  FilterOptimization filterOptimization{FilterOptimization::MAX};
 };  // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,8 +302,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
 
   bool getDouble(double_t& value) const {
     bool failed = false;
-    value = _node->isConstant() ? _node->getDoubleValue()
-                                : _value.toDouble(failed);
+    value = _node->isConstant() ? _node->getDoubleValue() : _value.toDouble(failed);
     // cppcheck-suppress knownConditionTrueFalse
     return !failed;
   }
@@ -345,8 +344,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
     _node->isConstant()
         ? _node->toVelocyPackValue(builder)
         : _value.toVelocyPack(static_cast<velocypack::Options const*>(nullptr),
-                              builder, /*resoveExternals*/false,
-                              /*allowUnindexed*/false);
+                              builder, /*resoveExternals*/ false,
+                              /*allowUnindexed*/ false);
   }
 
  private:
@@ -483,10 +482,8 @@ inline bool findReference(aql::AstNode const& root, aql::Variable const& ref) no
 /// @returns true if the specified 'in' nodes has been successfully normalized,
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-bool normalizeGeoDistanceCmpNode(
-  aql::AstNode const& in,
-  aql::Variable const& ref,
-  NormalizedCmpNode& out);
+bool normalizeGeoDistanceCmpNode(aql::AstNode const& in, aql::Variable const& ref,
+                                 NormalizedCmpNode& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes input binary comparison node (==, !=, <, <=, >, >=) and

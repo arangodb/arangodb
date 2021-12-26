@@ -40,15 +40,14 @@
 #include <memory>
 #include <utility>
 
-#include "Replication2/Mocks/PersistedLog.h"
 #include "Replication2/Mocks/FakeReplicatedLog.h"
+#include "Replication2/Mocks/PersistedLog.h"
 
 namespace arangodb::replication2::test {
 
 using namespace replicated_log;
 
 struct ReplicatedLogTest : ::testing::Test {
-
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
     auto persisted = makePersistedLog(id);
     return std::make_unique<LogCore>(persisted);
@@ -78,9 +77,7 @@ struct ReplicatedLogTest : ::testing::Test {
                                                LoggerContext(Logger::FIXME));
   }
 
-  auto defaultLogger() {
-    return LoggerContext(Logger::REPLICATION2);
-  }
+  auto defaultLogger() { return LoggerContext(Logger::REPLICATION2); }
 
   auto stopAsyncMockLogs() -> void {
     for (auto const& it : _persistedLogs) {
@@ -91,8 +88,8 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   std::unordered_map<LogId, std::shared_ptr<MockLog>> _persistedLogs;
-  std::shared_ptr<ReplicatedLogMetricsMock> _logMetricsMock = std::make_shared<ReplicatedLogMetricsMock>();
+  std::shared_ptr<ReplicatedLogMetricsMock> _logMetricsMock =
+      std::make_shared<ReplicatedLogMetricsMock>();
 };
 
-
-}
+}  // namespace arangodb::replication2::test

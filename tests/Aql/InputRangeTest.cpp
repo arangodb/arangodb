@@ -102,11 +102,10 @@ class InputRangeTest : public AqlExecutorTestCase<> {
                 for (RegisterId::value_t r = 0; r < copiedBlock->numRegisters(); ++r) {
                   copiedBlock->destroyValue(i, r);
                 }
-
               }
             }
           }
-          AqlItemBlockInputRange splitRange{state, 0, copiedBlock , 0};
+          AqlItemBlockInputRange splitRange{state, 0, copiedBlock, 0};
           res.setDependency(index, splitRange);
         }
       }

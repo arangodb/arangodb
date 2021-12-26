@@ -47,4 +47,3 @@ struct UpgradeTasks {
 
 }  // namespace methods
 }  // namespace arangodb
-

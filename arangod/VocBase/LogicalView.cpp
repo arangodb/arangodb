@@ -33,9 +33,9 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -66,7 +66,8 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
         "got an invalid view definition while constructing LogicalView");
   }
 
-  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
   if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -81,8 +82,7 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
   TRI_UpdateTickServer(id().id());
 }
 
-Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
-                                     Serialization context) const {
+Result LogicalView::appendVelocyPack(velocypack::Builder& builder, Serialization context) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   std::string(
@@ -96,7 +96,7 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
 
 bool LogicalView::canUse(arangodb::auth::Level const& level) {
   // as per https://github.com/arangodb/backlog/issues/459
-  return ExecContext::current().canUseDatabase(vocbase().name(), level); // can use vocbase
+  return ExecContext::current().canUseDatabase(vocbase().name(), level);  // can use vocbase
 
   /* FIXME TODO per-view authentication checks disabled as per https://github.com/arangodb/backlog/issues/459
   return !ctx // authentication not enabled
@@ -127,9 +127,8 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
   }
   auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
-  auto type = basics::VelocyPackHelper::getStringRef(
-    definition, StaticStrings::DataSourceType,
-    VPackStringRef(nullptr, 0));
+  auto type = basics::VelocyPackHelper::getStringRef(definition, StaticStrings::DataSourceType,
+                                                     VPackStringRef(nullptr, 0));
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.create(view, vocbase, definition, isUserRequest);
@@ -362,9 +361,8 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperClusterInfo::rename(
-    LogicalView const& /*view*/,
-    std::string const& /*oldName*/) noexcept {
+/*static*/ Result LogicalViewHelperClusterInfo::rename(LogicalView const& /*view*/,
+                                                       std::string const& /*oldName*/) noexcept {
   return Result(TRI_ERROR_CLUSTER_UNSUPPORTED);  // renaming a view in a cluster
                                                  // is not supported
 }
@@ -373,10 +371,9 @@ Result LogicalView::rename(std::string&& newName) {
 // --SECTION--                                    LogicalViewHelperStorageEngine
 // -----------------------------------------------------------------------------
 
-/*static*/ Result LogicalViewHelperStorageEngine::construct(
-    LogicalView::ptr& view,
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice definition) noexcept {
+/*static*/ Result LogicalViewHelperStorageEngine::construct(LogicalView::ptr& view,
+                                                            TRI_vocbase_t& vocbase,
+                                                            velocypack::Slice definition) noexcept {
   try {
     TRI_set_errno(TRI_ERROR_NO_ERROR);  // reset before calling createView(...)
     auto impl = vocbase.createView(definition);
@@ -400,8 +397,7 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperStorageEngine::destruct(
-    LogicalView const& view) noexcept {
+/*static*/ Result LogicalViewHelperStorageEngine::destruct(LogicalView const& view) noexcept {
   if (!view.deleted()) {
     return Result();  // NOOP
   }

@@ -25,9 +25,9 @@
 
 #include "Basics/Common.h"
 
+#include <rocksdb/types.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <rocksdb/write_batch.h>
-#include <rocksdb/types.h>
 
 namespace arangodb {
 
@@ -37,32 +37,20 @@ class RocksDBRecoveryHelper {
 
   virtual void prepare() {}
 
-  virtual void PutCF(uint32_t column_family_id,
-                     const rocksdb::Slice& key,
-                     const rocksdb::Slice& value,
-                     rocksdb::SequenceNumber tick) {
-  }
+  virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                     const rocksdb::Slice& value, rocksdb::SequenceNumber tick) {}
 
-  virtual void DeleteCF(uint32_t column_family_id,
-                        const rocksdb::Slice& key,
-                        rocksdb::SequenceNumber tick) {
-  }
+  virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                        rocksdb::SequenceNumber tick) {}
 
-  virtual void SingleDeleteCF(uint32_t column_family_id,
-                              const rocksdb::Slice& key,
-                              rocksdb::SequenceNumber tick) {
-  }
+  virtual void SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                              rocksdb::SequenceNumber tick) {}
 
-  virtual void DeleteRangeCF(uint32_t column_family_id,
-                             const rocksdb::Slice& begin_key,
+  virtual void DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
                              const rocksdb::Slice& end_key,
-                             rocksdb::SequenceNumber tick) {
-  }
+                             rocksdb::SequenceNumber tick) {}
 
-  virtual void LogData(const rocksdb::Slice& blob,
-                       rocksdb::SequenceNumber tick) {
-  }
+  virtual void LogData(const rocksdb::Slice& blob, rocksdb::SequenceNumber tick) {}
 };
 
 }  // end namespace arangodb
-

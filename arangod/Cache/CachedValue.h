@@ -149,4 +149,3 @@ struct CachedValue {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

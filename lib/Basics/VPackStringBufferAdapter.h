@@ -76,4 +76,3 @@ class VPackStringBufferAdapter final : public VPackSink {
 };
 }  // namespace basics
 }  // namespace arangodb
-

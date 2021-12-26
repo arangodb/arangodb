@@ -58,8 +58,7 @@ bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid, DataSourceId 
     if (collection == nullptr) {
       return false;
     }
-    return !TRI_ExcludeCollectionReplication(collection->name(),
-                                             _filter.includeSystem,
+    return !TRI_ExcludeCollectionReplication(collection->name(), _filter.includeSystem,
                                              _filter.includeFoxxQueues);
   }
   return false;

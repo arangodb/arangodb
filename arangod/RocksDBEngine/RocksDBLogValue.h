@@ -107,7 +107,7 @@ class RocksDBLogValue {
 
   /// @deprecated method for old collection drop marker
   static arangodb::velocypack::StringRef oldCollectionName(rocksdb::Slice const&);
-  
+
   /// @brief get slice from tracked document
   static std::pair<LocalDocumentId, velocypack::Slice> trackedDocument(rocksdb::Slice const&);
 
@@ -131,11 +131,11 @@ class RocksDBLogValue {
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, VPackSlice const&);
-  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, arangodb::velocypack::StringRef const& data);
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t,
+                  arangodb::velocypack::StringRef const& data);
 
  private:
   std::string _buffer;
 };
 
 }  // namespace arangodb
-

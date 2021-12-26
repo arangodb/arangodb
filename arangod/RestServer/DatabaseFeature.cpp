@@ -39,7 +39,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -57,10 +56,10 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
-#include "Utilities/NameValidator.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -75,26 +74,29 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace {
-arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(arangodb::application_features::ApplicationServer& server) {
+arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(
+    arangodb::application_features::ApplicationServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
-  auto rv = info.load("Z", std::numeric_limits<uint64_t>::max()); // name does not matter. We just need validity check to pass.
+  auto rv = info.load("Z", std::numeric_limits<uint64_t>::max());  // name does not matter. We just need validity check to pass.
   TRI_ASSERT(rv.ok());
   return info;
 }
 
 /// @brief return either the name of the database to be used as a folder name, or its id if its name contains special characters and is not fully supported in every OS
-[[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName, std::string const& id) { 
+[[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName,
+                                             std::string const& id) {
   bool isOldStyleName =
-      DatabaseNameValidator::isAllowedName(/*allowSystem*/ true, /*extendedNames*/ false, databaseName);
+      DatabaseNameValidator::isAllowedName(/*allowSystem*/ true,
+                                           /*extendedNames*/ false, databaseName);
   return (isOldStyleName || id.empty()) ? databaseName : id;
 }
 
 /// @brief sandbox vocbase for executing calculation queries
 std::unique_ptr<TRI_vocbase_t> calculationVocbase;
-}
+}  // namespace
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // i am here for debugging only.
+   // i am here for debugging only.
 TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
 #endif
 
@@ -180,19 +182,21 @@ void DatabaseManagerThread::run() {
 
               // but only if nobody re-created a database with the same name!
               MUTEX_LOCKER(mutexLocker2, databaseFeature._databasesMutex);
-              
-              TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
+
+              TRI_vocbase_t* newInstance =
+                  databaseFeature.lookupDatabase(database->name());
               TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
               if (newInstance == nullptr) {
-                std::string const dirName = ::getDatabaseDirName(database->name(), std::to_string(database->id()));
+                std::string const dirName =
+                    ::getDatabaseDirName(database->name(),
+                                         std::to_string(database->id()));
                 std::string path = arangodb::basics::FileUtils::buildFilename(
-                    arangodb::basics::FileUtils::buildFilename(appPath, "_db"),
-                    dirName);
-  
+                    arangodb::basics::FileUtils::buildFilename(appPath, "_db"), dirName);
+
                 if (TRI_IsDirectory(path.c_str())) {
                   LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
-                    << "removing app directory '" << path << "' of database '"
-                    << database->name() << "'";
+                      << "removing app directory '" << path << "' of database '"
+                      << database->name() << "'";
 
                   TRI_RemoveDirectory(path.c_str());
                 }
@@ -205,7 +209,8 @@ void DatabaseManagerThread::run() {
           if (queryRegistry != nullptr) {
             // but only if nobody re-created a database with the same name!
             MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
-            TRI_vocbase_t* newInstance = databaseFeature.lookupDatabase(database->name());
+            TRI_vocbase_t* newInstance =
+                databaseFeature.lookupDatabase(database->name());
             TRI_ASSERT(newInstance == nullptr || newInstance->id() != database->id());
 
             if (newInstance == nullptr) {
@@ -217,11 +222,13 @@ void DatabaseManagerThread::run() {
             Result res = engine.dropDatabase(*database);
             if (res.fail()) {
               LOG_TOPIC("fb244", ERR, Logger::FIXME)
-                << "dropping database '" << database->name() << "' failed: " << res.errorMessage();
+                  << "dropping database '" << database->name()
+                  << "' failed: " << res.errorMessage();
             }
           } catch (std::exception const& ex) {
-            LOG_TOPIC("d30a2", ERR, Logger::FIXME) << "dropping database '" << database->name()
-                                          << "' failed: " << ex.what();
+            LOG_TOPIC("d30a2", ERR, Logger::FIXME)
+                << "dropping database '" << database->name()
+                << "' failed: " << ex.what();
           } catch (...) {
             LOG_TOPIC("0a30c", ERR, Logger::FIXME)
                 << "dropping database '" << database->name() << "' failed";
@@ -327,28 +334,31 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "load collections even if datafiles may contain errors",
                      new BooleanParameter(&_ignoreDatafileErrors),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
-  
-  options->addOption("--database.extended-names-databases",
-                     "allow extended characters in database names",
-                     new BooleanParameter(&_extendedNamesForDatabases),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Experimental))
-                     .setIntroducedIn(30900);
-  
+
+  options
+      ->addOption("--database.extended-names-databases",
+                  "allow extended characters in database names",
+                  new BooleanParameter(&_extendedNamesForDatabases),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(30900);
+
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
       "create and use deprecated system collection (_modules, _fishbowl)", false);
-  
+
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading", false);
-  
-  // the following option was removed in 3.7
-  options->addObsoleteOption("--database.maximal-journal-size",
-                             "default maximal journal size, can be overwritten when "
-                             "creating a collection", true);
 
+  // the following option was removed in 3.7
+  options->addObsoleteOption(
+      "--database.maximal-journal-size",
+      "default maximal journal size, can be overwritten when "
+      "creating a collection",
+      true);
 
   // the following option was removed in 3.2
   options->addObsoleteOption(
@@ -389,7 +399,8 @@ void DatabaseFeature::start() {
   if (_extendedNamesForDatabases) {
     LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
         << "Extended names for databases are an experimental feature which can "
-        << "cause incompatibility issues with not-yet-prepared drivers and applications - do not use in production!";
+        << "cause incompatibility issues with not-yet-prepared drivers and "
+           "applications - do not use in production!";
   }
 
   verifyAppPaths();
@@ -499,24 +510,24 @@ void DatabaseFeature::stop() {
     static size_t currentQueriesCount = currentVocbase->queryList()->count();
 
     LOG_TOPIC("840a4", DEBUG, Logger::FIXME)
-        << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase
-        << ", cursors: " << currentCursorCount
+        << "shutting down database " << currentVocbase->name() << ": "
+        << (void*)currentVocbase << ", cursors: " << currentCursorCount
         << ", queries: " << currentQueriesCount;
 #endif
     vocbase->stop();
 
-    vocbase->processCollectionsOnShutdown(
-        [](LogicalCollection* collection) {
-          // no one else must modify the collection's status while we are in
-          // here
-          collection->executeWhileStatusWriteLocked(
-              [collection]() { collection->close(); });
-        });
+    vocbase->processCollectionsOnShutdown([](LogicalCollection* collection) {
+      // no one else must modify the collection's status while we are in
+      // here
+      collection->executeWhileStatusWriteLocked(
+          [collection]() { collection->close(); });
+    });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // i am here for debugging only.
     LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME)
-        << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase << " successful";
+        << "shutting down database " << currentVocbase->name() << ": "
+        << (void*)currentVocbase << " successful";
 #endif
   }
 
@@ -628,7 +639,7 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 bool DatabaseFeature::started() const noexcept {
   return _started.load(std::memory_order_relaxed);
 }
-  
+
 void DatabaseFeature::enumerate(std::function<void(TRI_vocbase_t*)> const& callback) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
@@ -645,7 +656,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   VPackBuilder markerBuilder;
   {
     VPackObjectBuilder guard(&markerBuilder);
-    info.toVelocyPack(markerBuilder); // can we improve this
+    info.toVelocyPack(markerBuilder);  // can we improve this
   }
   result = nullptr;
 
@@ -670,7 +681,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
       auto it = theLists->_databases.find(name);
       if (it != theLists->_databases.end()) {
         // name already in use
-        return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate database name '") + name + "'");
+        return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                      std::string("duplicate database name '") + name + "'");
       }
     }
 
@@ -686,12 +698,12 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
         vocbase->addReplicationApplier();
       } catch (basics::Exception const& ex) {
         std::string msg = "initializing replication applier for database '" +
-            vocbase->name() + "' failed: " + ex.what();
+                          vocbase->name() + "' failed: " + ex.what();
         LOG_TOPIC("e7444", ERR, arangodb::Logger::FIXME) << msg;
         return Result(ex.code(), std::move(msg));
       } catch (std::exception const& ex) {
         std::string msg = "initializing replication applier for database '" +
-            vocbase->name() + "' failed: " + ex.what();
+                          vocbase->name() + "' failed: " + ex.what();
         LOG_TOPIC("56c41", ERR, arangodb::Logger::FIXME) << msg;
         return Result(TRI_ERROR_INTERNAL, std::move(msg));
       }
@@ -849,7 +861,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name, bool removeApps
     if (server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
     }
-          
+
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());
@@ -1207,7 +1219,7 @@ ErrorCode DatabaseFeature::createApplicationDirectory(std::string const& name,
   if (basePath.empty()) {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
   if (!dealer.isEnabled()) {
     // no JavaScript enabled - no need to create the js/apps directory/ies
@@ -1288,7 +1300,7 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       std::string const databaseName = it.get("name").copyString();
       std::string const id = VelocyPackHelper::getStringValue(it, "id", "");
       std::string const dirName = ::getDatabaseDirName(databaseName, id);
-      
+
       // create app directory for database if it does not exist
       res = createApplicationDirectory(dirName, appPath, false);
 
@@ -1308,12 +1320,14 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
           std::string errorMsg(res.errorMessage());
           errorMsg.append(": '").append(databaseName).append("'");
           // check if the name would be allowed when using extended names
-          if (DatabaseNameValidator::isAllowedName(/*isSystem*/ false, /*extendedNames*/ true, databaseName)) {
+          if (DatabaseNameValidator::isAllowedName(/*isSystem*/ false,
+                                                   /*extendedNames*/ true, databaseName)) {
             errorMsg.append(
                 ". This database name would be allowed when using the "
                 "extended naming convention for databases, which is "
                 "currently disabled. The extended naming convention can "
-                "be enabled via the startup option `--database.extended-names-databases true`");
+                "be enabled via the startup option "
+                "`--database.extended-names-databases true`");
           }
           res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID, std::move(errorMsg));
         }
@@ -1338,7 +1352,8 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   } catch (std::exception const& ex) {
     delete newLists;
 
-    LOG_TOPIC("c7dc0", FATAL, arangodb::Logger::FIXME) << "cannot start database: " << ex.what();
+    LOG_TOPIC("c7dc0", FATAL, arangodb::Logger::FIXME)
+        << "cannot start database: " << ex.what();
     FATAL_ERROR_EXIT();
   } catch (...) {
     delete newLists;

@@ -99,4 +99,3 @@ class LoggerStream : public LoggerStreamBase {
 };
 
 }  // namespace arangodb
-

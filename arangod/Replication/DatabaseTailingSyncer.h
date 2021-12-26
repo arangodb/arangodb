@@ -39,16 +39,16 @@ class DatabaseReplicationApplier;
 
 class DatabaseTailingSyncer : public TailingSyncer {
  private:
-  // constructor is private, as DatabaseTailingSyncer uses shared_from_this() and
-  // we must ensure that it is only created via make_shared.
+  // constructor is private, as DatabaseTailingSyncer uses shared_from_this()
+  // and we must ensure that it is only created via make_shared.
   DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                         ReplicationApplierConfiguration const& configuration,
                         TRI_voc_tick_t initialTick, bool useTick);
 
  public:
-  static std::shared_ptr<DatabaseTailingSyncer> create(TRI_vocbase_t& vocbase,
-                                                       ReplicationApplierConfiguration const& configuration,
-                                                       TRI_voc_tick_t initialTick, bool useTick);
+  static std::shared_ptr<DatabaseTailingSyncer> create(
+      TRI_vocbase_t& vocbase, ReplicationApplierConfiguration const& configuration,
+      TRI_voc_tick_t initialTick, bool useTick);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override {
     return _vocbase;
@@ -58,13 +58,11 @@ class DatabaseTailingSyncer : public TailingSyncer {
   DatabaseReplicationApplier* applier() const {
     return static_cast<DatabaseReplicationApplier*>(_applier);
   }
-  
+
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
-  Result syncCollectionFinalize(std::string const& collectionName, 
-                                TRI_voc_tick_t fromTick,
-                                TRI_voc_tick_t toTick, 
-                                std::string const& context);
+  Result syncCollectionFinalize(std::string const& collectionName, TRI_voc_tick_t fromTick,
+                                TRI_voc_tick_t toTick, std::string const& context);
 
   /// @brief catch up with changes in a leader shard by doing the same
   /// as in syncCollectionFinalize, but potentially stopping earlier.
@@ -77,18 +75,17 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// `syncCollectionFinalize` to finish off the rest.
   /// Internally, both use `syncCollectionCatchupInternal`.
   Result syncCollectionCatchup(std::string const& collectionName, TRI_voc_tick_t fromTick,
-                               double timeout, TRI_voc_tick_t& until, bool& didTimeout, 
-                               std::string const& context);
-  
+                               double timeout, TRI_voc_tick_t& until,
+                               bool& didTimeout, std::string const& context);
+
   Result inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer);
   Result registerOnLeader();
   void unregisterFromLeader();
 
  protected:
   Result syncCollectionCatchupInternal(std::string const& collectionName,
-                                       double timeout, bool hard,
-                                       TRI_voc_tick_t& until, bool& didTimeout, 
-                                       std::string const& context);
+                                       double timeout, bool hard, TRI_voc_tick_t& until,
+                                       bool& didTimeout, std::string const& context);
 
   /// @brief save the current applier state
   Result saveApplierState() override;
@@ -116,4 +113,3 @@ class DatabaseTailingSyncer : public TailingSyncer {
   bool _unregisteredFromLeader;
 };
 }  // namespace arangodb
-

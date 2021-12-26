@@ -54,12 +54,14 @@ std::string url_decode(const char* begin, const char* end) {
         int h = StringUtils::hex2int(i[1], 256) << 4;
         h += StringUtils::hex2int(i[2], 256);
         if (h >= 256) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
         }
         out.push_back(static_cast<char>(h & 0xFF));
         i += 2;
       } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid encoding value in request URL");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "invalid encoding value in request URL");
       }
     } else if (c == '+') {
       out.push_back(' ');
@@ -67,13 +69,12 @@ std::string url_decode(const char* begin, const char* end) {
       out.push_back(c);
     }
   }
-  
+
   return out;
 }
-} // namespace
+}  // namespace
 
-HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
-                         uint64_t mid, bool allowMethodOverride)
+HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, uint64_t mid, bool allowMethodOverride)
     : GeneralRequest(connectionInfo, mid),
       _allowMethodOverride(allowMethodOverride),
       _validatedPayload(false) {
@@ -233,7 +234,9 @@ void HttpRequest::parseHeader(char* start, size_t length) {
 
               _databaseName = ::url_decode(pathBegin, q);
               if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
-                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+                THROW_ARANGO_EXCEPTION_MESSAGE(
+                    TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                    "database name is not properly UTF-8 NFC-normalized");
               }
 
               pathBegin = q;
@@ -406,7 +409,6 @@ void HttpRequest::parseHeader(char* start, size_t length) {
   }
 }
 
-
 void HttpRequest::parseUrl(const char* path, size_t length) {
   std::string tmp;
   tmp.reserve(length);
@@ -443,7 +445,9 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       TRI_ASSERT(q >= start);
       _databaseName = ::url_decode(start, q);
       if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "database name is not properly UTF-8 NFC-normalized");
       }
       _fullUrl.assign(q, end - q);
 
@@ -489,13 +493,12 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
     }
 
     if (q + 1 == end || *(q + 1) == '&') {
-      ++q; // skip ahead
+      ++q;  // skip ahead
 
       std::string val = ::url_decode(valueBegin, q);
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' && *(keyEnd - 1) == ']') {
         // found parameter xxx[]
-        _arrayValues[::url_decode(keyBegin, keyEnd - 2)]
-        .emplace_back(std::move(val));
+        _arrayValues[::url_decode(keyBegin, keyEnd - 2)].emplace_back(std::move(val));
       } else {
         _values[::url_decode(keyBegin, keyEnd)] = std::move(val);
       }
@@ -508,10 +511,11 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
 }
 
 void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
-  StringUtils::tolowerInPlace(key); // always lowercase key
+  StringUtils::tolowerInPlace(key);  // always lowercase key
 
   if (key == StaticStrings::ContentLength) {
-    size_t len = NumberUtils::atoi_zero<uint64_t>(value.c_str(), value.c_str() + value.size());
+    size_t len = NumberUtils::atoi_zero<uint64_t>(value.c_str(),
+                                                  value.c_str() + value.size());
     if (_payload.capacity() < len) {
       // lets not reserve more than 64MB at once
       uint64_t maxReserve = std::min<uint64_t>(2 << 26, len);
@@ -522,16 +526,16 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
   }
 
   if (key == StaticStrings::Accept) {
-    _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
+    _contentTypeResponse =
+        rest::stringToContentType(value, /*default*/ ContentType::JSON);
     if (value.find(',') != std::string::npos) {
       _contentTypeResponsePlain = value;
     } else {
       _contentTypeResponsePlain.clear();
     }
     return;
-  } else if ((_contentType == ContentType::UNSET) &&
-             (key == StaticStrings::ContentTypeHeader)) {
-    auto res = rest::stringToContentType(value, /*default*/ContentType::UNSET);
+  } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
+    auto res = rest::stringToContentType(value, /*default*/ ContentType::UNSET);
     // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
     // in most tests. As soon as someone fixes all the tests we can enable these again.
     if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
@@ -543,7 +547,7 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     // However, for now just toggle on deflate if deflate is requested
     if (StaticStrings::EncodingDeflate == value) {
       // FXIME: cannot use substring search, Java driver chokes on deflated response
-      //if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
+      // if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
       _acceptEncoding = EncodingType::DEFLATE;
     }
   }
@@ -557,8 +561,7 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     // handle x-... headers
 
     // override HTTP method?
-    if (key == "x-http-method" ||
-        key == "x-method-override" ||
+    if (key == "x-http-method" || key == "x-method-override" ||
         key == "x-http-method-override") {
       StringUtils::tolowerInPlace(value);
       _type = findRequestType(value.c_str(), value.size());
@@ -703,9 +706,9 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentTypeResponse = ContentType::VPACK;
   } else if (keyLength == StaticStrings::AcceptEncoding.size() &&
-      valueLength == StaticStrings::EncodingDeflate.size() &&
-      memcmp(key, StaticStrings::AcceptEncoding.c_str(), keyLength) == 0 &&
-      memcmp(value, StaticStrings::EncodingDeflate.c_str(), valueLength) == 0) {
+             valueLength == StaticStrings::EncodingDeflate.size() &&
+             memcmp(key, StaticStrings::AcceptEncoding.c_str(), keyLength) == 0 &&
+             memcmp(value, StaticStrings::EncodingDeflate.c_str(), valueLength) == 0) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
     _acceptEncoding = EncodingType::DEFLATE;
@@ -905,7 +908,7 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
     if (!_validatedPayload) {
       VPackOptions const* options = validationOptions(strictValidation);
       VPackValidator validator(options);
-      _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
+      _validatedPayload = validator.validate(_payload.data(), _payload.length());  // throws on error
     }
     TRI_ASSERT(_validatedPayload);
     return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));

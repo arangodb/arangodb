@@ -287,8 +287,7 @@ void Maskings::addMaskedObject(Collection& collection, VPackBuilder& builder,
   }
 }
 
-void Maskings::addMasked(Collection& collection, VPackBuilder& builder,
-                         VPackSlice data) {
+void Maskings::addMasked(Collection& collection, VPackBuilder& builder, VPackSlice data) {
   if (!data.isObject()) {
     return;
   }
@@ -300,12 +299,11 @@ void Maskings::addMasked(Collection& collection, VPackBuilder& builder,
   addMaskedObject(collection, builder, path, data);
 }
 
-void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
-                         VPackSlice slice) {
+void Maskings::addMasked(Collection& collection, basics::StringBuffer& data, VPackSlice slice) {
   if (!slice.isObject()) {
     return;
   }
-  
+
   VPackBuilder builder;
 
   if (slice.hasKey(StaticStrings::KeyString)) {
@@ -314,7 +312,7 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
       VPackObjectBuilder ob(&builder);
       addMasked(collection, builder, slice);
     }
-  
+
     // the maskings will generate a result object that contains a "data"
     // attribute at the top
     slice = builder.slice().get("data");
@@ -338,12 +336,12 @@ void Maskings::addMasked(Collection& collection, basics::StringBuffer& data,
 
     slice = builder.slice();
   }
-  
+
   // directly emit JSON into result StringBuffer
   basics::VPackStringBufferAdapter adapter(data.stringBuffer());
   VPackDumper dumper(&adapter, &VPackOptions::Defaults);
   dumper.dump(slice);
-    
+
   data.appendChar('\n');
 }
 

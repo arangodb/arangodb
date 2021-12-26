@@ -678,10 +678,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   TRI_ASSERT(traverser != nullptr);
-  auto executorInfos = TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
-                                              getStartVertex(), inputRegister,
-                                              std::move(filterConditionVariables),
-                                              plan()->getAst());
+  auto executorInfos =
+      TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
+                             getStartVertex(), inputRegister,
+                             std::move(filterConditionVariables), plan()->getAst());
 
   // We need to prepare the variable accesses before we ask the index nodes.
   initializeIndexConditions();

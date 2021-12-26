@@ -59,4 +59,3 @@ class RocksDBReplicationResult {
 };
 
 }  // namespace arangodb
-

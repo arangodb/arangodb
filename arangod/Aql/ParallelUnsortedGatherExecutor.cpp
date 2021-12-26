@@ -37,8 +37,8 @@ ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&, Infos& 
 
 ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 
-auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall) const
-    noexcept -> AqlCall {
+auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall) const noexcept
+    -> AqlCall {
   TRI_ASSERT(clientCall.needSkipMore());
 
   // Only skip, don't ask for rows
@@ -56,8 +56,8 @@ auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall)
   return clientCall;
 }
 
-auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCall) const
-    noexcept -> AqlCall {
+auto ParallelUnsortedGatherExecutor::upstreamCallProduce(AqlCall const& clientCall) const noexcept
+    -> AqlCall {
   TRI_ASSERT(clientCall.getOffset() == 0);
   return clientCall;
 }

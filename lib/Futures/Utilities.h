@@ -107,8 +107,8 @@ void foreach (F&& f, Args && ... args) {
 /// This function is thread-safe for Futures running on different threads.
 /// It will complete in whichever thread the last Future completes in.
 /// @return for (Future<T1>, Future<T2>, ...) input is Future<std::tuple<Try<T1>, Try<T2>, ...>>.
-//template <typename... Fs>
-//Future<std::tuple<Try<typename isFuture<Fs>::inner>...>> collectAll(Fs&&... fs) {
+// template <typename... Fs>
+// Future<std::tuple<Try<typename isFuture<Fs>::inner>...>> collectAll(Fs&&... fs) {
 //  using Result = std::tuple<Try<typename isFuture<Fs>::inner>...>;
 //  struct Context {
 //    ~Context() { p.setValue(std::move(results)); }
@@ -162,22 +162,22 @@ auto collectAll(Collection&& c) -> decltype(collectAll(std::begin(c), std::end(c
   return collectAll(std::begin(c), std::end(c));
 }
 
-
-namespace detail{
+namespace detail {
 namespace gather {
 
-template<typename C, typename... Ts, std::size_t... I>
+template <typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
-  (std::move(ts).thenFinal([&](Try<Ts> &&t) { std::get<I>(c->results) = std::move(t); }),...);
+  (std::move(ts).thenFinal(
+       [&](Try<Ts>&& t) { std::get<I>(c->results) = std::move(t); }),
+   ...);
 }
-}
-}
+}  // namespace gather
+}  // namespace detail
 
 // like collectAll but uses a tuple instead and works with different types
 // returns a Future<std::tuple<Try<Ts>>...>
-template<typename... Ts>
+template <typename... Ts>
 auto gather(Future<Ts>&&... r) {
-
   using try_tuple = std::tuple<Try<Ts>...>;
 
   struct Context {
@@ -187,21 +187,21 @@ auto gather(Future<Ts>&&... r) {
   };
 
   auto ctx = std::make_shared<Context>();
-  detail::gather::thenFinalAll(ctx, std::index_sequence_for<Ts...>{}, std::forward<Future<Ts>>(r)...);
+  detail::gather::thenFinalAll(ctx, std::index_sequence_for<Ts...>{},
+                               std::forward<Future<Ts>>(r)...);
   return ctx->p.getFuture();
 };
 
-template<typename T>
-T gather(T t) { return t; };
-
-
+template <typename T>
+T gather(T t) {
+  return t;
+};
 
 namespace detail {
 namespace collect {
 
-template<typename C, typename... Ts, std::size_t... I>
+template <typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
-
   (std::move(ts).thenFinal([c](Try<Ts>&& t) {
     if (t.hasException()) {
       if (c->hadError.exchange(true, std::memory_order_release) == false) {
@@ -210,26 +210,27 @@ void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
     } else {
       std::get<I>(c->results) = std::move(t);
     }
-  }), ...);
+  }),
+   ...);
 }
 
-template<typename... Ts, std::size_t... I>
-auto unpackAll(std::tuple<Try<Ts>...> &c, std::index_sequence<I...>) -> std::tuple<Ts...> {
+template <typename... Ts, std::size_t... I>
+auto unpackAll(std::tuple<Try<Ts>...>& c, std::index_sequence<I...>)
+    -> std::tuple<Ts...> {
   return std::make_tuple(std::move(std::get<I>(c)).get()...);
 }
 
-template<typename... Ts>
-auto unpackAll(std::tuple<Try<Ts>...> &c) -> std::tuple<Ts...> {
+template <typename... Ts>
+auto unpackAll(std::tuple<Try<Ts>...>& c) -> std::tuple<Ts...> {
   return unpackAll(c, std::index_sequence_for<Ts...>{});
 }
 
-
-}
-}
+}  // namespace collect
+}  // namespace detail
 
 // like collectAll but uses a tuple instead and works with different types
 // returns a Future<Try<std::tuple<Ts>>...>
-template<typename... Ts>
+template <typename... Ts>
 auto collect(Future<Ts>&&... r) {
   using try_tuple = std::tuple<Try<Ts>...>;
   using value_tuple = std::tuple<Ts...>;
@@ -247,13 +248,15 @@ auto collect(Future<Ts>&&... r) {
   };
 
   auto ctx = std::make_shared<Context>();
-  detail::collect::thenFinalAll(ctx, std::index_sequence_for<Ts...>{}, std::forward<Future<Ts>>(r)...);
+  detail::collect::thenFinalAll(ctx, std::index_sequence_for<Ts...>{},
+                                std::forward<Future<Ts>>(r)...);
   return ctx->p.getFuture();
 }
 
-template<typename T>
-T collect(T t) { return t; }
-
+template <typename T>
+T collect(T t) {
+  return t;
+}
 
 }  // namespace futures
 }  // namespace arangodb

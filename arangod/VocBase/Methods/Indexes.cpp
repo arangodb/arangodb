@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Indexes.h"
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -33,9 +34,10 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Indexes.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -43,15 +45,13 @@
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utilities/NameValidator.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -94,8 +94,10 @@ Result Indexes::getIndex(LogicalCollection const* collection, VPackSlice indexId
       Indexes::getAll(collection, Index::makeFlags(), /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
-      if ((index.hasKey(StaticStrings::IndexId) && index.get(StaticStrings::IndexId).compareString(id) == 0) ||
-          (index.hasKey(StaticStrings::IndexName) && index.get(StaticStrings::IndexName).compareString(name) == 0)) {
+      if ((index.hasKey(StaticStrings::IndexId) &&
+           index.get(StaticStrings::IndexId).compareString(id) == 0) ||
+          (index.hasKey(StaticStrings::IndexName) &&
+           index.get(StaticStrings::IndexName).compareString(name) == 0)) {
         out.add(index);
         return Result();
       }
@@ -133,7 +135,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     VPackBuilder tmpInner;
     auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto c = ci.getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner, [withHidden, flags](arangodb::Index const* idx, decltype(flags)& indexFlags) {
+    c->getIndexesVPack(tmpInner, [withHidden, flags](arangodb::Index const* idx,
+                                                     decltype(flags)& indexFlags) {
       if (withHidden || !idx->isHidden()) {
         indexFlags = flags;
         return true;
@@ -177,7 +180,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
         return res;
       }
     }
-    
+
     // get list of indexes
     auto indexes = collection->getIndexes();
 
@@ -199,7 +202,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
   }
 
   bool mergeEdgeIdxs = !ServerState::instance()->isDBServer();
-  
+
   double selectivity = 0, memory = 0, cacheSize = 0, cacheUsage = 0,
          cacheLifeTimeHitRate = 0, cacheWindowedHitRate = 0;
 
@@ -210,12 +213,12 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     VPackBuilder merge;
     merge.openObject(true);
     merge.add(arangodb::StaticStrings::IndexId, arangodb::velocypack::Value(id));
-    
+
     auto type = index.get(arangodb::StaticStrings::IndexType);
     if (mergeEdgeIdxs && Index::type(type.copyString()) == Index::TRI_IDX_TYPE_EDGE_INDEX) {
       VPackSlice fields = index.get(StaticStrings::IndexFields);
       TRI_ASSERT(fields.isArray() && fields.length() <= 2);
-      
+
       if (fields.length() == 1) {  // merge indexes
         // read out relevant values
         VPackSlice val = index.get("selectivityEstimate");
@@ -310,7 +313,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
     TRI_ASSERT(idx != nullptr);
     VPackBuilder tmp;
     idx->toVelocyPack(tmp, Index::makeFlags(Index::Serialize::Estimates));
-    
+
     std::string iid = StringUtils::itoa(idx->id().id());
     VPackBuilder b;
     b.openObject();
@@ -362,8 +365,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
   VPackBuilder normalized;
   StorageEngine& engine =
       collection->vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  auto res = engine.indexFactory().enhanceIndexDefinition(
-      input, normalized, create, collection->vocbase());
+  auto res = engine.indexFactory().enhanceIndexDefinition(input, normalized, create,
+                                                          collection->vocbase());
 
   if (res.fail()) {
     ensureIndexResult = res.errorNumber();
@@ -465,7 +468,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
   } else {
     res = EnsureIndexLocal(collection, indexDef, create, output);
   }
-    
+
   ensureIndexResult = res.errorNumber();
   return res;
 }
@@ -523,7 +526,8 @@ static bool ExtractIndexHandle(VPackSlice const& arg, bool extendedNames,
     return true;
   }
 
-  if (!handle.empty() && !Index::validateId(std::string_view(handle.data(), handle.size()))) {
+  if (!handle.empty() &&
+      !Index::validateId(std::string_view(handle.data(), handle.size()))) {
     return false;
   }
   iid = IndexId{StringUtils::uint64(handle.data(), handle.size())};
@@ -535,15 +539,14 @@ static bool ExtractIndexHandle(VPackSlice const& arg, bool extendedNames,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ExtractIndexName(VPackSlice const& arg, bool extendedNames,
-                             std::string& collectionName,
-                             std::string& name) {
+                             std::string& collectionName, std::string& name) {
   TRI_ASSERT(collectionName.empty());
   TRI_ASSERT(name.empty());
 
   if (!arg.isString()) {
     return false;
   }
-  
+
   arangodb::velocypack::StringRef handle = arg.stringRef();
   if (arangodb::Index::validateHandleName(extendedNames, handle)) {
     std::size_t split = handle.find('/');
@@ -573,7 +576,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   // assume we are already loaded
   TRI_ASSERT(collection != nullptr);
 
-  bool extendedNames = collection->vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+  bool extendedNames =
+      collection->vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {

@@ -23,10 +23,10 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/ScopeGuard.h>
+#include <Greenspun/Extractor.h>
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
-#include <Greenspun/Extractor.h>
-#include <Basics/ScopeGuard.h>
 
 #include "MasterContext.h"
 
@@ -116,7 +116,8 @@ greenspun::EvalResult MasterContext::air_AccumRef(greenspun::Machine& ctx,
 greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
                                                   VPackSlice const params,
                                                   VPackBuilder& result) {
-  auto&& [accumId, value] = arangodb::basics::VelocyPackHelper::unpackTuple<std::string_view, VPackSlice>(params);
+  auto&& [accumId, value] =
+      arangodb::basics::VelocyPackHelper::unpackTuple<std::string_view, VPackSlice>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
     auto inner = iter->second->setBySlice(value);
@@ -133,7 +134,8 @@ greenspun::EvalResult MasterContext::air_AccumSet(greenspun::Machine& ctx,
 greenspun::EvalResult MasterContext::air_AccumClear(greenspun::Machine& ctx,
                                                     VPackSlice const params,
                                                     VPackBuilder& result) {
-  auto&& [accumId] = arangodb::basics::VelocyPackHelper::unpackTuple<std::string_view>(params);
+  auto&& [accumId] =
+      arangodb::basics::VelocyPackHelper::unpackTuple<std::string_view>(params);
 
   if (auto iter = _globalAccumulators.find(accumId); iter != std::end(_globalAccumulators)) {
     auto inner = iter->second->clear();
@@ -160,9 +162,7 @@ bool MasterContext::gotoPhase(std::string_view nextPhase) {
   return true;
 }
 
-void MasterContext::finish() {
-  _userSelectedNext = ContinuationResult::ABORT;
-}
+void MasterContext::finish() { _userSelectedNext = ContinuationResult::ABORT; }
 
 MasterContext::ContinuationResult MasterContext::postGlobalSuperstep(bool allVertexesVotedHalt) {
   auto phase_index = *getAggregatedValue<uint32_t>("phase");
@@ -316,7 +316,8 @@ void MasterContext::serializeValues(VPackBuilder& msg) {
     for (auto const& acc : globalAccumulators()) {
       msg.add(VPackValue(acc.first));
       if (auto result = acc.second->finalizeIntoBuilder(msg); result.fail()) {
-        std::string err = "AIR MasterContext, error serializing global accumulator ";
+        std::string err =
+            "AIR MasterContext, error serializing global accumulator ";
         err += acc.first;
         err += ": ";
         err += result.error().toString();

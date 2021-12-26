@@ -138,4 +138,3 @@ class ShellBase {
   Completer* _completer;
 };
 }  // namespace arangodb
-

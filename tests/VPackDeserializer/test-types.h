@@ -59,7 +59,7 @@ struct slice_access {
 
   slice_access(std::string key, type what) : key(std::move(key)), what(what) {}
   slice_access(std::string key, type what, std::string parameter)
-    : key(std::move(key)), parameter(std::move(parameter)), what(what) {}
+      : key(std::move(key)), parameter(std::move(parameter)), what(what) {}
 };
 
 struct slice_access_tape {
@@ -101,10 +101,10 @@ struct recording_slice {
   explicit recording_slice() = default;
   explicit recording_slice(arangodb::velocypack::Slice slice,
                            std::shared_ptr<slice_access_tape> tape)
-    : tape(std::move(tape)), slice(slice)  {}
+      : tape(std::move(tape)), slice(slice) {}
   explicit recording_slice(arangodb::velocypack::Slice slice,
                            std::shared_ptr<slice_access_tape> tape, std::string prefix)
-    : tape(std::move(tape)), slice(slice), prefix(std::move(prefix)) {}
+      : tape(std::move(tape)), slice(slice), prefix(std::move(prefix)) {}
 
   std::shared_ptr<slice_access_tape> tape;
   arangodb::velocypack::Slice slice;
@@ -280,7 +280,7 @@ struct array_iterator {
   std::size_t index;
 };
 
-}  // namespace deserializer::test
+}  // namespace arangodb::tests::deserializer
 
 #ifdef DESERIALIZER_SET_TEST_TYPES
 namespace deserializer {

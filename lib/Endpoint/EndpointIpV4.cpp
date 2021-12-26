@@ -35,6 +35,4 @@ EndpointIpV4::EndpointIpV4(EndpointType type, TransportType transport,
     : EndpointIp(DomainType::IPV4, type, transport, encryption, listenBacklog,
                  reuseAddress, host, port) {}
 
-bool EndpointIpV4::isBroadcastBind() const {
-  return host() == "0.0.0.0";
-}
+bool EndpointIpV4::isBroadcastBind() const { return host() == "0.0.0.0"; }

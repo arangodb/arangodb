@@ -63,7 +63,8 @@ ActiveFailoverJob::~ActiveFailoverJob() = default;
 void ActiveFailoverJob::run(bool& aborts) { runHelper(_server, "", aborts); }
 
 bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION) << "Todo: Handle failover for leader " + _server;
+  LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION)
+      << "Todo: Handle failover for leader " + _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -109,7 +110,8 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add(VPackValue(failedServersPrefix));
       {
         VPackObjectBuilder old(_jb.get());
-        _jb->add("old", _snapshot.get(failedServersPrefix).value().get().toBuilder().slice());
+        _jb->add("old",
+                 _snapshot.get(failedServersPrefix).value().get().toBuilder().slice());
       }
     }  // Preconditions
   }    // transactions
@@ -156,7 +158,8 @@ bool ActiveFailoverJob::start(bool&) {
   if (jobId && !abortable(_snapshot, *jobId)) {
     return false;
   } else if (jobId) {
-    JobContext(PENDING, *jobId, _snapshot, _agent).abort("ActiveFailoverJob requests abort");
+    JobContext(PENDING, *jobId, _snapshot, _agent)
+        .abort("ActiveFailoverJob requests abort");
   }
 
   // Todo entry
@@ -167,8 +170,9 @@ bool ActiveFailoverJob::start(bool&) {
       try {
         _snapshot.get(toDoPrefix + _jobId).value().get().toBuilder(todo);
       } catch (std::exception const&) {
-        LOG_TOPIC("26fec", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("26fec", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -293,8 +297,8 @@ std::string ActiveFailoverJob::findBestFollower() {
       return "";
     }
 
-    VPackSlice obj = resp.at(0).get(
-        {Job::agencyPrefix, std::string("AsyncReplication")});
+    VPackSlice obj =
+        resp.at(0).get({Job::agencyPrefix, std::string("AsyncReplication")});
     for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(obj)) {
       std::string srvUUID = pair.key.copyString();
       bool isAvailable =
@@ -314,7 +318,8 @@ std::string ActiveFailoverJob::findBestFollower() {
     LOG_TOPIC("66318", ERR, Logger::SUPERVISION)
         << "could not determine follower: " << e.message();
   } catch (std::exception const& e) {
-    LOG_TOPIC("92baa", ERR, Logger::SUPERVISION) << "could not determine follower: " << e.what();
+    LOG_TOPIC("92baa", ERR, Logger::SUPERVISION)
+        << "could not determine follower: " << e.what();
   } catch (...) {
     LOG_TOPIC("567b2", ERR, Logger::SUPERVISION)
         << "internal error while determining best follower";

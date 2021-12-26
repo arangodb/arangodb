@@ -118,7 +118,8 @@ void EndpointFeature::buildEndpointLists() {
     bool ok = _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
 
     if (!ok) {
-      LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME) << "invalid endpoint '" << (*i) << "'";
+      LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME)
+          << "invalid endpoint '" << (*i) << "'";
       FATAL_ERROR_EXIT();
     }
   }

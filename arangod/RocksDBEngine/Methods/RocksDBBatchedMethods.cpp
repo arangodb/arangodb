@@ -30,8 +30,7 @@ RocksDBBatchedMethods::RocksDBBatchedMethods(rocksdb::WriteBatch* wb)
 
 rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
-                                           rocksdb::PinnableSlice* val,
-                                           ReadOwnWrites) {
+                                           rocksdb::PinnableSlice* val, ReadOwnWrites) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "BatchedMethods does not provide Get");
 }
@@ -39,14 +38,13 @@ rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBBatchedMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
                                                     rocksdb::Slice const& key,
                                                     rocksdb::PinnableSlice* val) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "BatchedMethods does not provide GetForUpdate");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "BatchedMethods does not provide GetForUpdate");
 }
 
 rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
-                                           rocksdb::Slice const& val,
-                                           bool assume_tracked) {
+                                           rocksdb::Slice const& val, bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
   return _wb->Put(cf, key.string(), val);
 }
@@ -54,7 +52,7 @@ rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBBatchedMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
                                                     RocksDBKey const& key,
                                                     rocksdb::Slice const& val) {
-  return RocksDBBatchedMethods::Put(cf, key, val, /*assume_tracked*/false);
+  return RocksDBBatchedMethods::Put(cf, key, val, /*assume_tracked*/ false);
 }
 
 rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,

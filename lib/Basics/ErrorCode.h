@@ -41,7 +41,9 @@ class ErrorCode {
   constexpr auto operator=(ErrorCode const&) noexcept -> ErrorCode& = default;
   constexpr auto operator=(ErrorCode&&) noexcept -> ErrorCode& = default;
 
-  [[nodiscard]] constexpr explicit operator int() const noexcept { return _value; }
+  [[nodiscard]] constexpr explicit operator int() const noexcept {
+    return _value;
+  }
 
   // This could also be constexpr, but we'd have to include <velocypack/Value.h>,
   // and I'm unsure whether that's worth it, and rather rely on IPO here.
@@ -71,4 +73,3 @@ struct hash<ErrorCode> {
 }  // namespace std
 
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream&;
-

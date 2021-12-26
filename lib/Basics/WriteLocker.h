@@ -183,4 +183,3 @@ class WriteLocker {
 };
 
 }  // namespace arangodb::basics
-

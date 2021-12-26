@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Graph/Helpers/TraceEntry.h"
 #include "Basics/ResourceUsage.h"
+#include "Graph/Helpers/TraceEntry.h"
 
 #include <unordered_map>
 #include <vector>
@@ -59,4 +59,3 @@ class QueueTracer {
 
 }  // namespace graph
 }  // namespace arangodb
-

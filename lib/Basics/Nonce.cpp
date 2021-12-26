@@ -75,7 +75,8 @@ void create(size_t size) {
 
   destroy();
 
-  LOG_TOPIC("5a658", TRACE, arangodb::Logger::FIXME) << "creating nonces with size: " << size;
+  LOG_TOPIC("5a658", TRACE, arangodb::Logger::FIXME)
+      << "creating nonces with size: " << size;
   TimestampNonces = new uint32_t[size];
 
   memset(TimestampNonces, 0, sizeof(uint32_t) * size);
@@ -174,8 +175,8 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
     age >>= 1;
   }
 
-  LOG_TOPIC("562a6", TRACE, arangodb::Logger::FIXME) << "age of timestamp " << timestamp << " is "
-                                            << age << " (log " << l2age << ")";
+  LOG_TOPIC("562a6", TRACE, arangodb::Logger::FIXME)
+      << "age of timestamp " << timestamp << " is " << age << " (log " << l2age << ")";
 
   StatisticsNonces[l2age][proofs]++;
 

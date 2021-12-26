@@ -229,7 +229,6 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   return fileDescriptor;
 }
 
-
 TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
   char* ptr = static_cast<char*>(Buffer);
   size_t remainLength = length;
@@ -245,7 +244,7 @@ TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
       } else if (err == ERROR_BROKEN_PIPE) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("87f53", ERR, arangodb::Logger::FIXME)
-          << "cannot read, end-of-file";
+            << "cannot read, end-of-file";
         return static_cast<TRI_read_return_t>(length - remainLength);
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -311,7 +310,8 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
         rc = buffer;
       }
     }
-  } catch (...) { }
+  } catch (...) {
+  }
   return rc;
 }
 

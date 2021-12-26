@@ -43,7 +43,8 @@ class IResearchQueryMinMatchTest : public IResearchQueryTest {};
 }  // namespace
 
 TEST_P(IResearchQueryMinMatchTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -142,10 +143,10 @@ TEST_P(IResearchQueryMinMatchTest, test) {
       }
     })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -165,9 +166,7 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as term query
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[6].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', 1) RETURN d");
@@ -187,13 +186,12 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as disjunction
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[6].slice(),
-        insertedDocs[7].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
+                                                         insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1) SORT d.seq RETURN d");
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1) SORT "
+        "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -210,13 +208,12 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as disjunction
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[6].slice(),
-        insertedDocs[7].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
+                                                         insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1.0) SORT d.seq RETURN d");
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1.0) "
+        "SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -234,8 +231,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // non-deterministic conditions count type
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, CEIL(RAND())) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, "
+        "CEIL(RAND())) SORT d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -243,8 +241,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // invalid conditions count type
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, '1') SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, '1') "
+        "SORT d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -252,8 +251,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // invalid conditions count type
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, {}) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, {}) "
+        "SORT d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -261,8 +261,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // invalid conditions count type
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, []) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, []) "
+        "SORT d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -270,8 +271,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // invalid conditions count type
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, null) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, null) "
+        "SORT d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -279,8 +281,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // invalid conditions count type
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, true) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, true) "
+        "SORT d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -288,8 +291,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // missing conditions count argument
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1) SORT "
+        "d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -297,8 +301,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // missing conditions count argument
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A') SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A') SORT d.seq RETURN "
+        "d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
@@ -306,8 +311,7 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // missing arguments
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH() SORT d.seq RETURN d");
+        vocbase, "FOR d IN testView SEARCH MIN_MATCH() SORT d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
@@ -315,9 +319,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // constexpr min match (true)
   {
     std::string const query =
-      "FOR d IN testView SEARCH MIN_MATCH(1==1, 2==2, 3==3, 2) "
-      "SORT d.seq "
-      "RETURN d";
+        "FOR d IN testView SEARCH MIN_MATCH(1==1, 2==2, 3==3, 2) "
+        "SORT d.seq "
+        "RETURN d";
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
     auto slice = queryResult.data->slice();
@@ -328,9 +332,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // constexpr min match (false)
   {
     std::string const query =
-      "FOR d IN testView SEARCH MIN_MATCH(1==5, 2==6, 3==3, 2) "
-      "SORT d.seq "
-      "RETURN d";
+        "FOR d IN testView SEARCH MIN_MATCH(1==5, 2==6, 3==3, 2) "
+        "SORT d.seq "
+        "RETURN d";
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
     auto slice = queryResult.data->slice();
@@ -340,13 +344,12 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as disjunction
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[6].slice(),
-      insertedDocs[7].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
+                                                         insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1) SORT "
+        "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -363,12 +366,11 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as conjunction
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[6].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 0, 2) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 0, 2) SORT "
+        "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -386,8 +388,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // unreachable condition (conjunction)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 2) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 2) SORT "
+        "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -397,8 +400,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // unreachable condition
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 3) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 3) SORT "
+        "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -407,13 +411,34 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // 2 conditions
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[6].slice(),
-      insertedDocs[7].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
+                                                         insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.value >= 100 || d.value <= 150, 2) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.value "
+        ">= 100 || d.value <= 150, 2) SORT d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // 2 conditions
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
+                                                         insertedDocs[7].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.seq "
+        "== 'xxx', d.value >= 100 || d.value <= 150, 2) SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -431,50 +456,20 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   // 2 conditions
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[6].slice(),
-      insertedDocs[7].slice()
+        insertedDocs[6].slice(),  insertedDocs[7].slice(),
+        insertedDocs[8].slice(),  insertedDocs[9].slice(),
+        insertedDocs[10].slice(), insertedDocs[11].slice(),
+        insertedDocs[12].slice(), insertedDocs[13].slice(),
+        insertedDocs[14].slice(), insertedDocs[15].slice(),
+        insertedDocs[16].slice(), insertedDocs[17].slice(),
+        insertedDocs[18].slice(), insertedDocs[19].slice(),
+        insertedDocs[20].slice(), insertedDocs[21].slice(),
+        insertedDocs[22].slice(),
     };
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.seq == 'xxx', d.value >= 100 || d.value <= 150, 2) SORT d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-
-    EXPECT_EQ(i, expected.size());
-  }
-
-  // 2 conditions
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[6].slice(),
-      insertedDocs[7].slice(),
-      insertedDocs[8].slice(),
-      insertedDocs[9].slice(),
-      insertedDocs[10].slice(),
-      insertedDocs[11].slice(),
-      insertedDocs[12].slice(),
-      insertedDocs[13].slice(),
-      insertedDocs[14].slice(),
-      insertedDocs[15].slice(),
-      insertedDocs[16].slice(),
-      insertedDocs[17].slice(),
-      insertedDocs[18].slice(),
-      insertedDocs[19].slice(),
-      insertedDocs[20].slice(),
-      insertedDocs[21].slice(),
-      insertedDocs[22].slice(),
-    };
-    auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.same == 'xyz', d.value >= 100 || d.value <= 150, 2) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.same "
+        "== 'xyz', d.value >= 100 || d.value <= 150, 2) SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -491,13 +486,12 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // 3 conditions
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[6].slice(),
-      insertedDocs[7].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
+                                                         insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.same == 'xyz', d.value >= 100 || d.value <= 150, 3) SORT d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.same "
+        "== 'xyz', d.value >= 100 || d.value <= 150, 3) SORT d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -513,7 +507,5 @@ TEST_P(IResearchQueryMinMatchTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryMinMatchTest,
-  IResearchQueryMinMatchTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryMinMatchTest, IResearchQueryMinMatchTest,
+                        GetLinkVersions());

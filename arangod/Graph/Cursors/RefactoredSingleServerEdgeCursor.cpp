@@ -24,9 +24,9 @@
 
 #include "RefactoredSingleServerEdgeCursor.h"
 
-#include "Aql/AstNode.h"
-#include "Aql/Ast.h"
 #include "Aql/AqlValueMaterializer.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/NonConstExpression.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -65,8 +65,7 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(IndexAccessor* accessor)
-    : _accessor(accessor),
-      _cursor(nullptr) {}
+    : _accessor(accessor), _cursor(nullptr) {}
 
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) = default;
@@ -135,7 +134,9 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
-    _cursor = trx->indexScanForCondition(_accessor->indexHandle(), node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no);
+    _cursor = trx->indexScanForCondition(_accessor->indexHandle(), node, tmpVar,
+                                         ::defaultIndexIteratorOptions,
+                                         ReadOwnWrites::no);
   }
 }
 
@@ -179,7 +180,8 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
 }
 
 template <class Step>
-void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::calculateIndexExpressions(Ast* ast, ExpressionContext& ctx) {
+void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::calculateIndexExpressions(
+    Ast* ast, ExpressionContext& ctx) {
   if (!_accessor->hasNonConstParts()) {
     return;
   }
@@ -214,7 +216,6 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::calculateIndexExpressio
     }
   }
 }
-
 
 template <class Step>
 RefactoredSingleServerEdgeCursor<Step>::~RefactoredSingleServerEdgeCursor() {}

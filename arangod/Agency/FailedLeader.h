@@ -58,4 +58,3 @@ struct FailedLeader : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

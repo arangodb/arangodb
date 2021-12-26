@@ -22,8 +22,8 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
 #include "fakeit.hpp"
+#include "gtest/gtest.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -81,16 +81,16 @@ Node createAgencyFromBuilder(VPackBuilder const& builder) {
   std::string sourceKey = "/arango/Target/";                                   \
   sourceKey += source;                                                         \
   sourceKey += "/1";                                                           \
-  EXPECT_EQ(std::string(q->slice().typeName()), "array");                  \
-  EXPECT_EQ(q->slice().length(), 1);                                       \
-  EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");               \
-  EXPECT_EQ(q->slice()[0].length(), 1);                                    \
-  EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");           \
+  EXPECT_EQ(std::string(q->slice().typeName()), "array");                      \
+  EXPECT_EQ(q->slice().length(), 1);                                           \
+  EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");                   \
+  EXPECT_EQ(q->slice()[0].length(), 1);                                        \
+  EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");               \
   auto writes = q->slice()[0][0];                                              \
-  EXPECT_EQ(std::string(writes.get(sourceKey).typeName()), "object");      \
+  EXPECT_EQ(std::string(writes.get(sourceKey).typeName()), "object");          \
   EXPECT_TRUE(std::string(writes.get(sourceKey).get("op").typeName()) ==       \
               "string");                                                       \
-  EXPECT_EQ(writes.get(sourceKey).get("op").copyString(), "delete");       \
+  EXPECT_EQ(writes.get(sourceKey).get("op").copyString(), "delete");           \
   EXPECT_TRUE(std::string(writes.get("/arango/Target/Failed/1").typeName()) == \
               "object");
 
@@ -569,7 +569,7 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-  CHECK_FAILURE("ToDo", q);
+    CHECK_FAILURE("ToDo", q);
     return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
@@ -669,8 +669,10 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
     EXPECT_EQ(writes.get(sourceKey).get("op").copyString(), "delete");
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).copyString() ==
                 "1");
-    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-lock"));
-    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("by").isEqualString("1"));
+    EXPECT_TRUE(
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-lock"));
+    EXPECT_TRUE(
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("by").isEqualString("1"));
     EXPECT_TRUE(writes.get("/arango/Plan/Version").get("op").copyString() ==
                 "increment");
     EXPECT_TRUE(std::string(writes.get("/arango/Target/Pending/1").typeName()) ==
@@ -972,7 +974,7 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
             builder->add(VPackValue(SHARD_FOLLOWER2));
             builder->close();
           } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
-                          COLLECTION + "/" + SHARD + "/servers") {
+                                 COLLECTION + "/" + SHARD + "/servers") {
             builder->add(VPackValue(VPackValueType::Array));
             builder->add(VPackValue("_" + SHARD_LEADER));
             builder->add(VPackValue(SHARD_FOLLOWER2));
@@ -1163,7 +1165,6 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_planned_shard_situation_has_
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
 }
-
 
 TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
   std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
@@ -1838,7 +1839,6 @@ TEST_F(MoveShardTest, after_the_new_leader_has_synchronized_the_new_leader_shoul
 }
 
 TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
-
   std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
       [&](VPackSlice const& s, std::string const& path) {
         std::unique_ptr<VPackBuilder> builder;
@@ -1872,11 +1872,11 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
           } else if (path == "/arango/Current/Collections/" + DATABASE) {
             builder->add(VPackValue(COLLECTION));
             VPackObjectBuilder a(builder.get());
-          } 
+          }
           builder->close();
         } else {
           if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
-              COLLECTION + "/shards/" + SHARD) {
+                          COLLECTION + "/shards/" + SHARD) {
             builder->add(VPackValue(VPackValueType::Array));
             builder->add(VPackValue(SHARD_LEADER));
             builder->add(VPackValue(SHARD_FOLLOWER1));
@@ -1896,7 +1896,6 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
-  
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
@@ -1916,7 +1915,7 @@ TEST_F(MoveShardTest, when_the_old_leader_is_not_yet_ready_for_resign_nothing_sh
               builder->add(it.key.copyString(), childBuilder->slice());
             }
           }
-          
+
           if (path == "/arango/Target/Pending") {
             VPackBuilder pendingJob;
             {
@@ -2068,65 +2067,73 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
 }
 
 TEST_F(MoveShardTest, aborting_the_job_while_the_new_leader_is_already_in_place_should_not_break_plan) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-    std::unique_ptr<VPackBuilder> builder;
-    builder.reset(new VPackBuilder());
-    if (s.isObject()) {
-      builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it: VPackObjectIterator(s)) {
-        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
-        if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
-        }
-      }
-
-      if (path == "/arango/Target/Pending") {
-        VPackBuilder pendingJob;
-        {
-          VPackObjectBuilder b(&pendingJob);
-          auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-          for (auto const& it: VPackObjectIterator(plainJob.slice())) {
-            pendingJob.add(it.key.copyString(), it.value);
+  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
+      [&](VPackSlice const& s, std::string const& path) {
+        std::unique_ptr<VPackBuilder> builder;
+        builder.reset(new VPackBuilder());
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto const& it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
           }
-          pendingJob.add("timeCreated", VPackValue(timepointToString(std::chrono::system_clock::now())));
+
+          if (path == "/arango/Target/Pending") {
+            VPackBuilder pendingJob;
+            {
+              VPackObjectBuilder b(&pendingJob);
+              auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
+              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
+                pendingJob.add(it.key.copyString(), it.value);
+              }
+              pendingJob.add("timeCreated", VPackValue(timepointToString(
+                                                std::chrono::system_clock::now())));
+            }
+            builder->add(jobId, pendingJob.slice());
+          } else if (path == "/arango/Supervision/DBServers") {
+            builder->add(FREE_SERVER, VPackValue("1"));
+          } else if (path == "/arango/Supervision/Shards") {
+            builder->add(SHARD, VPackValue("1"));
+          }
+          builder->close();
+        } else {
+          if (path == "/arango/Current/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/" + SHARD + "/servers") {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue("_" + SHARD_LEADER));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->close();
+          } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD) {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue(FREE_SERVER));
+            builder->add(VPackValue(SHARD_LEADER));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->close();
+          } else {
+            builder->add(s);
+          }
         }
-        builder->add(jobId, pendingJob.slice());
-      } else if (path == "/arango/Supervision/DBServers") {
-        builder->add(FREE_SERVER, VPackValue("1"));
-      } else if (path == "/arango/Supervision/Shards") {
-        builder->add(SHARD, VPackValue("1"));
-      }
-      builder->close();
-    } else {
-      if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION + "/" + SHARD + "/servers") {
-        builder->add(VPackValue(VPackValueType::Array));
-        builder->add(VPackValue("_" + SHARD_LEADER));
-        builder->add(VPackValue(SHARD_FOLLOWER1));
-        builder->close();
-      } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD) {
-        builder->add(VPackValue(VPackValueType::Array));
-        builder->add(VPackValue(FREE_SERVER));
-        builder->add(VPackValue(SHARD_LEADER));
-        builder->add(VPackValue(SHARD_FOLLOWER1));
-        builder->close();
-      } else {
-        builder->add(s);
-      }
-    }
-    return builder;
-  };
+        return builder;
+      };
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-
     auto writes = q->slice()[0][0];
-    EXPECT_EQ(writes.get("/arango/Target/Pending/1").get("op").copyString(), "delete");
-    EXPECT_EQ(q->slice()[0].length(), 2); // Precondition: to Server not leader yet
-    EXPECT_EQ(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString(), "delete");
-    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
+    EXPECT_EQ(writes.get("/arango/Target/Pending/1").get("op").copyString(),
+              "delete");
+    EXPECT_EQ(q->slice()[0].length(), 2);  // Precondition: to Server not leader yet
+    EXPECT_EQ(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString(),
+              "delete");
+    EXPECT_TRUE(
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     // well apparently this job is not responsible to cleanup its mess
-    EXPECT_EQ(std::string(writes.get("/arango/Target/Failed/1").typeName()), "object");
+    EXPECT_EQ(std::string(writes.get("/arango/Target/Failed/1").typeName()),
+              "object");
     return fakeWriteResult;
   });
   AgentInterface& agent = mockAgent.get();
@@ -2137,7 +2144,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_the_new_leader_is_already_in_place_
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
-  Verify(Method(mockAgent,write));
+  Verify(Method(mockAgent, write));
 }
 
 TEST_F(MoveShardTest, if_we_are_ready_to_resign_the_old_server_then_finally_move_to_the_new_leader) {
@@ -2488,8 +2495,10 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
                 "delete");
     EXPECT_EQ(q->slice()[0].length(), 2);
     auto preconditions = q->slice()[0][1];
-    EXPECT_TRUE(preconditions.get("/arango/Plan/Collections/" + DATABASE +
-                                     "/" + COLLECTION).get("oldEmpty").isFalse());
+    EXPECT_TRUE(preconditions
+                    .get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION)
+                    .get("oldEmpty")
+                    .isFalse());
     EXPECT_TRUE(
         writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==

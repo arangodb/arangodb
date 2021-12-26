@@ -34,4 +34,3 @@ class HttpEndpointProvider : public application_features::ApplicationFeature {
   virtual std::vector<std::string> httpEndpoints() = 0;
 };
 }  // namespace arangodb
-

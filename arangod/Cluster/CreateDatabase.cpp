@@ -68,7 +68,8 @@ bool CreateDatabase::first() {
   VPackSlice users;
   auto database = _description.get(DATABASE);
 
-  LOG_TOPIC("953b1", INFO, Logger::MAINTENANCE) << "CreateDatabase: creating database " << database;
+  LOG_TOPIC("953b1", INFO, Logger::MAINTENANCE)
+      << "CreateDatabase: creating database " << database;
 
   TRI_IF_FAILURE("CreateDatabase::first") {
     // simulate DB creation failure
@@ -86,7 +87,7 @@ bool CreateDatabase::first() {
     // Assertion in constructor makes sure that we have DATABASE.
     auto& server = _feature.server();
     res = Databases::create(server, ExecContext::current(),
-                                    _description.get(DATABASE), users, properties());
+                            _description.get(DATABASE), users, properties());
     result(res);
     if (!res.ok() && res.errorNumber() != TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)

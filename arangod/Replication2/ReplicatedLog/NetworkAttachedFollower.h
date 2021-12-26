@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/types.h"
 #include "Cluster/ClusterTypes.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb::network {
 class ConnectionPool;

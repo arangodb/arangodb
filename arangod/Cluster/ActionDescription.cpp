@@ -27,21 +27,23 @@
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
-#include <functional>
 #include <boost/functional/hash.hpp>
+#include <functional>
 
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
 /// @brief ctor
 ActionDescription::ActionDescription(std::map<std::string, std::string> d,
-                                     int priority,
-                                     bool runEvenIfDuplicate,
+                                     int priority, bool runEvenIfDuplicate,
                                      std::shared_ptr<VPackBuilder> p)
-    : _description(std::move(d)), _properties(std::move(p)), _priority(priority),
+    : _description(std::move(d)),
+      _properties(std::move(p)),
+      _priority(priority),
       _runEvenIfDuplicate(runEvenIfDuplicate) {
   TRI_ASSERT(_description.find(NAME) != _description.end());
-  TRI_ASSERT(_properties == nullptr || _properties->isEmpty() || _properties->slice().isObject());
+  TRI_ASSERT(_properties == nullptr || _properties->isEmpty() ||
+             _properties->slice().isObject());
 }
 
 /// @brief Default dtor

@@ -29,8 +29,8 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
 #include "Aql/ExecutorExpressionContext.h"
+#include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
@@ -178,7 +178,8 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
     aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) {
-  _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(ast, varInfo, false, false,
+  _nonConstContainer =
+      aql::utils::extractNonConstPartsOfIndexCondition(ast, varInfo, false, false,
                                                        indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
@@ -421,8 +422,7 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   _expressionCtx.serializeAllVariables(_query.vpackOptions(), builder);
 }
 
-void BaseOptions::setCollectionToShard(
-    std::unordered_map<std::string, std::string> const& in) {
+void BaseOptions::setCollectionToShard(std::unordered_map<std::string, std::string> const& in) {
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {

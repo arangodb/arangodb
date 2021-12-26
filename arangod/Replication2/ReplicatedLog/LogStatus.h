@@ -84,8 +84,9 @@ struct LogStatus {
 
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
+
  private:
   VariantType _variant;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_log

@@ -101,4 +101,4 @@ struct AsyncMockLog : MockLog {
   std::thread _asyncWorker;
 };
 
-}
+}  // namespace arangodb::replication2::test

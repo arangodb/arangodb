@@ -57,7 +57,8 @@ KShortestPathsFinder::~KShortestPathsFinder() {
   try {
     // necessary to revert memory usage trackers
     clear();
-  } catch (...) {}
+  } catch (...) {
+  }
 }
 
 void KShortestPathsFinder::clear() {
@@ -68,7 +69,7 @@ void KShortestPathsFinder::clear() {
     _candidatePaths.pop_back();
   }
   TRI_ASSERT(_candidatePaths.empty());
- 
+
   // clear cache and forget about its memory usage
   _resourceMonitor.decreaseMemoryUsage(_vertexCache.size() * vertexCacheEntryMemoryUsage());
   _vertexCache.clear();
@@ -94,8 +95,7 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
 
 bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef const& end,
                                                VertexSet const& forbiddenVertices,
-                                               EdgeSet const& forbiddenEdges,
-                                               Path& result) {
+                                               EdgeSet const& forbiddenEdges, Path& result) {
   _left.reset(start);
   _right.reset(end);
   VertexRef join;
@@ -132,7 +132,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
   // already in the cache. then we are not responsible for tracking its memory
   // usage.
   ResourceUsageScope guard(_resourceMonitor, vertexCacheEntryMemoryUsage());
-  
+
   auto result = _vertexCache.try_emplace(vertex, FoundVertex(vertex));
 
   if (result.second) {
@@ -144,7 +144,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
   auto& cache = result.first->second;  // want to update the cached vertex in place
 
   switch (direction) {
-    case BACKWARD: 
+    case BACKWARD:
       if (!cache._hasCachedInNeighbours) {
         computeNeighbourhoodOfVertex(vertex, direction, cache._inNeighbours);
         cache._hasCachedInNeighbours = true;
@@ -213,8 +213,7 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
 
 void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
                                            VertexSet const& forbiddenVertices,
-                                           EdgeSet const& forbiddenEdges,
-                                           VertexRef& join,
+                                           EdgeSet const& forbiddenEdges, VertexRef& join,
                                            std::optional<double>& currentBest) {
   VertexRef vr;
   DijkstraInfo *v, *w;
@@ -378,9 +377,9 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
       }
     }
   }
-    
+
   // only used for function return value, which is currently ignored
-  bool available = false; 
+  bool available = false;
 
   result.clear();
 
@@ -388,7 +387,7 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
     auto const& p = _candidatePaths.front();
     result.append(p, 0, p.length() - 1);
     result._branchpoint = p._branchpoint;
-   
+
     // count down the memory usage again
     _resourceMonitor.decreaseMemoryUsage(p.memoryUsage());
     _candidatePaths.pop_front();
@@ -472,16 +471,13 @@ bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result)
     TRI_ASSERT(result.isClosed());
     return true;
   }
-  
+
   return false;
 }
 
-bool KShortestPathsFinder::skipPath() {
-  return getNextPath(_tempPath);
-}
+bool KShortestPathsFinder::skipPath() { return getNextPath(_tempPath); }
 
 size_t KShortestPathsFinder::vertexCacheEntryMemoryUsage() const noexcept {
-  return 16 /*arbitrary*/ + 
-         sizeof(typename decltype(_vertexCache)::key_type) + 
+  return 16 /*arbitrary*/ + sizeof(typename decltype(_vertexCache)::key_type) +
          sizeof(typename decltype(_vertexCache)::value_type);
 }

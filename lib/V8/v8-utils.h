@@ -179,10 +179,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate*);
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils(v8::Isolate* isolate,
-                     v8::Handle<v8::Context>,
-                     std::string const& startupPath,
-                     std::string const& modules);
+void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context>,
+                     std::string const& startupPath, std::string const& modules);
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);
-

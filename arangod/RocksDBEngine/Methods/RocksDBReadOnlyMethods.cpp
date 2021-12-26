@@ -51,8 +51,7 @@ rocksdb::ReadOptions RocksDBReadOnlyMethods::iteratorReadOptions() const {
 
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
-                                            rocksdb::PinnableSlice* val,
-                                            ReadOwnWrites) {
+                                            rocksdb::PinnableSlice* val, ReadOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_readOptions.snapshot != nullptr);
   return _db->Get(_readOptions, cf, key, val);
@@ -66,7 +65,7 @@ std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
   if (readOptionsCallback) {
     readOptionsCallback(opts);
   }
-  
+
   std::unique_ptr<rocksdb::Iterator> iterator(_db->NewIterator(opts, cf));
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

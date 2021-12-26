@@ -31,8 +31,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
-#include "Pregel/Graph.h"
 #include "Greenspun/EvalResult.h"
+#include "Pregel/Graph.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
@@ -43,7 +43,6 @@ namespace pregel {
 
 template <typename V, typename E>
 struct GraphFormat {
-
   explicit GraphFormat(application_features::ApplicationServer& server)
       : _server(server) {}
   virtual ~GraphFormat() = default;
@@ -56,19 +55,20 @@ struct GraphFormat {
                               arangodb::velocypack::Slice document,
                               V& targetPtr, uint64_t& vertexIdRange) = 0;
 
-
-  // the default implementation is to do nothing. only few algorithms actually override
-  // this with a more specific behavior
+  // the default implementation is to do nothing. only few algorithms actually
+  // override this with a more specific behavior
   virtual void copyEdgeData(arangodb::velocypack::Options const& vpackOptions,
                             arangodb::velocypack::Slice edgeDocument, E& targetPtr) {}
 
-  virtual bool buildVertexDocument(arangodb::velocypack::Builder& b, V const* targetPtr) const = 0;
+  virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                                   V const* targetPtr) const = 0;
 
   virtual greenspun::EvalResult buildVertexDocumentWithResult(arangodb::velocypack::Builder& b,
                                                               V const* targetPtr) const {
     buildVertexDocument(b, targetPtr);
     return {};
   }
+
  private:
   application_features::ApplicationServer& _server;
 };

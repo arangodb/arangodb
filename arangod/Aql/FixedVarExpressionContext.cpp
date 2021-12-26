@@ -50,7 +50,9 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, b
   return it->second;
 }
 
-void FixedVarExpressionContext::clearVariableValues() noexcept { _vars.clear(); }
+void FixedVarExpressionContext::clearVariableValues() noexcept {
+  _vars.clear();
+}
 
 void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue const& value) {
   _vars.try_emplace(var, value);
@@ -86,19 +88,16 @@ SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx
 SingleVarExpressionContext::SingleVarExpressionContext(transaction::Methods& trx,
                                                        QueryContext& context,
                                                        AqlFunctionsInternalCache& cache)
-    : SingleVarExpressionContext(trx, context, cache, nullptr, AqlValue(AqlValueHintNull())) {}
+    : SingleVarExpressionContext(trx, context, cache, nullptr,
+                                 AqlValue(AqlValueHintNull())) {}
 
-
-SingleVarExpressionContext::~SingleVarExpressionContext() {
-  _value.destroy();
-}
+SingleVarExpressionContext::~SingleVarExpressionContext() { _value.destroy(); }
 
 bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
   return false;
 }
 
-AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool,
-                                                     bool&) const {
+AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool, bool&) const {
   if (var == _variable) {
     return _value;
   } else {
@@ -106,9 +105,7 @@ AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool,
   }
 }
 
-
-void SingleVarExpressionContext::setVariableValue(Variable* variable,
-                                                  AqlValue& value) {
+void SingleVarExpressionContext::setVariableValue(Variable* variable, AqlValue& value) {
   _variable = variable;
   _value = value;
 }

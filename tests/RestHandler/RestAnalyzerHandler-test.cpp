@@ -66,7 +66,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   static constexpr irs::string_ref type_name() noexcept {
     return "rest-analyzer-empty";
   }
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) { }
+  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::frequency>::id()) {
       return &_attr;
@@ -153,18 +153,18 @@ class RestAnalyzerHandlerTest
 
     ASSERT_ARANGO_OK(
         analyzers.emplace(result, name, "identity"s,
-                           VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
+                          VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2";
     ASSERT_ARANGO_OK(
         analyzers.emplace(result, name, "identity"s,
-                           VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
+                          VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer"s;
     ASSERT_ARANGO_OK(
         analyzers.emplace(result, name, "rest-analyzer-empty"s,
-                           VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
-                           arangodb::iresearch::Features(irs::IndexFeatures::FREQ)));
+                          VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
+                          arangodb::iresearch::Features(irs::IndexFeatures::FREQ)));
   };
 
   // Creates a new database
@@ -187,9 +187,9 @@ class RestAnalyzerHandlerTest
     ASSERT_TRUE(res.ok());
 
     ASSERT_ARANGO_OK(analyzers.emplace(result, name + "::testAnalyzer1",
-                                        "identity"s, VPackSlice::noneSlice()));
+                                       "identity"s, VPackSlice::noneSlice()));
     ASSERT_ARANGO_OK(analyzers.emplace(result, name + "::testAnalyzer2",
-                                        "identity"s, VPackSlice::noneSlice()));
+                                       "identity"s, VPackSlice::noneSlice()));
   }
 
   // Grant permissions on one DB
@@ -237,8 +237,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_non_object_body) {
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
 
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(),
-                                                   requestPtr.release(),
+  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
                                                    responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openArray();
@@ -462,8 +461,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
   EXPECT_TRUE(slice.hasKey("type") && slice.get("type").isString());
   EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
   EXPECT_TRUE(slice.hasKey("features") && slice.get("features").isArray());
-  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                 "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto analyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   EXPECT_NE(nullptr, analyzer);
 }
 
@@ -530,8 +530,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create_success) {
   EXPECT_TRUE(slice.hasKey("type") && slice.get("type").isString());
   EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
   EXPECT_TRUE(slice.hasKey("features") && slice.get("features").isArray());
-  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                 "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto analyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   EXPECT_NE(nullptr, analyzer);
 }
 
@@ -782,7 +783,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_author
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
 
   // TODO
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        unknownDBInfo(server.server()));
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -814,7 +816,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_au
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
 
   // TODO
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, unknownDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        unknownDBInfo(server.server()));
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1284,8 +1287,9 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_not_authorized) {
                    ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 
   // Check it's not gone
-  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                 "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto analyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(analyzer, nullptr);
 }
 
@@ -1304,8 +1308,9 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
   request.values().emplace("force", "false");
 
   // Hold a reference to mark analyzer in use
-  auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                      "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto inUseAnalyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(nullptr, inUseAnalyzer);
 
   auto status = handler.execute();
@@ -1324,8 +1329,9 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
                slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
                TRI_ERROR_ARANGO_CONFLICT ==
                    ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
-  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                 "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto analyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   // Check it's not gone
   ASSERT_NE(analyzer, nullptr);
 }
@@ -1345,8 +1351,9 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   request.values().emplace("force", "true");
 
   // hold ref to mark in-use
-  auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                      "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto inUseAnalyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_NE(nullptr, inUseAnalyzer);
 
   auto status = handler.execute();
@@ -1364,8 +1371,9 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2" ==
                    slice.get("name").copyString()));
-  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                 "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto analyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_EQ(nullptr, analyzer);
 }
 
@@ -1386,8 +1394,9 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_with_db_name) {
   auto status = handler.execute();
   EXPECT_EQ(arangodb::RestStatus::DONE, status);
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
-  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                 "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto analyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   EXPECT_EQ(nullptr, analyzer);
 }
 
@@ -1418,7 +1427,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_success) {
   EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                    slice.get("name").copyString()));
-  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                 "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  auto analyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_EQ(nullptr, analyzer);
 }

@@ -20,6 +20,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestServer/SoftShutdownFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
@@ -31,7 +32,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/ScriptFeature.h"
-#include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "Transaction/Manager.h"
@@ -43,17 +43,15 @@ using namespace arangodb::options;
 
 namespace {
 
-void queueShutdownChecker(std::mutex& mutex,
-    arangodb::Scheduler::WorkHandle& workItem,
-    std::function<void(bool)>& checkFunc) {
-
+void queueShutdownChecker(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+                          std::function<void(bool)>& checkFunc) {
   arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
   std::lock_guard<std::mutex> guard(mutex);
   workItem = scheduler->queueDelayed(arangodb::RequestLane::CLUSTER_INTERNAL,
                                      std::chrono::seconds(2), checkFunc);
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 
@@ -84,18 +82,16 @@ void SoftShutdownTracker::cancelChecker() {
   }
 }
 
-SoftShutdownTracker::SoftShutdownTracker(
-    application_features::ApplicationServer& server)
-  : _server(server), _softShutdownOngoing(false) {
+SoftShutdownTracker::SoftShutdownTracker(application_features::ApplicationServer& server)
+    : _server(server), _softShutdownOngoing(false) {
   _checkFunc = [this](bool cancelled) {
     if (_server.isStopping()) {
-      return;   // already stopping, do nothing, and in particular
-                // let's not schedule ourselves again!
+      return;  // already stopping, do nothing, and in particular
+               // let's not schedule ourselves again!
     }
     if (!this->checkAndShutdownIfAllClear()) {
       // Rearm ourselves:
-      queueShutdownChecker(this->_workItemMutex, this->_workItem,
-                           this->_checkFunc);
+      queueShutdownChecker(this->_workItemMutex, this->_workItem, this->_checkFunc);
     }
   };
 }
@@ -109,8 +105,7 @@ void SoftShutdownTracker::initiateSoftShutdown() {
     return;
   }
 
-  LOG_TOPIC("fedd2", INFO, Logger::STARTUP)
-      << "Initiating soft shutdown...";
+  LOG_TOPIC("fedd2", INFO, Logger::STARTUP) << "Initiating soft shutdown...";
 
   // Tell GeneralServerFeature, which will forward to all features which
   // overload the initiateSoftShutdown method:
@@ -122,7 +117,7 @@ void SoftShutdownTracker::initiateSoftShutdown() {
   // And initiate our checker to watch numbers:
   queueShutdownChecker(_workItemMutex, _workItem, _checkFunc);
 }
-    
+
 bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
   Status status = getStatus();
   if (!status.allClear()) {
@@ -130,8 +125,8 @@ bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
     toVelocyPack(builder, status);
     // FIXME: Set to DEBUG level
     LOG_TOPIC("ffeec", INFO, Logger::STARTUP)
-        << "Soft shutdown check said 'not all clear': "
-        << builder.slice().toJson() << ".";
+        << "Soft shutdown check said 'not all clear': " << builder.slice().toJson()
+        << ".";
     return false;
   }
   LOG_TOPIC("ffeed", INFO, Logger::STARTUP)
@@ -152,7 +147,7 @@ void SoftShutdownTracker::initiateActualShutdown() const {
 }
 
 void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
-    SoftShutdownTracker::Status const& status) {
+                                       SoftShutdownTracker::Status const& status) {
   VPackObjectBuilder guard(&builder);
   builder.add("softShutdownOngoing", VPackValue(status.softShutdownOngoing));
   builder.add("AQLcursors", VPackValue(status.AQLcursors));
@@ -171,9 +166,9 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   // Get number of active AQL cursors from each database:
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
   databaseFeature.enumerate([&status](TRI_vocbase_t* vocbase) {
-        CursorRepository* repo = vocbase->cursorRepository();
-        status.AQLcursors += repo->count();
-      });
+    CursorRepository* repo = vocbase->cursorRepository();
+    status.AQLcursors += repo->count();
+  });
 
   // Get number of active transactions from Manager:
   auto& managerFeature = _server.getFeature<transaction::ManagerFeature>();
@@ -185,17 +180,15 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   // Get numbers of pending and done asynchronous jobs:
   auto& generalServerFeature = _server.getFeature<GeneralServerFeature>();
   auto& jobManager = generalServerFeature.jobManager();
-  std::tie(status.pendingJobs, status.doneJobs)
-      = jobManager.getNrPendingAndDone();
+  std::tie(status.pendingJobs, status.doneJobs) = jobManager.getNrPendingAndDone();
 
   // Get number of active Pregel conductors on this coordinator:
   auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
   status.pregelConductors = pregelFeature.numberOfActiveConductors();
 
   // Get number of ongoing and queued requests from scheduler:
-  std::tie(status.lowPrioOngoingRequests,
-           status.lowPrioQueuedRequests)
-      = SchedulerFeature::SCHEDULER->getNumberLowPrioOngoingAndQueued();
+  std::tie(status.lowPrioOngoingRequests, status.lowPrioQueuedRequests) =
+      SchedulerFeature::SCHEDULER->getNumberLowPrioOngoingAndQueued();
 
   return status;
 }

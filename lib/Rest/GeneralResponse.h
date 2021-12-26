@@ -147,13 +147,16 @@ class GeneralResponse {
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
-  virtual void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
+  virtual void addPayload(velocypack::Slice const&,
+                          arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
   virtual void addPayload(velocypack::Buffer<uint8_t>&&,
                           arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
   virtual void addRawPayload(velocypack::StringRef payload) = 0;
-  virtual ErrorCode reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
+  virtual ErrorCode reservePayload(std::size_t size) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   /// used for head
   bool generateBody() const { return _generateBody; }
@@ -162,7 +165,7 @@ class GeneralResponse {
   bool setGenerateBody(bool generateBody) {
     return _generateBody = generateBody;
   }
-  
+
   virtual ErrorCode deflate(size_t size = 16384) = 0;
 
  protected:
@@ -175,4 +178,3 @@ class GeneralResponse {
   bool _allowCompression;
 };
 }  // namespace arangodb
-

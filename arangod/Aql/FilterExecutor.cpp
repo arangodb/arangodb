@@ -56,9 +56,10 @@ FilterExecutor::~FilterExecutor() = default;
 auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   FilterStats stats{};
-  
+
   while (inputRange.hasDataRow() && call.needSkipMore()) {
-    auto const [unused, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    auto const [unused, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input);
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       call.didSkip(1);
@@ -79,7 +80,8 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   FilterStats stats{};
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    auto const& [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    auto const& [state, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input);
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
@@ -95,8 +97,8 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
 }
 
 [[nodiscard]] auto FilterExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                                           AqlCall const& call) const
-    noexcept -> size_t {
+                                                           AqlCall const& call) const noexcept
+    -> size_t {
   if (input.finalState() == ExecutorState::DONE) {
     return std::min(call.getLimit(), input.countDataRows());
   }

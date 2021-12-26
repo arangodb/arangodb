@@ -163,7 +163,7 @@ std::unique_ptr<fuerte::Response> PreparedRequestResponse::generateResponse() co
   // TODO what if response is empty;
 
   fuerte::ResponseHeader header{};
-  auto code = _response->responseCode(); // TODO: NOT moved / set in responseMock
+  auto code = _response->responseCode();  // TODO: NOT moved / set in responseMock
   (void)code;
   auto& payloadBuilder = static_cast<GeneralResponseMock*>(_response.get())->_payload;
   // TODO use code

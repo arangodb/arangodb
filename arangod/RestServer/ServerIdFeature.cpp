@@ -152,8 +152,8 @@ ErrorCode ServerIdFeature::writeId() {
     builder.close();
   } catch (...) {
     // out of memory
-    LOG_TOPIC("6cac3", ERR, arangodb::Logger::FIXME) << "cannot save server id in file '"
-                                            << _idFilename << "': out of memory";
+    LOG_TOPIC("6cac3", ERR, arangodb::Logger::FIXME)
+        << "cannot save server id in file '" << _idFilename << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 

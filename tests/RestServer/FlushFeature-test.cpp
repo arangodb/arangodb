@@ -64,7 +64,7 @@ class FlushFeatureTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()

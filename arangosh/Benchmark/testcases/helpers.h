@@ -26,14 +26,15 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
-  class BenchFeature;
+class BenchFeature;
 }
 
 namespace arangodb::arangobench {
 
 bool DeleteCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&);
 
-bool CreateCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&, int const, BenchFeature const& arangobench);
+bool CreateCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&,
+                      int const, BenchFeature const& arangobench);
 
 bool CreateDocument(arangodb::httpclient::SimpleHttpClient*, std::string const&,
                     std::string const&);

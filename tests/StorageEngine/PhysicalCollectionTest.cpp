@@ -48,7 +48,7 @@
 using namespace arangodb;
 
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
+static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -68,7 +68,7 @@ class PhysicalCollectionTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());  
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>());
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>());  // required for TRI_vocbase_t
 
 #if USE_ENTERPRISE

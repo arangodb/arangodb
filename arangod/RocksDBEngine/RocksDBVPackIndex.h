@@ -58,7 +58,8 @@ class Methods;
 }
 
 class RocksDBVPackIndex : public RocksDBIndex {
-  template<bool reverse> friend class RocksDBVPackIndexIterator;
+  template <bool reverse>
+  friend class RocksDBVPackIndexIterator;
 
  public:
   static uint64_t HashForKey(const rocksdb::Slice& key);
@@ -72,7 +73,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& =
+                                 arangodb::velocypack::StringRef()) const override;
 
   RocksDBCuckooIndexEstimatorType* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
@@ -96,45 +98,40 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief attempts to locate an entry in the index
   std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
-                                        arangodb::velocypack::Slice const, bool reverse, ReadOwnWrites readOwnWrites) const;
+                                        arangodb::velocypack::Slice const, bool reverse,
+                                        ReadOwnWrites readOwnWrites) const;
 
-  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                             arangodb::aql::AstNode const* node,
-                                             arangodb::aql::Variable const* reference, 
-                                             size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+      size_t itemsInIndex) const override;
 
   Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                         arangodb::aql::Variable const* reference, 
+                                         arangodb::aql::Variable const* reference,
                                          size_t itemsInIndex) const override;
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
-                                                      arangodb::aql::AstNode const* node,
-                                                      arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts,
-                                                      ReadOwnWrites readOwnWrites) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) override;
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     arangodb::transaction::Methods* trx) override;
+  void afterTruncate(TRI_voc_tick_t tick, arangodb::transaction::Methods* trx) override;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& options, 
-                bool performChecks) override;
+                OperationOptions const& options, bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& oldDocumentId,
-                velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
-                velocypack::Slice newDoc,
-                OperationOptions const& options,
-                bool performChecks) override;
+                LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
+                LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+                OperationOptions const& options, bool performChecks) override;
 
  private:
   /// @brief returns whether the document can be inserted into the index
@@ -142,16 +139,17 @@ class RocksDBVPackIndex : public RocksDBIndex {
   [[nodiscard]] Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
                                    LocalDocumentId const& documentId, velocypack::Slice doc,
                                    OperationOptions const& options) override;
-  
+
   /// @brief returns whether the document can be updated/replaced in the index
   /// (or if there will be a conflict)
   [[nodiscard]] Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
                                     LocalDocumentId const& documentId, velocypack::Slice doc,
                                     OperationOptions const& options) override;
-                      
+
   [[nodiscard]] Result checkOperation(transaction::Methods& trx, RocksDBMethods* methods,
-                                      LocalDocumentId const& documentId, velocypack::Slice doc,
-                                      OperationOptions const& options, bool ignoreExisting);
+                                      LocalDocumentId const& documentId,
+                                      velocypack::Slice doc, OperationOptions const& options,
+                                      bool ignoreExisting);
 
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
@@ -207,4 +205,3 @@ class RocksDBVPackIndex : public RocksDBIndex {
   std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 };
 }  // namespace arangodb
-

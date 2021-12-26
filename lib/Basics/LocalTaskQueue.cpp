@@ -58,7 +58,7 @@ void LocalTask::dispatch() {
     return true;
   });
 }
-  
+
 LambdaTask::LambdaTask(std::shared_ptr<LocalTaskQueue> const& queue,
                        std::function<Result()>&& fn)
     : LocalTask(queue), _fn(std::move(fn)) {}
@@ -122,7 +122,9 @@ void LocalTaskQueue::enqueue(std::shared_ptr<LocalTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::post(std::function<bool()>&& fn) { return _poster(std::move(fn)); }
+void LocalTaskQueue::post(std::function<bool()>&& fn) {
+  return _poster(std::move(fn));
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch all tasks, including those that are queued while running,
@@ -144,13 +146,14 @@ void LocalTaskQueue::dispatchAndWait() {
 
     // dispatch all newly queued tasks
     if (_status.ok()) {
-      while (_dispatched.load(std::memory_order_acquire) < _concurrency && !_queue.empty()) {
+      while (_dispatched.load(std::memory_order_acquire) < _concurrency &&
+             !_queue.empty()) {
         // all your task are belong to us
         auto task = std::move(_queue.front());
         _queue.pop();
 
-        // increase _dispatched by one, now. if dispatching fails, we will count it
-        // down again
+        // increase _dispatched by one, now. if dispatching fails, we will count
+        // it down again
         _dispatched.fetch_add(1, std::memory_order_release);
         bool dispatched = false;
         try {
@@ -170,12 +173,13 @@ void LocalTaskQueue::dispatchAndWait() {
         if (!dispatched) {
           // dispatching the task has failed.
           // count down _dispatched again
-          std::size_t old = _dispatched.fetch_sub(1, std::memory_order_release);;
+          std::size_t old = _dispatched.fetch_sub(1, std::memory_order_release);
+          ;
           TRI_ASSERT(old > 0);
-          
+
           if (_status.ok()) {
             // now register an error in the queue
-           _status.reset({TRI_ERROR_QUEUE_FULL, "could not post task"});
+            _status.reset({TRI_ERROR_QUEUE_FULL, "could not post task"});
           }
         }
       }

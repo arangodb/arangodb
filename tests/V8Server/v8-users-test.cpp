@@ -22,7 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Mocks/Servers.h"  // this must be first because windows
 
 #include "gtest/gtest.h"
@@ -86,9 +85,8 @@ struct TestView : public arangodb::LogicalView {
 
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
       : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder,
-      Serialization) const override {
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
+                                                Serialization) const override {
     builder.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
@@ -98,8 +96,7 @@ struct TestView : public arangodb::LogicalView {
     return arangodb::Result();
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
-                                      bool isUserRequest,
-                                      bool /*partialUpdate*/) override {
+                                      bool isUserRequest, bool /*partialUpdate*/) override {
     EXPECT_TRUE(isUserRequest);
     _properties = arangodb::velocypack::Builder(properties);
     return arangodb::Result();
@@ -111,7 +108,8 @@ struct TestView : public arangodb::LogicalView {
 
 struct ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice definition, bool isUserRequest) const override {
+                                  arangodb::velocypack::Slice definition,
+                                  bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
     view = vocbase.createView(definition);
 
@@ -162,7 +160,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
   static const std::string userName("testUser");
   auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  ASSERT_TRUE(databaseFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
+  ASSERT_TRUE(
+      databaseFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -180,13 +179,18 @@ TEST_F(V8UsersTest, test_collection_auth) {
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = vocbase;
   TRI_InitV8Users(context, vocbase, v8g.get(), isolate.get());
-  auto arangoUsers =
-      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  auto arangoUsers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)
+                         ->NewInstance(TRI_IGETC)
+                         .FromMaybe(v8::Local<v8::Object>());
   auto fn_grantCollection =
-    arangoUsers->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "grantCollection")).FromMaybe(v8::Local<v8::Value>());
+      arangoUsers
+          ->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "grantCollection"))
+          .FromMaybe(v8::Local<v8::Value>());
   EXPECT_TRUE(fn_grantCollection->IsFunction());
   auto fn_revokeCollection =
-    arangoUsers->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "revokeCollection")).FromMaybe(v8::Local<v8::Value>());
+      arangoUsers
+          ->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "revokeCollection"))
+          .FromMaybe(v8::Local<v8::Value>());
   EXPECT_TRUE(fn_revokeCollection->IsFunction());
   std::vector<v8::Local<v8::Value>> grantArgs = {
       TRI_V8_STD_STRING(isolate.get(), userName),
@@ -257,10 +261,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -300,10 +305,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));  // not modified from above
@@ -437,10 +443,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
@@ -488,10 +495,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));  // not modified from above

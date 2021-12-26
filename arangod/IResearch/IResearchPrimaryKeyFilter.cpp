@@ -53,10 +53,9 @@ namespace iresearch {
 // --SECTION--                                  PrimaryKeyFilter implementation
 // ----------------------------------------------------------------------------
 
-irs::doc_iterator::ptr PrimaryKeyFilter::execute(
-    irs::sub_reader const& segment,
-    irs::order::prepared const& /*order*/,
-    irs::attribute_provider const* /*ctx*/ ) const {
+irs::doc_iterator::ptr PrimaryKeyFilter::execute(irs::sub_reader const& segment,
+                                                 irs::order::prepared const& /*order*/,
+                                                 irs::attribute_provider const* /*ctx*/) const {
   TRI_ASSERT(!_pkSeen);  // re-execution of a fiter is not expected to ever
                          // occur without a call to prepare(...)
   auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
@@ -96,7 +95,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   }
 
   return irs::memory::to_managed<irs::doc_iterator, false>(
-    const_cast<PrimaryKeyIterator*>(&_pkIterator));
+      const_cast<PrimaryKeyIterator*>(&_pkIterator));
 }
 
 size_t PrimaryKeyFilter::hash() const noexcept {
@@ -109,10 +108,8 @@ size_t PrimaryKeyFilter::hash() const noexcept {
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
-    irs::index_reader const& /*index*/,
-    irs::order::prepared const& /*ord*/,
-    irs::boost_t /*boost*/,
-    irs::attribute_provider const* /*ctx*/) const {
+    irs::index_reader const& /*index*/, irs::order::prepared const& /*ord*/,
+    irs::boost_t /*boost*/, irs::attribute_provider const* /*ctx*/) const {
   // optimization, since during:
   // * regular runtime should have at most 1 identical primary key in the entire
   // datastore
@@ -139,10 +136,8 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
 // ----------------------------------------------------------------------------
 
 irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
-    irs::index_reader const& rdr,
-    irs::order::prepared const& ord,
-    irs::boost_t boost,
-    irs::attribute_provider const* ctx) const {
+    irs::index_reader const& rdr, irs::order::prepared const& ord,
+    irs::boost_t boost, irs::attribute_provider const* ctx) const {
   return irs::empty().prepare(rdr, ord, boost, ctx);
 }
 

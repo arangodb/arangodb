@@ -63,7 +63,9 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
     // but this executor will always delegate the skipping
     // to upstream.
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ReturnExecutor::skipRowsRange shouldn't be called");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "ReturnExecutor::skipRowsRange shouldn't be called");
   }
 
   return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
@@ -97,8 +99,8 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
 }
 
 [[nodiscard]] auto ReturnExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                                           AqlCall const& call) const
-    noexcept -> size_t {
+                                                           AqlCall const& call) const noexcept
+    -> size_t {
   if (input.finalState() == ExecutorState::DONE) {
     return input.countDataRows();
   }

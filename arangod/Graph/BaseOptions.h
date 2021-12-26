@@ -207,9 +207,9 @@ struct BaseOptions {
 
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
-  virtual void initializeIndexConditions(
-    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-    aql::Variable const* indexVariable);
+  virtual void initializeIndexConditions(aql::Ast* ast,
+                                         std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+                                         aql::Variable const* indexVariable);
 
   virtual void calculateIndexExpressions(aql::Ast* ast);
 
@@ -257,8 +257,8 @@ struct BaseOptions {
   /// Reference to the query we are running in. Necessary for internal API calls.
   aql::QueryContext& _query;
 
-  /// Mutable variable that is used to write the current object (vertex or edge) to
-  /// in order to test the condition.
+  /// Mutable variable that is used to write the current object (vertex or edge)
+  /// to in order to test the condition.
   aql::Variable const* _tmpVar;
 
   /// @brief the traverser cache

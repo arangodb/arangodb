@@ -55,4 +55,3 @@ class InitDatabaseFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

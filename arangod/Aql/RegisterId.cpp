@@ -25,20 +25,22 @@
 #include "Basics/Exceptions.h"
 
 namespace arangodb::aql {
-  RegisterId RegisterId::fromUInt32(uint32_t value) {
-    auto v = static_cast<value_t>(value);
-    auto type = static_cast<Type>(value >> (sizeof(value_t) * 8));
-    RegisterId result(v, type);
-    TRI_ASSERT(result.isValid());
-    if (!result.isValid()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot parse RegisterId from value " + std::to_string(value));
-    }
-    return result;
+RegisterId RegisterId::fromUInt32(uint32_t value) {
+  auto v = static_cast<value_t>(value);
+  auto type = static_cast<Type>(value >> (sizeof(value_t) * 8));
+  RegisterId result(v, type);
+  TRI_ASSERT(result.isValid());
+  if (!result.isValid()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Cannot parse RegisterId from value " +
+                                       std::to_string(value));
   }
-
-  uint32_t RegisterId::toUInt32() const noexcept {
-    uint32_t result = _value;
-    result |= static_cast<uint32_t>(_type) << (sizeof(value_t) * 8);
-    return result;
-  }
+  return result;
 }
+
+uint32_t RegisterId::toUInt32() const noexcept {
+  uint32_t result = _value;
+  result |= static_cast<uint32_t>(_type) << (sizeof(value_t) * 8);
+  return result;
+}
+}  // namespace arangodb::aql

@@ -205,13 +205,15 @@ struct ASCCMasterContext : public MasterContext {
       case SCCPhase::FORWARD_TRAVERSAL: {
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
         if (*newMaxFound == false) {
-          LOG_TOPIC("14832", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
+          LOG_TOPIC("14832", DEBUG, Logger::PREGEL)
+              << "Phase: BACKWARD_TRAVERSAL_START";
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
       } break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_START:
-        LOG_TOPIC("8d480", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
+        LOG_TOPIC("8d480", DEBUG, Logger::PREGEL)
+            << "Phase: BACKWARD_TRAVERSAL_REST";
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
 

@@ -46,4 +46,3 @@ class RocksDBMetricsListener : public rocksdb::EventListener {
 };
 
 }  // namespace arangodb
-

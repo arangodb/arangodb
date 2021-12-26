@@ -44,13 +44,11 @@ class LogicalCollection;
 namespace maintenance {
 enum ActionState;
 
-
 // The following is used in multiple Maintenance actions and therefore
 // made available here.
-arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
-                                 uint64_t& c);
+arangodb::Result collectionCount(arangodb::LogicalCollection const& collection, uint64_t& c);
 
-}
+}  // namespace maintenance
 
 template <typename T>
 struct SharedPtrComparer {
@@ -143,12 +141,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   /// returns whether or not the shard has an action of the specified type
   /// (equivalent to NAME) that has the specified state
-  bool hasAction(maintenance::ActionState state, ShardID const& shardId, std::string const& type) const;
+  bool hasAction(maintenance::ActionState state, ShardID const& shardId,
+                 std::string const& type) const;
 
   /// @brief Lock a shard for a certain action description. Returns `false` if
-  /// the shard is already locked and `true` otherwise. If the lock succeeds, the
-  /// action description is retained for later query.
-  bool lockShard(ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description);
+  /// the shard is already locked and `true` otherwise. If the lock succeeds,
+  /// the action description is retained for later query.
+  bool lockShard(ShardID const& shardId,
+                 std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief Release shard lock. Returns `true` if the shard was locked and `false` otherwise.
   bool unlockShard(ShardID const& shardId) noexcept;
@@ -163,8 +163,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// action to create a new action object with a different priority.
   /// It is only allowed to requeue actions which are in states
   /// ActionState::COMPLETE or ActionState::FAILED!
-  Result requeueAction(std::shared_ptr<maintenance::Action>& action,
-                       int newPriority);
+  Result requeueAction(std::shared_ptr<maintenance::Action>& action, int newPriority);
 
  protected:
   std::shared_ptr<maintenance::Action> createAction(
@@ -320,10 +319,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   arangodb::Result removeDBError(std::string const& database);
 
-
   /// @brief remove all replication errors for a particular database
   void removeReplicationError(std::string const& database);
-  
+
   /// @brief remove all replication errors for a particular shard.
   /// this will be called after a successful SynchronizeShard job for the shard
   void removeReplicationError(std::string const& database, std::string const& shard);
@@ -367,19 +365,19 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   void addDirty(std::string const& database);
   void addDirty(std::unordered_set<std::string> const& databases, bool callNotify);
   std::unordered_set<std::string> dirty(
-    std::unordered_set<std::string> const& = std::unordered_set<std::string>());
+      std::unordered_set<std::string> const& = std::unordered_set<std::string>());
   /// @brief get n random db names
   std::unordered_set<std::string> pickRandomDirty(size_t n);
 
-  /// @brief maximum number of replication error occurrences that are kept per 
+  /// @brief maximum number of replication error occurrences that are kept per
   /// shard.
   static constexpr size_t maxReplicationErrorsPerShard = 20;
-    
-  /// @brief maximum age of replication error occurrences that are kept per shard.
-  /// error occurrences older than this max age will be removed only lazily and
-  /// will not be considered when counting the number of errors.
+
+  /// @brief maximum age of replication error occurrences that are kept per
+  /// shard. error occurrences older than this max age will be removed only
+  /// lazily and will not be considered when counting the number of errors.
   static constexpr auto maxReplicationErrorsPerShardAge = std::chrono::hours(24);
-  
+
  protected:
   void initializeMetrics();
 
@@ -495,13 +493,13 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   mutable arangodb::Mutex _dbeLock;
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
-  
+
   /// @brief lock for shard version map
   mutable arangodb::Mutex _versionLock;
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
-  
+
   /// @brief lock for replication error bucket
   mutable arangodb::Mutex _replLock;
   /// @brief shard replication errors { database => { shard => [ timestamps ] } }
@@ -514,11 +512,11 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief shard action map, this map holds information which job (can only
   /// be one) is currently scheduled or executing for a given shard name. An
   /// entry is added whenever an ActionDescription is created in Maintenance
-  /// and is removed, when the action for the shard is finished. The main Maintenance
-  /// loop with phaseOne and phaseTwo creates a copy of this map before it does
-  /// getLocalCollections and then avoids pondering over any shard which has an
-  /// entry in the map. In this way, shard deliberations as well as shard actions
-  /// are serialized and only one is happening at a time.
+  /// and is removed, when the action for the shard is finished. The main
+  /// Maintenance loop with phaseOne and phaseTwo creates a copy of this map
+  /// before it does getLocalCollections and then avoids pondering over any
+  /// shard which has an entry in the map. In this way, shard deliberations as
+  /// well as shard actions are serialized and only one is happening at a time.
   ShardActionMap _shardActionMap;
 
   /// @brief mutex protecting _shardActionMap
@@ -566,4 +564,3 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

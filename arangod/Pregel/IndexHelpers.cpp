@@ -33,19 +33,15 @@
 using namespace arangodb;
 using namespace arangodb::traverser;
 
-EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
-                                       std::string const& collectionName)
-    : _trx(trx),
-      _collectionName(collectionName),
-      _searchBuilder() {
-
+EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx, std::string const& collectionName)
+    : _trx(trx), _collectionName(collectionName), _searchBuilder() {
   if (!trx->isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
- 
+
   _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
   auto doc = _trx->documentCollection(_collectionName);
-  
+
   for (std::shared_ptr<arangodb::Index> const& idx : doc->getIndexes()) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
       auto const& fields = idx->fieldNames();
@@ -60,11 +56,13 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
 }
 
 /// @brief Get edges for the given direction and start vertex.
-std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::string const& vertexId) {  
+std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::string const& vertexId) {
   _searchBuilder.setVertexId(vertexId);
   IndexIteratorOptions opts;
   opts.enableCache = false;
-  return _trx->indexScanForCondition(_index, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts, ReadOwnWrites::no);
+  return _trx->indexScanForCondition(_index, _searchBuilder.getOutboundCondition(),
+                                     _searchBuilder.getVariable(), opts,
+                                     ReadOwnWrites::no);
 }
 
 /// @brief Return name of the wrapped collection

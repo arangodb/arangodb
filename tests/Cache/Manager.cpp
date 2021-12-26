@@ -37,8 +37,8 @@
 #include "Cache/PlainCache.h"
 #include "Random/RandomGenerator.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
+#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
@@ -75,7 +75,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  
+
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
@@ -186,7 +186,7 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  
+
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);

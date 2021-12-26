@@ -77,7 +77,8 @@ class ManagedDirectory {
      * @param flags     The flags to pass to the OS to open the file
      * @param isGzip    True if reads/writes should go through gzip functions
      */
-    File(ManagedDirectory const& directory, std::string const& filename, int flags, bool isGzip);
+    File(ManagedDirectory const& directory, std::string const& filename,
+         int flags, bool isGzip);
 
     File(ManagedDirectory const& directory, int fd, bool isGzip);
 
@@ -136,7 +137,7 @@ class ManagedDirectory {
      * @brief Closes file (now, as opposed to when the object is destroyed)
      * @return Reference to file status
      */
-    bool isGzip() const {return -1 != _gzfd;}
+    bool isGzip() const { return -1 != _gzfd; }
 
     /**
      * @brief Count of bytes read from regular or gzip file, not amount returned by read
@@ -159,7 +160,7 @@ class ManagedDirectory {
     std::string _path;
     int _flags;
     int _fd;
-    int _gzfd;     // duplicate fd for gzip close
+    int _gzfd;  // duplicate fd for gzip close
     gzFile _gzFile;
     Mutex mutable _mutex;
 #ifdef USE_ENTERPRISE
@@ -254,8 +255,8 @@ class ManagedDirectory {
    * @param  gzipOk    Flag whether this file is suitable for gzip (when enabled)
    * @return           Unique pointer to file, if opened
    */
-  std::unique_ptr<File> writableFile(std::string const& filename,
-                                     bool overwrite, int flags = 0, bool gzipOk = true);
+  std::unique_ptr<File> writableFile(std::string const& filename, bool overwrite,
+                                     int flags = 0, bool gzipOk = true);
 
   /**
    * @brief Write a string to file
@@ -286,4 +287,3 @@ class ManagedDirectory {
   Result _status;
 };
 }  // namespace arangodb
-

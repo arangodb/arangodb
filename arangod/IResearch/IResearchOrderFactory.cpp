@@ -40,7 +40,6 @@
 
 #include <search/scorers.hpp>
 
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                        OrderFactory dependencies
 // ----------------------------------------------------------------------------
@@ -92,13 +91,14 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
       break;
     case 1: {
       // ArangoDB, for API consistency, only supports scorers configurable via jSON
-      scorer = irs::scorers::get( // get scorer
-        name, irs::type<irs::text_format::json>::get(), irs::string_ref::NIL, false // args
+      scorer = irs::scorers::get(  // get scorer
+          name, irs::type<irs::text_format::json>::get(), irs::string_ref::NIL, false  // args
       );
 
       if (!scorer) {
         // ArangoDB, for API consistency, only supports scorers configurable via jSON
-        scorer = irs::scorers::get(name, irs::type<irs::text_format::json>::get(), "[]", false); // pass arg as json array
+        scorer = irs::scorers::get(name, irs::type<irs::text_format::json>::get(),
+                                   "[]", false);  // pass arg as json array
       }
     } break;
     default: {  // fall through
@@ -127,8 +127,8 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
       builder.close();
 
       // ArangoDB, for API consistency, only supports scorers configurable via jSON
-      scorer = irs::scorers::get( // get scorer
-        name, irs::type<irs::text_format::json>::get(), builder.toJson(), false // pass arg as json
+      scorer = irs::scorers::get(  // get scorer
+          name, irs::type<irs::text_format::json>::get(), builder.toJson(), false  // pass arg as json
       );
     }
   }
@@ -206,9 +206,9 @@ bool fromFCallUser(irs::sort::ptr* scorer, arangodb::aql::AstNode const& node,
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
 
-
 arangodb::aql::Variable const* refFromScorer(arangodb::aql::AstNode const& node) {
-  if (arangodb::aql::NODE_TYPE_FCALL != node.type && arangodb::aql::NODE_TYPE_FCALL_USER != node.type) {
+  if (arangodb::aql::NODE_TYPE_FCALL != node.type &&
+      arangodb::aql::NODE_TYPE_FCALL_USER != node.type) {
     return nullptr;
   }
 
@@ -219,10 +219,8 @@ arangodb::aql::Variable const* refFromScorer(arangodb::aql::AstNode const& node)
     return nullptr;
   }
 
-  arangodb::iresearch::QueryContext const ctx{
-    nullptr, nullptr, nullptr,
-    nullptr, nullptr, ref
-  };
+  arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                              nullptr, nullptr, ref};
 
   if (!arangodb::iresearch::OrderFactory::scorer(nullptr, node, ctx)) {
     // not a scorer function
@@ -273,7 +271,7 @@ void ScorerReplacer::replace(aql::CalculationNode& node) {
   }
 
   auto replaceScorers = [this, ast](aql::AstNode* node) -> aql::AstNode* {
-    TRI_ASSERT(node); // ensured by 'Ast::traverseAndModify(...)'
+    TRI_ASSERT(node);  // ensured by 'Ast::traverseAndModify(...)'
 
     auto* ref = refFromScorer(*node);
 
@@ -371,8 +369,8 @@ void ScorerReplacer::extract(aql::Variable const& var, std::vector<Scorer>& scor
 
   // create scorer with default arguments
   // ArangoDB, for API consistency, only supports scorers configurable via jSON
-  *comparer = irs::scorers::get( // get scorer
-    scorerName, irs::type<irs::text_format::json>::get(), irs::string_ref::NIL, false // args
+  *comparer = irs::scorers::get(  // get scorer
+      scorerName, irs::type<irs::text_format::json>::get(), irs::string_ref::NIL, false  // args
   );
 
   return bool(*comparer);

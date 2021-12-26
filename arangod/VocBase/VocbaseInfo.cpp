@@ -33,8 +33,8 @@
 #include "Logger/LogMacros.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Utils/Events.h"
 #include "Utilities/NameValidator.h"
+#include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 
 namespace arangodb {
@@ -43,15 +43,15 @@ CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& 
                                        ExecContext const& context)
     : _server(server), _context(context) {}
 
-ShardingPrototype CreateDatabaseInfo::shardingPrototype() const { 
+ShardingPrototype CreateDatabaseInfo::shardingPrototype() const {
   if (_name != StaticStrings::SystemDatabase) {
     return ShardingPrototype::Graphs;
   }
-  return _shardingPrototype; 
+  return _shardingPrototype;
 }
 
 void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
-  _shardingPrototype = type; 
+  _shardingPrototype = type;
 }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
@@ -60,7 +60,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _valid = true;
-#endif 
+#endif
   return checkOptions();
 }
 
@@ -131,12 +131,12 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
-  builder.add(StaticStrings::DataSourceSystem, VPackValue(_name == StaticStrings::SystemDatabase));
+  builder.add(StaticStrings::DataSourceSystem,
+              VPackValue(_name == StaticStrings::SystemDatabase));
 
-  if (ServerState::instance()->isCoordinator() ||
-      ServerState::instance()->isDBServer()) {
+  if (ServerState::instance()->isCoordinator() || ServerState::instance()->isDBServer()) {
     addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern, _replicationVersion);
-  } 
+  }
 
   if (withUsers) {
     builder.add(VPackValue("users"));
@@ -157,7 +157,9 @@ void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-application_features::ApplicationServer& CreateDatabaseInfo::server() const { return _server; }
+application_features::ApplicationServer& CreateDatabaseInfo::server() const {
+  return _server;
+}
 
 Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
   if (users.isNone() || users.isNull()) {
@@ -280,7 +282,7 @@ Result CreateDatabaseInfo::checkOptions() {
            "recreate the database with replication version 1 (the default), "
            "and then restore the data.";
   }
-  
+
   bool isSystem = _name == StaticStrings::SystemDatabase;
   bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
@@ -293,7 +295,8 @@ Result CreateDatabaseInfo::checkOptions() {
   return res;
 }
 
-VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server, VPackSlice const& options) {
+VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server,
+                                 VPackSlice const& options) {
   TRI_ASSERT(options.isObject());
   // Invalid options will be silently ignored. Default values will be used
   // instead.
@@ -328,7 +331,8 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
     isSatellite = isSatellite || (isNumber && replicationSlice.getUInt() == 0);
     if (!isSatellite && !isNumber) {
       if (haveCluster) {
-        vocbaseOptions.replicationFactor = server.getFeature<ClusterFeature>().defaultReplicationFactor();
+        vocbaseOptions.replicationFactor =
+            server.getFeature<ClusterFeature>().defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeee", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";
@@ -342,7 +346,8 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
 #ifndef USE_ENTERPRISE
     if (vocbaseOptions.replicationFactor == 0) {
       if (haveCluster) {
-        vocbaseOptions.replicationFactor = server.getFeature<ClusterFeature>().defaultReplicationFactor();
+        vocbaseOptions.replicationFactor =
+            server.getFeature<ClusterFeature>().defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeef", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";

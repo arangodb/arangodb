@@ -63,7 +63,8 @@ PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
               : nullptr),
       _isDBServer(ServerState::instance()->isDBServer()),
       _extendedNames(collection.vocbase().server().hasFeature<DatabaseFeature>() &&
-              collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections()) {}
+                     collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections()) {
+}
 
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
@@ -93,13 +94,16 @@ void PhysicalCollection::drop() {
   }
 }
 
-
 uint64_t PhysicalCollection::recalculateCounts() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "recalculateCounts not implemented for this engine");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "recalculateCounts not implemented for this engine");
 }
 
 bool PhysicalCollection::hasDocuments() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hasDocuments not implemented for this engine");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "hasDocuments not implemented for this engine");
 }
 
 bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
@@ -110,7 +114,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   // validate id string
   VPackValueLength len;
   char const* docId = slice.getStringUnchecked(len);
-  [[maybe_unused]] size_t split = 0; 
+  [[maybe_unused]] size_t split = 0;
   return KeyGenerator::validateId(docId, static_cast<size_t>(len), _extendedNames, split);
 }
 
@@ -125,8 +129,8 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
 }
 
 /// @brief Find index by definition
-/*static*/ std::shared_ptr<Index> PhysicalCollection::findIndex(
-    VPackSlice const& info, IndexContainerType const& indexes) {
+/*static*/ std::shared_ptr<Index> PhysicalCollection::findIndex(VPackSlice const& info,
+                                                                IndexContainerType const& indexes) {
   TRI_ASSERT(info.isObject());
 
   auto value = info.get(arangodb::StaticStrings::IndexType);  // extract type
@@ -426,9 +430,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 
   // _rev
   bool handled = false;
-  TRI_IF_FAILURE("Insert::useRev") {
-    isRestore = true;
-  }
+  TRI_IF_FAILURE("Insert::useRev") { isRestore = true; }
   if (isRestore) {
     // copy revision id verbatim
     s = value.get(StaticStrings::RevString);
@@ -542,8 +544,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
   return Result();
 }
 
-std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
-    transaction::Methods& trx) {
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(transaction::Methods& trx) {
   return nullptr;
 }
 
@@ -569,18 +570,19 @@ void PhysicalCollection::removeRevisionTreeBlocker(TransactionId) {
 
 /// @brief checks the revision of a document
 bool PhysicalCollection::checkRevision(transaction::Methods*, RevisionId expected,
-                                      RevisionId found) const {
+                                       RevisionId found) const {
   return expected.empty() || found == expected;
 }
 
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  return { _indexes.begin(), _indexes.end() };
+  return {_indexes.begin(), _indexes.end()};
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
-                                         std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
+void PhysicalCollection::getIndexesVPack(
+    VPackBuilder& result,
+    std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
   result.openArray();
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
@@ -602,7 +604,7 @@ futures::Future<OperationResult> PhysicalCollection::figures(bool details,
                                                              OperationOptions const& options) {
   auto buffer = std::make_shared<VPackBufferUInt8>();
   VPackBuilder builder(buffer);
-  
+
   builder.openObject();
 
   // add index information
@@ -648,7 +650,8 @@ std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
 void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {}
 
 Result PhysicalCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
-                                  ManagedDocumentResult& previous, OperationOptions& options) {
+                                  ManagedDocumentResult& previous,
+                                  OperationOptions& options) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -696,6 +699,5 @@ bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& le
   // use id to make  order of equally-sorted indexes deterministic
   return left->id() < right->id();
 }
-
 
 }  // namespace arangodb

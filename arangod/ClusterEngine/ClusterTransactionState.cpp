@@ -51,8 +51,8 @@ ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, Transac
   // transaction is started and during validateAndOptimize some simple
   // function calls could be executed and calls requires valid analyzers revisions.
   acceptAnalyzersRevision(
-      _vocbase.server().getFeature<arangodb::ClusterFeature>()
-        .clusterInfo().getQueryAnalyzersRevision(vocbase.name()));
+      _vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo().getQueryAnalyzersRevision(
+          vocbase.name()));
 }
 
 /// @brief start a transaction
@@ -66,7 +66,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // set hints
   _hints = hints;
-  auto& stats = _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
+  auto& stats =
+      _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
 
   auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
@@ -74,7 +75,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   });
 
   Result res = useCollections();
-  if (res.fail()) { // something is wrong
+  if (res.fail()) {  // something is wrong
     return res;
   }
 
@@ -86,7 +87,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
+  transaction::ManagerFeature::manager()->registerTransaction(
+      id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
   setRegistered();
   if (AccessMode::isWriteOrExclusive(this->_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
@@ -131,22 +133,29 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
   }
 
   updateStatus(transaction::Status::COMMITTED);
-  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted;
+  ++_vocbase.server()
+        .getFeature<MetricsFeature>()
+        .serverStatistics()
+        ._transactionsStatistics._transactionsCommitted;
 
   return {};
 }
 
 /// @brief abort and rollback a transaction
 Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX("fc653", TRACE, this) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX("fc653", TRACE, this)
+      << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   updateStatus(transaction::Status::ABORTED);
-  ++_vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted;
-  
+  ++_vocbase.server()
+        .getFeature<MetricsFeature>()
+        .serverStatistics()
+        ._transactionsStatistics._transactionsAborted;
+
   return {};
 }
-  
+
 /// @brief return number of commits
 uint64_t ClusterTransactionState::numCommits() const {
   // there are no intermediate commits for a cluster transaction, so we can

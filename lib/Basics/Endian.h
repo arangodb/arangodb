@@ -321,4 +321,3 @@ inline T bigToHost(T in) {
 
 }  // namespace basics
 }  // namespace arangodb
-

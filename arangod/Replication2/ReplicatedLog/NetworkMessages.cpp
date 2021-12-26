@@ -26,11 +26,11 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Basics/Result.h>
 #include <Basics/application-exit.h>
+#include <Basics/voc-errors.h>
 #include <Containers/ImmerMemoryPolicy.h>
 #include <Logger/LogMacros.h>
-#include <Basics/voc-errors.h>
-#include <Basics/Result.h>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -165,7 +165,7 @@ void replicated_log::AppendEntriesResult::toVelocyPack(velocypack::Builder& buil
 }
 
 auto replicated_log::AppendEntriesResult::fromVelocyPack(velocypack::Slice slice)
--> AppendEntriesResult {
+    -> AppendEntriesResult {
   auto logTerm = slice.get("term").extract<LogTerm>();
   auto errorCode = ErrorCode{slice.get("errorCode").extract<int>()};
   auto reason = AppendEntriesErrorReason{slice.get("reason").extract<int>()};
@@ -204,27 +204,25 @@ replicated_log::AppendEntriesResult::AppendEntriesResult(LogTerm term,
 auto replicated_log::AppendEntriesResult::withConflict(LogTerm term,
                                                        replicated_log::MessageId id,
                                                        TermIndexPair conflict) noexcept
--> replicated_log::AppendEntriesResult {
+    -> replicated_log::AppendEntriesResult {
   return {term, id, conflict};
 }
 
 auto replicated_log::AppendEntriesResult::withRejection(LogTerm term, MessageId id,
                                                         AppendEntriesErrorReason reason) noexcept
--> AppendEntriesResult {
-  return {term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,
-                             reason, id};
+    -> AppendEntriesResult {
+  return {term, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED, reason, id};
 }
 
 auto replicated_log::AppendEntriesResult::withPersistenceError(LogTerm term,
                                                                replicated_log::MessageId id,
                                                                Result const& res) noexcept
--> replicated_log::AppendEntriesResult {
-  return {term, res.errorNumber(),
-                             AppendEntriesErrorReason::PERSISTENCE_FAILURE, id};
+    -> replicated_log::AppendEntriesResult {
+  return {term, res.errorNumber(), AppendEntriesErrorReason::PERSISTENCE_FAILURE, id};
 }
 
 auto replicated_log::AppendEntriesResult::withOk(LogTerm term, replicated_log::MessageId id) noexcept
--> replicated_log::AppendEntriesResult {
+    -> replicated_log::AppendEntriesResult {
   return {term, id};
 }
 
@@ -252,7 +250,7 @@ void replicated_log::AppendEntriesRequest::toVelocyPack(velocypack::Builder& bui
 }
 
 auto replicated_log::AppendEntriesRequest::fromVelocyPack(velocypack::Slice slice)
--> AppendEntriesRequest {
+    -> AppendEntriesRequest {
   auto leaderTerm = slice.get("leaderTerm").extract<LogTerm>();
   auto leaderId = ParticipantId{slice.get("leaderId").copyString()};
   auto prevLogEntry = TermIndexPair::fromVelocyPack(slice.get("prevLogEntry"));

@@ -112,7 +112,8 @@ void CacheManagerFeature::start() {
   SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
   _manager = std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
 
-  _rebalancer = std::make_unique<CacheRebalancerThread>(server(), _manager.get(), _rebalancingInterval);
+  _rebalancer = std::make_unique<CacheRebalancerThread>(server(), _manager.get(),
+                                                        _rebalancingInterval);
   _rebalancer->start();
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }

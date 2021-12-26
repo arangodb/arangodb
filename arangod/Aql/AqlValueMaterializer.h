@@ -65,4 +65,3 @@ struct AqlValueMaterializer {
 
 }  // namespace aql
 }  // namespace arangodb
-

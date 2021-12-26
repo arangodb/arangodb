@@ -35,7 +35,7 @@ class GlobalInitialSyncer : public InitialSyncer {
   // constructor is private, as GlobalInitialSyncer uses shared_from_this() and
   // we must ensure that it is only created via make_shared.
   explicit GlobalInitialSyncer(ReplicationApplierConfiguration const&);
- 
+
  public:
   static std::shared_ptr<GlobalInitialSyncer> create(ReplicationApplierConfiguration const&);
 
@@ -64,4 +64,3 @@ class GlobalInitialSyncer : public InitialSyncer {
   Result updateServerInventory(velocypack::Slice const& leaderDatabases);
 };
 }  // namespace arangodb
-

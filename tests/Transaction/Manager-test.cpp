@@ -39,15 +39,16 @@
 
 #include "gtest/gtest.h"
 
-#include "ManagerSetup.h"
 #include "../IResearch/common.h"
+#include "ManagerSetup.h"
 
 using namespace arangodb;
 
 static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
                                                std::string const& queryString,
                                                std::shared_ptr<transaction::Context> ctx) {
-  auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), nullptr);
+  auto query =
+      arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), nullptr);
 
   arangodb::aql::QueryResult result;
   while (true) {
@@ -74,7 +75,8 @@ class TransactionManagerTest : public ::testing::Test {
   TransactionId tid;
 
   TransactionManagerTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())),
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                testDBInfo(setup.server.server())),
         mgr(transaction::ManagerFeature::manager()),
         tid(TRI_NewTickServer()) {}
 
@@ -403,7 +405,7 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
     ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
-    
+
     auto ctxSide = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, true);
     ASSERT_NE(ctxSide.get(), nullptr);
     auto state2 = ctxSide->acquireState(opts, responsible);
@@ -430,7 +432,7 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
   {
     transaction::Options opts;
     bool responsible;
-    
+
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
     ASSERT_NE(ctx.get(), nullptr);
     auto state1 = ctx->acquireState(opts, responsible);
@@ -505,7 +507,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()), transaction::Status::RUNNING);
 
   //
-  mgr->abortManagedTrx([](TransactionState const& state, std::string const & /*user*/) -> bool {
+  mgr->abortManagedTrx([](TransactionState const& state, std::string const& /*user*/) -> bool {
     TransactionCollection* tcoll =
         state.collection(DataSourceId{42}, AccessMode::Type::NONE);
     return tcoll != nullptr;

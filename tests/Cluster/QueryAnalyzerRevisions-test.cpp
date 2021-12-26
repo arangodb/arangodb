@@ -21,82 +21,104 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-#include "Basics/StaticStrings.h"
-#include "Cluster/ClusterTypes.h"
-#include "velocypack/Slice.h"
-#include "velocypack/Parser.h"
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 #include <ostream>
-
+#include "Basics/StaticStrings.h"
+#include "Cluster/ClusterTypes.h"
+#include "gtest/gtest.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
 
 TEST(QueryAnalyzerRevisionsTest, fullData) {
   arangodb::QueryAnalyzerRevisions revisions;
   ASSERT_TRUE(revisions.isDefault());
-  ASSERT_TRUE(revisions.fromVelocyPack(VPackParser::fromJson(
-      "{\"analyzersRevision\" : { \"current\" : 10, \"system\": 11}}")->slice()).ok());
+  ASSERT_TRUE(revisions
+                  .fromVelocyPack(VPackParser::fromJson(
+                                      "{\"analyzersRevision\" : { \"current\" "
+                                      ": 10, \"system\": 11}}")
+                                      ->slice())
+                  .ok());
   ASSERT_EQ(arangodb::QueryAnalyzerRevisions(10, 11), revisions);
 }
 
 TEST(QueryAnalyzerRevisionsTest, emptyData) {
   arangodb::QueryAnalyzerRevisions revisions;
-  ASSERT_TRUE(revisions.fromVelocyPack(VPackParser::fromJson(
-    "{\"analyzersRevision\" : {}}")->slice()).ok());
-  ASSERT_EQ(arangodb::QueryAnalyzerRevisions(arangodb::AnalyzersRevision::MIN, 
+  ASSERT_TRUE(
+      revisions
+          .fromVelocyPack(VPackParser::fromJson("{\"analyzersRevision\" : {}}")->slice())
+          .ok());
+  ASSERT_EQ(arangodb::QueryAnalyzerRevisions(arangodb::AnalyzersRevision::MIN,
                                              arangodb::AnalyzersRevision::MIN),
             revisions);
 }
 
 TEST(QueryAnalyzerRevisionsTest, noData) {
   arangodb::QueryAnalyzerRevisions revisions(20, 30);
-  ASSERT_TRUE(revisions.fromVelocyPack(VPackParser::fromJson(
-    "{\"SomeOtherParameter\" : { \"current\" : 10, \"system\": 11}}")->slice()).ok());
+  ASSERT_TRUE(revisions
+                  .fromVelocyPack(VPackParser::fromJson(
+                                      "{\"SomeOtherParameter\" : { \"current\" "
+                                      ": 10, \"system\": 11}}")
+                                      ->slice())
+                  .ok());
   ASSERT_EQ(arangodb::QueryAnalyzerRevisions(), revisions);
 }
 
 TEST(QueryAnalyzerRevisionsTest, onlySystemData) {
   arangodb::QueryAnalyzerRevisions revisions(20, 30);
   ASSERT_FALSE(revisions.isDefault());
-  ASSERT_TRUE(revisions.fromVelocyPack(VPackParser::fromJson(
-    "{\"analyzersRevision\" : {\"system\": 11}}")->slice()).ok());
-  ASSERT_EQ(arangodb::QueryAnalyzerRevisions(arangodb::AnalyzersRevision::MIN, 
-                                             11),
-            revisions);
+  ASSERT_TRUE(
+      revisions
+          .fromVelocyPack(VPackParser::fromJson(
+                              "{\"analyzersRevision\" : {\"system\": 11}}")
+                              ->slice())
+          .ok());
+  ASSERT_EQ(arangodb::QueryAnalyzerRevisions(arangodb::AnalyzersRevision::MIN, 11), revisions);
 }
 
 TEST(QueryAnalyzerRevisionsTest, onlyCurrentData) {
   arangodb::QueryAnalyzerRevisions revisions(20, 30);
   ASSERT_FALSE(revisions.isDefault());
-  ASSERT_TRUE(revisions.fromVelocyPack(VPackParser::fromJson(
-    "{\"analyzersRevision\" : {\"current\": 11}}")->slice()).ok());
-  ASSERT_EQ(arangodb::QueryAnalyzerRevisions(11, arangodb::AnalyzersRevision::MIN),
-            revisions);
+  ASSERT_TRUE(
+      revisions
+          .fromVelocyPack(VPackParser::fromJson(
+                              "{\"analyzersRevision\" : {\"current\": 11}}")
+                              ->slice())
+          .ok());
+  ASSERT_EQ(arangodb::QueryAnalyzerRevisions(11, arangodb::AnalyzersRevision::MIN), revisions);
 }
 
 TEST(QueryAnalyzerRevisionsTest, invalidCurrent) {
   arangodb::QueryAnalyzerRevisions revisions;
-  ASSERT_TRUE(revisions.fromVelocyPack(VPackParser::fromJson(
-    "{\"analyzersRevision\" : {\"current\": \"GG\", \"system\": 10}}")->slice()).fail());
+  ASSERT_TRUE(revisions
+                  .fromVelocyPack(VPackParser::fromJson(
+                                      "{\"analyzersRevision\" : {\"current\": "
+                                      "\"GG\", \"system\": 10}}")
+                                      ->slice())
+                  .fail());
 }
 
 TEST(QueryAnalyzerRevisionsTest, invalidSystem) {
   arangodb::QueryAnalyzerRevisions revisions;
-  ASSERT_TRUE(revisions.fromVelocyPack(VPackParser::fromJson(
-    "{\"analyzersRevision\" : {\"system\": \"GG\", \"current\": 10}}")->slice()).fail());
+  ASSERT_TRUE(revisions
+                  .fromVelocyPack(VPackParser::fromJson(
+                                      "{\"analyzersRevision\" : {\"system\": "
+                                      "\"GG\", \"current\": 10}}")
+                                      ->slice())
+                  .fail());
 }
 
 TEST(QueryAnalyzerRevisionsTest, getVocbaseRevision) {
-  arangodb::QueryAnalyzerRevisions revisions(1,2);
+  arangodb::QueryAnalyzerRevisions revisions(1, 2);
   ASSERT_EQ(1, revisions.getVocbaseRevision("my_database"));
   ASSERT_EQ(2, revisions.getVocbaseRevision(arangodb::StaticStrings::SystemDatabase));
 }
 
 TEST(QueryAnalyzerRevisionsTest, equality) {
-  arangodb::QueryAnalyzerRevisions revisions12(1,2);
-  arangodb::QueryAnalyzerRevisions revisions32(3,2);
-  arangodb::QueryAnalyzerRevisions revisions13(1,3);
-  arangodb::QueryAnalyzerRevisions revisions12_2(1,2);
+  arangodb::QueryAnalyzerRevisions revisions12(1, 2);
+  arangodb::QueryAnalyzerRevisions revisions32(3, 2);
+  arangodb::QueryAnalyzerRevisions revisions13(1, 3);
+  arangodb::QueryAnalyzerRevisions revisions12_2(1, 2);
   ASSERT_TRUE(revisions12 == revisions12);
   ASSERT_FALSE(revisions12 != revisions12);
   ASSERT_TRUE(revisions12_2 == revisions12);
@@ -110,12 +132,12 @@ TEST(QueryAnalyzerRevisionsTest, equality) {
 TEST(QueryAnalyzerRevisionsTest, print) {
   arangodb::QueryAnalyzerRevisions revisions(1, 2);
   std::stringstream ss;
-  revisions.print(ss)<<"tail";
+  revisions.print(ss) << "tail";
   ASSERT_EQ("[Current:1 System:2]tail", ss.str());
 }
 
 TEST(QueryAnalyzerRevisionsTest, fillFullData) {
-  arangodb::QueryAnalyzerRevisions revisions(1,2);
+  arangodb::QueryAnalyzerRevisions revisions(1, 2);
   VPackBuilder builder;
   {
     VPackObjectBuilder query(&builder);
@@ -151,8 +173,7 @@ TEST(QueryAnalyzerRevisionsTest, allDefaultData) {
 }
 
 TEST(QueryAnalyzerRevisionsTest, fillSystemData) {
-  arangodb::QueryAnalyzerRevisions revisions(
-      arangodb::AnalyzersRevision::MIN,2);
+  arangodb::QueryAnalyzerRevisions revisions(arangodb::AnalyzersRevision::MIN, 2);
   VPackBuilder builder;
   {
     VPackObjectBuilder query(&builder);
@@ -172,8 +193,7 @@ TEST(QueryAnalyzerRevisionsTest, fillSystemData) {
 }
 
 TEST(QueryAnalyzerRevisionsTest, fillCurrentData) {
-  arangodb::QueryAnalyzerRevisions revisions(
-      1, arangodb::AnalyzersRevision::MIN);
+  arangodb::QueryAnalyzerRevisions revisions(1, arangodb::AnalyzersRevision::MIN);
   VPackBuilder builder;
   {
     VPackObjectBuilder query(&builder);
@@ -191,4 +211,3 @@ TEST(QueryAnalyzerRevisionsTest, fillCurrentData) {
   ASSERT_TRUE(revisions2.fromVelocyPack(builder.slice()).ok());
   ASSERT_TRUE(revisions == revisions2);
 }
-

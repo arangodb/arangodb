@@ -23,14 +23,15 @@
 
 #pragma once
 
-#include "../BenchmarkOperation.h"
 #include "../BenchFeature.h"
+#include "../BenchmarkOperation.h"
 
 namespace arangodb::arangobench {
 
 template <class Derived>
 struct Benchmark : public BenchmarkOperation {
-  explicit Benchmark(BenchFeature& arangobench) : BenchmarkOperation(arangobench) {}
+  explicit Benchmark(BenchFeature& arangobench)
+      : BenchmarkOperation(arangobench) {}
 
   static void registerTestcase() {
     registerBenchmark(Derived::name(), [](BenchFeature& arangobench) {

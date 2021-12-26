@@ -121,7 +121,8 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
 #endif
   } else {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid storage engine");
   }
   merge.close();
   TRI_ASSERT(merge.slice().isObject());
@@ -156,14 +157,16 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add(StaticStrings::CacheEnabled,
-               VPackValue(Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false)));
+               VPackValue(Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled,
+                                                  false)));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     // do nothing
 #endif
   } else {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid storage engine");
   }
 }
 
@@ -176,7 +179,8 @@ futures::Future<OperationResult> ClusterCollection::figures(bool details,
                               details, options);
 }
 
-void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder& /*builder*/) {
+void ClusterCollection::figuresSpecific(bool /*details*/,
+                                        arangodb::velocypack::Builder& /*builder*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 
@@ -280,7 +284,7 @@ bool ClusterCollection::dropIndex(IndexId iid) {
   }
 
   RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it  : _indexes) {
+  for (auto it : _indexes) {
     if (iid == it->id()) {
       _indexes.erase(it);
       events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
@@ -295,7 +299,8 @@ bool ClusterCollection::dropIndex(IndexId iid) {
   return false;
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/, ReadOwnWrites) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/,
+                                                                 ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -322,24 +327,22 @@ Result ClusterCollection::read(transaction::Methods* /*trx*/,
 
 // read using a token!
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                             LocalDocumentId const& /*documentId*/,
-                             IndexIterator::DocumentCallback const& /*cb*/,
-                             ReadOwnWrites) const {
+                               LocalDocumentId const& /*documentId*/,
+                               IndexIterator::DocumentCallback const& /*cb*/,
+                               ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
-                                     ManagedDocumentResult& /*result*/,
-                                     ReadOwnWrites) const {
+                                     ManagedDocumentResult& /*result*/, ReadOwnWrites) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::insert(arangodb::transaction::Methods*,
                                  arangodb::velocypack::Slice const,
-                                 arangodb::ManagedDocumentResult&,
-                                 OperationOptions&) {
+                                 arangodb::ManagedDocumentResult&, OperationOptions&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -358,7 +361,8 @@ Result ClusterCollection::replace(transaction::Methods* trx,
 }
 
 Result ClusterCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
-                                 ManagedDocumentResult& previous, OperationOptions& options) {
+                                 ManagedDocumentResult& previous,
+                                 OperationOptions& options) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

@@ -24,8 +24,8 @@
 #pragma once
 
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionState.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionState.h"
 
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
@@ -74,7 +74,8 @@ struct is_modifier_completion_trait<UpdateReplaceModifierCompletion> : std::true
 };
 
 template <typename ModifierCompletion, typename Enable = typename std::enable_if_t<is_modifier_completion_trait<ModifierCompletion>::value>>
-class SimpleModifier : public std::enable_shared_from_this<SimpleModifier<ModifierCompletion, Enable>> {
+class SimpleModifier
+    : public std::enable_shared_from_this<SimpleModifier<ModifierCompletion, Enable>> {
   friend class InsertModifierCompletion;
   friend class RemoveModifierCompletion;
   friend class UpdateReplaceModifierCompletion;

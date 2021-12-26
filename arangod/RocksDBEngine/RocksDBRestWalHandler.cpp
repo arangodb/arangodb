@@ -91,7 +91,7 @@ void RocksDBRestWalHandler::properties() {
 void RocksDBRestWalHandler::flush() {
   bool parseSuccess = true;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) { // error already created
+  if (!parseSuccess) {  // error already created
     return;
   }
   if (!slice.isObject() && !slice.isNone()) {

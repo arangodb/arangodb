@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "Aql/Collection.h"
+#include "Aql/types.h"
 #include "VocBase/AccessMode.h"
 
 #include <functional>
@@ -62,7 +62,7 @@ class Collections {
   bool empty() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  
+
   void visit(std::function<bool(std::string const&, Collection&)> const& visitor) const;
 
  private:
@@ -74,4 +74,3 @@ class Collections {
 };
 }  // namespace aql
 }  // namespace arangodb
-

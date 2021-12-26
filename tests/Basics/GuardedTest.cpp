@@ -94,8 +94,8 @@ TYPED_TEST_P(GuardedTest, test_copy_allows_access) {
 TYPED_TEST_P(GuardedTest, test_copy_waits_for_access) {
   using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
 
-  auto const copyValue = [](GuardedType* guardedObj,
-                            std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+  auto const copyValue = [](GuardedType* guardedObj, std::atomic<bool>* holds_lock,
+                            std::atomic<bool>* waiting) {
     ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
     waiting->store(true, std::memory_order_release);
     auto v = guardedObj->copy();
@@ -121,8 +121,8 @@ TYPED_TEST_P(GuardedTest, test_assign_allows_access) {
 TYPED_TEST_P(GuardedTest, test_assign_waits_for_access) {
   using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
 
-  auto const assignValue = [](GuardedType* guardedObj,
-                            std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+  auto const assignValue = [](GuardedType* guardedObj, std::atomic<bool>* holds_lock,
+                              std::atomic<bool>* waiting) {
     ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
     waiting->store(true, std::memory_order_release);
     guardedObj->assign(UnderGuard{2});
@@ -148,8 +148,8 @@ TYPED_TEST_P(GuardedTest, test_guard_allows_access) {
 TYPED_TEST_P(GuardedTest, test_guard_waits_for_access) {
   using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
 
-  auto const acquireGuard = [](GuardedType* guardedObj,
-                              std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+  auto const acquireGuard = [](GuardedType* guardedObj, std::atomic<bool>* holds_lock,
+                               std::atomic<bool>* waiting) {
     ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
     waiting->store(true, std::memory_order_release);
     {

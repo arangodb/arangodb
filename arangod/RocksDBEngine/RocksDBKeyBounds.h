@@ -207,7 +207,8 @@ class RocksDBKeyBounds {
   explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::velocypack::StringRef const& second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                   arangodb::velocypack::StringRef const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
@@ -300,4 +301,3 @@ class RocksDBKeyBounds {
 std::ostream& operator<<(std::ostream&, RocksDBKeyBounds const&);
 
 }  // namespace arangodb
-

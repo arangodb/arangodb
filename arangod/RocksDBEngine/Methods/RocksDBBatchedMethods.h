@@ -26,16 +26,15 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 
 namespace arangodb {
-  
+
 /// wraps a writebatch - non transactional
 class RocksDBBatchedMethods final : public RocksDBMethods {
  public:
   explicit RocksDBBatchedMethods(rocksdb::WriteBatch*);
 
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
-                      rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
-  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
-                               rocksdb::Slice const&,
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+                      rocksdb::PinnableSlice*, ReadOwnWrites) override;
+  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                                rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val, bool assume_tracked) override;
@@ -50,4 +49,3 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
 };
 
 }  // namespace arangodb
-

@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "ManagedDirectory.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "ManagedDirectory.h"
 
 #include <atomic>
 #include <mutex>
@@ -56,8 +56,7 @@ struct ProgressTracker {
 };
 
 template <typename T>
-bool ProgressTracker<T>::updateStatus(std::string const& collectionName,
-                                      T const& status) {
+bool ProgressTracker<T>::updateStatus(std::string const& collectionName, T const& status) {
   {
     std::unique_lock guard(_collectionStatesMutex);
     _collectionStates[collectionName] = status;
@@ -122,5 +121,4 @@ std::string ProgressTracker<T>::filename() const {
   return directory.pathToFile("continue.json");
 }
 
-}
-
+}  // namespace arangodb

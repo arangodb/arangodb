@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include <map>
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Node.h"
-#include <map>
 
 namespace arangodb {
 namespace consensus {
@@ -97,8 +97,6 @@ class Store {
 
   index_t applyTransactions(std::vector<log_t> const& queries);
 
-
-
   /// @brief Apply single transaction in query, here query is an array and the
   /// first entry is a write transaction (i.e. an array of length 1, 2 or 3),
   /// if present, the second entry is a precondition, and the third
@@ -113,7 +111,7 @@ class Store {
   std::vector<bool> read(query_t const& query, query_t& result) const;
 
   /// @brief Read specified query from store
-  void read(query_t const& query, std::unordered_map<std::string,query_t>& result) const;
+  void read(query_t const& query, std::unordered_map<std::string, query_t>& result) const;
 
   /// @brief Read individual entry specified in slice into builder
   bool read(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&) const;
@@ -148,9 +146,9 @@ class Store {
 
   std::unordered_multimap<std::string, std::string>& observedTable();
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
-  
+
   static std::string normalize(char const* key, size_t length);
-  
+
   /// @brief Normalize node URIs
   static std::string normalize(std::string const& key) {
     return normalize(key.data(), key.size());
@@ -162,7 +160,7 @@ class Store {
 
 #if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
  private:
-#endif // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
+#endif  // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
 
   /// @brief Notify observers
   void notifyObservers() const;
@@ -211,4 +209,3 @@ inline std::ostream& operator<<(std::ostream& o, Store const& store) {
 
 }  // namespace consensus
 }  // namespace arangodb
-

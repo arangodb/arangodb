@@ -121,9 +121,11 @@ bool EnsureIndex::first() {
       uint64_t docCount = 0;
       if (Result res = arangodb::maintenance::collectionCount(*col, docCount); res.fail()) {
         std::stringstream error;
-        error << "failed to get count of local collection " << shard << " in database " << database << ": " << res.errorMessage();
-        LOG_TOPIC("23561", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
-        result(res.errorNumber(), error.str());      
+        error << "failed to get count of local collection " << shard
+              << " in database " << database << ": " << res.errorMessage();
+        LOG_TOPIC("23561", WARN, Logger::MAINTENANCE)
+            << "EnsureIndex: " << error.str();
+        result(res.errorNumber(), error.str());
         return false;
       }
 
@@ -131,11 +133,13 @@ bool EnsureIndex::first() {
         // This could be a larger job, let's reschedule ourselves with
         // priority SLOW_OP_PRIORITY:
         LOG_TOPIC("25a63", INFO, Logger::MAINTENANCE)
-          << "EnsureIndex action found a shard with more than 100000 documents, "
-             "will reschedule with slow priority, database: "
-          << database << ", shard: " << shard;
+            << "EnsureIndex action found a shard with more than 100000 "
+               "documents, "
+               "will reschedule with slow priority, database: "
+            << database << ", shard: " << shard;
         requeueMe(maintenance::SLOW_OP_PRIORITY);
-        result(TRI_ERROR_ACTION_UNFINISHED, "EnsureIndex action rescheduled to slow operation priority");
+        result(TRI_ERROR_ACTION_UNFINISHED,
+               "EnsureIndex action rescheduled to slow operation priority");
         return false;
       }
       // continue with the job normally
@@ -161,7 +165,8 @@ bool EnsureIndex::first() {
         // "unique constraint violated" is an expected error that can happen at any time.
         // it does not justify logging and alerting DBAs. The error will be passed back
         // to the caller anyway, so not logging it seems to be good.
-        LOG_TOPIC("bc555", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << _description << ", error: " << error.str();
+        LOG_TOPIC("bc555", WARN, Logger::MAINTENANCE)
+            << "EnsureIndex: " << _description << ", error: " << error.str();
       }
 
       VPackBuilder eb;

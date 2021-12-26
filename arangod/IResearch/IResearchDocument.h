@@ -34,10 +34,9 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "analysis/token_attributes.hpp"
+#include "index/norm.hpp"
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
-#include "index/norm.hpp"
-
 
 namespace iresearch {
 
@@ -104,13 +103,9 @@ struct Field {
     return _name;
   }
 
-  irs::features_t features() const noexcept {
-    return _fieldFeatures;
-  }
+  irs::features_t features() const noexcept { return _fieldFeatures; }
 
-  irs::IndexFeatures index_features() const noexcept {
-    return _indexFeatures;
-  }
+  irs::IndexFeatures index_features() const noexcept { return _indexFeatures; }
 
   irs::token_stream& get_tokens() const {
     TRI_ASSERT(_analyzer);
@@ -139,7 +134,8 @@ struct Field {
 ////////////////////////////////////////////////////////////////////////////////
 class FieldIterator {
  public:
-  explicit FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection, IndexId linkId);
+  explicit FieldIterator(arangodb::transaction::Methods& trx,
+                         irs::string_ref collection, IndexId linkId);
 
   Field const& operator*() const noexcept { return _value; }
 
@@ -154,33 +150,25 @@ class FieldIterator {
 
   bool valid() const noexcept { return !_stack.empty(); }
 
-  void reset(velocypack::Slice slice,
-             FieldMeta const& linkMeta);
+  void reset(velocypack::Slice slice, FieldMeta const& linkMeta);
 
  private:
   using AnalyzerIterator = FieldMeta::Analyzer const*;
 
-  using Filter = bool(*)(std::string& buffer,
-                         FieldMeta const*& rootMeta,
-                         IteratorValue const& value);
+  using Filter = bool (*)(std::string& buffer, FieldMeta const*& rootMeta,
+                          IteratorValue const& value);
 
-  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
-                                         VPackSlice slice);
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream, VPackSlice slice);
 
   struct Level {
-    Level(velocypack::Slice slice,
-          size_t nameLength,
-          FieldMeta const& meta,
-          Filter filter)
-      : it(slice), nameLength(nameLength),
-        meta(&meta), filter(filter) {
-    }
+    Level(velocypack::Slice slice, size_t nameLength, FieldMeta const& meta, Filter filter)
+        : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {}
 
     Iterator it;
-    size_t nameLength; // length of the name at the current level
+    size_t nameLength;      // length of the name at the current level
     FieldMeta const* meta;  // metadata
     Filter filter;
-  }; // Level
+  };  // Level
 
   Level& top() noexcept {
     TRI_ASSERT(!_stack.empty());
@@ -192,21 +180,20 @@ class FieldIterator {
   FieldIterator& operator=(FieldIterator const&) = delete;
 
   void next();
-  bool setValue(VPackSlice const value,
-                FieldMeta::Analyzer const& valueAnalyzer);
+  bool setValue(VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer);
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
 
-  VPackSlice _slice; // input slice
+  VPackSlice _slice;  // input slice
   VPackSlice _valueSlice;
   AnalyzerIterator _begin{};
   AnalyzerIterator _end{};
   std::vector<Level> _stack;
   size_t _prefixLength{};
-  std::string _nameBuffer; // buffer for field name
+  std::string _nameBuffer;  // buffer for field name
   std::string _valueBuffer;  // need temporary buffer for custom types in VelocyPack
-  VPackBuffer<uint8_t> _buffer; // buffer for stored values
+  VPackBuffer<uint8_t> _buffer;  // buffer for stored values
   arangodb::transaction::Methods* _trx;
   irs::string_ref _collection;
   Field _value;  // iterator's value
@@ -218,7 +205,7 @@ class FieldIterator {
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
 
   bool _isDBServer;
-}; // FieldIterator
+};  // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document
@@ -244,13 +231,12 @@ struct DocumentPrimaryKey {
 };  // DocumentPrimaryKey
 
 struct StoredValue {
-  StoredValue(transaction::Methods const& t, irs::string_ref cn, VPackSlice const doc, IndexId lid);
+  StoredValue(transaction::Methods const& t, irs::string_ref cn,
+              VPackSlice const doc, IndexId lid);
 
   bool write(irs::data_output& out) const;
 
-  irs::string_ref const& name() const noexcept {
-    return fieldName;
-  }
+  irs::string_ref const& name() const noexcept { return fieldName; }
 
   mutable VPackBuffer<uint8_t> buffer;
   transaction::Methods const& trx;
@@ -260,8 +246,7 @@ struct StoredValue {
   std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
   IndexId linkId;
   bool isDBServer;
-}; // StoredValue
+};  // StoredValue
 
 }  // namespace iresearch
 }  // namespace arangodb
-

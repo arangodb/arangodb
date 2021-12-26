@@ -194,4 +194,3 @@ class ClusterProvider {
 };
 }  // namespace graph
 }  // namespace arangodb
-

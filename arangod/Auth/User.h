@@ -162,4 +162,3 @@ class User {
 };
 }  // namespace auth
 }  // namespace arangodb
-

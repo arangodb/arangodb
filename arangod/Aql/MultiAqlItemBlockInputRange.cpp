@@ -35,19 +35,18 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-  static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
-    if (row.isInitialized()) {
-      RegisterCount const numRegisters = static_cast<RegisterCount>(row.getNumRegisters());
-      for (RegisterId::value_t registerId = 0; registerId < numRegisters; ++registerId) {
-        if (!row.getValue(registerId).isEmpty()) {
-          return true;
-        }
+static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
+  if (row.isInitialized()) {
+    RegisterCount const numRegisters = static_cast<RegisterCount>(row.getNumRegisters());
+    for (RegisterId::value_t registerId = 0; registerId < numRegisters; ++registerId) {
+      if (!row.getValue(registerId).isEmpty()) {
+        return true;
       }
     }
-    return false;
   }
+  return false;
 }
-
+}  // namespace
 
 MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
                                                          std::size_t skipped,
@@ -65,8 +64,8 @@ auto MultiAqlItemBlockInputRange::resizeOnce(ExecutorState state, size_t skipped
   _inputs.resize(nrInputRanges, AqlItemBlockInputRange{state, skipped});
 }
 
-auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const
-    noexcept -> ExecutorState {
+auto MultiAqlItemBlockInputRange::upstreamState(size_t const dependency) const noexcept
+    -> ExecutorState {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).upstreamState();
 }
@@ -107,8 +106,8 @@ auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept -> s
   return _inputs.at(dependency).skipAll();
 }
 
-auto MultiAqlItemBlockInputRange::skippedInFlight(size_t const dependency) const
-    noexcept -> std::size_t {
+auto MultiAqlItemBlockInputRange::skippedInFlight(size_t const dependency) const noexcept
+    -> std::size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skippedInFlight();
 }
@@ -155,7 +154,7 @@ auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::Shadow
 auto MultiAqlItemBlockInputRange::nextShadowRow()
     -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
   TRI_ASSERT(!hasDataRow());
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_dependenciesDontAgreeOnState);
   auto oneDependencyDone = bool{false};
@@ -209,7 +208,7 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
     } else {
       // we already have the filled one.
       // Just assert the others are empty for correctness
-      TRI_ASSERT(! ::RowHasNonEmptyValue(otherRow));
+      TRI_ASSERT(!::RowHasNonEmptyValue(otherRow));
     }
   }
 
@@ -220,8 +219,8 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
   return {state, std::move(shadowRow)};
 }
 
-auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const
-    noexcept -> SharedAqlItemBlockPtr {
+auto MultiAqlItemBlockInputRange::getBlock(size_t const dependency) const noexcept
+    -> SharedAqlItemBlockPtr {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs[dependency].getBlock();
 }
@@ -233,11 +232,10 @@ auto MultiAqlItemBlockInputRange::setDependency(size_t const dependency,
 }
 
 auto MultiAqlItemBlockInputRange::isDone() const -> bool {
-  return  std::all_of(std::begin(_inputs), std::end(_inputs),
-                      [](AqlItemBlockInputRange const& i) -> bool {
-                        return i.upstreamState() == ExecutorState::DONE &&
-                               !i.hasDataRow();
-                      });
+  return std::all_of(std::begin(_inputs), std::end(_inputs),
+                     [](AqlItemBlockInputRange const& i) -> bool {
+                       return i.upstreamState() == ExecutorState::DONE && !i.hasDataRow();
+                     });
 }
 
 auto MultiAqlItemBlockInputRange::state() const -> ExecutorState {

@@ -61,4 +61,3 @@ class GlobalReplicationApplier final : public ReplicationApplier {
 };
 
 }  // namespace arangodb
-

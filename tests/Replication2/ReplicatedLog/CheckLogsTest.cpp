@@ -31,7 +31,6 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
 
 struct CheckLogsAlgorithmTest : ::testing::Test {
-
   auto makePlanSpecification(LogId id) -> agency::LogPlanSpecification {
     auto spec = agency::LogPlanSpecification{};
     spec.id = id;
@@ -46,8 +45,7 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
   }
 
   auto makeTermSpecification(LogTerm term, LogConfig const& config,
-                             ParticipantInfo const& info)
-      -> agency::LogPlanTermSpecification {
+                             ParticipantInfo const& info) -> agency::LogPlanTermSpecification {
     auto termSpec = agency::LogPlanTermSpecification{};
     termSpec.term = term;
     termSpec.config = config;
@@ -77,11 +75,9 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
                    });
     return current;
   }
-
 };
 
 TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
-
   auto const participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -89,8 +85,7 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
   };
 
   auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm =
-      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -99,7 +94,6 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
-
   auto const participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{2}, false}},
@@ -107,8 +101,7 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
   };
 
   auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm =
-      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -117,7 +110,6 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{2}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -125,8 +117,7 @@ TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
   };
 
   auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm =
-      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -139,7 +130,6 @@ TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -148,7 +138,8 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
 
   auto spec = makePlanSpecification(LogId{1});
   spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
-  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+  auto current =
+      makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   ASSERT_TRUE(std::holds_alternative<agency::LogPlanTermSpecification>(v));
@@ -162,7 +153,6 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, do_nothing_if_non_healthy) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, false}},
@@ -171,14 +161,14 @@ TEST_F(CheckLogsAlgorithmTest, do_nothing_if_non_healthy) {
 
   auto spec = makePlanSpecification(LogId{1});
   spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
-  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+  auto current =
+      makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   ASSERT_TRUE(std::holds_alternative<agency::LogCurrentSupervisionElection>(v));
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -187,7 +177,8 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
 
   auto spec = makePlanSpecification(LogId{1});
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
-  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+  auto current =
+      makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   ASSERT_TRUE(std::holds_alternative<agency::LogCurrentSupervisionElection>(v));
@@ -201,7 +192,6 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -212,7 +202,8 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
   spec.targetConfig.writeConcern = 2;
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
   spec.currentTerm->config.writeConcern = 2;
-  auto current = makeLogCurrentReportAll(participants, LogTerm{2}, LogIndex{4}, LogTerm{1});
+  auto current =
+      makeLogCurrentReportAll(participants, LogTerm{2}, LogIndex{4}, LogTerm{1});
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   ASSERT_TRUE(std::holds_alternative<agency::LogPlanTermSpecification>(v));
@@ -225,7 +216,6 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -237,9 +227,12 @@ TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
   spec.currentTerm->config.writeConcern = 2;
   auto current = makeLogCurrent();
-  current.localState["A"] = agency::LogCurrentLocalState{LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
-  current.localState["B"] = agency::LogCurrentLocalState{LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
-  current.localState["C"] = agency::LogCurrentLocalState{LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["A"] =
+      agency::LogCurrentLocalState{LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["B"] =
+      agency::LogCurrentLocalState{LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["C"] =
+      agency::LogCurrentLocalState{LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
   // only C is available, because it is healthy and it has confirmed term 2
 
   auto v = checkReplicatedLog("db", spec, current, participants);
@@ -253,7 +246,6 @@ TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},

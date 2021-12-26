@@ -32,8 +32,8 @@ class RocksDBIndexFactory final : public IndexFactory {
   explicit RocksDBIndexFactory(application_features::ApplicationServer&);
   ~RocksDBIndexFactory() = default;
 
-  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
-  /// used to display storage engine capabilities
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
+  /// "hash") used to display storage engine capabilities
   std::unordered_map<std::string, std::string> indexAliases() const override;
 
   /// @brief create initial system indexes
@@ -46,4 +46,3 @@ class RocksDBIndexFactory final : public IndexFactory {
 };
 
 }  // namespace arangodb
-

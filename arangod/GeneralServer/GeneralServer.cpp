@@ -38,9 +38,9 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
-#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -135,16 +135,15 @@ void GeneralServer::stopConnections() {
 }
 
 void GeneralServer::stopWorking() {
-  auto const started {std::chrono::system_clock::now()};
-  constexpr auto timeout {std::chrono::seconds(5)};
+  auto const started{std::chrono::system_clock::now()};
+  constexpr auto timeout{std::chrono::seconds(5)};
   do {
     {
       std::unique_lock<std::recursive_mutex> guard(_tasksLock);
-      if (_commTasks.empty())
-        break;
+      if (_commTasks.empty()) break;
     }
     std::this_thread::yield();
-  } while((std::chrono::system_clock::now() - started) < timeout);
+  } while ((std::chrono::system_clock::now() - started) < timeout);
   {
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
     _commTasks.clear();
@@ -169,8 +168,10 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
 }
 
 IoContext& GeneralServer::selectIoContext() {
-  return *std::min_element(_contexts.begin(), _contexts.end(), 
-    [](auto const &a, auto const &b) { return a.clients() < b.clients(); });
+  return *std::min_element(_contexts.begin(), _contexts.end(),
+                           [](auto const& a, auto const& b) {
+                             return a.clients() < b.clients();
+                           });
 }
 
 #ifdef USE_ENTERPRISE
@@ -184,7 +185,8 @@ SslServerFeature::SslContextList GeneralServer::sslContexts() {
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
       // Set a client hello callback such that we have a chance to change the SSL context:
-      SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
+      SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(),
+                                  &clientHelloCallback, (void*)this);
     }
 #endif
   }
@@ -204,7 +206,8 @@ Result GeneralServer::reloadTLS() {
 #ifdef USE_ENTERPRISE
       if (_sslContexts->size() > 0) {
         // Set a client hello callback such that we have a chance to change the SSL context:
-        SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
+        SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(),
+                                    &clientHelloCallback, (void*)this);
       }
 #endif
     }
@@ -214,9 +217,13 @@ Result GeneralServer::reloadTLS() {
       a->cancel();
     }
     return TRI_ERROR_NO_ERROR;
-  } catch(std::exception& e) {
-    LOG_TOPIC("feffe", ERR, Logger::SSL) << "Could not reload TLS context from files, got exception with this error: " << e.what();
-    return Result(TRI_ERROR_CANNOT_READ_FILE, "Could not reload TLS context from files.");
+  } catch (std::exception& e) {
+    LOG_TOPIC("feffe", ERR, Logger::SSL)
+        << "Could not reload TLS context from files, got exception with this "
+           "error: "
+        << e.what();
+    return Result(TRI_ERROR_CANNOT_READ_FILE,
+                  "Could not reload TLS context from files.");
   }
 }
 

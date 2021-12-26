@@ -29,7 +29,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb::aql;
 
 constexpr const char expressionKey[] = "expression";
@@ -66,19 +65,22 @@ void NonConstExpressionContainer::toVelocyPack(arangodb::velocypack::Builder& bu
   builder.add(hasV8ExpressionKey, VPackValue(_hasV8Expression));
 }
 
-NonConstExpressionContainer NonConstExpressionContainer::clone(Ast* ast) const{
+NonConstExpressionContainer NonConstExpressionContainer::clone(Ast* ast) const {
   // We need the AST to clone expressions, which are captured in unique_ptrs
   // and hance do not have default copy operators.
   decltype(_expressions) expressions{};
   expressions.reserve(_expressions.size());
   for (auto const& e : _expressions) {
-    expressions.emplace_back(std::make_unique<NonConstExpression>(e->expression->clone(ast), e->indexPath));
+    expressions.emplace_back(
+        std::make_unique<NonConstExpression>(e->expression->clone(ast), e->indexPath));
   }
 
-  return NonConstExpressionContainer{std::move(expressions), _varToRegisterMapping, _hasV8Expression};
+  return NonConstExpressionContainer{std::move(expressions),
+                                     _varToRegisterMapping, _hasV8Expression};
 }
 
-NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast, arangodb::velocypack::Slice slice) {
+NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(
+    Ast* ast, arangodb::velocypack::Slice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.hasKey(expressionsKey));
   TRI_ASSERT(slice.hasKey(varMappingKey));
@@ -102,7 +104,9 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast
       TRI_ASSERT(p.isNumber<size_t>());
       indexPath.emplace_back(p.getNumber<size_t>());
     }
-    result._expressions.emplace_back(std::make_unique<NonConstExpression>(std::make_unique<Expression>(ast, exp), std::move(indexPath)));
+    result._expressions.emplace_back(
+        std::make_unique<NonConstExpression>(std::make_unique<Expression>(ast, exp),
+                                             std::move(indexPath)));
   }
 
   auto vars = slice.get(varMappingKey);
@@ -120,4 +124,3 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(Ast* ast
 
   return result;
 }
-

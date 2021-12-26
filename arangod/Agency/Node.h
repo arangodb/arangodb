@@ -56,7 +56,6 @@ enum Operation {
 
 using namespace arangodb::velocypack;
 
-
 typedef std::chrono::system_clock::time_point TimePoint;
 typedef std::chrono::steady_clock::time_point SteadyTimePoint;
 
@@ -65,6 +64,7 @@ class Store;
 class SmallBuffer {
   uint8_t* _start;
   size_t _size;
+
  public:
   SmallBuffer() noexcept : _start(nullptr), _size(0) {}
   explicit SmallBuffer(size_t size) : SmallBuffer() {
@@ -76,8 +76,7 @@ class SmallBuffer {
   explicit SmallBuffer(uint8_t const* data, size_t size) : SmallBuffer(size) {
     memcpy(_start, data, size);
   }
-  SmallBuffer(SmallBuffer const& other) 
-      : SmallBuffer() {
+  SmallBuffer(SmallBuffer const& other) : SmallBuffer() {
     if (!other.empty()) {
       _start = new uint8_t[other._size];
       _size = other._size;
@@ -117,9 +116,7 @@ class SmallBuffer {
     }
     return *this;
   }
-  ~SmallBuffer() {
-    delete[] _start;
-  }
+  ~SmallBuffer() { delete[] _start; }
   uint8_t* data() const { return _start; }
   size_t size() const { return _size; }
   bool empty() const { return _start == nullptr || _size == 0; }
@@ -346,7 +343,7 @@ class Node final {
   /// @brief Get double value (throws if type NODE or if conversion fails)
   std::optional<double> getDouble() const noexcept;
 
-  template<typename T>
+  template <typename T>
   auto getNumberUnlessExpiredWithDefault() -> T {
     if (ADB_LIKELY(!lifetimeExpired())) {
       try {
@@ -358,7 +355,8 @@ class Node final {
     return T{0};
   }
 
-  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
+  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
+      -> std::int64_t;
 
   bool isReadLockable(const VPackStringRef& by) const;
   bool isWriteLockable(const VPackStringRef& by) const;
@@ -367,15 +365,12 @@ class Node final {
   void clear();
 
   // @brief Helper function to return static instance of dummy node below
-  static Node const& dummyNode() {
-    return _dummyNode;
-  }
- 
+  static Node const& dummyNode() { return _dummyNode; }
+
  private:
-  
   bool isReadUnlockable(const VPackStringRef& by) const;
   bool isWriteUnlockable(const VPackStringRef& by) const;
-  
+
   /// @brief  Remove child by name
   /// @return shared pointer to removed child
   arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
@@ -399,18 +394,17 @@ class Node final {
 
   void rebuildVecBuf() const;
 
-  std::string _nodeName;                ///< @brief my name
-  Node* _parent;                        ///< @brief parent
-  Store* _store;                        ///< @brief Store
-  mutable std::unique_ptr<Children> _children;  ///< @brief child nodes
-  TimePoint _ttl;                       ///< @brief my expiry
+  std::string _nodeName;                             ///< @brief my name
+  Node* _parent;                                     ///< @brief parent
+  Store* _store;                                     ///< @brief Store
+  mutable std::unique_ptr<Children> _children;       ///< @brief child nodes
+  TimePoint _ttl;                                    ///< @brief my expiry
   std::unique_ptr<std::vector<SmallBuffer>> _value;  ///< @brief my value
   mutable std::unique_ptr<SmallBuffer> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
   static Children const dummyChildren;
   static Node const _dummyNode;
-
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
@@ -418,4 +412,3 @@ inline std::ostream& operator<<(std::ostream& o, Node const& n) {
 }
 
 }  // namespace arangodb::consensus
-

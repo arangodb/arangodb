@@ -197,7 +197,8 @@ class ShortestPathExecutor {
    * row is lost, or the builder is resetted.
    */
   [[nodiscard]] auto getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
-                                 InputAqlItemRow& row, arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice& id) -> bool;
+                                 InputAqlItemRow& row, arangodb::velocypack::Builder& builder,
+                                 arangodb::velocypack::Slice& id) -> bool;
 
  private:
   Infos& _infos;
@@ -217,4 +218,3 @@ class ShortestPathExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-

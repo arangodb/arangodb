@@ -38,7 +38,7 @@
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class TestDelimAnalyzer : public irs::analysis::analyzer {
  public:
@@ -85,8 +85,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
 
   TestDelimAnalyzer(irs::string_ref const& delim)
       : irs::analysis::analyzer(irs::type<TestDelimAnalyzer>::get()),
-        _delim(irs::ref_cast<irs::byte_type>(delim)) {
-  }
+        _delim(irs::ref_cast<irs::byte_type>(delim)) {}
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::term_attribute>::id()) {
@@ -131,14 +130,16 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
   irs::term_attribute _term;
 };
 
-REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make, TestDelimAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make,
+                        TestDelimAnalyzer::normalize);
 
 class IResearchQueryTokensTest : public IResearchQueryTest {};
 
 }  // namespace
 
 TEST_P(IResearchQueryTokensTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -155,7 +156,8 @@ TEST_P(IResearchQueryTokensTest, test) {
         VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
         VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
         VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-        VPackParser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+        VPackParser::fromJson(
+            "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
@@ -228,10 +230,10 @@ TEST_P(IResearchQueryTokensTest, test) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
 
@@ -395,7 +397,5 @@ TEST_P(IResearchQueryTokensTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryTokensTest,
-  IResearchQueryTokensTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryTokensTest, IResearchQueryTokensTest,
+                        GetLinkVersions());

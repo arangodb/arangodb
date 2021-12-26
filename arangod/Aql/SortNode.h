@@ -52,7 +52,8 @@ class SortNode : public ExecutionNode {
   static std::string const& sorterTypeName(SorterType);
 
  public:
-  SortNode(ExecutionPlan* plan, ExecutionNodeId id, SortElementVector const& elements, bool stable)
+  SortNode(ExecutionPlan* plan, ExecutionNodeId id,
+           SortElementVector const& elements, bool stable)
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
         _elements(elements),
@@ -86,7 +87,7 @@ class SortNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -120,7 +121,7 @@ class SortNode : public ExecutionNode {
   /// @brief if this node is needed on DBServers in cluster.
   /// if set to false that means some optimizer rule
   /// has already included sorting in some other node and
-  /// this node is left in plan only in sake of GatherNode 
+  /// this node is left in plan only in sake of GatherNode
   /// to properly handle merging.
   bool _reinsertInCluster;
 
@@ -142,4 +143,3 @@ class SortNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

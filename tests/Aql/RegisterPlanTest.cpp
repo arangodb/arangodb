@@ -282,8 +282,8 @@ class RegisterPlanTest : public ::testing::Test {
         auto regId = info->second.registerId;
         ASSERT_LT(regId, total) << "Planned Register out of bounds";
         ASSERT_TRUE(varsRequiredHere.at(regId.value()).has_value())
-            << "Writing variable " << v->name << " to register " << regId.value()
-            << " where it is not expected";
+            << "Writing variable " << v->name << " to register "
+            << regId.value() << " where it is not expected";
         auto expected = varsRequiredHere.at(regId.value()).value();
         ASSERT_EQ(v, expected)
             << "register " << regId.value() << " used twice, content of "
@@ -441,7 +441,8 @@ TEST_F(RegisterPlanTest, variable_usage) {
 
   {  // Check varsUsedLater
 
-    EXPECT_TRUE((VarSetStack{VarSet{nicole, doris, shawn, ronald, maria}}) == nodes[0].getVarsUsedLaterStack());
+    EXPECT_TRUE((VarSetStack{VarSet{nicole, doris, shawn, ronald, maria}}) ==
+                nodes[0].getVarsUsedLaterStack());
 
     // SINGLETON
     EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn, ronald, maria}}),
@@ -473,7 +474,8 @@ TEST_F(RegisterPlanTest, variable_usage) {
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn}}), nodes[3].getVarsValidStack());
     // INDEX
-    EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn, ronald}}), nodes[4].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn, ronald}}),
+              nodes[4].getVarsValidStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn, ronald, maria}}),
               nodes[5].getVarsValidStack());
@@ -512,7 +514,8 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}, VarSet{tina, debra}}),
               nodes[3].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}, VarSet{tina}}), nodes[4].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}, VarSet{tina}}),
+              nodes[4].getVarsUsedLaterStack());
     // SUBQUERY_END
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}}), nodes[5].getVarsUsedLaterStack());
     // CALCULATION
@@ -529,7 +532,8 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), nodes[2].getVarsValidStack());
     // SUBQUERY_START
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}), nodes[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}),
+              nodes[3].getVarsValidStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra, tina}}),
               nodes[4].getVarsValidStack());
@@ -571,7 +575,8 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery2) {
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}, VarSet{mark, tina}}),
               nodes[3].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}, VarSet{tina}}), nodes[4].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}, VarSet{tina}}),
+              nodes[4].getVarsUsedLaterStack());
     // SUBQUERY_END
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}}), nodes[5].getVarsUsedLaterStack());
     // CALCULATION
@@ -588,7 +593,8 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery2) {
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), nodes[2].getVarsValidStack());
     // SUBQUERY_START
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}), nodes[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}),
+              nodes[3].getVarsValidStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra, tina}}),
               nodes[4].getVarsValidStack());
@@ -624,11 +630,14 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
     // Check varsUsedLater
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[0].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}),
+              nodes[0].getVarsUsedLaterStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[1].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}),
+              nodes[1].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[2].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}),
+              nodes[2].getVarsUsedLaterStack());
     // SUBQUERY
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}}), nodes[3].getVarsUsedLaterStack());
     // CALCULATION
@@ -637,9 +646,11 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
     EXPECT_EQ((VarSetStack{VarSet{}}), nodes[5].getVarsUsedLaterStack());
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}), subquery[0].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}),
+              subquery[0].getVarsUsedLaterStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}), subquery[1].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}),
+              subquery[1].getVarsUsedLaterStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{paul}}), subquery[2].getVarsUsedLaterStack());
     // RETURN
@@ -666,9 +677,11 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
     // ENUMERATE_COLLECTION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias}}), subquery[1].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}), subquery[2].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}),
+              subquery[2].getVarsValidStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}), subquery[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}),
+              subquery[3].getVarsValidStack());
   }
 }
 

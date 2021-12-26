@@ -43,9 +43,7 @@ using namespace arangodb::pregel;
 RecoveryManager::RecoveryManager(ClusterInfo& ci)
     : _ci(ci), _agency(ci.server()) {}
 
-RecoveryManager::~RecoveryManager() {
-  _listeners.clear();
-}
+RecoveryManager::~RecoveryManager() { _listeners.clear(); }
 
 void RecoveryManager::stopMonitoring(Conductor* listener) {
   MUTEX_LOCKER(guard, _lock);
@@ -82,7 +80,8 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
       conductors.insert(listener);
       //_monitorShard(coll->dbName(), cid, shard);
 
-      std::shared_ptr<std::vector<ServerID> const> servers = _ci.getResponsibleServer(shard);
+      std::shared_ptr<std::vector<ServerID> const> servers =
+          _ci.getResponsibleServer(shard);
       if (servers->size() > 0) {
         // _lock is already held
         _primaryServers[shard] = servers->at(0);
@@ -99,7 +98,8 @@ ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& server
     VPackSlice serversRegistered = result.slice()[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Supervision", "Health"}));
 
-    LOG_TOPIC("68f55", INFO, Logger::PREGEL) << "Server Status: " << serversRegistered.toJson();
+    LOG_TOPIC("68f55", INFO, Logger::PREGEL)
+        << "Server Status: " << serversRegistered.toJson();
 
     if (serversRegistered.isObject()) {
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
@@ -133,9 +133,8 @@ void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) 
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestLane::INTERNAL_LOW, [this, shard] {
-        _renewPrimaryServer(shard);
-      });
+      scheduler->queue(RequestLane::INTERNAL_LOW,
+                       [this, shard] { _renewPrimaryServer(shard); });
     }
   }
 }
@@ -150,7 +149,8 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   auto const& conductors = _listeners.find(shard);
   auto const& currentPrimary = _primaryServers.find(shard);
   if (conductors == _listeners.end() || currentPrimary == _primaryServers.end()) {
-    LOG_TOPIC("30077", ERR, Logger::PREGEL) << "Shard is not properly registered";
+    LOG_TOPIC("30077", ERR, Logger::PREGEL)
+        << "Shard is not properly registered";
     return;
   }
 
@@ -164,7 +164,8 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
         for (Conductor* cc : conductors->second) {
           cc->startRecovery();
         }
-        LOG_TOPIC("e9429", INFO, Logger::PREGEL) << "Recovery action was initiated";
+        LOG_TOPIC("e9429", INFO, Logger::PREGEL)
+            << "Recovery action was initiated";
         break;
       }
     }

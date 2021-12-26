@@ -249,7 +249,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
   }
 
   Step* s = forward._pq.find(_intermediate);
-  
+
   // track memory usage for result buildup.
   ResourceUsageScope guard(_resourceMonitor);
 
@@ -289,7 +289,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
     if (s->_predecessor.empty()) {
       break;
     }
-    
+
     guard.increase(arangodb::graph::ShortestPathResult::resultItemMemoryUsage());
 
     result._edges.emplace_back(std::move(s->_edge));
@@ -310,15 +310,14 @@ void AttributeWeightShortestPathFinder::inserter(
     std::vector<std::unique_ptr<Step>>& result,
     arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
     double currentWeight, EdgeDocumentToken&& edge) {
-  
   ResourceUsageScope guard(_resourceMonitor, candidateMemoryUsage());
 
   auto [cand, emplaced] =
       _candidates.try_emplace(t, arangodb::lazyConstruct([&] {
-                                   result.emplace_back(
-                                     std::make_unique<Step>(t, s, currentWeight,
-                                                            std::move(edge)));
-                                   return result.size() - 1;
+                                result.emplace_back(
+                                    std::make_unique<Step>(t, s, currentWeight,
+                                                           std::move(edge)));
+                                return result.size() - 1;
                               }));
   if (emplaced) {
     // new candidate created. now candiates are responsible for memory usage tracking
@@ -369,12 +368,11 @@ void AttributeWeightShortestPathFinder::expandVertex(
       }
     }
   });
-  
+
   clearCandidates();
 }
 
 size_t AttributeWeightShortestPathFinder::candidateMemoryUsage() const noexcept {
-  return 16 /*arbitrary overhead*/ + 
-         sizeof(decltype(_candidates)::key_type) +
+  return 16 /*arbitrary overhead*/ + sizeof(decltype(_candidates)::key_type) +
          sizeof(decltype(_candidates)::value_type);
 }

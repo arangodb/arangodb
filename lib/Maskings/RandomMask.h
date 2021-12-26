@@ -41,4 +41,3 @@ class RandomMask : public RandomStringMask {
 };
 }  // namespace maskings
 }  // namespace arangodb
-

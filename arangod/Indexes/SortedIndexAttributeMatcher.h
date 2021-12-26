@@ -40,15 +40,14 @@ class Index;
 
 namespace SortedIndexAttributeMatcher {
 
-Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                           arangodb::Index const* index,
-                                           arangodb::aql::AstNode const* node,
-                                           arangodb::aql::Variable const* reference, 
-                                           size_t itemsInIndex);
+Index::FilterCosts supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+    arangodb::Index const* index, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex);
 
 Index::SortCosts supportsSortCondition(arangodb::Index const* index,
                                        arangodb::aql::SortCondition const* sortCondition,
-                                       arangodb::aql::Variable const* reference, 
+                                       arangodb::aql::Variable const* reference,
                                        size_t itemsInIndex);
 
 /// @brief specializes the condition for use with the index
@@ -58,9 +57,9 @@ arangodb::aql::AstNode* specializeCondition(arangodb::Index const* index,
 
 /// @brief matches which index attributes of index are supported by the filter
 /// condition represented by the passed-in AST node.
-/// For example, if the query is 
+/// For example, if the query is
 ///
-///     FOR doc IN <collection-with-index> 
+///     FOR doc IN <collection-with-index>
 ///       FILTER doc.value1 == 2 && doc.value2 == 3
 ///
 /// then "reference" will point to the variable "doc" (this is the variable we are
@@ -68,7 +67,7 @@ arangodb::aql::AstNode* specializeCondition(arangodb::Index const* index,
 /// AND consisting of the two sub-conditions "doc.value1 == 2" && "doc.value2 == 3".
 /// the function will walk through all subconditions and will put the index attribute
 /// that is used by the subcondition into the outvariable "found".
-/// if a subcondition is not covered by the index, it will increase the counter 
+/// if a subcondition is not covered by the index, it will increase the counter
 /// "postFilterConditions", so the caller can see how many subconditions need to be
 /// handled afterwards even when using the index. this is useful when comparing different
 /// indexes, and to estimate the amount of post-filtering work left when picking a
@@ -82,8 +81,8 @@ arangodb::aql::AstNode* specializeCondition(arangodb::Index const* index,
 void matchAttributes(arangodb::Index const* index, arangodb::aql::AstNode const* node,
                      arangodb::aql::Variable const* reference,
                      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
-                     size_t& values, 
-                     std::unordered_set<std::string>& nonNullAttributes, bool isExecution);
+                     size_t& values, std::unordered_set<std::string>& nonNullAttributes,
+                     bool isExecution);
 
 /// @brief whether or not the access fits
 bool accessFitsIndex(
@@ -98,4 +97,3 @@ bool isDuplicateOperator(arangodb::aql::AstNodeType type,
 };  // namespace SortedIndexAttributeMatcher
 
 }  // namespace arangodb
-

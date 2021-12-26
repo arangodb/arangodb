@@ -101,8 +101,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
       res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
     } else {
       std::string const& restrictServer = _request->value("DBserver");
-      ClusterInfo& ci =
-          server().getFeature<ClusterFeature>().clusterInfo();
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
       res = ci.getShardStatisticsForDatabase(_vocbase.name(), restrictServer, builder);
     }
   }
@@ -144,7 +143,8 @@ RestStatus RestDatabaseHandler::createDatabase() {
   }
   std::string dbName = nameVal.copyString();
   if (dbName != normalizeUtf8ToNFC(dbName)) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "database name is not properly UTF-8 NFC-normalized");
     events::CreateDatabase(dbName, Result(TRI_ERROR_ARANGO_ILLEGAL_NAME), _context);
     return RestStatus::DONE;
   }
@@ -185,7 +185,8 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
 
   std::string const& dbName = suffixes[0];
   if (dbName != normalizeUtf8ToNFC(dbName)) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "database name is not properly UTF-8 NFC-normalized");
     events::DropDatabase(dbName, Result(TRI_ERROR_ARANGO_ILLEGAL_NAME), _context);
     return RestStatus::DONE;
   }

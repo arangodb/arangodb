@@ -40,11 +40,11 @@ RocksDBValue RocksDBValue::Database(VPackSlice const& data) {
 }
 
 RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
-    return RocksDBValue(RocksDBEntryType::Collection, data);
+  return RocksDBValue(RocksDBEntryType::Collection, data);
 }
 
 RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice const& data) {
-    return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
+  return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
 }
 
 RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId, RevisionId rev) {
@@ -58,7 +58,6 @@ RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef const&
 RocksDBValue RocksDBValue::VPackIndexValue() {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
-
 
 RocksDBValue RocksDBValue::ZkdIndexValue() {
   return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
@@ -89,7 +88,6 @@ RocksDBValue RocksDBValue::S2Value(S2Point const& p) { return RocksDBValue(p); }
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
-
 
 RocksDBValue RocksDBValue::LogEntry(replication2::PersistingLogEntry const& entry) {
   return RocksDBValue(RocksDBEntryType::LogEntry, entry);
@@ -231,7 +229,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRe
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const& entry) {
+RocksDBValue::RocksDBValue(RocksDBEntryType type,
+                           replication2::PersistingLogEntry const& entry) {
   TRI_ASSERT(type == RocksDBEntryType::LogEntry);
   VPackBuilder builder;
   entry.toVelocyPack(builder, replication2::PersistingLogEntry::omitLogIndex);

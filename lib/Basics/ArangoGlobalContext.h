@@ -53,4 +53,3 @@ class ArangoGlobalContext {
   int _ret;
 };
 }  // namespace arangodb
-

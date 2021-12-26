@@ -76,7 +76,8 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     try {
       cb->refetchAndUpdate(true, false);
     } catch (arangodb::basics::Exception const& e) {
-      LOG_TOPIC("c3910", WARN, Logger::CLUSTER) << "Error executing callback: " << e.message();
+      LOG_TOPIC("c3910", WARN, Logger::CLUSTER)
+          << "Error executing callback: " << e.message();
     }
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   }

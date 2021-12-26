@@ -150,10 +150,10 @@ SortCondition::SortCondition(
 
 /// @brief destroy the sort condition
 SortCondition::~SortCondition() = default;
-  
+
 bool SortCondition::onlyUsesNonNullSortAttributes(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {
-  return std::all_of(attributes.begin(), attributes.end(), [this](auto const& it) { 
+  return std::all_of(attributes.begin(), attributes.end(), [this](auto const& it) {
     return _nonNullAttributes.find(it) != _nonNullAttributes.end();
   });
 }
@@ -190,7 +190,7 @@ size_t SortCondition::coveredAttributes(
       break;
     }
   }
-   
+
   TRI_ASSERT(numCovered <= _fields.size());
   return numCovered;
 }

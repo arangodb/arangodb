@@ -238,16 +238,18 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   virtual auto setBySlice(VPackSlice v) -> greenspun::EvalResult override;
   virtual auto getIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
 
-  virtual auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> override;
-  virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override;
-  
+  virtual auto updateByMessageSlice(VPackSlice msg)
+      -> greenspun::EvalResultT<UpdateResult> override;
+  virtual auto updateByMessage(MessageData const& msg)
+      -> greenspun::EvalResultT<UpdateResult> override;
+
   virtual auto setStateBySlice(VPackSlice s) -> greenspun::EvalResult override;
   virtual auto getStateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
-  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult override;
+  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result)
+      -> greenspun::EvalResult override;
   virtual auto aggregateStateBySlice(VPackSlice s) -> greenspun::EvalResult override;
 
   greenspun::EvalResult finalizeIntoBuilder(VPackBuilder& result) override;
-
 
  private:
   void SetupFunctions();
@@ -277,5 +279,4 @@ struct CustomAccumulator<VPackSlice> : Accumulator<VPackSlice> {
   greenspun::Machine _machine;
 };
 
-}  // namespace arangodb
-
+}  // namespace arangodb::pregel::algos::accumulators

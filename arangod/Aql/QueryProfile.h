@@ -46,9 +46,8 @@ struct QueryProfile {
   ~QueryProfile();
 
  public:
-  
   void registerInQueryList();
-  
+
   /// @brief unregister the query from the list of queries, if entered
   void unregisterFromQueryList() noexcept;
 
@@ -81,4 +80,3 @@ static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 
 
 }  // namespace aql
 }  // namespace arangodb
-

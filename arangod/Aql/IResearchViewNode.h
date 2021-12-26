@@ -44,7 +44,8 @@ struct Collection;
 class ExecutionNode;
 class ExecutionBlock;
 class ExecutionEngine;
-template<typename T> struct RegisterPlanT;
+template <typename T>
+struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct VarInfo;
 }  // namespace aql
@@ -93,7 +94,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     CountApproximate countApproximate{CountApproximate::Exact};
 
     /// @brief iresearch filters optimization level
-    FilterOptimization filterOptimization {FilterOptimization::MAX};
+    FilterOptimization filterOptimization{FilterOptimization::MAX};
   };  // Options
 
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
@@ -118,8 +119,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief the cost of an enumerate view node
   aql::CostEstimate estimateCost() const override final;
-  
-  void replaceVariables(std::unordered_map<arangodb::aql::VariableId, arangodb::aql::Variable const*> const& replacements) override;
+
+  void replaceVariables(
+      std::unordered_map<arangodb::aql::VariableId, arangodb::aql::Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
@@ -155,8 +157,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief return the scorers to pass to the view
   std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
 
-  // we could merge if it is allowed in general and there are no scores - as changing
-  // filters will affect score and we will lose backward compatibility
+  // we could merge if it is allowed in general and there are no scores - as
+  // changing filters will affect score and we will lose backward compatibility
   FilterOptimization filterOptimization() const noexcept {
     if (!_scorers.empty()) {
       return FilterOptimization::NONE;
@@ -215,7 +217,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setNoMaterialization() noexcept { _noMaterialization = true; }
 
-  static constexpr ptrdiff_t SortColumnNumber {-1};
+  static constexpr ptrdiff_t SortColumnNumber{-1};
 
   // A variable with a field number in a column
   struct ViewVariable {
@@ -337,4 +339,3 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

@@ -37,7 +37,7 @@ struct ResourceMonitor;
 namespace aql {
 struct AqlValue;
 class QueryContext;
-}
+}  // namespace aql
 
 namespace transaction {
 class Methods;
@@ -60,8 +60,9 @@ class ClusterTraverserCache final : public TraverserCache {
                         BaseOptions*);
 
   ~ClusterTraverserCache() = default;
-  
-  using Cache = std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>;
+
+  using Cache =
+      std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>;
 
   /// @brief will convert the EdgeDocumentToken to a slice
   arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
@@ -74,8 +75,10 @@ class ClusterTraverserCache final : public TraverserCache {
                             arangodb::velocypack::Builder& builder) override;
 
   /// Lookup document in cache and add it into the builder
-  bool appendVertex(arangodb::velocypack::StringRef idString, velocypack::Builder& result) override;
-  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result) override;
+  bool appendVertex(arangodb::velocypack::StringRef idString,
+                    velocypack::Builder& result) override;
+  bool appendVertex(arangodb::velocypack::StringRef idString,
+                    arangodb::aql::AqlValue& result) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -89,9 +92,7 @@ class ClusterTraverserCache final : public TraverserCache {
   }
 
   /// Map of already fetched vertices and edges (raw _id attribute)
-  Cache& cache() noexcept {
-    return _cache;
-  }
+  Cache& cache() noexcept { return _cache; }
 
   arangodb::graph::ClusterGraphDatalake& datalake() noexcept {
     return _datalake;

@@ -87,7 +87,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
     }
 
     RegIdFlatSetStack registersToKeep;
-    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2,
+                    [&] { return protoRegSet; });
 
     auto registersToClear = RegIdFlatSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
@@ -141,7 +142,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
     }
 
     RegIdFlatSetStack registersToKeep;
-    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2,
+                    [&] { return protoRegSet; });
 
     auto registersToClear = RegIdFlatSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,

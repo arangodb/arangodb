@@ -47,7 +47,9 @@ RestStatus RestExplainHandler::execute() {
     case rest::RequestType::POST:
       explainQuery();
       break;
-    default: { generateNotImplemented("Unsupported method"); }
+    default: {
+      generateNotImplemented("Unsupported method");
+    }
   }
 
   // this handler is done
@@ -103,8 +105,10 @@ void RestExplainHandler::explainQuery() {
 
   auto bindBuilder = std::make_shared<VPackBuilder>(bindSlice);
 
-  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase), aql::QueryString(queryString),
-                                            std::move(bindBuilder), aql::QueryOptions(optionsSlice));
+  auto query =
+      arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                                   aql::QueryString(queryString), std::move(bindBuilder),
+                                   aql::QueryOptions(optionsSlice));
   auto queryResult = query->explain();
 
   if (queryResult.result.fail()) {

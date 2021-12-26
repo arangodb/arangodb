@@ -68,7 +68,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     bool gotResponse() const noexcept;
 
     /// @brief will be called whenever a response for the job comes in
-    void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept;
+    void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response,
+                     double time) noexcept;
 
     /// @brief will be called whenever an error occurred
     /// expects "res" to be an error!
@@ -237,4 +238,3 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 };
 
 }  // namespace arangodb
-

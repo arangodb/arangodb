@@ -142,10 +142,11 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--histogram.percentiles", "which percentiles to calculate",
                      new VectorParameter<DoubleParameter>(&_percentiles),
                      arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
-  options->addOption("--histogram.generate", "display histogram",
-                     new BooleanParameter(&_generateHistogram),
-                     arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst))
-                      .setIntroducedIn(30900);
+  options
+      ->addOption("--histogram.generate", "display histogram",
+                  new BooleanParameter(&_generateHistogram),
+                  arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst))
+      .setIntroducedIn(30900);
 
   options->addOption("--async", "send asynchronous requests", new BooleanParameter(&_async));
 
@@ -277,10 +278,9 @@ void BenchFeature::setupHistogram(std::stringstream& pp) {
   pp << "Interval/Percentile:";
   for (auto percentile : _percentiles) {
     pp << std::fixed << std::right << std::setw(13) << std::setprecision(2)
-        << percentile << "%";
+       << percentile << "%";
   }
   pp << '\n';
-
 }
 void BenchFeature::updateStatsValues(std::stringstream& pp, VPackBuilder& builder,
                                      const std::vector<std::unique_ptr<BenchmarkThread>>& threads,
@@ -298,9 +298,8 @@ void BenchFeature::updateStatsValues(std::stringstream& pp, VPackBuilder& builde
       builder.add(std::to_string(i), VPackValue(VPackValueType::Object));
       size_t j = 0;
 
-      pp << " " << std::right << std::fixed << std::setw(17)
-         << std::setprecision(4) << (threads[i]->_histogramIntervalSize * 1000)
-         << std::setw(0) << "ms";
+      pp << " " << std::right << std::fixed << std::setw(17) << std::setprecision(4)
+         << (threads[i]->_histogramIntervalSize * 1000) << std::setw(0) << "ms";
 
       builder.add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
 
@@ -433,8 +432,8 @@ void BenchFeature::start() {
     for (uint64_t i = 0; i < _concurrency; ++i) {
       auto thread = std::make_unique<BenchmarkThread>(
           server(), benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
-          static_cast<int>(i), _batchSize, &operationsCounter, client,
-          _keepAlive, _async, _histogramIntervalSize, _histogramNumIntervals, _generateHistogram);
+          static_cast<int>(i), _batchSize, &operationsCounter, client, _keepAlive,
+          _async, _histogramIntervalSize, _histogramNumIntervals, _generateHistogram);
       thread->setOffset(i * realStep);
       thread->start();
       threads.push_back(std::move(thread));
@@ -512,8 +511,9 @@ void BenchFeature::start() {
   std::cout << '\n';
 
   std::sort(std::begin(results), std::end(results),
-            [](BenchRunResult const& a, BenchRunResult const& b)
-            { return a._time < b._time; });
+            [](BenchRunResult const& a, BenchRunResult const& b) {
+              return a._time < b._time;
+            });
 
   report(client, results, totalStats, pp.str(), builder);
 
@@ -540,7 +540,6 @@ void BenchFeature::start() {
 void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> const& results,
                           BenchmarkStats const& stats,
                           std::string const& histogram, VPackBuilder& builder) {
-
   if (_generateHistogram) {
     std::cout << histogram << '\n';
   }
@@ -572,9 +571,9 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> con
   builder.add("collection", VPackValue(_collection));
 
   TRI_ASSERT(std::is_sorted(std::begin(results), std::end(results),
-             [](BenchRunResult const& a, BenchRunResult const& b)
-             { return a._time < b._time; }));
-
+                            [](BenchRunResult const& a, BenchRunResult const& b) {
+                              return a._time < b._time;
+                            }));
 
   BenchRunResult output{0, 0, 0, 0};
 
@@ -629,12 +628,9 @@ void BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> con
   builder.add("avg", VPackValue(stats.avg()));
   builder.add("max", VPackValue(stats.max));
 
-
-
   if (!_junitReportFile.empty()) {
     writeJunitReport(output);
   }
-
 }
 
 bool BenchFeature::writeJunitReport(BenchRunResult const& result) {

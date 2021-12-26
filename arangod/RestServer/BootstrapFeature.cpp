@@ -51,21 +51,19 @@ namespace {
 static std::string const FEATURE_NAME("Bootstrap");
 static std::string const bootstrapKey = "Bootstrap";
 static std::string const healthKey = "Supervision/Health";
-}
+}  // namespace
 
 namespace arangodb {
 namespace aql {
 class Query;
 }
-}
+}  // namespace arangodb
 
 using namespace arangodb;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME),
-      _isReady(false),
-      _bark(false) {
+    : ApplicationFeature(server, ::FEATURE_NAME), _isReady(false), _bark(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();
@@ -88,9 +86,7 @@ BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& serv
 }
 
 bool BootstrapFeature::isReady() const {
-  TRI_IF_FAILURE("BootstrapFeature_not_ready") {
-    return false;
-  }
+  TRI_IF_FAILURE("BootstrapFeature_not_ready") { return false; }
   return _isReady;
 }
 
@@ -173,8 +169,9 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
                               : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (upgradeRes.fail()) {
-      LOG_TOPIC("8903f", ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
-                                      << "marking as not successful.";
+      LOG_TOPIC("8903f", ERR, Logger::STARTUP)
+          << "Problems with cluster bootstrap, "
+          << "marking as not successful.";
       agency.removeValues(::bootstrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
@@ -201,7 +198,8 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
       // store current version number in agency to avoid unnecessary upgrades
       // to the same version
       if (feature.server().hasFeature<ClusterUpgradeFeature>()) {
-        ClusterUpgradeFeature& clusterUpgradeFeature = feature.server().getFeature<ClusterUpgradeFeature>();
+        ClusterUpgradeFeature& clusterUpgradeFeature =
+            feature.server().getFeature<ClusterUpgradeFeature>();
         clusterUpgradeFeature.setBootstrapVersion();
       }
       return;
@@ -314,10 +312,11 @@ void BootstrapFeature::start() {
     // The coordinatpr who does it will create system collections and
     // the root user
     if (ServerState::isCoordinator(role)) {
-      LOG_TOPIC("724e0", DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
+      LOG_TOPIC("724e0", DEBUG, Logger::STARTUP)
+          << "Racing for cluster bootstrap...";
       // note: this may create the _system database in Plan!
       raceForClusterBootstrap(*this);
-       
+
       // wait until at least one database appears. this is an indication that
       // both Plan and Current have been populated successfully
       waitForDatabases();
@@ -326,15 +325,16 @@ void BootstrapFeature::start() {
         ::runCoordinatorJS(vocbase.get());
       }
     } else if (ServerState::isDBServer(role)) {
-      // don't wait for databases in Current here, as we are a DB server and may be
-      // the one responsible to create it. blocking here is thus no option!
+      // don't wait for databases in Current here, as we are a DB server and may
+      // be the one responsible to create it. blocking here is thus no option!
 
       LOG_TOPIC("a2b65", DEBUG, Logger::STARTUP) << "Running bootstrap";
 
       auto upgradeRes = methods::Upgrade::clusterBootstrap(*vocbase);
 
       if (upgradeRes.fail()) {
-        LOG_TOPIC("4e67f", ERR, Logger::STARTUP) << "Problem during startup: " << upgradeRes.errorMessage();
+        LOG_TOPIC("4e67f", ERR, Logger::STARTUP)
+            << "Problem during startup: " << upgradeRes.errorMessage();
       }
     } else {
       TRI_ASSERT(false);
@@ -384,7 +384,8 @@ void BootstrapFeature::start() {
   }
 
   if (_bark) {
-    LOG_TOPIC("bb9b7", INFO, arangodb::Logger::FIXME) << "The dog says: Гав гав";
+    LOG_TOPIC("bb9b7", INFO, arangodb::Logger::FIXME)
+        << "The dog says: Гав гав";
   }
 
   _isReady = true;
@@ -405,15 +406,17 @@ void BootstrapFeature::unprepare() {
 }
 
 void BootstrapFeature::waitForHealthEntry() {
-  LOG_TOPIC("4000c", DEBUG, arangodb::Logger::CLUSTER) << "waiting for our health entry to appear in Supervision/Health";
+  LOG_TOPIC("4000c", DEBUG, arangodb::Logger::CLUSTER)
+      << "waiting for our health entry to appear in Supervision/Health";
   bool found = false;
   AgencyComm agency(server());
   int tries = 0;
   while (++tries < 30) {
     AgencyCommResult result = agency.getValues(::healthKey);
     if (result.successful()) {
-      VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommHelper::path(), "Supervision", "Health", ServerState::instance()->getId(), "Status"}));
+      VPackSlice value = result.slice()[0].get(std::vector<std::string>(
+          {AgencyCommHelper::path(), "Supervision", "Health",
+           ServerState::instance()->getId(), "Status"}));
       if (value.isString() && !value.copyString().empty()) {
         found = true;
         break;
@@ -422,9 +425,11 @@ void BootstrapFeature::waitForHealthEntry() {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
   if (found) {
-    LOG_TOPIC("b0de6", DEBUG, arangodb::Logger::CLUSTER) << "found our health entry in Supervision/Health";
+    LOG_TOPIC("b0de6", DEBUG, arangodb::Logger::CLUSTER)
+        << "found our health entry in Supervision/Health";
   } else {
-    LOG_TOPIC("2c993", INFO, arangodb::Logger::CLUSTER) << "did not find our health entry after 15 s in Supervision/Health";
+    LOG_TOPIC("2c993", INFO, arangodb::Logger::CLUSTER)
+        << "did not find our health entry after 15 s in Supervision/Health";
   }
 }
 
@@ -437,7 +442,8 @@ void BootstrapFeature::waitForDatabases() const {
 
     if (++iterations % 2000 == 0) {
       // log every few seconds that we are waiting here
-      LOG_TOPIC("db886", INFO, Logger::CLUSTER) << "waiting for databases to appear...";
+      LOG_TOPIC("db886", INFO, Logger::CLUSTER)
+          << "waiting for databases to appear...";
     }
   }
 }

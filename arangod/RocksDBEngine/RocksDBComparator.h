@@ -60,4 +60,3 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
 };
 
 }  // namespace arangodb
-

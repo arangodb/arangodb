@@ -41,8 +41,7 @@ class InputAqlItemRow;
 
 class PruneExpressionEvaluator {
  public:
-  PruneExpressionEvaluator(transaction::Methods& trx,
-                           QueryContext& query,
+  PruneExpressionEvaluator(transaction::Methods& trx, QueryContext& query,
                            AqlFunctionsInternalCache& cache,
                            std::vector<Variable const*> vars,
                            std::vector<RegisterId> regs, size_t vertexVarIdx,
@@ -51,7 +50,9 @@ class PruneExpressionEvaluator {
   ~PruneExpressionEvaluator();
 
   bool evaluate();
-  void prepareContext(InputAqlItemRow input) { _ctx.setInputRow(std::move(input)); }
+  void prepareContext(InputAqlItemRow input) {
+    _ctx.setInputRow(std::move(input));
+  }
   void unPrepareContext() { _ctx.invalidateInputRow(); }
 
   bool needsVertex() const { return _ctx.needsVertexValue(); }
@@ -72,4 +73,3 @@ class PruneExpressionEvaluator {
 
 }  // namespace aql
 }  // namespace arangodb
-

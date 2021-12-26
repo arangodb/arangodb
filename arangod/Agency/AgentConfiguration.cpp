@@ -78,8 +78,8 @@ config_t::config_t()
 
 config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
                    double maxp, std::string const& e,
-                   std::vector<std::string> const& g, bool s, bool st, bool w,
-                   double f, uint64_t c, uint64_t k, double p, double o, bool t, size_t a)
+                   std::vector<std::string> const& g, bool s, bool st, bool w, double f,
+                   uint64_t c, uint64_t k, double p, double o, bool t, size_t a)
     : _recoveryId(rid),
       _agencySize(as),
       _poolSize(ps),
@@ -299,7 +299,8 @@ config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
     auto const id = entry.key.copyString();
     auto const endpoint = entry.value.copyString();
     if (_pool.find(id) == _pool.end()) {
-      LOG_TOPIC("95b8d", INFO, Logger::AGENCY) << "Adding " << id << "(" << endpoint << ") to agent pool";
+      LOG_TOPIC("95b8d", INFO, Logger::AGENCY)
+          << "Adding " << id << "(" << endpoint << ") to agent pool";
       _pool[id] = endpoint;
       ++_version;
       return CHANGED;
@@ -562,7 +563,8 @@ bool config_t::merge(VPackSlice const& conf) {
   ss.clear();
   ss << "Agent pool: ";
   if (conf.hasKey(poolStr)) {  // Persistence only
-    LOG_TOPIC("fc6ad", DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
+    LOG_TOPIC("fc6ad", DEBUG, Logger::AGENCY)
+        << "Found agent pool in persistence:";
     for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
       auto const& id = peer.key.copyString();
       if (id != _id) {

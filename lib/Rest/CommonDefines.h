@@ -81,10 +81,7 @@ enum class ContentType {
 std::string contentTypeToString(ContentType type);
 ContentType stringToContentType(std::string const& input, ContentType def);
 
-enum class EncodingType {
-  DEFLATE,
-  UNSET
-};
+enum class EncodingType { DEFLATE, UNSET };
 
 enum class AuthenticationMethod : uint8_t { BASIC = 1, JWT = 2, NONE = 0 };
 

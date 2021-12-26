@@ -46,4 +46,3 @@ class FileDescriptorsFeature : public application_features::ApplicationFeature {
 
 }  // namespace arangodb
 #endif
-

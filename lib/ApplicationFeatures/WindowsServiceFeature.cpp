@@ -482,9 +482,9 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
 }
 
 WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "WindowsService"), 
-      _server(&server), 
-      _progress(2), 
+    : ApplicationFeature(server, "WindowsService"),
+      _server(&server),
+      _progress(2),
       _shutdownNoted(false) {
   setOptional(true);
   requiresElevatedPrivileges(true);
@@ -505,54 +505,70 @@ WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationSe
 void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--start-service", "used to start as windows service",
                      new BooleanParameter(&_startAsService),
-                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                 arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                                  arangodb::options::Flags::OsWindows,
+                                                  arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Command));
 
   options->addOption("--install-service",
                      "used to register a service with windows",
                      new BooleanParameter(&_installService),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                                  arangodb::options::Flags::OsWindows,
+                                                  arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Command));
 
   options->addOption("--uninstall-service",
                      "used to unregister a service with windows",
                      new BooleanParameter(&_unInstallService),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                                  arangodb::options::Flags::OsWindows,
+                                                  arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Command));
 
   options->addOption(
       "--uninstall-service-force",
       "specify to ovrerride the protection to uninstall the service of another "
       "installation",
       new BooleanParameter(&_forceUninstall),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
   options->addOption("--servicectl-start",
                      "command an already registered service to start",
                      new BooleanParameter(&_startService),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                                  arangodb::options::Flags::OsWindows,
+                                                  arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Command));
 
   options->addOption(
       "--servicectl-start-wait",
       "command an already registered service to start and wait till it's up",
       new BooleanParameter(&_startWaitService),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 
   options->addOption("--servicectl-stop",
                      "command an already registered service to stop",
                      new BooleanParameter(&_stopService),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                                  arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                                  arangodb::options::Flags::OsWindows,
+                                                  arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Command));
 
   options->addOption(
       "--servicectl-stop-wait",
       "command an already registered service to stop and wait till it's gone",
       new BooleanParameter(&_stopWaitService),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden, arangodb::options::Flags::Command));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Hidden,
+                                   arangodb::options::Flags::Command));
 }
 
 void WindowsServiceFeature::abortService(uint16_t exitCode) {
@@ -576,42 +592,42 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
   } else if (_startAsService) {
     TRI_SetWindowsServiceAbortFunction(abortService);
 
-    ApplicationServer::ProgressHandler reporter{[this](ApplicationServer::State state) {
-                               switch (state) {
-                                 case ApplicationServer::State::IN_WAIT:
-                                   this->startupFinished();
-                                   break;
-                                 case ApplicationServer::State::IN_SHUTDOWN:
-                                 case ApplicationServer::State::IN_STOP:
-                                   this->shutdownBegins();
-                                   break;
-                                 case ApplicationServer::State::IN_COLLECT_OPTIONS:
-                                 case ApplicationServer::State::IN_VALIDATE_OPTIONS:
-                                 case ApplicationServer::State::IN_PREPARE:
-                                 case ApplicationServer::State::IN_START:
-                                   this->startupProgress();
-                                   break;
-                                 case ApplicationServer::State::ABORTED:
-                                   this->shutdownFailure();
-                                   break;
-                                 case ApplicationServer::State::UNINITIALIZED:
-                                 case ApplicationServer::State::STOPPED:
-                                   break;
-                               }
-                             },
-                             [this](application_features::ApplicationServer::State state,
-                                    std::string const& name) {
-                               switch (state) {
-                                 case ApplicationServer::State::IN_COLLECT_OPTIONS:
-                                 case ApplicationServer::State::IN_VALIDATE_OPTIONS:
-                                 case ApplicationServer::State::IN_PREPARE:
-                                 case ApplicationServer::State::IN_START:
-                                   this->startupProgress();
-                                   break;
-                                 default:
-                                   break;
-                               }
-                             }};
+    ApplicationServer::ProgressHandler reporter{
+        [this](ApplicationServer::State state) {
+          switch (state) {
+            case ApplicationServer::State::IN_WAIT:
+              this->startupFinished();
+              break;
+            case ApplicationServer::State::IN_SHUTDOWN:
+            case ApplicationServer::State::IN_STOP:
+              this->shutdownBegins();
+              break;
+            case ApplicationServer::State::IN_COLLECT_OPTIONS:
+            case ApplicationServer::State::IN_VALIDATE_OPTIONS:
+            case ApplicationServer::State::IN_PREPARE:
+            case ApplicationServer::State::IN_START:
+              this->startupProgress();
+              break;
+            case ApplicationServer::State::ABORTED:
+              this->shutdownFailure();
+              break;
+            case ApplicationServer::State::UNINITIALIZED:
+            case ApplicationServer::State::STOPPED:
+              break;
+          }
+        },
+        [this](application_features::ApplicationServer::State state, std::string const& name) {
+          switch (state) {
+            case ApplicationServer::State::IN_COLLECT_OPTIONS:
+            case ApplicationServer::State::IN_VALIDATE_OPTIONS:
+            case ApplicationServer::State::IN_PREPARE:
+            case ApplicationServer::State::IN_START:
+              this->startupProgress();
+              break;
+            default:
+              break;
+          }
+        }};
     _server->addReporter(reporter);
   }
 

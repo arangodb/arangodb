@@ -34,7 +34,6 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
-#include "Utilities/IsArangoExecutable.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -49,14 +48,15 @@
 #include "Shell/ConsoleFeature.h"
 #include "Shell/V8ClientConnection.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
+#include "Utilities/IsArangoExecutable.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-deadline.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
-#include "V8/v8-deadline.h"
 #include "V8/v8-vpack.h"
 
 #include <regex>
@@ -139,8 +139,9 @@ void V8ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   }
 
   if (!_moduleDirectories.empty()) {
-    LOG_TOPIC("90ca0", DEBUG, Logger::V8) << "using JavaScript modules at '"
-                                 << StringUtils::join(_moduleDirectories, ";") << "'";
+    LOG_TOPIC("90ca0", DEBUG, Logger::V8)
+        << "using JavaScript modules at '"
+        << StringUtils::join(_moduleDirectories, ";") << "'";
   }
 }
 
@@ -175,7 +176,8 @@ void V8ShellFeature::start() {
   auto context = v8::Local<v8::Context>::New(_isolate, _context);
 
   if (context.IsEmpty()) {
-    LOG_TOPIC("5f5dd", FATAL, arangodb::Logger::FIXME) << "cannot initialize V8 engine";
+    LOG_TOPIC("5f5dd", FATAL, arangodb::Logger::FIXME)
+        << "cannot initialize V8 engine";
     FATAL_ERROR_EXIT();
   }
 
@@ -185,7 +187,7 @@ void V8ShellFeature::start() {
   v8::Handle<v8::Object> globalObj = context->Global();
   globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "GLOBAL"), globalObj).FromMaybe(false);
   globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "global"), globalObj).FromMaybe(false);
-  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "root"),   globalObj).FromMaybe(false);
+  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "root"), globalObj).FromMaybe(false);
 
   initGlobals();
 }
@@ -204,10 +206,12 @@ void V8ShellFeature::unprepare() {
     // clear globals to free memory
     auto isolate = _isolate;
     auto globals = _isolate->GetCurrentContext()->Global();
-    v8::Handle<v8::Array> names = globals->GetOwnPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
+    v8::Handle<v8::Array> names =
+        globals->GetOwnPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
     for (uint32_t i = 0; i < n; ++i) {
-      TRI_DeleteProperty(context, isolate, globals, names->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
+      TRI_DeleteProperty(context, isolate, globals,
+                         names->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
     }
 
     TRI_RunGarbageCollectionV8(_isolate, 2500.0);
@@ -252,8 +256,9 @@ void V8ShellFeature::copyInstallationFiles() {
     _removeCopyInstallation = true;
   }
 
-  LOG_TOPIC("65ed7", DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory
-                               << "' to '" << _copyDirectory << "'";
+  LOG_TOPIC("65ed7", DEBUG, Logger::V8)
+      << "Copying JS installation files from '" << _startupDirectory << "' to '"
+      << _copyDirectory << "'";
 
   _nodeModulesDirectory = _startupDirectory;
 
@@ -261,8 +266,9 @@ void V8ShellFeature::copyInstallationFiles() {
     auto res = TRI_ERROR_NO_ERROR;
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("379f5", FATAL, Logger::V8) << "Error cleaning JS installation path '" << _copyDirectory
-                                   << "': " << TRI_errno_string(res);
+      LOG_TOPIC("379f5", FATAL, Logger::V8)
+          << "Error cleaning JS installation path '" << _copyDirectory
+          << "': " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
   }
@@ -287,7 +293,8 @@ void V8ShellFeature::copyInstallationFiles() {
                                        "node_modules");
   std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
 
-  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, &binRegex](std::string const& filename) -> bool {
+  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned,
+                 &binRegex](std::string const& filename) -> bool {
     if (std::regex_search(filename, binRegex)) {
       // don't copy files in .bin
       return true;
@@ -295,12 +302,13 @@ void V8ShellFeature::copyInstallationFiles() {
 
     std::string normalized = filename;
     FileUtils::normalizePath(normalized);
-    if ((!nodeModulesPath.empty() && 
-         normalized.size() >= nodeModulesPath.size() &&
-         normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
+    if ((!nodeModulesPath.empty() && normalized.size() >= nodeModulesPath.size() &&
+         normalized.substr(normalized.size() - nodeModulesPath.size(),
+                           nodeModulesPath.size()) == nodeModulesPath) ||
         (!nodeModulesPathVersioned.empty() &&
          normalized.size() >= nodeModulesPathVersioned.size() &&
-         normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
+         normalized.substr(normalized.size() - nodeModulesPathVersioned.size(),
+                           nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
       // filter it out!
       return true;
     }
@@ -309,8 +317,8 @@ void V8ShellFeature::copyInstallationFiles() {
   };
   std::string error;
   if (!FileUtils::copyRecursive(_startupDirectory, _copyDirectory, filter, error)) {
-    LOG_TOPIC("913c4", FATAL, Logger::V8) << "Error copying JS installation files to '"
-                                 << _copyDirectory << "': " << error;
+    LOG_TOPIC("913c4", FATAL, Logger::V8)
+        << "Error copying JS installation files to '" << _copyDirectory << "': " << error;
     FATAL_ERROR_EXIT();
   }
 
@@ -359,21 +367,23 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
       console.printWelcomeInfo();
     }
-        
-    ClientFeature& client =
-          server().getFeature<HttpEndpointProvider, ClientFeature>();
+
+    ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
           v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
         std::string msg = ClientFeature::buildConnectedMessage(
             v8connection->endpointSpecification(), v8connection->version(),
-            v8connection->role(), v8connection->mode(), v8connection->databaseName(),
-            v8connection->username());
+            v8connection->role(), v8connection->mode(),
+            v8connection->databaseName(), v8connection->username());
         console.printLine(msg);
 
-        if (v8connection->role() == "PRIMARY" || v8connection->role() == "DBSERVER") {
-          std::string msg("WARNING: You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator");
+        if (v8connection->role() == "PRIMARY" ||
+            v8connection->role() == "DBSERVER") {
+          std::string msg(
+              "WARNING: You connected to a DBServer node, but operations in a "
+              "cluster should be carried out via a Coordinator");
           if (console.colors()) {
             msg = ShellColorsFeature::SHELL_COLOR_RED + msg + ShellColorsFeature::SHELL_COLOR_RESET;
           }
@@ -457,7 +467,6 @@ ErrorCode V8ShellFeature::runShell(std::vector<std::string> const& positionals) 
 
   V8LineEditor v8LineEditor(_isolate, context,
                             console.useHistory() ? "." + _name + ".history" : "");
-  
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
@@ -536,7 +545,9 @@ ErrorCode V8ShellFeature::runShell(std::vector<std::string> const& positionals) 
     v8LineEditor.setExecutingCommand(false);
 
     if (v.IsEmpty()) {
-      context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v8::Undefined(_isolate)).FromMaybe(false);
+      context->Global()
+          ->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v8::Undefined(_isolate))
+          .FromMaybe(false);
     } else {
       context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v).FromMaybe(false);
     }
@@ -556,7 +567,9 @@ ErrorCode V8ShellFeature::runShell(std::vector<std::string> const& positionals) 
       i = extractShellExecutableName(i);
       if (!i.empty()) {
         LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
-          << "This command must be executed in a system shell and cannot be used inside of arangosh: '" << i << "'";
+            << "This command must be executed in a system shell and cannot be "
+               "used inside of arangosh: '"
+            << i << "'";
       }
 
       // this will change the prompt for the next round
@@ -628,17 +641,23 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       v8::Handle<v8::Object> current = _isolate->GetCurrentContext()->Global();
 
       auto oldFilename =
-        current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__filename")).FromMaybe(v8::Handle<v8::Value>());
+          current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__filename"))
+              .FromMaybe(v8::Handle<v8::Value>());
 
-      current->Set(context, TRI_V8_ASCII_STRING(_isolate, "__filename"), filename).FromMaybe(false);
+      current
+          ->Set(context, TRI_V8_ASCII_STRING(_isolate, "__filename"), filename)
+          .FromMaybe(false);
 
-      auto oldDirname = current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__dirname")).FromMaybe(v8::Handle<v8::Value>());
+      auto oldDirname =
+          current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"))
+              .FromMaybe(v8::Handle<v8::Value>());
 
       auto dirname = FileUtils::dirname(TRI_ObjectToString(isolate, filename));
 
-      current->Set(context,
-                   TRI_V8_ASCII_STRING(_isolate, "__dirname"),
-                   TRI_V8_STD_STRING(_isolate, dirname)).FromMaybe(false);
+      current
+          ->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"),
+                TRI_V8_STD_STRING(_isolate, dirname))
+          .FromMaybe(false);
 
       ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str());
 
@@ -646,14 +665,17 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
         TRI_DeleteProperty(context, isolate, current, "__filename");
       } else {
-        current->Set(context,
-                     TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename).FromMaybe(false);
+        current
+            ->Set(context, TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename)
+            .FromMaybe(false);
       }
 
       if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
         TRI_DeleteProperty(context, isolate, current, "__dirname");
       } else {
-        current->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname).FromMaybe(false);
+        current
+            ->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname)
+            .FromMaybe(false);
       }
 
       if (tryCatch.HasCaught()) {
@@ -669,7 +691,9 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         // parameter array
         v8::Handle<v8::Array> params = v8::Array::New(isolate);
 
-        params->Set(context, 0, TRI_V8_STD_STRING(isolate, files[files.size() - 1])).FromMaybe(false);
+        params
+            ->Set(context, 0, TRI_V8_STD_STRING(isolate, files[files.size() - 1]))
+            .FromMaybe(false);
 
         for (size_t i = 0; i < mainArgs.size(); ++i) {
           params
@@ -678,7 +702,8 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         }
 
         // call main
-        v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING(isolate, "main");
+        v8::Handle<v8::String> mainFuncName =
+            TRI_V8_ASCII_STRING(isolate, "main");
         v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(
             context->Global()->Get(context, mainFuncName).FromMaybe(v8::Handle<v8::Value>()));
 
@@ -699,7 +724,8 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
             }
           } catch (arangodb::basics::Exception const& ex) {
             LOG_TOPIC("525a4", ERR, arangodb::Logger::FIXME)
-                << "caught exception " << TRI_errno_string(ex.code()) << ": " << ex.what();
+                << "caught exception " << TRI_errno_string(ex.code()) << ": "
+                << ex.what();
             ok = false;
           } catch (std::bad_alloc const&) {
             LOG_TOPIC("abc8b", ERR, arangodb::Logger::FIXME)
@@ -712,7 +738,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
           }
         } else {
           LOG_TOPIC("5da99", ERR, arangodb::Logger::FIXME)
-                << "Function 'main' was not found";
+              << "Function 'main' was not found";
           ok = false;
         }
       }
@@ -800,10 +826,14 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
     ++i;
   }
 
-  context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles).FromMaybe(false);
+  context->Global()
+      ->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles)
+      .FromMaybe(false);
 
-  context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-                         v8::True(_isolate)).FromMaybe(false);
+  context->Global()
+      ->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
+            v8::True(_isolate))
+      .FromMaybe(false);
 
   // run tests
   auto input =
@@ -821,9 +851,8 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
     ok = false;
   } else {
     bool res =
-        TRI_ObjectToBoolean(isolate,
-                            TRI_GetProperty(context, isolate, context->Global(),
-                                                    "SYS_UNIT_TESTS_RESULT"));
+        TRI_ObjectToBoolean(isolate, TRI_GetProperty(context, isolate, context->Global(),
+                                                     "SYS_UNIT_TESTS_RESULT"));
 
     ok = ok && res;
   }
@@ -869,13 +898,15 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   // do not use TRI_AddGlobalVariableVocbase because it creates read-only
   // variables!!
-  context->Global()->Set(context,
-                         TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-                         v8::True(_isolate)).FromMaybe(false);
+  context->Global()
+      ->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
+            v8::True(_isolate))
+      .FromMaybe(false);
 
-  context->Global()->Set(context,
-                         TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_FILTER_TEST"),
-                         TRI_V8_ASCII_STD_STRING(_isolate, testFilter)).FromMaybe(false);
+  context->Global()
+      ->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_FILTER_TEST"),
+            TRI_V8_ASCII_STD_STRING(_isolate, testFilter))
+      .FromMaybe(false);
 
   // run tests
   auto input = TRI_V8_ASCII_STRING(
@@ -892,9 +923,8 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
     ok = false;
   } else {
     bool res =
-        TRI_ObjectToBoolean(isolate,
-                            TRI_GetProperty(context, isolate, context->Global(),
-                                                    "SYS_UNIT_TESTS_RESULT"));
+        TRI_ObjectToBoolean(isolate, TRI_GetProperty(context, isolate, context->Global(),
+                                                     "SYS_UNIT_TESTS_RESULT"));
 
     ok = ok && res;
   }
@@ -1068,17 +1098,25 @@ void V8ShellFeature::initGlobals() {
   auto context = _isolate->GetCurrentContext();
 
   // string functions
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "NORMALIZE_STRING"),
-      v8::FunctionTemplate::New(_isolate, JS_NormalizeString)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate,
+                                                   "NORMALIZE_STRING"),
+                               v8::FunctionTemplate::New(_isolate, JS_NormalizeString)
+                                   ->GetFunction(context)
+                                   .FromMaybe(v8::Local<v8::Function>()));
 
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "COMPARE_STRING"),
-      v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate, "COMPARE_STRING"),
+                               v8::FunctionTemplate::New(_isolate, JS_CompareString)
+                                   ->GetFunction(context)
+                                   .FromMaybe(v8::Local<v8::Function>()));
 
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "ARANGODB_CLIENT_VERSION"),
-      v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate,
+                                                   "ARANGODB_CLIENT_VERSION"),
+                               v8::FunctionTemplate::New(_isolate, JS_VersionClient)
+                                   ->GetFunction(context)
+                                   .FromMaybe(v8::Local<v8::Function>()));
 
   // is quite
   TRI_AddGlobalVariableVocbase(_isolate,
@@ -1088,7 +1126,8 @@ void V8ShellFeature::initGlobals() {
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC("b754a", FATAL, arangodb::Logger::FIXME) << "failed to get global context";
+    LOG_TOPIC("b754a", FATAL, arangodb::Logger::FIXME)
+        << "failed to get global context";
     FATAL_ERROR_EXIT();
   }
 
@@ -1171,17 +1210,23 @@ void V8ShellFeature::initGlobals() {
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)
   v8::Local<v8::Value> consoleWrapped = v8::External::New(_isolate, &console);
 
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_OUTPUT"),
-      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, consoleWrapped)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate, "SYS_OUTPUT"),
+                               v8::FunctionTemplate::New(_isolate, JS_PagerOutput, consoleWrapped)
+                                   ->GetFunction(context)
+                                   .FromMaybe(v8::Local<v8::Function>()));
 
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_START_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, consoleWrapped)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate, "SYS_START_PAGER"),
+                               v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, consoleWrapped)
+                                   ->GetFunction(context)
+                                   .FromMaybe(v8::Local<v8::Function>()));
 
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, consoleWrapped)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
+                               v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, consoleWrapped)
+                                   ->GetFunction(context)
+                                   .FromMaybe(v8::Local<v8::Function>()));
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
@@ -1195,9 +1240,10 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
 
   TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING(_isolate, "ARGUMENTS"), p);
- 
+
   std::string const& binaryPath = ArangoGlobalContext::CONTEXT->getBinaryPath();
-  TRI_AddGlobalVariableVocbase(_isolate, TRI_V8_ASCII_STRING(_isolate, "ARANGOSH_PATH"),
+  TRI_AddGlobalVariableVocbase(_isolate,
+                               TRI_V8_ASCII_STRING(_isolate, "ARANGOSH_PATH"),
                                TRI_V8_STD_STRING(_isolate, binaryPath));
 
   // set mode flags

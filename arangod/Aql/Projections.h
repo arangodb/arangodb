@@ -38,7 +38,7 @@ class Methods;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -48,16 +48,16 @@ class Projections {
  public:
   /// @brief projection for a single top-level attribute or a nested attribute
   struct Projection {
-   /// @brief the attribute path
-   AttributeNamePath path;
-   /// @brief attribute position in a covering index entry. only valid if _supportsCoveringIndex is true
-   uint16_t coveringIndexPosition;
-   /// @brief attribute length in a covering index entry. this can be shorter than the projection
-   uint16_t coveringIndexCutoff;
-   /// @brief attribute type
-   AttributeNamePath::Type type;
+    /// @brief the attribute path
+    AttributeNamePath path;
+    /// @brief attribute position in a covering index entry. only valid if _supportsCoveringIndex is true
+    uint16_t coveringIndexPosition;
+    /// @brief attribute length in a covering index entry. this can be shorter than the projection
+    uint16_t coveringIndexCutoff;
+    /// @brief attribute type
+    AttributeNamePath::Type type;
   };
-  
+
   Projections();
 
   /// @brief create projections from the vector of attributes passed.
@@ -71,7 +71,7 @@ class Projections {
   Projections& operator=(Projections const&) = default;
 
   /// @brief determine if there is covering support by indexes passed
-  void determineIndexSupport(DataSourceId const& id, 
+  void determineIndexSupport(DataSourceId const& id,
                              std::vector<transaction::Methods::IndexHandle> const& indexes);
 
   /// @brief whether or not the projections are backed by a covering index
@@ -79,27 +79,29 @@ class Projections {
 
   /// @brief whether or not there are any projections
   bool empty() const noexcept { return _projections.empty(); }
-  
+
   /// @brief number of projections
   size_t size() const noexcept { return _projections.size(); }
-  
+
   /// @brief checks if we have a single attribute projection on the attribute
   bool isSingle(std::string const& attribute) const noexcept;
-  
+
   /// @brief get projection at position
   Projection const& operator[](size_t index) const;
-  
+
   /// @brief get projection at position
   Projection& operator[](size_t index);
- 
+
   /// @brief extract projections from a full document
-  void toVelocyPackFromDocument(arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
+  void toVelocyPackFromDocument(arangodb::velocypack::Builder& b,
+                                arangodb::velocypack::Slice slice,
                                 transaction::Methods const* trxPtr) const;
-  
+
   /// @brief extract projections from a covering index
-  void toVelocyPackFromIndex(arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
+  void toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
+                             arangodb::velocypack::Slice slice,
                              transaction::Methods const* trxPtr) const;
-  
+
   /// @brief serialize the projections to velocypack
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
 
@@ -118,14 +120,13 @@ class Projections {
   /// @brief all our projections (sorted, unique)
   std::vector<Projection> _projections;
 
-  /// @brief collection data source id (in case _id is queries and we need to resolve
-  /// the collection name)
+  /// @brief collection data source id (in case _id is queries and we need to
+  /// resolve the collection name)
   DataSourceId _datasourceId;
 
   /// @brief whether or not the projections are backed by a covering index
   bool _supportsCoveringIndex;
 };
 
-} // namespace aql
-} // namespace arangodb
-
+}  // namespace aql
+}  // namespace arangodb

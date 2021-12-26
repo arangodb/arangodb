@@ -32,10 +32,10 @@
 
 #include "Index.h"
 
-#include "Aql/Projections.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/AttributeNamePath.h"
+#include "Aql/Projections.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -192,7 +192,7 @@ Index::FilterCosts Index::FilterCosts::zeroCosts() {
   costs.estimatedCosts = 0;
   return costs;
 }
-    
+
 Index::FilterCosts Index::FilterCosts::defaultCosts(size_t itemsInIndex, size_t numLookups) {
   Index::FilterCosts costs;
   costs.supportsCondition = false;
@@ -209,14 +209,16 @@ Index::SortCosts Index::SortCosts::zeroCosts(size_t coveredAttributes) {
   costs.estimatedCosts = 0;
   return costs;
 }
-    
+
 Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
   Index::SortCosts costs;
   TRI_ASSERT(!costs.supportsCondition);
   costs.coveredAttributes = 0;
-  costs.estimatedCosts = 
+  costs.estimatedCosts =
       100.0 + /*for sort setup*/
-      1.05 * (itemsInIndex > 0 ? (static_cast<double>(itemsInIndex) * std::log2(static_cast<double>(itemsInIndex))) : 0.0);
+      1.05 * (itemsInIndex > 0 ? (static_cast<double>(itemsInIndex) *
+                                  std::log2(static_cast<double>(itemsInIndex)))
+                               : 0.0);
   return costs;
 }
 
@@ -391,9 +393,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
 /// @brief validate an index id (i.e. ^[0-9]+$)
 bool Index::validateId(std::string_view id) {
   // totally empty id string is not allowed
-  return !id.empty() && std::all_of(id.begin(), id.end(), [](char c) {
-    return c >= '0' && c <= '9';
-  });
+  return !id.empty() && std::all_of(id.begin(), id.end(),
+                                    [](char c) { return c >= '0' && c <= '9'; });
 }
 
 /// @brief validate an index handle (collection name + / + index id)
@@ -404,7 +405,8 @@ bool Index::validateHandle(bool extendedNames, arangodb::velocypack::StringRef h
     return false;
   }
   // check collection name part
-  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames, handle.substr(0, pos))) {
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames,
+                                              handle.substr(0, pos))) {
     return false;
   }
   // check remainder (index id)
@@ -420,7 +422,8 @@ bool Index::validateHandleName(bool extendedNames, arangodb::velocypack::StringR
     return false;
   }
   // check collection name part
-  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames, name.substr(0, pos))) {
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames,
+                                              name.substr(0, pos))) {
     return false;
   }
   // check remainder (index name)
@@ -457,7 +460,8 @@ bool Index::Compare(StorageEngine& engine, VPackSlice const& lhs,
   TRI_ASSERT(lhsType.isString());
 
   // type must be identical
-  if (!arangodb::basics::VelocyPackHelper::equal(lhsType, rhs.get(arangodb::StaticStrings::IndexType), false)) {
+  if (!arangodb::basics::VelocyPackHelper::equal(lhsType, rhs.get(arangodb::StaticStrings::IndexType),
+                                                 false)) {
     return false;
   }
 
@@ -637,37 +641,44 @@ Result Index::drop() {
 }
 
 /// @brief default implementation for supportsFilterCondition
-Index::FilterCosts Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
-                                                 arangodb::aql::AstNode const* /* node */,
-                                                 arangodb::aql::Variable const* /* reference */, 
-                                                 size_t itemsInIndex) const {
+Index::FilterCosts Index::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const&,
+    arangodb::aql::AstNode const* /* node */,
+    arangodb::aql::Variable const* /* reference */, size_t itemsInIndex) const {
   // by default no filter conditions are supported
   return Index::FilterCosts::defaultCosts(itemsInIndex);
 }
 
 /// @brief default implementation for supportsSortCondition
 Index::SortCosts Index::supportsSortCondition(arangodb::aql::SortCondition const* /* sortCondition */,
-                                              arangodb::aql::Variable const* /* node */, 
+                                              arangodb::aql::Variable const* /* node */,
                                               size_t itemsInIndex) const {
   // by default no sort conditions are supported
   return Index::SortCosts::defaultCosts(itemsInIndex);
 }
-  
+
 arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* node */,
                                                    arangodb::aql::Variable const* /* reference */) const {
   // the default implementation should never be called
-  TRI_ASSERT(false); 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for specializeCondition. index type: ") + typeName());
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string(
+          "no default implementation for specializeCondition. index type: ") +
+          typeName());
 }
 
-std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods* /* trx */,
-                                                           aql::AstNode const* /* node */,
-                                                           aql::Variable const* /* reference */,
-                                                           IndexIteratorOptions const& /* opts */,
-                                                           ReadOwnWrites /* readOwnWrites */) {
+std::unique_ptr<IndexIterator> Index::iteratorForCondition(
+    transaction::Methods* /* trx */, aql::AstNode const* /* node */,
+    aql::Variable const* /* reference */,
+    IndexIteratorOptions const& /* opts */, ReadOwnWrites /* readOwnWrites */) {
   // the default implementation should never be called
-  TRI_ASSERT(false); 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string(
+          "no default implementation for iteratorForCondition. index type: ") +
+          typeName());
 }
 
 /// @brief perform some base checks for an index condition part
@@ -950,18 +961,16 @@ bool Index::covers(arangodb::aql::Projections& projections) const {
           k = std::numeric_limits<size_t>::max();
           break;
         }
-        if (k >= projections[i].path.size() ||
-            part.name != projections[i].path[k]) {
+        if (k >= projections[i].path.size() || part.name != projections[i].path[k]) {
           break;
         }
         ++k;
       }
 
       // if the index can only satisfy a prefix of the projection, that is still
-      // better than nothing, e.g. an index on  a.b  can be used to satisfy a 
+      // better than nothing, e.g. an index on  a.b  can be used to satisfy a
       // projection on  a.b.c
-      if (k >= field.size() &&
-          k != std::numeric_limits<size_t>::max()) {
+      if (k >= field.size() && k != std::numeric_limits<size_t>::max()) {
         TRI_ASSERT(k > 0);
         projections[i].coveringIndexPosition = static_cast<uint16_t>(j);
         projections[i].coveringIndexCutoff = static_cast<uint16_t>(k);
@@ -1073,25 +1082,25 @@ AttributeAccessParts::AttributeAccessParts(arangodb::aql::AstNode const* compari
   TRI_ASSERT(attribute->isAttributeAccessForVariable(variable, true));
 }
 
-void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs, 
-                                 arangodb::Index const* idx, size_t itemsInIndex,
-                                 size_t invocations) {
+void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
+                                 arangodb::Index const* idx,
+                                 size_t itemsInIndex, size_t invocations) {
   // costs.estimatedItems is always set here, make it at least 1
   costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
 
   // seek cost is O(log(n)) for RocksDB
-  costs.estimatedCosts = std::max(double(1.0),
-                                std::log2(double(itemsInIndex)) * invocations);
+  costs.estimatedCosts =
+      std::max(double(1.0), std::log2(double(itemsInIndex)) * invocations);
   // add per-document processing cost
   costs.estimatedCosts += costs.estimatedItems * 0.05;
   // slightly prefer indexes that cover more attributes
   costs.estimatedCosts -= (idx->fields().size() - 1) * 0.02;
-    
+
   // cost is already low... now slightly prioritize unique indexes
   if (idx->unique() || idx->implicitlyUnique()) {
     costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
   }
-      
+
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
       idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
     // primary and edge index have faster lookups due to very fast

@@ -120,7 +120,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       } else {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
-      
+
       bool const isSuperuser = statistics->_superuser;
       if (isSuperuser) {
         statistics::TotalRequestsSuperuser.incCounter();
@@ -128,9 +128,8 @@ void RequestStatistics::process(RequestStatistics* statistics) {
         statistics::TotalRequestsUser.incCounter();
       }
 
-      statistics::RequestFigures& figures = isSuperuser
-        ? statistics::SuperuserRequestFigures
-        : statistics::UserRequestFigures;
+      statistics::RequestFigures& figures =
+          isSuperuser ? statistics::SuperuserRequestFigures : statistics::UserRequestFigures;
 
       figures.totalTimeDistribution.addFigure(totalTime);
 
@@ -167,7 +166,8 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   }
 
   if (tries > 1) {
-    LOG_TOPIC("fb453", WARN, Logger::MEMORY) << "_freeList.push failed " << tries - 1 << " times.";
+    LOG_TOPIC("fb453", WARN, Logger::MEMORY)
+        << "_freeList.push failed " << tries - 1 << " times.";
   }
 }
 
@@ -186,8 +186,8 @@ void RequestStatistics::release() {
 
 void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source) {
   statistics::RequestFigures& figures = source == stats::RequestStatisticsSource::USER
-    ? statistics::UserRequestFigures
-    : statistics::SuperuserRequestFigures;
+                                            ? statistics::UserRequestFigures
+                                            : statistics::SuperuserRequestFigures;
 
   snapshot.totalTime = figures.totalTimeDistribution;
   snapshot.requestTime = figures.requestTimeDistribution;
@@ -195,7 +195,7 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
   snapshot.ioTime = figures.ioTimeDistribution;
   snapshot.bytesSent = figures.bytesSentDistribution;
   snapshot.bytesReceived = figures.bytesReceivedDistribution;
-  
+
   if (source == stats::RequestStatisticsSource::ALL) {
     TRI_ASSERT(&figures == &statistics::SuperuserRequestFigures);
     snapshot.totalTime.add(statistics::UserRequestFigures.totalTimeDistribution);
@@ -211,12 +211,11 @@ std::string RequestStatistics::Item::timingsCsv() const {
   TRI_ASSERT(_stat != nullptr);
   std::stringstream ss;
 
-  ss << std::setprecision(9) << std::fixed
-     << "read," << (_stat->_readEnd - _stat->_readStart)
-     << ",queue," << (_stat->_queueEnd - _stat->_queueStart)
-     << ",queue-size," << _stat->_queueSize
-     << ",request," << (_stat->_requestEnd - _stat->_requestStart)
-     << ",total," << (StatisticsFeature::time() - _stat->_readStart);
+  ss << std::setprecision(9) << std::fixed << "read,"
+     << (_stat->_readEnd - _stat->_readStart) << ",queue,"
+     << (_stat->_queueEnd - _stat->_queueStart) << ",queue-size," << _stat->_queueSize
+     << ",request," << (_stat->_requestEnd - _stat->_requestStart) << ",total,"
+     << (StatisticsFeature::time() - _stat->_readStart);
 
   return ss.str();
 }

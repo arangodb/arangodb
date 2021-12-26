@@ -65,8 +65,7 @@ constexpr std::chrono::seconds kDefaultTimeOutSecs(3600);
 
 ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, RemoteNode const* node, RegisterInfos&& registerInfos,
-    std::string const& server, std::string const& distributeId,
-    std::string const& queryId)
+    std::string const& server, std::string const& distributeId, std::string const& queryId)
     : ExecutionBlock(engine, node),
       _registerInfos(std::move(registerInfos)),
       _query(engine->getQuery()),
@@ -78,8 +77,9 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _requestInFlight(false),
       _lastTicket(0) {
   TRI_ASSERT(!queryId.empty());
-  TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && distributeId.empty()) ||
-             (!arangodb::ServerState::instance()->isCoordinator() && !distributeId.empty()));
+  TRI_ASSERT(
+      (arangodb::ServerState::instance()->isCoordinator() && distributeId.empty()) ||
+      (!arangodb::ServerState::instance()->isCoordinator() && !distributeId.empty()));
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
@@ -134,7 +134,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
     if (VelocyPackHelper::getBooleanValue(responseBody, "done", true)) {
       state = ExecutionState::DONE;
     }
-    return {state, _engine->itemBlockManager().requestAndInitBlock(responseBody) };
+    return {state, _engine->itemBlockManager().requestAndInitBlock(responseBody)};
   }
 
   // We need to send a request here
@@ -473,7 +473,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                                                             std::string const& urlPart,
                                                             VPackBuffer<uint8_t>&& body) {
   NetworkFeature const& nf =
-    _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
+      _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {
     // nullptr only happens on controlled shutdown
@@ -482,7 +482,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   arangodb::network::EndpointSpec spec;
   auto res = network::resolveDestination(nf, _server, spec);
-  if (res != TRI_ERROR_NO_ERROR) { 
+  if (res != TRI_ERROR_NO_ERROR) {
     return Result(res);
   }
   TRI_ASSERT(!spec.endpoint.empty());
@@ -528,7 +528,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
       return false;
     });
   });
-  
+
   _engine->getQuery().incHttpRequests(unsigned(1));
 
   return {TRI_ERROR_NO_ERROR};
@@ -536,28 +536,23 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
 void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(VPackSlice slice,
                                                              AqlCallStack const& callStack) {
-  if (_profileLevel == ProfileLevel::TraceOne ||
-      _profileLevel == ProfileLevel::TraceTwo) {
+  if (_profileLevel == ProfileLevel::TraceOne || _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
     using namespace std::string_literals;
     traceRequest("execute", slice, "callStack="s + callStack.toString());
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice slice,
-                                                             size_t atMost) {
-  if (_profileLevel == ProfileLevel::TraceOne ||
-      _profileLevel == ProfileLevel::TraceTwo) {
+void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice slice, size_t atMost) {
+  if (_profileLevel == ProfileLevel::TraceOne || _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
     using namespace std::string_literals;
     traceRequest("getSome", slice, "atMost="s + std::to_string(atMost));
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice slice,
-                                                              size_t atMost) {
-  if (_profileLevel == ProfileLevel::TraceOne ||
-      _profileLevel == ProfileLevel::TraceTwo) {
+void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice slice, size_t atMost) {
+  if (_profileLevel == ProfileLevel::TraceOne || _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
     using namespace std::string_literals;
     traceRequest("skipSome", slice, "atMost="s + std::to_string(atMost));
@@ -565,19 +560,16 @@ void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice slice,
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice slice) {
-  if (_profileLevel == ProfileLevel::TraceOne ||
-      _profileLevel == ProfileLevel::TraceTwo) {
+  if (_profileLevel == ProfileLevel::TraceOne || _profileLevel == ProfileLevel::TraceTwo) {
     // only stringify if profile level requires us
     using namespace std::string_literals;
     traceRequest("initializeCursor", slice, ""s);
   }
 }
 
-void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* rpc,
-                                                      VPackSlice slice,
+void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* rpc, VPackSlice slice,
                                                       std::string const& args) {
-  if (_profileLevel == ProfileLevel::TraceOne ||
-      _profileLevel == ProfileLevel::TraceTwo) {
+  if (_profileLevel == ProfileLevel::TraceOne || _profileLevel == ProfileLevel::TraceTwo) {
     auto const queryId = this->_engine->getQuery().id();
     auto const remoteQueryId = _queryId;
     LOG_TOPIC("92c71", INFO, Logger::QUERIES)

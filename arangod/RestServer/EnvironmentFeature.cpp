@@ -85,7 +85,7 @@ void EnvironmentFeature::prepare() {
 #else
   _operatingSystem = "unknown";
 #endif
-        
+
   LOG_TOPIC("75ddc", INFO, Logger::FIXME) << "detected operating system: " << _operatingSystem;
 
   if (sizeof(void*) == 4) {
@@ -99,7 +99,8 @@ void EnvironmentFeature::prepare() {
 #ifdef __arm__
   // detect alignment settings for ARM
   {
-    LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY) << "running CPU alignment check";
+    LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY)
+        << "running CPU alignment check";
     // To change the alignment trap behavior, simply echo a number into
     // /proc/cpu/alignment.  The number is made up from various bits:
     //
@@ -196,8 +197,10 @@ void EnvironmentFeature::prepare() {
         (strstr(v, "/valgrind/") != nullptr || strstr(v, "/vgpreload") != nullptr)) {
       // smells like Valgrind
       LOG_TOPIC("a2a1e", WARN, arangodb::Logger::MEMORY)
-          << "found LD_PRELOAD env variable value that looks like we are running under Valgrind. "
-          << "this is unsupported in combination with jemalloc and may cause undefined behavior at least with memcheck!";
+          << "found LD_PRELOAD env variable value that looks like we are "
+             "running under Valgrind. "
+          << "this is unsupported in combination with jemalloc and may cause "
+             "undefined behavior at least with memcheck!";
     }
 #endif
   }
@@ -277,11 +280,10 @@ void EnvironmentFeature::prepare() {
 
   // Report memory and CPUs found:
   LOG_TOPIC("25362", INFO, Logger::MEMORY)
-    << "Available physical memory: " 
-    << PhysicalMemory::getValue() << " bytes" 
-    << (PhysicalMemory::overridden() ? " (overriden by environment variable)" : "")
-    << ", available cores: " << NumberOfCores::getValue()
-    << (NumberOfCores::overridden() ? " (overriden by environment variable)" : "");
+      << "Available physical memory: " << PhysicalMemory::getValue() << " bytes"
+      << (PhysicalMemory::overridden() ? " (overriden by environment variable)" : "")
+      << ", available cores: " << NumberOfCores::getValue()
+      << (NumberOfCores::overridden() ? " (overriden by environment variable)" : "");
 
   // test local ipv6 support
   try {
@@ -420,7 +422,7 @@ void EnvironmentFeature::prepare() {
                 << "'. It is recommended to set it to a value of 'never' "
                    "or 'madvise'";
             LOG_TOPIC("f3108", WARN, Logger::MEMORY)
-              << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
+                << "execute 'sudo bash -c \"echo madvise > " << file << "\"'";
           }
         }
       }

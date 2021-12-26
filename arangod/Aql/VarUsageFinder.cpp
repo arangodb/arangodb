@@ -24,9 +24,9 @@
 
 #include <Containers/HashSet.h>
 
-#include "Aql/VarUsageFinder.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/VarUsageFinder.h"
 
 #include <Logger/LogMacros.h>
 
@@ -56,7 +56,7 @@ auto mergeInto(VarSet& target, VarSet const& source) {
     target.emplace(varPtr);
   }
 }
-}
+}  // namespace
 
 template <class T>
 bool VarUsageFinderT<T>::before(T* en) {

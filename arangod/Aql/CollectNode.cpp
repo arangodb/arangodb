@@ -45,14 +45,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-CollectNode::CollectNode(
-    ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-    Variable const* expressionVariable, Variable const* outVariable,
-    std::vector<Variable const*> const& keepVariables,
-    std::unordered_map<VariableId, std::string const> const& variableMap,
-    std::vector<GroupVarInfo> const& groupVariables,
-    std::vector<AggregateVarInfo> const& aggregateVariables,
-    bool isDistinctCommand)
+CollectNode::CollectNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
+                         Variable const* expressionVariable, Variable const* outVariable,
+                         std::vector<Variable const*> const& keepVariables,
+                         std::unordered_map<VariableId, std::string const> const& variableMap,
+                         std::vector<GroupVarInfo> const& groupVariables,
+                         std::vector<AggregateVarInfo> const& aggregateVariables,
+                         bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
       _groupVariables(groupVariables),
@@ -64,14 +63,14 @@ CollectNode::CollectNode(
       _isDistinctCommand(isDistinctCommand),
       _specialized(false) {}
 
-CollectNode::CollectNode(
-    ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
-    std::vector<GroupVarInfo> const& groupVariables,
-    std::vector<AggregateVarInfo> const& aggregateVariables,
-    Variable const* expressionVariable, Variable const* outVariable,
-    std::vector<Variable const*> const& keepVariables,
-    std::unordered_map<VariableId, std::string const> const& variableMap,
-    bool isDistinctCommand)
+CollectNode::CollectNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         CollectOptions const& options,
+                         std::vector<GroupVarInfo> const& groupVariables,
+                         std::vector<AggregateVarInfo> const& aggregateVariables,
+                         Variable const* expressionVariable, Variable const* outVariable,
+                         std::vector<Variable const*> const& keepVariables,
+                         std::unordered_map<VariableId, std::string const> const& variableMap,
+                         bool isDistinctCommand)
     : ExecutionNode(plan, id),
       _options(options),
       _groupVariables(groupVariables),
@@ -219,7 +218,7 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
 void CollectNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
   for (auto const& p : _aggregateVariables) {
     aggregateTypes.emplace_back(
-      Aggregator::fromTypeString(&_plan->getAst()->query().vpackOptions(), p.type));
+        Aggregator::fromTypeString(&_plan->getAst()->query().vpackOptions(), p.type));
   }
 }
 
@@ -279,9 +278,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       auto executorInfos =
           HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
-                                     std::move(aggregateTypes),
-                                     std::move(aggregateRegisters),
-                                     &_plan->getAst()->query().vpackOptions(), 
+                                     std::move(aggregateTypes), std::move(aggregateRegisters),
+                                     &_plan->getAst()->query().vpackOptions(),
                                      _plan->getAst()->query().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(
@@ -334,9 +332,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                                      std::move(aggregateRegisters),
                                      &_plan->getAst()->query().vpackOptions());
 
-      return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
-                                                                         std::move(registerInfos),
-                                                                         std::move(executorInfos));
+      return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::COUNT: {
       TRI_ASSERT(aggregateVariables().size() == 1);
@@ -370,9 +367,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                                                std::move(writeableOutputRegisters));
 
       TRI_ASSERT(groupRegisters.size() == 1);
-      auto executorInfos = DistinctCollectExecutorInfos(groupRegisters.front(),
-                                                        &_plan->getAst()->query().vpackOptions(),
-                                                        _plan->getAst()->query().resourceMonitor());
+      auto executorInfos =
+          DistinctCollectExecutorInfos(groupRegisters.front(),
+                                       &_plan->getAst()->query().vpackOptions(),
+                                       _plan->getAst()->query().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -414,15 +412,17 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 
     for (auto& it : _aggregateVariables) {
       auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = it.inVar == nullptr ? nullptr : plan->getAst()->variables()->createVariable(it.inVar);
+      auto in = it.inVar == nullptr
+                    ? nullptr
+                    : plan->getAst()->variables()->createVariable(it.inVar);
       aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
     }
   }
 
   auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables,
                                          aggregateVariables, expressionVariable,
-                                         outVariable, _keepVariables, _variableMap,
-                                         _isDistinctCommand);
+                                         outVariable, _keepVariables,
+                                         _variableMap, _isDistinctCommand);
 
   // specialize the cloned node
   if (isSpecialized()) {
@@ -468,7 +468,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX: // should not appear here
+    case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -512,7 +512,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX: // should not appear here
+    case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -556,7 +556,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
-    case ExecutionNode::MUTEX: // should not appear here
+    case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -684,8 +684,7 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
   }
 }
 
-void CollectNode::setAggregateVariables(
-    std::vector<AggregateVarInfo>&& aggregateVariables) {
+void CollectNode::setAggregateVariables(std::vector<AggregateVarInfo>&& aggregateVariables) {
   _aggregateVariables = std::move(aggregateVariables);
 }
 
@@ -744,12 +743,9 @@ void CollectNode::clearOutVariable() {
   _outVariable = nullptr;
 }
 
-void CollectNode::clearKeepVariables() {
-  _keepVariables.clear();
-}
+void CollectNode::clearKeepVariables() { _keepVariables.clear(); }
 
-void CollectNode::clearAggregates(
-    std::function<bool(AggregateVarInfo const&)> cb) {
+void CollectNode::clearAggregates(std::function<bool(AggregateVarInfo const&)> cb) {
   for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end();
        /* no hoisting */) {
     if (cb(*it)) {
@@ -804,8 +800,7 @@ void CollectNode::groupVariables(std::vector<GroupVarInfo> const& vars) {
   _groupVariables = vars;
 }
 
-std::vector<AggregateVarInfo> const&
-CollectNode::aggregateVariables() const {
+std::vector<AggregateVarInfo> const& CollectNode::aggregateVariables() const {
   return _aggregateVariables;
 }
 

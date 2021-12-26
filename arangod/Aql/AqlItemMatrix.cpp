@@ -44,7 +44,7 @@ std::pair<SharedAqlItemBlockPtr, size_t> AqlItemMatrix::getBlock(size_t index) c
   // and the first unused data row, could be after the
   // shadowRow.
   // All other blocks start with the first row as data row
-  return  {_blocks[index], index == 0 ? _startIndexInFirstBlock : 0};
+  return {_blocks[index], index == 0 ? _startIndexInFirstBlock : 0};
 }
 
 std::pair<AqlItemBlock const*, size_t> AqlItemMatrix::getBlockRef(size_t index) const noexcept {
@@ -97,7 +97,9 @@ void AqlItemMatrix::clear() {
   _stopIndexInLastBlock = InvalidRowIndex;
 }
 
-RegisterCount AqlItemMatrix::getNumRegisters() const noexcept { return _nrRegs; }
+RegisterCount AqlItemMatrix::getNumRegisters() const noexcept {
+  return _nrRegs;
+}
 
 uint64_t AqlItemMatrix::size() const noexcept { return _numDataRows; }
 
@@ -153,7 +155,8 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
   ShadowAqlItemRow shadowRow{_blocks.back(), _stopIndexInLastBlock};
 
   // We need to move forward the next shadow row.
-  auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(_stopIndexInLastBlock);
+  auto [shadowRowsBegin, shadowRowsEnd] =
+      blockPtr->getShadowRowIndexesFrom(_stopIndexInLastBlock);
   _startIndexInFirstBlock = _stopIndexInLastBlock + 1;
 
   shadowRowsBegin++;
@@ -212,7 +215,8 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
     return 0;
   }
   auto const& block = _blocks.back();
-  auto [shadowRowsBegin, shadowRowsEnd] = block->getShadowRowIndexesFrom(_stopIndexInLastBlock);
+  auto [shadowRowsBegin, shadowRowsEnd] =
+      block->getShadowRowIndexesFrom(_stopIndexInLastBlock);
   return std::count_if(shadowRowsBegin, shadowRowsEnd,
                        [&](auto r) -> bool { return r >= _stopIndexInLastBlock; });
 }
@@ -258,7 +262,8 @@ AqlItemMatrix::RowIterator AqlItemMatrix::end() const {
   return {this, this->numberOfBlocks(), 0};
 }
 
-AqlItemMatrix::RowIterator::RowIterator(AqlItemMatrix const* matrix, size_t blockIndex, size_t rowIndex)
+AqlItemMatrix::RowIterator::RowIterator(AqlItemMatrix const* matrix,
+                                        size_t blockIndex, size_t rowIndex)
     : _matrix(matrix), _blockIndex(blockIndex), _rowIndex(rowIndex) {}
 
 AqlItemMatrix::RowIterator::value_type AqlItemMatrix::RowIterator::next() noexcept {
@@ -274,7 +279,8 @@ auto AqlItemMatrix::RowIterator::isInitialized() const noexcept -> bool {
 
 auto AqlItemMatrix::RowIterator::hasMore() const noexcept -> bool {
   // _blockIndex == _matrix->size() => _rowIndex == 0
-  TRI_ASSERT((_matrix != nullptr && _blockIndex < _matrix->numberOfBlocks()) || _rowIndex == 0);
+  TRI_ASSERT((_matrix != nullptr && _blockIndex < _matrix->numberOfBlocks()) ||
+             _rowIndex == 0);
   // If _blockIndex is valid, _rowIndex must be, too.
   return ADB_LIKELY(_matrix != nullptr) && _blockIndex < _matrix->numberOfBlocks();
 }
@@ -321,9 +327,7 @@ auto AqlItemMatrix::RowIterator::operator++(int) & noexcept -> AqlItemMatrix::Ro
   return tmp;
 }
 
-AqlItemMatrix::RowIterator::operator bool() const noexcept {
-  return hasMore();
-}
+AqlItemMatrix::RowIterator::operator bool() const noexcept { return hasMore(); }
 
 bool aql::operator==(AqlItemMatrix::RowIterator const& a,
                      AqlItemMatrix::RowIterator const& b) {

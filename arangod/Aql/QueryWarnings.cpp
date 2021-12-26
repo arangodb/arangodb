@@ -24,8 +24,8 @@
 #include "QueryWarnings.h"
 
 #include "Aql/QueryOptions.h"
-#include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -34,8 +34,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 QueryWarnings::QueryWarnings()
-  : _maxWarningCount(std::numeric_limits<size_t>::max()),
-    _failOnWarning(false) {}
+    : _maxWarningCount(std::numeric_limits<size_t>::max()), _failOnWarning(false) {}
 
 /// @brief register an error
 /// this also makes the query abort
@@ -52,7 +51,7 @@ void QueryWarnings::registerError(ErrorCode code, std::string_view details) {
 /// @brief register a warning
 void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
-  
+
   std::lock_guard<std::mutex> guard(_mutex);
 
   if (_failOnWarning) {
@@ -62,7 +61,7 @@ void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
   }
-  
+
   if (_list.size() >= _maxWarningCount) {
     return;
   }
@@ -76,10 +75,10 @@ void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
 
 void QueryWarnings::toVelocyPack(arangodb::velocypack::Builder& b) const {
   TRI_ASSERT(b.isOpenObject());
-  
+
   b.add(VPackValue("warnings"));
   VPackArrayBuilder guard(&b);
-  
+
   std::lock_guard<std::mutex> lock(_mutex);
 
   for (auto const& pair : _list) {

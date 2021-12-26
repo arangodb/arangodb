@@ -51,7 +51,7 @@ class SchedulerThread : virtual public Thread {
  public:
   explicit SchedulerThread(application_features::ApplicationServer& server, Scheduler& scheduler)
       : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() = default; // shutdown is called by derived implementation!
+  ~SchedulerThread() = default;  // shutdown is called by derived implementation!
 
  protected:
   Scheduler& _scheduler;
@@ -129,7 +129,8 @@ void Scheduler::runCronThread() {
             item->run();
           }
         } catch (std::exception const& ex) {
-          LOG_TOPIC("6d997", WARN, Logger::THREADS) << "caught exception in runCronThread: " << ex.what();
+          LOG_TOPIC("6d997", WARN, Logger::THREADS)
+              << "caught exception in runCronThread: " << ex.what();
         }
 
         // always lock again, as we are going into the wait_for below
@@ -147,8 +148,8 @@ void Scheduler::runCronThread() {
   }
 }
 
-Scheduler::WorkHandle Scheduler::queueDelayed(
-    RequestLane lane, clock::duration delay, fu2::unique_function<void(bool cancelled)> handler) noexcept {
+Scheduler::WorkHandle Scheduler::queueDelayed(RequestLane lane, clock::duration delay,
+                                              fu2::unique_function<void(bool cancelled)> handler) noexcept {
   TRI_ASSERT(!isStopping());
 
   if (delay < std::chrono::milliseconds(1)) {

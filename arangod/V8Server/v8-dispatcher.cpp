@@ -89,15 +89,17 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8DealerFeature& v8Dealer = v8g->_server.getFeature<V8DealerFeature>();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   bool allowTasks = v8Dealer.allowJavaScriptTasks() ||
-                    (v8security.isInternalContext(isolate) || v8security.isAdminScriptContext(isolate));
+                    (v8security.isInternalContext(isolate) ||
+                     v8security.isAdminScriptContext(isolate));
   if (!allowTasks) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "JavaScript tasks are disabled");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "JavaScript tasks are disabled");
   }
 
   if (SchedulerFeature::SCHEDULER == nullptr) {
@@ -151,7 +153,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (isSystem && !v8g->_securityContext.isInternal()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only internal context may create system tasks");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "Only internal context may create system tasks");
   }
 
   // offset in seconds into period or from now on if no period
@@ -223,8 +226,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (TRI_HasProperty(context, isolate, obj, "params")) {
     TRI_V8ToVPack(isolate, *parameters,
-                  obj->Get(TRI_IGETC,
-                           TRI_V8_ASCII_STRING(isolate, "params"))
+                  obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "params"))
                       .FromMaybe(v8::Local<v8::Value>()),
                   false);
   }
@@ -345,7 +347,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const runAsUser = exec.user();
   TRI_ASSERT(exec.isAdminUser() || !runAsUser.empty());
-  
+
   std::string key = TRI_ObjectToString(isolate, args[0]);
   uint64_t maxWorkers =
       std::min(TRI_ObjectToUInt64(isolate, args[1], false), (uint64_t)64);
@@ -361,7 +363,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::EXCLUSIVE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
+                                  AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -409,7 +412,8 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
+                                  AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
 

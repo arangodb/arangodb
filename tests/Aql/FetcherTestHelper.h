@@ -103,7 +103,8 @@ class PatternTestWrapper {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
   RegIdSet inputRegisters;
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> _dependencyProxyMock{_monitor, inputRegisters, 1};
+  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> _dependencyProxyMock{
+      _monitor, inputRegisters, 1};
   AqlItemBlockManager _itemBlockManager{&_monitor, SerializationFormat::SHADOWROWS};
 
  protected:

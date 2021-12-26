@@ -45,4 +45,3 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
 };
 
 }  // namespace arangodb
-

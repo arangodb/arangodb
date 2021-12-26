@@ -84,4 +84,3 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool validateCollection(std::string const& name);
 };
 }  // namespace arangodb
-

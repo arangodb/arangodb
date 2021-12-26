@@ -58,7 +58,7 @@ class MultiDependencySingleRowFetcher {
 
     auto getSkipped(size_t subqueryDepth) const -> size_t;
 
-    auto getFullCount(size_t subqueryDepth) const-> size_t;
+    auto getFullCount(size_t subqueryDepth) const -> size_t;
 
     auto clearCounts(size_t subqueryDepth) -> void;
 
@@ -166,7 +166,6 @@ class MultiDependencySingleRowFetcher {
 
   bool isDone(DependencyInfo const& info) const;
 
-
   AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack, const size_t dependency);
 
   void reportSkipForDependency(AqlCallStack const& originalStack,
@@ -176,4 +175,3 @@ class MultiDependencySingleRowFetcher {
 };
 
 }  // namespace arangodb::aql
-

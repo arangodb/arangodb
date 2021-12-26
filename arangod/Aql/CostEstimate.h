@@ -74,4 +74,3 @@ struct CostEstimate {
 };
 
 }  // namespace arangodb::aql
-

@@ -32,7 +32,8 @@ namespace aql {
 
 class TraversalStats {
  public:
-  TraversalStats() noexcept : _filtered(0), _scannedIndex(0), _httpRequests(0) {}
+  TraversalStats() noexcept
+      : _filtered(0), _scannedIndex(0), _httpRequests(0) {}
 
   void setFiltered(std::size_t filtered) noexcept { _filtered = filtered; }
 
@@ -47,13 +48,13 @@ class TraversalStats {
   }
 
   std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
-  
+
   void addHttpRequests(std::size_t requests) noexcept {
     _httpRequests += requests;
   }
-  
+
   std::size_t getHttpRequests() const noexcept { return _httpRequests; }
-  
+
   void operator+=(TraversalStats const& other) {
     _filtered += other._filtered;
     _scannedIndex += other._scannedIndex;
@@ -76,4 +77,3 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -33,14 +33,12 @@ namespace iresearch {
 
 class IdentityAnalyzer final : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
-    return "identity";
-  }
+  static constexpr irs::string_ref type_name() noexcept { return "identity"; }
 
   static bool normalize(const irs::string_ref& /*args*/, std::string& out);
 
   static ptr make(irs::string_ref const& /*args*/);
-  
+
   static bool normalize_json(const irs::string_ref& /*args*/, std::string& out);
 
   static ptr make_json(irs::string_ref const& /*args*/);
@@ -68,9 +66,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   irs::term_attribute _term;
   irs::increment _inc;
   bool _empty;
-}; // IdentityAnalyzer
+};  // IdentityAnalyzer
 
-} // iresearch
-} // arangodb
-
-
+}  // namespace iresearch
+}  // namespace arangodb

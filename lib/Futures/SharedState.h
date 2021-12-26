@@ -158,8 +158,7 @@ class SharedState {
     auto state = _state.load(std::memory_order_acquire);
     switch (state) {
       case State::Start:
-        if (_state.compare_exchange_strong(state, State::OnlyCallback,
-                                           std::memory_order_release)) {
+        if (_state.compare_exchange_strong(state, State::OnlyCallback, std::memory_order_release)) {
           return;
         }
         TRI_ASSERT(state == State::OnlyResult);  // race with setResult
@@ -262,7 +261,7 @@ class SharedState {
 
     _attached.fetch_add(1);
     // SharedStateScope makes this exception safe
-    SharedStateScope scope(this); // will call detachOne()
+    SharedStateScope scope(this);  // will call detachOne()
     _callback(std::move(_result));
   }
 
@@ -279,4 +278,3 @@ class SharedState {
 }  // namespace detail
 }  // namespace futures
 }  // namespace arangodb
-

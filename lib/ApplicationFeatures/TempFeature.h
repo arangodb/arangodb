@@ -44,4 +44,3 @@ class TempFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

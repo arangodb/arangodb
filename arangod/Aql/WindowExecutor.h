@@ -136,9 +136,8 @@ class AccuWindowExecutor : public BaseWindowExecutor {
   AccuWindowExecutor(Fetcher& fetcher, Infos&);
   ~AccuWindowExecutor();
 
-  
   void initializeCursor();
-  
+
   /**
    * @brief produce the next Row of Aql Values.
    *
@@ -154,7 +153,7 @@ class AccuWindowExecutor : public BaseWindowExecutor {
    */
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
-  
+
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
    * from upstream, it can only report how many it has found by itself, plus
@@ -200,7 +199,7 @@ class WindowExecutor : public BaseWindowExecutor {
    */
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
-  
+
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
    * from upstream, it can only report how many it has found by itself, plus
@@ -225,4 +224,3 @@ class WindowExecutor : public BaseWindowExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

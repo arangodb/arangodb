@@ -116,4 +116,3 @@ struct SharedCounter {
 
 }  // namespace basics
 }  // namespace arangodb
-

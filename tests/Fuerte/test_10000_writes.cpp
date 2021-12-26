@@ -20,29 +20,27 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "test_main.h"
 #include <fuerte/fuerte.h>
-#include <fuerte/loop.h>
 #include <fuerte/helper.h>
+#include <fuerte/loop.h>
+#include "test_main.h"
 
-#include <velocypack/Parser.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <chrono>
-#include <iostream>
-#include <fstream>
-#include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/thread.hpp>
+#include <chrono>
+#include <fstream>
+#include <iostream>
 #include <thread>
 
 namespace f = ::arangodb::fuerte;
 
 class Connection100kWritesF : public ::testing::Test {
  protected:
-  Connection100kWritesF(){
-    _server = "vst://127.0.0.1:8529";
-  }
+  Connection100kWritesF() { _server = "vst://127.0.0.1:8529"; }
   virtual ~Connection100kWritesF() noexcept {}
 
   virtual void SetUp() override {
@@ -51,43 +49,46 @@ class Connection100kWritesF : public ::testing::Test {
       cbuilder.host(_server);
       _connection = cbuilder.connect(_eventLoopService);
 
-      //delete collection
+      // delete collection
       {
-        auto request = arangodb::fuerte::createRequest(
-          arangodb::fuerte::RestVerb::Delete, "/_api/collection/testobi");
+        auto request =
+            arangodb::fuerte::createRequest(arangodb::fuerte::RestVerb::Delete,
+                                            "/_api/collection/testobi");
         auto result = _connection->sendRequest(std::move(request));
-        //arangodb::fuerte::run();
+        // arangodb::fuerte::run();
       }
-      //create collection
+      // create collection
       {
         namespace fu = arangodb::fuerte;
         VPackBuilder builder;
         builder.openObject();
-        builder.add("name" , VPackValue("testobi"));
+        builder.add("name", VPackValue("testobi"));
         builder.close();
-        arangodb::fuerte::Request request = *fu::createRequest(fu::RestVerb::Post, "/_api/collection");
+        arangodb::fuerte::Request request =
+            *fu::createRequest(fu::RestVerb::Post, "/_api/collection");
         request.addVPack(builder.slice());
         auto result = _connection->sendRequest(std::move(request));
-        if (result->header.responseCode >= 400){
+        if (result->header.responseCode >= 400) {
           std::cerr << fu::to_string(request);
           std::cerr << fu::to_string(*result);
           ASSERT_TRUE(false);
           throw;
         }
       }
-    } catch(std::exception const& ex) {
+    } catch (std::exception const& ex) {
       std::cout << "SETUP OF FIXTURE FAILED" << std::endl;
       throw ex;
     }
   }
 
   virtual void TearDown() override {
-    //delete collection
+    // delete collection
     {
-      auto request = arangodb::fuerte::createRequest(
-        arangodb::fuerte::RestVerb::Delete, "/_api/collection/testobi");
+      auto request =
+          arangodb::fuerte::createRequest(arangodb::fuerte::RestVerb::Delete,
+                                          "/_api/collection/testobi");
       auto result = _connection->sendRequest(std::move(request));
-      //arangodb::fuerte::run();
+      // arangodb::fuerte::run();
     }
     _connection.reset();
   }
@@ -140,30 +141,30 @@ TEST_F(Connection100kWritesF, Writes100k){
 
   };
 
-	size_t numThreads = std::thread::hardware_concurrency();
-	boost::thread_group     threads;
-	boost::barrier          barrier(numThreads);
-	auto asioLoop = fu::getProvider().getAsioLoop();
-	auto work = std::make_shared<asio_ns::io_service::work>(*asioLoop->getIoService());
+        size_t numThreads = std::thread::hardware_concurrency();
+        boost::thread_group     threads;
+        boost::barrier          barrier(numThreads);
+        auto asioLoop = fu::getProvider().getAsioLoop();
+        auto work = std::make_shared<asio_ns::io_service::work>(*asioLoop->getIoService());
 
   if (use_threads) {
-		for( unsigned int i = 0; i < numThreads; ++i ){
-				threads.create_thread( [&]() {
-					while (work){
-							try {
-								asioLoop->direct_run();
-							} catch (std::exception const& e){
-								std::cout << e.what();
-								if( barrier.wait() ) {
-									asioLoop->direct_reset();
-								}
-							}
-					}
-				});
-		}
+                for( unsigned int i = 0; i < numThreads; ++i ){
+                                threads.create_thread( [&]() {
+                                        while (work){
+                                                        try {
+                                                                asioLoop->direct_run();
+                                                        } catch (std::exception const& e){
+                                                                std::cout << e.what();
+                                                                if( barrier.wait() ) {
+                                                                        asioLoop->direct_reset();
+                                                                }
+                                                        }
+                                        }
+                                });
+                }
   } else {
-		work.reset();
-	}
+                work.reset();
+        }
 
   if(debug){
     std::cerr << "enter loop" << std::endl;
@@ -182,12 +183,12 @@ TEST_F(Connection100kWritesF, Writes100k){
   if (!use_threads){
     fu::run();
   } else {
-		work.reset();
-		// //find out how much work is left !! //check sendQueue and map
-		// asioLoop->direct_stop();
-		// threads.interrupt_all();
-		threads.join_all();
-	}
+                work.reset();
+                // //find out how much work is left !! //check sendQueue and map
+                // asioLoop->direct_stop();
+                // threads.interrupt_all();
+                threads.join_all();
+        }
 }
 
 */

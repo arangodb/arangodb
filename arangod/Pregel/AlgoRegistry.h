@@ -49,4 +49,3 @@ struct AlgoRegistry {
 
 }  // namespace pregel
 }  // namespace arangodb
-

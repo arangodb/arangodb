@@ -47,7 +47,8 @@ class RestHandlerFactory {
  public:
   // handler creator
   typedef std::shared_ptr<RestHandler> (*create_fptr)(application_features::ApplicationServer&,
-                                                      GeneralRequest*, GeneralResponse*, void* data);
+                                                      GeneralRequest*,
+                                                      GeneralResponse*, void* data);
 
   // cppcheck-suppress *
   RestHandlerFactory() = default;
@@ -72,4 +73,3 @@ class RestHandlerFactory {
 };
 }  // namespace rest
 }  // namespace arangodb
-

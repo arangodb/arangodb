@@ -45,12 +45,12 @@ using namespace arangodb::consensus;
 static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   Agent* agent = nullptr;
@@ -72,12 +72,12 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   TRI_V8_RETURN(v8::Boolean::New(isolate, v8g->_server.isEnabled<AgencyFeature>()));
@@ -88,12 +88,12 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   Agent* agent = nullptr;
@@ -108,9 +108,10 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
   auto context = TRI_IGETC;
-  
+
   r->Set(context, TRI_V8_ASCII_STRING(isolate, "leading"),
-         v8::Boolean::New(isolate, agent->leading())).FromMaybe(false);
+         v8::Boolean::New(isolate, agent->leading()))
+      .FromMaybe(false);
 
   TRI_V8_RETURN(r);
   TRI_V8_TRY_CATCH_END
@@ -119,12 +120,12 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   Agent* agent = nullptr;
@@ -154,12 +155,12 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   Agent* agent = nullptr;
@@ -233,12 +234,13 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8g->AgentTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"));
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"),
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> aa =
+      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoAgent"), aa);

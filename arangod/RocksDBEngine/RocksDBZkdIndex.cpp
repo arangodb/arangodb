@@ -37,8 +37,8 @@ using namespace arangodb;
 
 /*namespace {
 
-auto coordsToVector(zkd::byte_string_view bs, size_t dim) -> std::vector<double> {
-  auto vs = zkd::transpose(bs, dim);
+auto coordsToVector(zkd::byte_string_view bs, size_t dim) -> std::vector<double>
+{ auto vs = zkd::transpose(bs, dim);
 
   std::vector<double> res;
   res.reserve(dim);
@@ -55,7 +55,7 @@ auto coordsToVector(zkd::byte_string_view bs, size_t dim) -> std::vector<double>
 
 namespace arangodb {
 
-template<bool isUnique = false>
+template <bool isUnique = false>
 class RocksDBZkdIndexIterator final : public IndexIterator {
  public:
   RocksDBZkdIndexIterator(LogicalCollection* collection, RocksDBZkdIndexBase* index,
@@ -84,7 +84,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
  protected:
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
-    for (auto i = size_t{0}; i < limit; ) {
+    for (auto i = size_t{0}; i < limit;) {
       switch (_iterState) {
         case IterState::SEEK_ITER_TO_CUR: {
           RocksDBKey rocks_key;
@@ -113,8 +113,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
               _iterState = IterState::SEEK_ITER_TO_CUR;
             }
           } else {
-            auto const documentId = std::invoke([&]{
-              if constexpr(isUnique) {
+            auto const documentId = std::invoke([&] {
+              if constexpr (isUnique) {
                 return RocksDBValue::documentId(_iter->value());
               } else {
                 return RocksDBKey::indexDocumentId(rocksKey);
@@ -140,6 +140,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
     return true;
   }
+
  private:
   RocksDBKeyBounds _bound;
   rocksdb::Slice _upperBound;
@@ -167,7 +168,7 @@ namespace {
 
 auto convertDouble(double x) -> zkd::byte_string {
   zkd::BitWriter bw;
-  bw.append(zkd::Bit::ZERO); // add zero bit for `not infinity`
+  bw.append(zkd::Bit::ZERO);  // add zero bit for `not infinity`
   zkd::into_bit_writer_fixed_length(bw, x);
   return std::move(bw).str();
 }
@@ -179,7 +180,8 @@ auto nodeExtractDouble(aql::AstNode const* node) -> std::optional<zkd::byte_stri
   return std::nullopt;
 }
 
-auto accessDocumentPath(VPackSlice doc, std::vector<basics::AttributeName> const& path) -> VPackSlice {
+auto accessDocumentPath(VPackSlice doc, std::vector<basics::AttributeName> const& path)
+    -> VPackSlice {
   for (auto&& attrib : path) {
     TRI_ASSERT(attrib.shouldExpand == false);
     if (!doc.isObject()) {
@@ -205,7 +207,8 @@ auto readDocumentKey(VPackSlice doc,
     }
     auto dv = value.getNumericValue<double>();
     if (std::isnan(dv)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, "NaN is not allowed");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+                                     "NaN is not allowed");
     }
     v.emplace_back(convertDouble(dv));
   }
@@ -252,12 +255,11 @@ auto boundsForIterator(arangodb::Index const* index, const arangodb::aql::AstNod
 }
 }  // namespace
 
-
-void zkd::extractBoundsFromCondition(
-    arangodb::Index const* index,
-    const arangodb::aql::AstNode* condition, const arangodb::aql::Variable* reference,
-    std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
-    std::unordered_set<aql::AstNode const*>& unusedExpressions) {
+void zkd::extractBoundsFromCondition(arangodb::Index const* index,
+                                     const arangodb::aql::AstNode* condition,
+                                     const arangodb::aql::Variable* reference,
+                                     std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
+                                     std::unordered_set<aql::AstNode const*>& unusedExpressions) {
   TRI_ASSERT(condition->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   auto const ensureBounds = [&](size_t idx) -> ExpressionBounds& {
@@ -285,7 +287,6 @@ void zkd::extractBoundsFromCondition(
 
   auto const checkIsBoundForAttribute = [&](aql::AstNode* op, aql::AstNode* access,
                                             aql::AstNode* other, bool reverse) -> bool {
-
     std::unordered_set<std::string> nonNullAttributes;  // TODO only used in sparse case
     if (!index->canUseConditionPart(access, other, op, reference, nonNullAttributes, false)) {
       return false;
@@ -328,7 +329,6 @@ void zkd::extractBoundsFromCondition(
     return false;
   };
 
-
   for (size_t i = 0; i < condition->numMembers(); ++i) {
     bool ok = false;
     auto op = condition->getMemberUnchecked(i);
@@ -350,12 +350,11 @@ void zkd::extractBoundsFromCondition(
   }
 }
 
-auto zkd::supportsFilterCondition(
-    arangodb::Index const* index,const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
-                             const arangodb::aql::AstNode* node,
-                             const arangodb::aql::Variable* reference,
-                             size_t itemsInIndex) -> Index::FilterCosts {
-
+auto zkd::supportsFilterCondition(arangodb::Index const* index,
+                                  const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
+                                  const arangodb::aql::AstNode* node,
+                                  const arangodb::aql::Variable* reference,
+                                  size_t itemsInIndex) -> Index::FilterCosts {
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   std::unordered_map<size_t, ExpressionBounds> extractedBounds;
@@ -374,7 +373,7 @@ auto zkd::supportsFilterCondition(
 }
 
 auto zkd::specializeCondition(arangodb::Index const* index, arangodb::aql::AstNode* condition,
-                         const arangodb::aql::Variable* reference) -> aql::AstNode* {
+                              const arangodb::aql::Variable* reference) -> aql::AstNode* {
   std::unordered_map<size_t, ExpressionBounds> extractedBounds;
   std::unordered_set<aql::AstNode const*> unusedExpressions;
   extractBoundsFromCondition(index, condition, reference, extractedBounds, unusedExpressions);
@@ -415,16 +414,13 @@ auto zkd::specializeCondition(arangodb::Index const* index, arangodb::aql::AstNo
     condition->addMember(it);
   }
 
-
   return condition;
-
 }
 
 arangodb::Result arangodb::RocksDBZkdIndexBase::insert(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
-    const arangodb::LocalDocumentId& documentId,
-    arangodb::velocypack::Slice doc, const arangodb::OperationOptions& options,
-    bool performChecks) {
+    const arangodb::LocalDocumentId& documentId, arangodb::velocypack::Slice doc,
+    const arangodb::OperationOptions& options, bool performChecks) {
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
 
@@ -444,10 +440,9 @@ arangodb::Result arangodb::RocksDBZkdIndexBase::insert(
   return {};
 }
 
-arangodb::Result arangodb::RocksDBZkdIndexBase::remove(arangodb::transaction::Methods& trx,
-                                                   arangodb::RocksDBMethods* methods,
-                                                   const arangodb::LocalDocumentId& documentId,
-                                                   arangodb::velocypack::Slice doc) {
+arangodb::Result arangodb::RocksDBZkdIndexBase::remove(
+    arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
+    const arangodb::LocalDocumentId& documentId, arangodb::velocypack::Slice doc) {
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
 
@@ -482,7 +477,6 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndexBase::supportsFilterCondit
     const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
     const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference, size_t itemsInIndex) const {
-
   return zkd::supportsFilterCondition(this, allIndexes, node, reference, itemsInIndex);
 }
 
@@ -493,27 +487,24 @@ arangodb::aql::AstNode* arangodb::RocksDBZkdIndexBase::specializeCondition(
 
 std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndexBase::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
-    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts,
-    ReadOwnWrites readOwnWrites) {
-
+    const arangodb::aql::Variable* reference,
+    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites) {
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(&_collection, this, trx,
-                                                   std::move(min), std::move(max),
-                                                   fields().size(), readOwnWrites);
+                                                          std::move(min), std::move(max),
+                                                          fields().size(), readOwnWrites);
 }
-
 
 std::unique_ptr<IndexIterator> arangodb::RocksDBUniqueZkdIndex::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
-    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts,
-    ReadOwnWrites readOwnWrites) {
-
+    const arangodb::aql::Variable* reference,
+    const arangodb::IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites) {
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(&_collection, this, trx,
-                                                          std::move(min), std::move(max),
-                                                          fields().size(), readOwnWrites);
+                                                         std::move(min), std::move(max),
+                                                         fields().size(), readOwnWrites);
 }
 
 arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
@@ -550,8 +541,7 @@ arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
 
 arangodb::Result arangodb::RocksDBUniqueZkdIndex::remove(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
-    const arangodb::LocalDocumentId& documentId,
-    arangodb::velocypack::Slice doc) {
+    const arangodb::LocalDocumentId& documentId, arangodb::velocypack::Slice doc) {
   TRI_ASSERT(_unique == true);
   TRI_ASSERT(_sparse == false);
 

@@ -206,7 +206,8 @@ auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
   while (input.hasDataRow()) {
     auto source = VPackSlice{};
     auto target = VPackSlice{};
-    std::tie(std::ignore, _inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(std::ignore, _inputRow) =
+        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(_inputRow.isInitialized());
 
     // Ordering important here.

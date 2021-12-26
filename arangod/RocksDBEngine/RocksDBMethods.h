@@ -28,7 +28,7 @@
 #include <memory>
 
 namespace rocksdb {
- class Slice;
+class Slice;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -47,24 +47,23 @@ class RocksDBMethods {
   // the default implementation is to do nothing
   virtual bool EnableIndexing() { return false; }
 
-  virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
-                              rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) = 0;
-  virtual rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
-                                       rocksdb::Slice const&,
+  virtual rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+                              rocksdb::PinnableSlice*, ReadOwnWrites) = 0;
+  virtual rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                                        rocksdb::PinnableSlice*) = 0;
   /// assume_tracked=true will assume you used GetForUpdate on this key earlier.
   /// it will still verify this, so it is slower than PutUntracked
   virtual rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
                               rocksdb::Slice const&, bool assume_tracked) = 0;
   /// Like Put, but will not perform any write-write conflict checks
-  virtual rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
-                                       rocksdb::Slice const&) = 0;
+  virtual rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
+                                       RocksDBKey const&, rocksdb::Slice const&) = 0;
 
   virtual rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
   /// contrary to Delete, a SingleDelete may only be used
   /// when keys are inserted exactly once (and never overwritten)
   virtual rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
-  
+
   virtual void PutLogData(rocksdb::Slice const&) = 0;
 };
 
@@ -110,8 +109,7 @@ struct IndexingEnabler {
   IndexingEnabler& operator=(IndexingEnabler const&) = delete;
   IndexingEnabler& operator=(IndexingEnabler&&) = delete;
 
-  IndexingEnabler(RocksDBMethods* meth, bool condition)
-      : _meth(nullptr) {
+  IndexingEnabler(RocksDBMethods* meth, bool condition) : _meth(nullptr) {
     if (condition) {
       bool enableHere = meth->EnableIndexing();
       if (enableHere) {

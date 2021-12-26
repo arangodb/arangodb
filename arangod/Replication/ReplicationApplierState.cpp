@@ -97,7 +97,7 @@ void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   _failedConnects = 0;
   // don't need to reset the following
   // _totalFailedConnects = 0;
-  // _totalResyncs = 0; 
+  // _totalResyncs = 0;
   // _totalRequests = 0;
   // _totalEvents = 0;
   // _totalDocuments = 0;
@@ -109,7 +109,7 @@ void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   // _totalFetchInstances = 0;
   // _startTime[0] = '\0';
 
-  if (reducedSet) { 
+  if (reducedSet) {
     return;
   }
 

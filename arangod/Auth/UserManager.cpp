@@ -85,15 +85,10 @@ static bool inline IsRole(std::string const& name) {
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
-    : _server(server), 
-      _globalVersion(1), 
-      _internalVersion(0) {}
+    : _server(server), _globalVersion(1), _internalVersion(0) {}
 #else
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
-    : _server(server),
-      _globalVersion(1),
-      _internalVersion(0),
-      _authHandler(nullptr) {}
+    : _server(server), _globalVersion(1), _internalVersion(0), _authHandler(nullptr) {}
 
 auth::UserManager::UserManager(application_features::ApplicationServer& server,
                                std::unique_ptr<auth::Handler> handler)
@@ -110,8 +105,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
 
-    if (s.get("source").isString() &&
-        s.get("source").stringRef() == "LDAP") {
+    if (s.get("source").isString() && s.get("source").stringRef() == "LDAP") {
       LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
           << "LDAP: skip user in collection _users: " << s.get("user").copyString();
       continue;
@@ -133,21 +127,23 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
     // simulates the case that the _users collection is not yet available
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-  
+
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
     LOG_TOPIC("b8c47", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "system database is unknown";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "system database is unknown");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "system database is unknown");
   }
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
-  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(*vocbase),
-                                            arangodb::aql::QueryString(queryStr), nullptr);
+  auto query =
+      arangodb::aql::Query::create(transaction::StandaloneContext::Create(*vocbase),
+                                   arangodb::aql::QueryString(queryStr), nullptr);
 
   query->queryOptions().cache = false;
   query->queryOptions().ttl = 30;
@@ -248,7 +244,8 @@ void auth::UserManager::loadFromDB() {
         _server.hasFeature<BootstrapFeature>() &&
         !_server.getFeature<BootstrapFeature>().isReady()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
-        "Cannot load users because the _users collection is not yet available");
+                                     "Cannot load users because the _users "
+                                     "collection is not yet available");
     }
     LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();
@@ -290,7 +287,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
+                                  AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -343,7 +341,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       // user was outdated, we should trigger a reload
       triggerLocalReload();
       LOG_TOPIC("cf922", DEBUG, Logger::AUTHENTICATION)
-      << "Cannot update user : '" << res.errorMessage() << "'";
+          << "Cannot update user : '" << res.errorMessage() << "'";
     }
   }
   return res;
@@ -361,7 +359,8 @@ void auth::UserManager::createRootUser() {
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
-    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
+    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION)
+        << "\"root\" already exists";
     return;
   }
   TRI_ASSERT(_userCache.empty());
@@ -386,7 +385,8 @@ void auth::UserManager::createRootUser() {
         << "unable to create user \"root\": " << ex.what();
   } catch (...) {
     // No action
-    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
+    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION)
+        << "unable to create user \"root\"";
   }
 
   triggerGlobalReload();
@@ -508,20 +508,20 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
       }
     }
   }
-  
+
   bool triggerUpdate = !toUpdate.empty();
-  
+
   Result res;
   do {
     auto it = toUpdate.begin();
-    while(it != toUpdate.end()) {
+    while (it != toUpdate.end()) {
       WRITE_LOCKER(writeGuard, _userCacheLock);
-      res = storeUserInternal(*it, /*replace*/true);
-      
+      res = storeUserInternal(*it, /*replace*/ true);
+
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && retryOnConflict) {
         res.reset();
         writeGuard.unlock();
-        loadFromDB(); // should be noop iff nothing changed
+        loadFromDB();  // should be noop iff nothing changed
         writeGuard.lock();
         UserMap::iterator it2 = _userCache.find(it->username());
         if (it2 != _userCache.end()) {
@@ -643,15 +643,16 @@ static Result RemoveUserInternal(application_features::ApplicationServer& server
   // will ask us again for permissions and we get a deadlock
   ExecContextSuperuserScope scope;
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
-  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection, AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::UsersCollection,
+                                  AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
 
   if (res.ok()) {
-    OperationResult result =
-        trx.remove(StaticStrings::UsersCollection, builder.slice(), OperationOptions());
+    OperationResult result = trx.remove(StaticStrings::UsersCollection,
+                                        builder.slice(), OperationOptions());
     res = trx.finish(result.result);
   }
 
@@ -733,7 +734,8 @@ bool auth::UserManager::checkPassword(std::string const& username, std::string c
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (it != _userCache.end() && (it->second.source() == auth::Source::Local)) {
     if (af != nullptr && !af->localAuthentication()) {
-      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
+      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION)
+          << "Local users are forbidden";
       return false;
     }
     auth::User const& user = it->second;

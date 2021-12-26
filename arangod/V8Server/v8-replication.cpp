@@ -166,8 +166,7 @@ static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& 
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  result = TRI_VPackToV8(isolate, builder.slice(),
-                         transactionContext->getVPackOptions());
+  result = TRI_VPackToV8(isolate, builder.slice(), transactionContext->getVPackOptions());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -245,18 +244,21 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           r.errorNumber(),
           StringUtils::concatT("cannot sync from remote endpoint: ", r.errorMessage(),
-                               ". last progress message was: '", syncer->progress(), "'"));
+                               ". last progress message was: '",
+                               syncer->progress(), "'"));
     }
 
     if (keepBarrier) {  // TODO: keep just for API compatibility
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "barrierId"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, 0)).FromMaybe(false);
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "barrierId"),
+                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, 0))
+          .FromMaybe(false);
     }
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
-                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer->getLastLogTick())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
+              TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer->getLastLogTick()))
+        .FromMaybe(false);
 
     std::map<DataSourceId, std::string>::const_iterator it;
     std::map<DataSourceId, std::string> const& c = syncer->getProcessedCollections();
@@ -267,14 +269,19 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
       std::string const cidString = StringUtils::itoa((*it).first.id());
 
       v8::Handle<v8::Object> ci = v8::Object::New(isolate);
-      ci->Set(context, TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cidString)).FromMaybe(false);
+      ci->Set(context, TRI_V8_ASCII_STRING(isolate, "id"),
+              TRI_V8_STD_STRING(isolate, cidString))
+          .FromMaybe(false);
       ci->Set(context, TRI_V8_ASCII_STRING(isolate, "name"),
-              TRI_V8_STD_STRING(isolate, (*it).second)).FromMaybe(false);
+              TRI_V8_STD_STRING(isolate, (*it).second))
+          .FromMaybe(false);
 
       collections->Set(context, j++, ci).FromMaybe(false);
     }
 
-    result->Set(context, TRI_V8_ASCII_STRING(isolate, "collections"), collections).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "collections"), collections)
+        .FromMaybe(false);
   } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         ex.code(), std::string("cannot sync from remote endpoint: ") +

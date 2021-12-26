@@ -290,7 +290,6 @@ NodeType Node::type() const {
   return (_isArray || (_value != nullptr && _value->size())) ? LEAF : NODE;
 }
 
-
 bool Node::lifetimeExpired() const {
   using clock = std::chrono::system_clock;
   return _ttl != clock::time_point() && _ttl < clock::now();
@@ -301,7 +300,6 @@ Node& Node::getOrCreate(std::vector<std::string> const& pv) {
   Node* current = this;
 
   for (std::string const& key : pv) {
-
     // Remove TTL for any nodes on the way down, if and only if the noted TTL
     // is expired.
     if (current->lifetimeExpired()) {
@@ -312,10 +310,9 @@ Node& Node::getOrCreate(std::vector<std::string> const& pv) {
       current->_children = std::make_unique<Children>();
     }
     auto& children = *current->_children;
-    auto  child = children.find(key);
+    auto child = children.find(key);
 
     if (child == children.end()) {
-
       current->_isArray = false;
       if (current->_value != nullptr) {
         current->_value.reset();
@@ -335,30 +332,25 @@ Node& Node::getOrCreate(std::vector<std::string> const& pv) {
 
 /// @brief rh-value at path vector. Check if TTL has expired.
 std::optional<std::reference_wrapper<Node const>> Node::get(std::vector<std::string> const& pv) const {
-
   Node const* current = this;
 
   for (std::string const& key : pv) {
-
     if (current->_children == nullptr) {
       return std::nullopt;
     }
 
     auto const& children = *current->_children;
-    auto const  child = children.find(key);
+    auto const child = children.find(key);
 
     if (child == children.end() || child->second->lifetimeExpired()) {
       return std::nullopt;
-    }  else {
+    } else {
       current = child->second.get();
     }
-
   }
 
   return *current;
-
 }
-
 
 /// @brief lh-value at path
 Node& Node::getOrCreate(std::string const& path) {
@@ -399,8 +391,8 @@ Store* Node::getRootStore() const {
     tmp = par;
     par = par->_parent;
   }
-  return tmp->_store; // Can be nullptr if we are not in a Node that belongs
-                      // to a store.
+  return tmp->_store;  // Can be nullptr if we are not in a Node that belongs
+                       // to a store.
 }
 
 // velocypack value type of this node
@@ -414,13 +406,10 @@ bool Node::addTimeToLive(std::chrono::time_point<std::chrono::system_clock> cons
   return true;
 }
 
-void Node::timeToLive(TimePoint const& ttl) {
-  _ttl = ttl;
-}
+void Node::timeToLive(TimePoint const& ttl) { _ttl = ttl; }
 
 // remove time to live entry for this node
 bool Node::removeTimeToLive() {
-
   Store* s = getRootStore();  // We could be in a Node that belongs to a store,
                               // or in one that doesn't.
   if (s != nullptr) {
@@ -438,15 +427,13 @@ namespace consensus {
 /// Set value
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
-
   using namespace std::chrono;
 
   Slice val = slice.get("new");
   if (val.isNone()) {
     // key "new" not present
-    return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string(
-        "Operator set without new value: ") + slice.toJson());
+    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED, std::string("Operator set without new value: ") +
+                                                                       slice.toJson());
   }
 
   if (val.isObject()) {
@@ -468,18 +455,17 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
   VPackSlice ttl_v = slice.get("ttl");
   if (!ttl_v.isNone()) {
     if (ttl_v.isNumber()) {
-
       // ttl in millisconds
-      long ttl =
-          1000l * ((ttl_v.isDouble())
-                   ? static_cast<long>(ttl_v.getNumber<double>())
-                   : static_cast<long>(ttl_v.getNumber<int>()));
+      long ttl = 1000l * ((ttl_v.isDouble())
+                              ? static_cast<long>(ttl_v.getNumber<double>())
+                              : static_cast<long>(ttl_v.getNumber<int>()));
 
       // calclate expiry time
-      auto const expires = slice.hasKey("epoch_millis") ?
-        time_point<system_clock>(
-          milliseconds(slice.get("epoch_millis").getNumber<uint64_t>() + ttl)) :
-        system_clock::now() + milliseconds(ttl);
+      auto const expires =
+          slice.hasKey("epoch_millis")
+              ? time_point<system_clock>(milliseconds(
+                    slice.get("epoch_millis").getNumber<uint64_t>() + ttl))
+              : system_clock::now() + milliseconds(ttl);
 
       // set ttl limit
       addTimeToLive(expires);
@@ -529,9 +515,8 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
   VPackSlice v = slice.get("new");
   if (v.isNone()) {
     // key "new" not present
-    return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string(
-        "Operator push without new value: ") + slice.toJson());
+    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED, std::string("Operator push without new value: ") +
+                                                                       slice.toJson());
   }
   Builder tmp;
   {
@@ -552,17 +537,14 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
   bool havePos = slice.hasKey("pos");
 
   if (!haveVal && !havePos) {
-    return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string(
-        "Erase without value or position to be erased is illegal: ") + slice.toJson());
+    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED, std::string("Erase without value or position to be erased is illegal: ") +
+                                                                       slice.toJson());
   } else if (haveVal && havePos) {
-    return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string(
-        "Erase without value or position to be erased is illegal: ") + slice.toJson());
+    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED, std::string("Erase without value or position to be erased is illegal: ") +
+                                                                       slice.toJson());
   } else if (havePos && (!slice.get("pos").isUInt() && !slice.get("pos").isSmallInt())) {
-    return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string(
-        "Erase with non-positive integer position is illegal: ") + slice.toJson());
+    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED, std::string("Erase with non-positive integer position is illegal: ") +
+                                                                       slice.toJson());
   }
 
   Builder tmp;
@@ -581,8 +563,8 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
         size_t pos = slice.get("pos").getNumber<size_t>();
         if (pos >= this->slice().length()) {
           return ResultT<std::shared_ptr<Node>>::error(
-            TRI_ERROR_FAILED, std::string(
-              "Erase with position out of range: ") + slice.toJson());
+              TRI_ERROR_FAILED,
+              std::string("Erase with position out of range: ") + slice.toJson());
         }
         size_t n = 0;
         for (const auto& old : VPackArrayIterator(this->slice())) {
@@ -604,13 +586,12 @@ template <>
 ResultT<std::shared_ptr<Node>> Node::handle<REPLACE>(VPackSlice const& slice) {
   if (!slice.hasKey("val")) {
     return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string("Operator erase without value to be erased: ")
-      + slice.toJson());
+        TRI_ERROR_FAILED,
+        std::string("Operator erase without value to be erased: ") + slice.toJson());
   }
   if (!slice.hasKey("new")) {
-    return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string("Operator replace without new value: ")
-      + slice.toJson());
+    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED, std::string("Operator replace without new value: ") +
+                                                                       slice.toJson());
   }
   Builder tmp;
   {
@@ -657,9 +638,8 @@ ResultT<std::shared_ptr<Node>> Node::handle<POP>(VPackSlice const& slice) {
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string("Operator prepend without new value: ")
-      + slice.toJson());
+    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED, std::string("Operator prepend without new value: ") +
+                                                                       slice.toJson());
   }
   Builder tmp;
   {
@@ -677,7 +657,8 @@ ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
   Builder tmp;
-  {    VPackArrayBuilder t(&tmp);
+  {
+    VPackArrayBuilder t(&tmp);
     if (this->slice().isArray() && !lifetimeExpired()) {  // If a
       VPackArrayIterator it(this->slice());
       bool first = true;
@@ -694,12 +675,12 @@ ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
-template<>
+template <>
 ResultT<std::shared_ptr<Node>> Node::handle<READ_LOCK>(VPackSlice const& slice) {
   Slice user = slice.get("by");
   if (!user.isString()) {
     return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string("Invalid read lock: ") + slice.toJson());
+        TRI_ERROR_FAILED, std::string("Invalid read lock: ") + slice.toJson());
   }
 
   if (isReadLockable(user.stringRef())) {
@@ -723,7 +704,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_UNLOCK>(VPackSlice const& slice
   Slice user = slice.get("by");
   if (!user.isString()) {
     return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string("Invalid read unlock: ") + slice.toJson());
+        TRI_ERROR_FAILED, std::string("Invalid read unlock: ") + slice.toJson());
   }
 
   if (isReadUnlockable(user.stringRef())) {
@@ -746,17 +727,16 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_UNLOCK>(VPackSlice const& slice
     return ResultT<std::shared_ptr<Node>>::success(nullptr);
   }
 
-  return ResultT<std::shared_ptr<Node>>::error(
-    TRI_ERROR_FAILED, "Read unlock failed");
-
+  return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED,
+                                               "Read unlock failed");
 }
 
-template<>
+template <>
 ResultT<std::shared_ptr<Node>> Node::handle<WRITE_LOCK>(VPackSlice const& slice) {
   Slice user = slice.get("by");
   if (!user.isString()) {
     return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
+        TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
   }
 
   if (isWriteLockable(user.stringRef())) {
@@ -764,23 +744,22 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_LOCK>(VPackSlice const& slice)
     return ResultT<std::shared_ptr<Node>>::success(nullptr);
   }
   return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_LOCKED);
-
 }
 
-template<>
+template <>
 ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slice) {
   Slice user = slice.get("by");
   if (!user.isString()) {
     return ResultT<std::shared_ptr<Node>>::error(
-      TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
+        TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
   }
 
   if (isWriteUnlockable(user.stringRef())) {
     return deleteMe();
   }
 
-  return ResultT<std::shared_ptr<Node>>::error(
-    TRI_ERROR_FAILED, "Write unlock failed");
+  return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED,
+                                               "Write unlock failed");
 }
 
 bool Node::isReadLockable(const VPackStringRef& by) const {
@@ -884,9 +863,7 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
   }
 
   return ResultT<std::shared_ptr<Node>>::error(
-    TRI_ERROR_FAILED,
-    std::string("Unknown operation '") + oper + "'");
-
+      TRI_ERROR_FAILED, std::string("Unknown operation '") + oper + "'");
 }
 
 // Apply slice to this node
@@ -1127,7 +1104,8 @@ std::optional<std::string> Node::hasAsString(std::string const& url) const {
   return std::nullopt;
 }  // hasAsString
 
-std::optional<std::reference_wrapper<Node::Children const>> Node::hasAsChildren(std::string const& url) const {
+std::optional<std::reference_wrapper<Node::Children const>> Node::hasAsChildren(
+    std::string const& url) const {
   if (auto node = get(url); node) {
     return node->get().children();
   }
@@ -1135,8 +1113,7 @@ std::optional<std::reference_wrapper<Node::Children const>> Node::hasAsChildren(
   return std::nullopt;
 }  // hasAsChildren
 
-bool Node::hasAsBuilder(std::string const& url, Builder& builder,
-                                          bool showHidden) const {
+bool Node::hasAsBuilder(std::string const& url, Builder& builder, bool showHidden) const {
   if (auto node = get(url); node) {
     node->get().toBuilder(builder, showHidden);
     return true;

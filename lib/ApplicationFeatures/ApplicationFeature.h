@@ -50,7 +50,7 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationServer& server, std::string const& name);
 
   virtual ~ApplicationFeature();
-  
+
   enum class State {
     UNINITIALIZED,
     INITIALIZED,
@@ -269,4 +269,3 @@ class ApplicationFeature {
 
 }  // namespace application_features
 }  // namespace arangodb
-

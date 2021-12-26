@@ -26,8 +26,8 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/QueryContext.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
@@ -66,7 +66,9 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
 template <typename Modifier>
 SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fetcher& fetcher,
                                                                              Infos& info)
-    : _trx(info._query.newTrxContext()), _info(info), _upstreamState(ExecutionState::HASMORE) {
+    : _trx(info._query.newTrxContext()),
+      _info(info),
+      _upstreamState(ExecutionState::HASMORE) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
 
@@ -108,7 +110,8 @@ template <typename Modifier>
 auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(
     InputAqlItemRow& input, Stats& stats) -> OperationResult {
   _info._options.silent = false;
-  _info._options.returnOld = _info._options.returnOld || _info._outputRegisterId.isValid();
+  _info._options.returnOld =
+      _info._options.returnOld || _info._outputRegisterId.isValid();
 
   OperationResult result(Result(), _info._options);
 
@@ -145,7 +148,8 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     if (_info._options.returnOld && !_info._options.isOverwriteModeUpdateReplace()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-          "OLD is only available when using INSERT with overwriteModes 'update' or 'replace'");
+          "OLD is only available when using INSERT with overwriteModes "
+          "'update' or 'replace'");
     }
     result = _trx.insert(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;
@@ -194,8 +198,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutpu
     InputAqlItemRow& input, OutputAqlItemRow& output, OperationResult& result) -> void {
   OperationOptions& options = _info._options;
 
-  if (!(_info._outputRegisterId.isValid()  ||
-        _info._outputOldRegisterId.isValid() ||
+  if (!(_info._outputRegisterId.isValid() || _info._outputOldRegisterId.isValid() ||
         _info._outputNewRegisterId.isValid())) {
     if (_info._hasParent) {
       output.copyRow(input);
@@ -213,14 +216,13 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutpu
   if (result.buffer) {
     outDocument = result.slice().resolveExternal();
   }
-  
+
   const bool isIndex = std::is_same<Modifier, IndexTag>::value;
-    
+
   VPackSlice oldDocument = VPackSlice::nullSlice();
   VPackSlice newDocument = VPackSlice::nullSlice();
   if (!isIndex && outDocument.isObject()) {
-    if (_info._outputNewRegisterId.isValid() &&
-        outDocument.hasKey(StaticStrings::New)) {
+    if (_info._outputNewRegisterId.isValid() && outDocument.hasKey(StaticStrings::New)) {
       newDocument = outDocument.get(StaticStrings::New);
     }
     if (outDocument.hasKey(StaticStrings::Old)) {
@@ -231,8 +233,7 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutpu
     }
   }
 
-  TRI_ASSERT(_info._outputRegisterId.isValid() ||
-             _info._outputOldRegisterId.isValid() ||
+  TRI_ASSERT(_info._outputRegisterId.isValid() || _info._outputOldRegisterId.isValid() ||
              _info._outputNewRegisterId.isValid());
 
   // place documents as in the out variable slots of the result

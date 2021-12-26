@@ -43,15 +43,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-WindowBounds::WindowBounds(Type type,
-                           AqlValue&& preceding,
-                           AqlValue&& following)
+WindowBounds::WindowBounds(Type type, AqlValue&& preceding, AqlValue&& following)
     : _type(type) {
   auto g = scopeGuard([&]() noexcept {
     preceding.destroy();
     following.destroy();
   });
-        
+
   if (Type::Row == type) {
     auto validate = [&](AqlValue& val) -> int64_t {
       if (val.isNumber()) {
@@ -60,19 +58,20 @@ WindowBounds::WindowBounds(Type type,
           return v;
         }
       } else if (val.isString() && (val.slice().isEqualString("unbounded") ||
-                 val.slice().isEqualString("inf"))) {
+                                    val.slice().isEqualString("inf"))) {
         return std::numeric_limits<int64_t>::max();
       } else if (val.isNone()) {
         return 0;
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-        "WINDOW row spec is invalid; bounds must be positive integers or \"unbounded\"");
+                                     "WINDOW row spec is invalid; bounds must "
+                                     "be positive integers or \"unbounded\"");
     };
     _numPrecedingRows = validate(preceding);
     _numFollowingRows = validate(following);
     return;
   }
-      
+
   if (Type::Range == type) {
     auto checkType = [](AqlValue const& val) {
       if (!val.isString() && !val.isNumber() && !val.isNone()) {
@@ -85,18 +84,21 @@ WindowBounds::WindowBounds(Type type,
 
     if ((preceding.isNone() == following.isNone()) &&
         (preceding.isString() != following.isString())) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "WINDOW range spec is invalid; bounds must be of the same type - "
-                                     "either both are numeric values, or both are ISO 8601 duration strings");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "WINDOW range spec is invalid; bounds must be of the same type - "
+          "either both are numeric values, or both are ISO 8601 duration "
+          "strings");
     }
 
     if (preceding.isString() || following.isString()) {
       _rangeType = RangeType::Date;
       if (preceding.isString()) {
         if (!basics::parseIsoDuration(preceding.slice().stringRef(), _precedingDuration)) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "WINDOW range spec is invalid; 'preceding' is not a "
-                                         "valid ISO 8601 duration string");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "WINDOW range spec is invalid; 'preceding' is not a "
+              "valid ISO 8601 duration string");
         }
       } else {
         TRI_ASSERT(preceding.isNone());
@@ -104,9 +106,10 @@ WindowBounds::WindowBounds(Type type,
 
       if (following.isString()) {
         if (!basics::parseIsoDuration(following.slice().stringRef(), _followingDuration)) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "WINDOW range spec is invalid; 'following' is not a "
-                                         "valid ISO 8601 duration string");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "WINDOW range spec is invalid; 'following' is not a "
+              "valid ISO 8601 duration string");
         }
       } else {
         TRI_ASSERT(following.isNone());
@@ -121,8 +124,7 @@ WindowBounds::WindowBounds(Type type,
 }
 
 WindowBounds::WindowBounds(Type t, VPackSlice slice)
-  : WindowBounds(t, AqlValue(slice.get("following")),
-                 AqlValue(slice.get("preceding"))) {}
+    : WindowBounds(t, AqlValue(slice.get("following")), AqlValue(slice.get("preceding"))) {}
 
 WindowBounds::~WindowBounds() = default;
 
@@ -283,7 +285,8 @@ void WindowBounds::toVelocyPack(VPackBuilder& b) const {
           append(duration.months, 'M');
           append(duration.weeks, 'W');
           append(duration.days, 'D');
-          if (duration.hours != 0 || duration.minutes != 0 || duration.seconds != 0 || duration.milliseconds != 0) {
+          if (duration.hours != 0 || duration.minutes != 0 ||
+              duration.seconds != 0 || duration.milliseconds != 0) {
             result.push_back('T');
             append(duration.hours, 'H');
             append(duration.minutes, 'M');
@@ -486,13 +489,14 @@ CostEstimate WindowNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   if (_rangeVariable == nullptr) {
     uint64_t numRows = 1;
-    if ( _bounds.unboundedPreceding()) {
+    if (_bounds.unboundedPreceding()) {
       numRows += estimate.estimatedNrItems;
     } else {
       numRows += std::min<uint64_t>(estimate.estimatedNrItems, _bounds.numPrecedingRows());
     }
     numRows += _bounds.numFollowingRows();
-    estimate.estimatedCost += double(numRows) * double(numRows) * _aggregateVariables.size();
+    estimate.estimatedCost +=
+        double(numRows) * double(numRows) * _aggregateVariables.size();
   } else {  // guestimate
     estimate.estimatedCost += 4 * _aggregateVariables.size();
   }

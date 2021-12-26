@@ -43,11 +43,12 @@ struct AsyncFollower : replicated_log::ILogParticipant, replicated_log::Abstract
       -> futures::Future<replicated_log::AppendEntriesResult> override;
 
   void stop() noexcept;
+
  private:
   void runWorker();
 
   struct AsyncRequest {
-    AsyncRequest(replicated_log::AppendEntriesRequest  request);
+    AsyncRequest(replicated_log::AppendEntriesRequest request);
     replicated_log::AppendEntriesRequest request;
     futures::Promise<replicated_log::AppendEntriesResult> promise;
   };

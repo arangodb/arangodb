@@ -126,10 +126,12 @@ VPackFeature::VPackFeature(application_features::ApplicationServer& server, int*
 }
 
 void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  std::unordered_set<std::string> const inputTypes{{"json", "json-hex", "vpack", "vpack-hex" }};
-  std::unordered_set<std::string> const outputTypes{{"json", "json-pretty", "vpack", "vpack-hex" }};
+  std::unordered_set<std::string> const inputTypes{
+      {"json", "json-hex", "vpack", "vpack-hex"}};
+  std::unordered_set<std::string> const outputTypes{
+      {"json", "json-pretty", "vpack", "vpack-hex"}};
 
-  options->addOption("--input-file", 
+  options->addOption("--input-file",
 #ifdef __linux__
                      "input filename (leave empty or use \"-\" for stdin)",
 #else
@@ -137,25 +139,29 @@ void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
 #endif
                      new StringParameter(&_inputFile));
 
-  options->addOption("--output-file", 
+  options->addOption("--output-file",
 #ifdef __linux__
                      "output filename (leave empty or use \"+\" for stdout)",
 #else
-                     "output filename", 
+                     "output filename",
 #endif
                      new StringParameter(&_outputFile));
 
-  options->addOption("--input-type", "type of input",
-                     new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes))
-                     .setIntroducedIn(30800);
-  
-  options->addOption("--output-type", "type of output",
-                     new DiscreteValuesParameter<StringParameter>(&_outputType, outputTypes))
-                     .setIntroducedIn(30800);
-  
-  options->addOption("--fail-on-non-json", "fail when trying to emit non-JSON types to JSON output",
-                     new BooleanParameter(&_failOnNonJson))
-                     .setIntroducedIn(30800);
+  options
+      ->addOption("--input-type", "type of input",
+                  new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes))
+      .setIntroducedIn(30800);
+
+  options
+      ->addOption("--output-type", "type of output",
+                  new DiscreteValuesParameter<StringParameter>(&_outputType, outputTypes))
+      .setIntroducedIn(30800);
+
+  options
+      ->addOption("--fail-on-non-json",
+                  "fail when trying to emit non-JSON types to JSON output",
+                  new BooleanParameter(&_failOnNonJson))
+      .setIntroducedIn(30800);
 }
 
 void VPackFeature::start() {
@@ -178,8 +184,10 @@ void VPackFeature::start() {
   // read ipnut
   std::string input = basics::FileUtils::slurp(_inputFile);
 
-  bool const inputIsJson = (_inputType == "json" || _inputType == "json-hex" || _inputType == "json-pretty");
-  bool const inputIsHex = (_inputType == "json-hex" || _inputType == "vpack-hex");
+  bool const inputIsJson = (_inputType == "json" || _inputType == "json-hex" ||
+                            _inputType == "json-pretty");
+  bool const inputIsHex =
+      (_inputType == "json-hex" || _inputType == "vpack-hex");
   if (inputIsHex) {
     input = ::convertFromHex(input);
   }
@@ -217,12 +225,12 @@ void VPackFeature::start() {
     slice = VPackSlice(reinterpret_cast<uint8_t const*>(input.data()));
   }
 
-  
   // produce output
   std::ofstream ofs(_outputFile, std::ofstream::out);
 
   if (!ofs.is_open()) {
-    LOG_TOPIC("bb8a7", ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
+    LOG_TOPIC("bb8a7", ERR, Logger::FIXME)
+        << "cannot write outfile '" << _outputFile << "'";
     *_result = EXIT_FAILURE;
     return;
   }
@@ -233,16 +241,18 @@ void VPackFeature::start() {
     ofs.seekp(0);
   }
 
-  bool const outputIsJson = (_outputType == "json" || _outputType == "json-pretty");
+  bool const outputIsJson =
+      (_outputType == "json" || _outputType == "json-pretty");
   bool const outputIsHex = (_outputType == "vpack-hex");
   if (outputIsJson) {
     // JSON output
     VPackOptions options;
     options.prettyPrint = (_outputType == "json-pretty");
     options.unsupportedTypeBehavior =
-        (_failOnNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
+        (_failOnNonJson ? VPackOptions::ConvertUnsupportedType
+                        : VPackOptions::FailOnUnsupportedType);
     options.customTypeHandler = &customTypeHandler;
-  
+
     arangodb::velocypack::OutputFileStreamSink sink(&ofs);
     VPackDumper dumper(&sink, &options);
 

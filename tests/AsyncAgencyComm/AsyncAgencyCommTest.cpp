@@ -137,8 +137,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
       ASSERT_EQ(VPackSlice(expectReq.body.data()).toJson(), req->slice().toJson());
     }
 
-    void sendRequest(std::unique_ptr<fuerte::Request> req,
-                     fuerte::RequestCallback cb) override {
+    void sendRequest(std::unique_ptr<fuerte::Request> req, fuerte::RequestCallback cb) override {
       validateRequest(req);
 
       // send response
@@ -174,7 +173,7 @@ struct AsyncAgencyCommTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS, arangodb::LogLevel::FATAL> {
   AsyncAgencyCommTest() : server(false) {
-      server.addFeature<SchedulerFeature>(true);
+    server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
   }
 
@@ -519,7 +518,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_service_unavailable) {
       .returnError(fuerte::Error::RequestTimeout);
   pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post,
                      "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
-    .returnResponse(fuerte::StatusServiceUnavailable,  R"=({"error": 503})="_vpack);
+      .returnResponse(fuerte::StatusServiceUnavailable, R"=({"error": 503})="_vpack);
   pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post,
                      "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
       .returnResponse(fuerte::StatusNotFound, R"=({"error": 404, "results": [0]})="_vpack);

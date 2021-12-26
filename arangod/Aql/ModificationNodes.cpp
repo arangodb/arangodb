@@ -137,14 +137,14 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
   auto executorInfos = ModificationExecutorInfos(
-      &engine,
-      inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
-      outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
-      _plan->getAst()->query(), std::move(options), collection(),
-      ProducesResults(producesResults()),
+      &engine, inDocRegister, RegisterPlan::MaxRegisterId,
+      RegisterPlan::MaxRegisterId, outputNew, outputOld,
+      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
+      std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -217,14 +217,14 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
   ModificationExecutorInfos infos(
-      &engine,
-      inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
-      outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
-      _plan->getAst()->query(), std::move(options), collection(),
-      ProducesResults(producesResults()),
+      &engine, inputRegister, RegisterPlan::MaxRegisterId,
+      RegisterPlan::MaxRegisterId, outputNew, outputOld,
+      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
+      std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -257,7 +257,7 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
-  
+
 void InsertNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
   _inVariable = Variable::replace(_inVariable, replacements);
 }
@@ -325,22 +325,23 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto executorInfos = ModificationExecutorInfos(
-      &engine,
-      inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
-      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
+      &engine, inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
+      outputOld, RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-  return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(&engine, this,
+                                                                std::move(registerInfos),
+                                                                std::move(executorInfos));
 }
 
 void RemoveNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
@@ -396,28 +397,30 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   if (inKeyRegister.isValid()) {
     readableInputRegisters.emplace(inKeyRegister);
   }
-  auto writableOutputRegisters = RegIdSet{};;
+  auto writableOutputRegisters = RegIdSet{};
+  ;
   if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
   if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto executorInfos = ModificationExecutorInfos(
-      &engine,
-      inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
-      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
+      &engine, inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
+      outputOld, RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
-  return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(&engine, this,
+                                                                std::move(registerInfos),
+                                                                std::move(executorInfos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -494,14 +497,16 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
   auto readableInputRegisters = RegIdSet{inDoc, insert, update};
-  auto writableOutputRegisters = RegIdSet{};;
+  auto writableOutputRegisters = RegIdSet{};
+  ;
   if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
   if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
@@ -509,8 +514,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   options.canDisableIndexing = false;
 
   auto executorInfos = ModificationExecutorInfos(
-      &engine,
-      inDoc, insert, update, outputNew, outputOld,
+      &engine, inDoc, insert, update, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),

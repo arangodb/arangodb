@@ -80,4 +80,3 @@ class Inception : public Thread {
 
 }  // namespace consensus
 }  // namespace arangodb
-

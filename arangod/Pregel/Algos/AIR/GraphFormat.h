@@ -33,8 +33,7 @@ namespace algos {
 namespace accumulators {
 
 struct GraphFormat final : public graph_format {
-  explicit GraphFormat(application_features::ApplicationServer& server,
-                       std::string resultField,
+  explicit GraphFormat(application_features::ApplicationServer& server, std::string resultField,
                        AccumulatorsDeclaration globalAccumulatorDeclarations,
                        AccumulatorsDeclaration vertexAccumulatorDeclarations,
                        CustomAccumulatorDefinitions customDefinitions,
@@ -62,7 +61,8 @@ struct GraphFormat final : public graph_format {
                     ProgrammablePregelAlgorithm::edge_type& targetPtr) override;
 
   greenspun::EvalResult buildVertexDocumentWithResult(
-      arangodb::velocypack::Builder& b, const ProgrammablePregelAlgorithm::vertex_type* ptr) const override;
+      arangodb::velocypack::Builder& b,
+      const ProgrammablePregelAlgorithm::vertex_type* ptr) const override;
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            VertexData const* targetPtr) const override {

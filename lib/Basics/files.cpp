@@ -329,14 +329,16 @@ bool TRI_CreateSymbolicLink(std::string const& target,
       ::CreateSymbolicLinkW(toWString(linkpath).data(), toWString(target).data(), 0x0);
   if (!created) {
     auto rv = translateWindowsError(::GetLastError());
-    error = StringUtils::concatT("failed to create a symlink ", target, " -> ", linkpath, " - ", rv.errorMessage());
+    error = StringUtils::concatT("failed to create a symlink ", target, " -> ",
+                                 linkpath, " - ", rv.errorMessage());
   }
   return created;
 #else
   int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
-    error = StringUtils::concatT("failed to create a symlink ", target, " -> ", linkpath, " - ", strerror(errno));
+    error = StringUtils::concatT("failed to create a symlink ", target, " -> ",
+                                 linkpath, " - ", strerror(errno));
   }
   return res == 0;
 #endif
@@ -928,7 +930,7 @@ TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length) {
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("c9c0c", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
-      return n; // always negative
+      return n;  // always negative
     } else if (n == 0) {
       break;
     }
@@ -1065,7 +1067,6 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
   return result._buffer;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Read a file and pass contents to user function:  true if entire file
 ///        processed
@@ -1080,10 +1081,8 @@ bool TRI_ProcessFile(char const* filename,
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return false;
   }
-  
-  auto guard = scopeGuard([&fd]() noexcept {
-    TRI_CLOSE(fd);
-  });
+
+  auto guard = scopeGuard([&fd]() noexcept { TRI_CLOSE(fd); });
 
   char buffer[4096];
 
@@ -1111,7 +1110,7 @@ bool TRI_ProcessFile(char const* filename,
 
 char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
-  gzFile gzFd = gzopen(filename,"rb");
+  gzFile gzFd = gzopen(filename, "rb");
   auto fdGuard = arangodb::scopeGuard([&gzFd]() noexcept {
     if (nullptr != gzFd) {
       gzclose(gzFd);
@@ -1134,7 +1133,8 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
         return nullptr;
       }
 
-      TRI_read_return_t n = gzread(gzFd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+      TRI_read_return_t n =
+          gzread(gzFd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
       if (n == 0) {
         break;
@@ -1148,30 +1148,30 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
       }
 
       TRI_IncreaseLengthStringBuffer(&result, (size_t)n);
-    } // while
+    }  // while
 
     if (length != nullptr) {
       *length = TRI_LengthStringBuffer(&result);
     }
 
     retPtr = result._buffer;
-  } // if
+  }  // if
 
   return retPtr;
-} // TRI_SlurpGzipFile
+}  // TRI_SlurpGzipFile
 
 #ifdef USE_ENTERPRISE
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slurps in a file that is encrypted and return unencrypted contents
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length) {
+char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* filename,
+                           char const* keyfile, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   encryptionFeature.setKeyFile(keyfile);
-  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() noexcept {
-    encryptionFeature.clearKey();
-  });
+  auto keyGuard = arangodb::scopeGuard(
+      [&encryptionFeature]() noexcept { encryptionFeature.clearKey(); });
 
   int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
@@ -1202,7 +1202,8 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
       return nullptr;
     }
 
-    TRI_read_return_t n = encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n =
+        encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -1840,7 +1841,8 @@ static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize, std::str
   try {
     TRI_read_t chunkRemain = fileSize;
     while (rc && (chunkRemain > 0)) {
-      auto readChunk = static_cast<TRI_read_t>((std::min)(C128, static_cast<size_t>(chunkRemain)));
+      auto readChunk =
+          static_cast<TRI_read_t>((std::min)(C128, static_cast<size_t>(chunkRemain)));
       TRI_read_return_t nRead = TRI_READ(srcFD, buf, readChunk);
 
       if (nRead < 0) {
@@ -1902,7 +1904,8 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& e
   return rc;
 }
 #else
-bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error, struct stat* statbuf /*= nullptr*/) {
+bool TRI_CopyFile(std::string const& src, std::string const& dst,
+                  std::string& error, struct stat* statbuf /*= nullptr*/) {
   int srcFD = open(src.c_str(), O_RDONLY);
   if (srcFD < 0) {
     error = "failed to open source file " + src + ": " + strerror(errno);
@@ -2028,14 +2031,14 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 /// @brief creates a hard link; the link target is not altered.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateHardlink(std::string const& existingFile, std::string const& newFile,
-                        std::string& error) {
+bool TRI_CreateHardlink(std::string const& existingFile,
+                        std::string const& newFile, std::string& error) {
 #ifndef _WIN32
   int rc = link(existingFile.c_str(), newFile.c_str());
 
   if (rc == -1) {
     error = std::string("failed to create hard link ") + newFile + ": " + strerror(errno);
-  } // if
+  }  // if
 
   return 0 == rc;
 #else
@@ -2090,7 +2093,7 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
   }
 
   char buffer[4096];
-  
+
   auto res = TRI_ERROR_NO_ERROR;
   *crc = TRI_InitialCrc32();
 
@@ -2208,7 +2211,7 @@ static ErrorCode mkDTemp(char* s, size_t bufferSize) {
         rv = TRI_CreateRecursiveDirectory(s, systemError, error);
         if (rv != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("6656f", ERR, arangodb::Logger::FIXME)
-            << "Unable to create temporary directory " << error;
+              << "Unable to create temporary directory " << error;
         }
       }
     }
@@ -2324,8 +2327,8 @@ std::string TRI_GetTempPath() {
         tries = 9;
 
         // create base directories of the new directory (but ignore any failures
-        // if they already exist. if this fails, the following mkDTemp will either
-        // succeed or fail and return an error
+        // if they already exist. if this fails, the following mkDTemp will
+        // either succeed or fail and return an error
         try {
           long systemError;
           std::string systemErrorStr;
@@ -2335,10 +2338,11 @@ std::string TRI_GetTempPath() {
           }
           // create base directory if it does not yet exist
           TRI_CreateRecursiveDirectory(baseDirectory.data(), systemError, systemErrorStr);
-        } catch (...) {}
+        } catch (...) {
+        }
 
-        // fill template string (XXXXXX) with some pseudo-random value and create
-        // the directory
+        // fill template string (XXXXXX) with some pseudo-random value and
+        // create the directory
         res = mkDTemp(SystemTempPath.get(), system.size() + 1);
       }
 
@@ -2466,10 +2470,8 @@ std::string TRI_LocateConfigDirectory(char const* binaryPath) {
   }
 
   std::string r = TRI_LocateInstallDirectory(nullptr, binaryPath);
-  std::string scDir =  _SYSCONFDIR_;
-  if (r.length() == 1 &&
-      r == TRI_DIR_SEPARATOR_STR &&
-      scDir[0] == TRI_DIR_SEPARATOR_CHAR) {
+  std::string scDir = _SYSCONFDIR_;
+  if (r.length() == 1 && r == TRI_DIR_SEPARATOR_STR && scDir[0] == TRI_DIR_SEPARATOR_CHAR) {
     r = scDir;
   } else {
     r += _SYSCONFDIR_;
@@ -2520,13 +2522,13 @@ bool TRI_PathIsAbsolute(std::string const& path) {
 }
 
 /// @brief return the amount of total and free disk space for the given path
-arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path, 
-                                      uint64_t& totalSpace, 
-                                      uint64_t& freeSpace) {
+arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
+                                      uint64_t& totalSpace, uint64_t& freeSpace) {
 #if _WIN32
   ULARGE_INTEGER freeBytesAvailableToCaller;
   ULARGE_INTEGER totalNumberOfBytes;
-  if (GetDiskFreeSpaceExW(toWString(path).data(), &freeBytesAvailableToCaller, &totalNumberOfBytes, nullptr) == 0) {
+  if (GetDiskFreeSpaceExW(toWString(path).data(), &freeBytesAvailableToCaller,
+                          &totalNumberOfBytes, nullptr) == 0) {
     DWORD lastError = GetLastError();
     return translateWindowsError(::GetLastError());
   }
@@ -2558,9 +2560,8 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
 
 /// @brief return the amount of total and free inodes for the given path.
 /// always returns 0 on Windows
-arangodb::Result TRI_GetINodesInfo(std::string const& path, 
-                                   uint64_t& totalINodes, 
-                                   uint64_t& freeINodes) {
+arangodb::Result TRI_GetINodesInfo(std::string const& path,
+                                   uint64_t& totalINodes, uint64_t& freeINodes) {
 #if _WIN32
   // hard-coded to always return 0
   totalINodes = 0;
@@ -2621,7 +2622,8 @@ TRI_SHA256Functor::TRI_SHA256Functor()
 #else
     EVP_MD_CTX_destroy(_context);
 #endif
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to initialize SHA256 processor");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to initialize SHA256 processor");
   }
 }
 
@@ -2643,5 +2645,6 @@ std::string TRI_SHA256Functor::finalize() {
   if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
     TRI_ASSERT(false);
   }
-  return arangodb::basics::StringUtils::encodeHex(reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
+  return arangodb::basics::StringUtils::encodeHex(reinterpret_cast<char const*>(&hash[0]),
+                                                  lengthOfHash);
 }

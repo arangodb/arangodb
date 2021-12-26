@@ -36,9 +36,8 @@ namespace graph {
 
 class TraverserDocumentCache final : public TraverserCache {
  public:
-  TraverserDocumentCache(aql::QueryContext& query, 
-                         std::shared_ptr<arangodb::cache::Cache> cache, 
-                         BaseOptions*);
+  TraverserDocumentCache(aql::QueryContext& query,
+                         std::shared_ptr<arangodb::cache::Cache> cache, BaseOptions*);
 
   ~TraverserDocumentCache();
 
@@ -52,8 +51,10 @@ class TraverserDocumentCache final : public TraverserCache {
                             arangodb::velocypack::Builder& builder) override;
 
   /// Looks up the document and inserts it into the builder
-  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result) override;
-  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result) override;
+  bool appendVertex(arangodb::velocypack::StringRef idString,
+                    arangodb::velocypack::Builder& result) override;
+  bool appendVertex(arangodb::velocypack::StringRef idString,
+                    arangodb::aql::AqlValue& result) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -83,4 +84,3 @@ class TraverserDocumentCache final : public TraverserCache {
 };
 }  // namespace graph
 }  // namespace arangodb
-

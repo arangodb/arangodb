@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterTypes.h"
-#include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
 #include <iostream>
@@ -58,7 +58,7 @@ Result QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice) {
       if (current.isNumber()) {
         currentDbRevision = current.getNumber<AnalyzersRevision::Revision>();
       } else {
-        std::string error{ "Invalid " };
+        std::string error{"Invalid "};
         error.append(StaticStrings::ArangoSearchAnalyzersRevision);
         error += ".";
         error += StaticStrings::ArangoSearchCurrentAnalyzersRevision;
@@ -74,7 +74,7 @@ Result QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice) {
       if (sys.isNumber()) {
         systemDbRevision = sys.getNumber<AnalyzersRevision::Revision>();
       } else {
-        std::string error{ "Invalid " };
+        std::string error{"Invalid "};
         error.append(StaticStrings::ArangoSearchAnalyzersRevision);
         error += ".";
         error += StaticStrings::ArangoSearchSystemAnalyzersRevision;
@@ -100,8 +100,7 @@ Result QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice) {
   return {};
 }
 
-AnalyzersRevision::Revision QueryAnalyzerRevisions::getVocbaseRevision(
-  std::string_view vocbase) const noexcept {
+AnalyzersRevision::Revision QueryAnalyzerRevisions::getVocbaseRevision(std::string_view vocbase) const noexcept {
   return vocbase == StaticStrings::SystemDatabase ? systemDbRevision : currentDbRevision;
 }
 
@@ -119,7 +118,7 @@ std::ostream& RebootId::print(std::ostream& o) const {
 }
 
 AnalyzersRevision::Ptr AnalyzersRevision::getEmptyRevision() {
-  static auto ptr =  std::shared_ptr<AnalyzersRevision::Ptr::element_type>(
+  static auto ptr = std::shared_ptr<AnalyzersRevision::Ptr::element_type>(
       new AnalyzersRevision(AnalyzersRevision::MIN, AnalyzersRevision::MIN, "", 0));
   return ptr;
 }
@@ -139,7 +138,8 @@ void AnalyzersRevision::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice, std::string& error) {
+AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice,
+                                                         std::string& error) {
   if (!slice.isObject()) {
     error = "Analyzers in the plan is not a valid json object.";
     return nullptr;
@@ -147,13 +147,15 @@ AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice
 
   auto const revisionSlice = slice.get(StaticStrings::AnalyzersRevision);
   if (!revisionSlice.isNumber()) {
-    error = StaticStrings::AnalyzersRevision + " key is missing or not a number";
+    error =
+        StaticStrings::AnalyzersRevision + " key is missing or not a number";
     return nullptr;
   }
 
   auto const buildingRevisionSlice = slice.get(StaticStrings::AnalyzersBuildingRevision);
   if (!buildingRevisionSlice.isNumber()) {
-    error = StaticStrings::AnalyzersBuildingRevision + " key is missing or not a number";
+    error = StaticStrings::AnalyzersBuildingRevision +
+            " key is missing or not a number";
     return nullptr;
   }
   ServerID coordinatorID;

@@ -63,7 +63,7 @@ class TailingSyncer : public Syncer {
   /// @brief run method, performs continuous synchronization
   /// catches exceptions
   Result run();
-  
+
  protected:
   /// @brief decide based on _leaderInfo which api to use
   virtual std::string tailingBaseUrl(std::string const& command);
@@ -128,14 +128,13 @@ class TailingSyncer : public Syncer {
 
   /// @brief apply a single marker from the continuous log
   Result applyLogMarker(arangodb::velocypack::Slice const& slice,
-                        ApplyStats& applyStats,
-                        TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t markerTick,
-                        TRI_replication_operation_e type);
+                        ApplyStats& applyStats, TRI_voc_tick_t firstRegularTick,
+                        TRI_voc_tick_t markerTick, TRI_replication_operation_e type);
 
   /// @brief apply the data from the continuous log
-  Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick,
-                  ApplyStats& applyStats, arangodb::velocypack::Builder& builder,
-                  uint64_t& ignoreCount);
+  Result applyLog(httpclient::SimpleHttpResult*,
+                  TRI_voc_tick_t firstRegularTick, ApplyStats& applyStats,
+                  arangodb::velocypack::Builder& builder, uint64_t& ignoreCount);
 
   /// @brief perform a continuous sync with the leader
   Result runContinuousSync();
@@ -168,7 +167,8 @@ class TailingSyncer : public Syncer {
                                     TRI_voc_tick_t firstRegularTick, uint64_t& ignoreCount,
                                     bool& worked, bool& mustFetchBatch);
 
-  arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll, std::string const& key);
+  arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll,
+                                        std::string const& key);
 
   arangodb::Result handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
                                                     TRI_voc_tick_t readTick,
@@ -183,9 +183,9 @@ class TailingSyncer : public Syncer {
   /// @brief whether or not the replication state file has been written at least
   /// once with non-empty values. this is required in situations when the
   /// replication applier is manually started and the leader has absolutely no
-  /// new data to provide, and the follower gets shut down. in that case, the state
-  /// file would never have been written with the initial start tick, so the
-  /// start tick would be lost. re-starting the follower and the replication
+  /// new data to provide, and the follower gets shut down. in that case, the
+  /// state file would never have been written with the initial start tick, so
+  /// the start tick would be lost. re-starting the follower and the replication
   /// applier with the ticks from the file would then result in a "no start tick
   /// provided" error
   bool _hasWrittenState;
@@ -224,4 +224,3 @@ class TailingSyncer : public Syncer {
   static std::string const WalAccessUrl;
 };
 }  // namespace arangodb
-

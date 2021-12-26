@@ -48,8 +48,8 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
@@ -78,7 +78,7 @@
 #endif
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -130,7 +130,8 @@ class IResearchFilterBooleanTest
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature.createDatabase(testDBInfo(server.server()),
+                             _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
     arangodb::methods::Collections::createSystem(*_vocbase, options,
@@ -139,7 +140,7 @@ class IResearchFilterBooleanTest
     unused = nullptr;
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
-      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice()); // cache analyzer
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice());  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -150,10 +151,9 @@ class IResearchFilterBooleanTest
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchFilterBooleanTest, Ternary) {
-
-//  arangodb::aql::Query q(arangodb::transaction::StandaloneContext::Create(this->vocbase()),
-//                         arangodb::aql::QueryString(), nullptr);
-//  
+  //  arangodb::aql::Query q(arangodb::transaction::StandaloneContext::Create(this->vocbase()),
+  //                         arangodb::aql::QueryString(), nullptr);
+  //
   // can evaluate expression
   {
     ExpressionContextMock ctx;
@@ -224,7 +224,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER not (d.a == '1') RETURN d", expected);
@@ -241,7 +242,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("[1]");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER not (d[1] == '1') RETURN d", expected);
@@ -254,7 +256,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b.c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER not (d.a.b.c == '1') RETURN d", expected);
@@ -273,7 +276,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -296,7 +300,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     root.boost(2.5);
     auto& filter = root.filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -327,7 +332,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto& filter = root.add<irs::by_term>();
     filter.boost(2.5);
     *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -343,7 +349,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     root.boost(2.5);
     auto& filter = root.filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleString("a.b[42].c", "test_analyzer");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -379,7 +386,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
 
     assertFilterSuccess(
         vocbase(),
@@ -425,7 +433,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
 
     assertFilterSuccess(
         vocbase(),
@@ -474,7 +483,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
 
     assertFilterSuccess(
         vocbase(),
@@ -496,7 +506,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -574,7 +585,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER not (d.a.b.c == true) RETURN d", expected);
@@ -608,7 +620,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c.bool");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
         vocbase(),
@@ -629,7 +642,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a[1].b.c.bool");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
         vocbase(),
@@ -659,7 +673,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b[23].c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(
         vocbase(),
@@ -711,7 +726,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
 
     assertFilterSuccess(
         vocbase(),
@@ -789,7 +805,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.bool");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
         vocbase(),
@@ -812,7 +829,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.bool[42]");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
         vocbase(),
@@ -844,7 +862,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b[23].c");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
         vocbase(),
@@ -895,7 +914,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
 
     assertFilterSuccess(
         vocbase(),
@@ -1014,7 +1034,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    filter.mutable_options()->term =
+        irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER d.a == not '1' RETURN d",
@@ -1219,10 +1240,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "collection FILTER not "
         "(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a'"
         ")] == '1') RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1260,7 +1283,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1278,13 +1302,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] == '1'
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1299,10 +1323,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "collection FILTER not ('1' < "
         "d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')"
         "]) RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1340,7 +1366,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1358,14 +1385,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // '1' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1377,10 +1403,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& refName = "d";
     std::string const& queryString =
         "FOR d IN collection FILTER not (d.a < _NONDETERM_('1')) RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1418,7 +1446,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1436,14 +1465,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d.a < _NONDETERM_('1')
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1456,10 +1484,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "FOR d IN collection FILTER BOOST(not (d.a < _NONDETERM_('1')), 2.5) "
         "RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1497,7 +1527,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode))
                       .ok());
     }
@@ -1516,14 +1547,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(0)  // d.a < _NONDETERM_('1')
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1537,10 +1567,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "LET k={} FOR d IN collection FILTER not (k.a < _NONDETERM_('1')) "
         "RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1578,7 +1610,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1596,14 +1629,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // k.a < _NONDETERM_('1')
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1616,10 +1648,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& queryString =
         "LET k={} FOR d IN collection FILTER not BOOST(k.a < _NONDETERM_('1'), "
         "1.5) RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1657,7 +1691,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1676,14 +1711,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       expr.init(*dummyPlan, *ast,
                 *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(0)  // k.a < _NONDETERM_('1')
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1696,10 +1730,12 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     std::string const& refName = "d";
     std::string const& queryString =
         "FOR d IN collection FILTER not (d.a < 1+d.b) RETURN d";
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1737,7 +1773,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1755,14 +1792,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d.a < 1+d.b
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1792,12 +1828,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("b");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -1837,7 +1875,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("c.b.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -1883,7 +1922,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -1931,7 +1971,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -1962,7 +2003,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("c.b.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -1985,19 +2027,21 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = subRoot.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = subRoot.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
       auto& filter = root.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("b");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
     }
-
 
     assertFilterSuccess(
         vocbase(),
@@ -2026,18 +2070,21 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       auto& filter = subRoot.add<irs::by_term>();
       filter.boost(0.5);
       *filter.mutable_field() = mangleString("a", "test_analyzer");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = subRoot.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
       auto& filter = root.add<irs::Not>().filter<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleString("b", "test_analyzer");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
     }
 
     assertFilterSuccess(
@@ -2062,17 +2109,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = subRoot.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = subRoot.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
       auto& filter = root.add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("b");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
     }
 
     assertFilterSuccess(
@@ -2096,13 +2146,15 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2143,13 +2195,15 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2168,14 +2222,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       filter.boost(0.5);
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2561,12 +2617,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
 
     assertFilterSuccess(
@@ -2594,7 +2652,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
     }
     {
       auto& filter = root.add<irs::by_term>();
@@ -2623,12 +2682,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2642,15 +2703,17 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
   // noneterministic expression -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
         "FOR d IN collection FILTER d.a.b.c > _NONDETERM_('15') or d.a.b.c < "
         "'40' RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -2688,7 +2751,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -2710,17 +2774,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("a.b.c");
         auto* opts = filter.mutable_options();
-        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40")); // d.a.b.c < 40
+        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));  // d.a.b.c < 40
         opts->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
-      
+
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -2729,15 +2792,17 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
   // noneterministic expression -> wrap it, boost
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
         "FOR d IN collection FILTER boost(d.a.b.c > _NONDETERM_('15') or "
         "d.a.b.c < '40', 2.5) RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -2775,7 +2840,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -2798,17 +2864,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("a.b.c");
         auto* opts = filter.mutable_options();
-        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40")); // d.a.b.c < 40
+        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));  // d.a.b.c < 40
         opts->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
-      
+
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -2825,12 +2890,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("b");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -2867,7 +2934,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("c.b.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -2919,7 +2987,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("c.b.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -2945,7 +3014,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_term>();
       filter.boost(0.5);
       *filter.mutable_field() = mangleStringIdentity("c.b.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -2969,7 +3039,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       auto& filter = root.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("c.b.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -3029,7 +3100,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       auto& filter = root.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
       *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -3054,7 +3126,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
       filter.boost(0.5);
       *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
     assertFilterSuccess(
@@ -3066,15 +3139,17 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
         "FOR d IN collection FILTER d.a.b.c < '1' and not d.c.b.a == '2' "
         "RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3112,7 +3187,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -3138,14 +3214,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // not d.c.b.a == '2'
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3160,13 +3235,15 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -3212,13 +3289,15 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -3237,14 +3316,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       filter.boost(0.5);
       *filter.mutable_field() = mangleBool("b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      filter.mutable_options()->term =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -3468,14 +3549,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3513,7 +3596,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -3535,14 +3619,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b < 40
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3551,15 +3634,17 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
         "FOR d IN collection FILTER boost(d.a[*].b > 15, 0.5) and d.a[*].b < "
         "40 RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3597,7 +3682,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -3622,14 +3708,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b < 40
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3899,14 +3984,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b >= 15 and d.a[*].b <= 40 RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3944,7 +4031,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -3966,14 +4054,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b <= 40
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -4068,14 +4155,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // expression is not supported by IResearch -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b <= 40 RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4113,7 +4202,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -4135,14 +4225,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b <= 40
       );
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -4704,14 +4793,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     auto& root = expected.add<irs::And>();
     {
       auto& filter = root.add<irs::by_range>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      *filter.mutable_field() =
+          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      *filter.mutable_field() =
+          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
@@ -4758,7 +4849,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     }
     {
       auto& filter = root.add<irs::by_range>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      *filter.mutable_field() =
+          mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
@@ -5188,7 +5280,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5278,7 +5371,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5308,7 +5402,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5338,7 +5433,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
@@ -5403,7 +5499,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
@@ -5678,7 +5775,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5762,7 +5860,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
     {
@@ -5826,14 +5925,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+      opts->range.max =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5866,14 +5967,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+      opts->range.max =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5908,7 +6011,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
@@ -5947,14 +6051,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5987,14 +6093,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.min =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
       *filter.mutable_field() = mangleNull("a.b.c.e.f");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+      opts->range.max =
+          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -6061,15 +6169,17 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
   // noneterministic expression -> wrap it
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
 
     std::string const refName = "d";
     std::string const queryString =
         "FOR d IN collection FILTER d.a.b.c > _NONDETERM_('15') and d.a.b.c < "
         "'40' RETURN d";
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                               arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -6107,7 +6217,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                  nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -6129,17 +6240,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         auto& filter = root.add<irs::by_range>();
         *filter.mutable_field() = mangleStringIdentity("a.b.c");
         auto* opts = filter.mutable_options();
-        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40")); // d.a.b.c < 40
+        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));  // d.a.b.c < 40
         opts->range.max_type = irs::BoundType::EXCLUSIVE;
       }
-      
+
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
-      arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx,
-                                                  &irs::sub_reader::empty(), ref};
+      arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast, &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);

@@ -48,8 +48,7 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    velocypack::Options const* opts, 
-    arangodb::ResourceMonitor& resourceMonitor)
+    velocypack::Options const* opts, arangodb::ResourceMonitor& resourceMonitor)
     : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
       _groupRegisters(std::move(groupRegisters)),
@@ -83,8 +82,8 @@ arangodb::ResourceMonitor& HashedCollectExecutorInfos::getResourceMonitor() cons
   return _resourceMonitor;
 }
 
-std::vector<Aggregator::Factory const*>
-HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos const& infos) {
+std::vector<Aggregator::Factory const*> HashedCollectExecutor::createAggregatorFactories(
+    HashedCollectExecutor::Infos const& infos) {
   std::vector<Aggregator::Factory const*> aggregatorFactories;
 
   if (!infos.getAggregateTypes().empty()) {
@@ -103,8 +102,7 @@ HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos co
 HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _lastInitializedInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _allGroups(1024,
-                 AqlValueGroupHash(_infos.getGroupRegisters().size()),
+      _allGroups(1024, AqlValueGroupHash(_infos.getGroupRegisters().size()),
                  AqlValueGroupEqual(_infos.getVPackOptions())),
       _isInitialized(false),
       _aggregatorFactories() {
@@ -132,7 +130,7 @@ void HashedCollectExecutor::destroyAllGroupsAqlValues() {
 
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
   TRI_ASSERT(input.isInitialized());
-  
+
   decltype(_allGroups)::iterator currentGroupIt = findOrEmplaceGroup(input);
 
   if (!_infos.getAggregateTypes().empty()) {
@@ -140,7 +138,8 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
     ValueAggregators* aggregateValues = currentGroupIt->second.get();
 
     // apply the aggregators for the group
-    TRI_ASSERT(aggregateValues != nullptr && aggregateValues->size() == _infos.getAggregatedRegisters().size());
+    TRI_ASSERT(aggregateValues != nullptr &&
+               aggregateValues->size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
     for (auto const& r : _infos.getAggregatedRegisters()) {
       if (r.second.value() == RegisterId::maxRegisterId) {
@@ -168,7 +167,6 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
     key.erase();  // to prevent double-freeing later
   }
 
-
   _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 
   if (!_infos.getAggregatedRegisters().empty()) {
@@ -180,7 +178,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
       AqlValue r = aggregators[aggregatorIdx].stealValue();
       AqlValueGuard guard{r, true};
       output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
-                          _lastInitializedInputRow, guard);
+                           _lastInitializedInputRow, guard);
     }
   }
 }
@@ -342,7 +340,8 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = makeAggregateValues();
 
-  ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForGroup(_nextGroup, true));
+  ResourceUsageScope guard(_infos.getResourceMonitor(),
+                           memoryUsageForGroup(_nextGroup, true));
 
   // note: aggregateValues may be a nullptr!
   auto [result, emplaced] =
@@ -385,12 +384,13 @@ HashedCollectExecutor::Infos const& HashedCollectExecutor::infos() const noexcep
   return _infos;
 }
 
-size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group, bool withBase) const {
+size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group,
+                                                  bool withBase) const {
   // track memory usage of unordered_map entry (somewhat)
   size_t memoryUsage = 0;
   if (withBase) {
     memoryUsage += 4 * sizeof(void*) + /* generic overhead */
-                   group.values.size() * sizeof(AqlValue) + 
+                   group.values.size() * sizeof(AqlValue) +
                    _aggregatorFactories.size() * sizeof(void*);
   }
 
@@ -406,7 +406,8 @@ std::unique_ptr<HashedCollectExecutor::ValueAggregators> HashedCollectExecutor::
   if (_aggregatorFactories.empty()) {
     return {};
   }
-  std::size_t size = sizeof(ValueAggregators) + sizeof(Aggregator*) * _aggregatorFactories.size();
+  std::size_t size =
+      sizeof(ValueAggregators) + sizeof(Aggregator*) * _aggregatorFactories.size();
   for (auto factory : _aggregatorFactories) {
     size += factory->getAggregatorSize();
   }
@@ -415,7 +416,8 @@ std::unique_ptr<HashedCollectExecutor::ValueAggregators> HashedCollectExecutor::
   return std::unique_ptr<ValueAggregators>(static_cast<ValueAggregators*>(p));
 }
 
-HashedCollectExecutor::ValueAggregators::ValueAggregators(std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts) 
+HashedCollectExecutor::ValueAggregators::ValueAggregators(
+    std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts)
     : _size(factories.size()) {
   TRI_ASSERT(!factories.empty());
   auto* aggregatorPointers = reinterpret_cast<Aggregator**>(this + 1);
@@ -424,7 +426,8 @@ HashedCollectExecutor::ValueAggregators::ValueAggregators(std::vector<Aggregator
     factory->createInPlace(aggregators, opts);
     *aggregatorPointers = static_cast<Aggregator*>(aggregators);
     ++aggregatorPointers;
-    aggregators = reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(aggregators) + factory->getAggregatorSize());
+    aggregators = reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(aggregators) +
+                                          factory->getAggregatorSize());
   }
 }
 

@@ -65,10 +65,10 @@ class Context {
  public:
   /// @brief destroy the context
   virtual ~Context();
-  
+
   /// @brief destroys objects owned by the context,
   /// this can be called multiple times.
-  /// currently called by dtor and by unit test mocks. 
+  /// currently called by dtor and by unit test mocks.
   /// we cannot move this into the dtor (where it was before) because
   /// the mocked objects in unittests do not seem to call it and effectively leak.
   void cleanup() noexcept;
@@ -85,7 +85,7 @@ class Context {
 
   /// @brief return a temporary StringBuffer object
   void returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept;
-  
+
   /// @brief temporarily lease a std::string
   std::string* leaseString();
 
@@ -103,8 +103,7 @@ class Context {
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TransactionId id, bool wasRegistered,
-                              bool isReadOnlyTransaction,
+  void storeTransactionResult(TransactionId id, bool wasRegistered, bool isReadOnlyTransaction,
                               bool isFollowerTranaction) noexcept;
 
  public:
@@ -125,12 +124,12 @@ class Context {
 
   /// @brief generate persisted transaction ID
   virtual TransactionId generateId() const;
-  
+
   /// @brief only supported on some contexts
   virtual std::shared_ptr<Context> clone() const;
-  
+
   virtual bool isV8Context() { return false; }
-  
+
   /// @brief generates correct ID based on server type
   static TransactionId makeTransactionId();
 
@@ -151,10 +150,10 @@ class Context {
   ::arangodb::containers::SmallVector<std::string*, 32> _strings;
 
   arangodb::velocypack::Options _options;
-  
+
  private:
   std::unique_ptr<CollectionNameResolver> _resolver;
-  
+
   struct {
     TransactionId id;
     bool isReadOnlyTransaction;
@@ -164,4 +163,3 @@ class Context {
 
 }  // namespace transaction
 }  // namespace arangodb
-

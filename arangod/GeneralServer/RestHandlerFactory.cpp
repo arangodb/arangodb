@@ -41,9 +41,9 @@ static std::string const ROOT_PATH = "/";
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(application_features::ApplicationServer& server,
-                                                               std::unique_ptr<GeneralRequest> req,
-                                                               std::unique_ptr<GeneralResponse> res) const {
+std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
+    application_features::ApplicationServer& server,
+    std::unique_ptr<GeneralRequest> req, std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
 
   auto it = _constructors.find(path);
@@ -91,7 +91,8 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(application_featu
     l = 1;
   } else {
     TRI_ASSERT(!prefix->empty());
-    LOG_TOPIC("516d1", TRACE, arangodb::Logger::FIXME) << "found prefix match '" << *prefix << "'";
+    LOG_TOPIC("516d1", TRACE, arangodb::Logger::FIXME)
+        << "found prefix match '" << *prefix << "'";
 
     it = _constructors.find(*prefix);
     l = prefix->size() + 1;

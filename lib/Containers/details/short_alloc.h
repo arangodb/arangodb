@@ -141,5 +141,5 @@ template <class T, std::size_t N, std::size_t A1, class U, std::size_t M, std::s
 inline bool operator!=(const short_alloc<T, N, A1>& x, const short_alloc<U, M, A2>& y) noexcept {
   return !(x == y);
 }
-}  // namespace arangodb
+}  // namespace arangodb::containers::detail
 #endif  // SHORT_ALLOC_H

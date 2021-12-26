@@ -44,22 +44,22 @@ void AqlFunctionsInternalCache::clear() noexcept {
 }
 
 icu::RegexMatcher* AqlFunctionsInternalCache::buildRegexMatcher(char const* ptr, size_t length,
-                                                 bool caseInsensitive) {
+                                                                bool caseInsensitive) {
   buildRegexPattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _regexCache);
 }
 
 icu::RegexMatcher* AqlFunctionsInternalCache::buildLikeMatcher(char const* ptr, size_t length,
-                                                bool caseInsensitive) {
+                                                               bool caseInsensitive) {
   buildLikePattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _likeCache);
 }
 
-icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(AqlValue const& splitExpression,
-                                                 arangodb::velocypack::Options const* opts,
-                                                 bool& isEmptyExpression) {
+icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
+    AqlValue const& splitExpression, arangodb::velocypack::Options const* opts,
+    bool& isEmptyExpression) {
   std::string rx;
 
   AqlValueMaterializer materializer(opts);
@@ -94,12 +94,13 @@ icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(AqlValue const& 
 }
 
 arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(VPackSlice const& validatorParams) {
-  auto matcherIter = _validatorCache.try_emplace(
-        validatorParams.hash(),
-        arangodb::lazyConstruct([&]{
-          return std::unique_ptr<arangodb::ValidatorBase>(new arangodb::ValidatorJsonSchema(validatorParams));
-        })
-      ).first;
+  auto matcherIter =
+      _validatorCache
+          .try_emplace(validatorParams.hash(), arangodb::lazyConstruct([&] {
+                         return std::unique_ptr<arangodb::ValidatorBase>(
+                             new arangodb::ValidatorJsonSchema(validatorParams));
+                       }))
+          .first;
 
   return matcherIter->second.get();
 };
@@ -109,20 +110,21 @@ arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(VPackSlice co
 icu::RegexMatcher* AqlFunctionsInternalCache::fromCache(
     std::string const& pattern,
     std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
-
   // insert into cache, no matter if pattern is valid or not
-  auto matcherIter = cache.try_emplace(
-      pattern,
-      arangodb::lazyConstruct([&]{
-        return std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
-      })).first;
+  auto matcherIter =
+      cache
+          .try_emplace(pattern, arangodb::lazyConstruct([&] {
+                         return std::unique_ptr<icu::RegexMatcher>(
+                             arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
+                       }))
+          .first;
 
   return matcherIter->second.get();
 }
 
 /// @brief compile a REGEX pattern from a string
 void AqlFunctionsInternalCache::buildRegexPattern(std::string& out, char const* ptr,
-                                   size_t length, bool caseInsensitive) {
+                                                  size_t length, bool caseInsensitive) {
   out.clear();
   if (caseInsensitive) {
     out.reserve(length + 4);
@@ -134,7 +136,7 @@ void AqlFunctionsInternalCache::buildRegexPattern(std::string& out, char const* 
 
 /// @brief compile a LIKE pattern from a string
 void AqlFunctionsInternalCache::buildLikePattern(std::string& out, char const* ptr,
-                                  size_t length, bool caseInsensitive) {
+                                                 size_t length, bool caseInsensitive) {
   out.clear();
   out.reserve(length + 8);  // reserve some room
 
@@ -205,7 +207,8 @@ void AqlFunctionsInternalCache::buildLikePattern(std::string& out, char const* p
 /// - second: true if the found wildcard is the last byte in the pattern,
 ///   false otherwise. can only be true if first is also true
 std::pair<bool, bool> AqlFunctionsInternalCache::inspectLikePattern(std::string& out,
-                                                     char const* ptr, size_t length) {
+                                                                    char const* ptr,
+                                                                    size_t length) {
   out.reserve(length);
   bool escaped = false;
 

@@ -25,14 +25,14 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/tryEmplaceHelper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
 #include "Basics/system-functions.h"
-#include "Utils/ExecContext.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Utilities/NameValidator.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 
@@ -70,8 +70,7 @@ static bool showBindVars = true;  // will be set once on startup. cannot be chan
 QueryCacheResultEntry::QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                                              std::shared_ptr<VPackBuilder> const& queryResult,
                                              std::shared_ptr<VPackBuilder> const& bindVars,
-                                             std::unordered_map<std::string, std::string>&& dataSources
-)
+                                             std::unordered_map<std::string, std::string>&& dataSources)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
@@ -177,7 +176,7 @@ bool QueryCacheResultEntry::currentUserHasPermissions() const {
       }
     }
   }
-  
+
   return true;
 }
 
@@ -315,7 +314,7 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
 /// @brief invalidate all entries for the given data sources in the
 /// database-specific cache
 void QueryCacheDatabaseEntry::invalidate(std::vector<std::string> const& dataSourceGuids) {
-  for (auto const& it: dataSourceGuids) {
+  for (auto const& it : dataSourceGuids) {
     invalidate(it);
   }
 }
@@ -382,8 +381,8 @@ void QueryCacheDatabaseEntry::enforceMaxEntrySize(size_t value) {
 /// @brief exclude all data from system collections
 /// must be called under the shard's lock
 void QueryCacheDatabaseEntry::excludeSystem() {
-  for (auto itr = _entriesByDataSourceGuid.begin(); // setup
-       itr != _entriesByDataSourceGuid.end(); // condition
+  for (auto itr = _entriesByDataSourceGuid.begin();  // setup
+       itr != _entriesByDataSourceGuid.end();        // condition
        /* no hoisting */) {
     if (!itr->second.first) {
       // not a system collection
@@ -662,18 +661,18 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
   // get the right part of the cache to store the result in
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
-  auto it = _entries[part].try_emplace(
-      vocbase, 
-      arangodb::lazyConstruct([&]{
-        return std::make_unique<QueryCacheDatabaseEntry>();
-      })
-  ).first;
+  auto it = _entries[part]
+                .try_emplace(vocbase, arangodb::lazyConstruct([&] {
+                               return std::make_unique<QueryCacheDatabaseEntry>();
+                             }))
+                .first;
   // store cache entry
   (*it).second->store(std::move(entry), allowedMaxResultsCount, allowedMaxResultsSize);
 }
 
 /// @brief invalidate all queries for the given data sources
-void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& dataSourceGuids) {
+void QueryCache::invalidate(TRI_vocbase_t* vocbase,
+                            std::vector<std::string> const& dataSourceGuids) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 

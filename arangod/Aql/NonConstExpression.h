@@ -39,5 +39,5 @@ struct NonConstExpression {
   NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t> idxPath);
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb

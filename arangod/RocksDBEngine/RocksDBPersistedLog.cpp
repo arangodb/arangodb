@@ -38,7 +38,8 @@ RocksDBPersistedLog::RocksDBPersistedLog(replication2::LogId id, uint64_t object
                                          std::shared_ptr<RocksDBLogPersistor> persistor)
     : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
 
-auto RocksDBPersistedLog::insert(PersistedLogIterator& iter, WriteOptions const& options) -> Result {
+auto RocksDBPersistedLog::insert(PersistedLogIterator& iter, WriteOptions const& options)
+    -> Result {
   rocksdb::WriteBatch wb;
   auto res = prepareWriteBatch(iter, wb);
   if (!res.ok()) {
@@ -185,16 +186,15 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         wb.Clear();
 
         // For simplicity, a single LogIterator of a specific PersistRequest
-        // (i.e. *nextReqToWrite->iter) is always written as a whole in a write batch.
-        // This is not strictly necessary for correctness, as long as an error
-        // is reported when any PersistingLogEntry is not written. Because then, the
-        // write will be retried, and it does not hurt that the persisted log
-        // already has some entries that are not yet confirmed (which may be
-        // overwritten later). This could still be improved upon a little by
-        // reporting up to which entry was written successfully.
+        // (i.e. *nextReqToWrite->iter) is always written as a whole in a write
+        // batch. This is not strictly necessary for correctness, as long as an
+        // error is reported when any PersistingLogEntry is not written. Because
+        // then, the write will be retried, and it does not hurt that the
+        // persisted log already has some entries that are not yet confirmed
+        // (which may be overwritten later). This could still be improved upon a
+        // little by reporting up to which entry was written successfully.
         while (wb.Count() < 1000 && nextReqToWrite != std::end(pendingRequests)) {
-          auto* log_ptr =
-              dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
+          auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
           TRI_ASSERT(log_ptr != nullptr);
           if (auto res = log_ptr->prepareWriteBatch(*nextReqToWrite->iter, wb);
               res.fail()) {

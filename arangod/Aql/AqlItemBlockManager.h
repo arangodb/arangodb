@@ -66,9 +66,7 @@ class AqlItemBlockManager {
 
   void initializeConstValueBlock(RegisterCount nrRegs);
 
-  AqlItemBlock* getConstValueBlock() {
-    return _constValueBlock;
-  }
+  AqlItemBlock* getConstValueBlock() { return _constValueBlock; }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Only used for the mocks in the catch tests. Other code should always use
@@ -123,4 +121,3 @@ class AqlItemBlockManager {
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -33,8 +33,7 @@
 
 namespace arangodb {
 
-RocksDBSavePoint::RocksDBSavePoint(RocksDBTransactionState* state,
-                                   transaction::Methods* trx,
+RocksDBSavePoint::RocksDBSavePoint(RocksDBTransactionState* state, transaction::Methods* trx,
                                    TRI_voc_document_operation_e operationType)
     : _state(state),
       _trx(trx),
@@ -89,7 +88,8 @@ Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
 
   if (!_handled) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_numCommitsAtStart + (hasPerformedIntermediateCommit ? 1 : 0) == _state->numCommits());
+    TRI_ASSERT(_numCommitsAtStart + (hasPerformedIntermediateCommit ? 1 : 0) ==
+               _state->numCommits());
 #endif
 
     if (res.ok()) {
@@ -106,7 +106,7 @@ Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
         auto mthds = RocksDBTransactionState::toMethods(_trx);
         mthds->PopSavePoint();
       }
-    
+
       // this will prevent the rollback call in the destructor
       _handled = true;
     } else {
@@ -142,7 +142,7 @@ void RocksDBSavePoint::rollback() {
     // std::string::resize instead of a full rebuild of the WBWI
     // from the WriteBatch)
     s = mthds->RollbackToWriteBatchSavePoint();
-  }  
+  }
   TRI_ASSERT(s.ok());
 
   _state->rollbackOperation(_operationType);
@@ -150,4 +150,4 @@ void RocksDBSavePoint::rollback() {
   _handled = true;  // in order to not roll back again by accident
 }
 
-} // namespace
+}  // namespace arangodb

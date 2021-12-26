@@ -79,7 +79,7 @@ class IdExecutorInfos {
 
  private:
   bool _doCount;
-  
+
   bool const _isResponsibleForInitializeCursor;
 
   RegisterId _outputRegister;
@@ -121,4 +121,3 @@ class IdExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-

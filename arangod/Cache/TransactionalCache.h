@@ -137,4 +137,3 @@ class TransactionalCache final : public Cache {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

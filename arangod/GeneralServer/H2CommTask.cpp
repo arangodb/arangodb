@@ -286,7 +286,8 @@ void H2CommTask<T>::initNgHttp2Session() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto cbScope = scopeGuard([&]() noexcept { nghttp2_session_callbacks_del(callbacks); });
+  auto cbScope =
+      scopeGuard([&]() noexcept { nghttp2_session_callbacks_del(callbacks); });
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, H2CommTask<T>::on_begin_headers);
   nghttp2_session_callbacks_set_on_header_callback(callbacks, H2CommTask<T>::on_header);
@@ -466,8 +467,10 @@ static void DTraceH2CommTaskProcessStream(size_t) {}
 template <SocketType T>
 std::string H2CommTask<T>::url(HttpRequest const* req) const {
   if (req != nullptr) {
-    return std::string((req->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
-      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+    return std::string((req->databaseName().empty()
+                            ? ""
+                            : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
+           (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   }
   return "";
 }
@@ -482,20 +485,20 @@ void H2CommTask<T>::processStream(Stream& stream) {
   try {
     processRequest(stream, std::move(req));
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("a78c5", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
-      << " " << ex.message();
-    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), respContentType,
-                            msgId, ex.code(), ex.message());
+    LOG_TOPIC("a78c5", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.code() << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                            respContentType, msgId, ex.code(), ex.message());
   } catch (std::exception const& ex) {
-    LOG_TOPIC("d1e88", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
-    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType,
-                            msgId, ErrorCode(TRI_ERROR_FAILED), ex.what());
+    LOG_TOPIC("d1e88", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType, msgId,
+                            ErrorCode(TRI_ERROR_FAILED), ex.what());
   }
 }
 
 template <SocketType T>
 void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> req) {
-  
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
   req->body().push_back('\0');
@@ -511,7 +514,8 @@ void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> 
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)
         << "\"h2-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
+        << HttpRequest::translateMethod(req->requestType()) << "\",\""
+        << url(req.get()) << "\"";
 
     VPackStringRef body = req->rawPayload();
     this->_generalServerFeature.countHttp2Request(body.size());
@@ -599,8 +603,9 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << this->_connectionInfo.clientAddress
       << "\",\""
       //      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode()) << "\","
-      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
+      << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode())
+      << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
+      << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
   auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);

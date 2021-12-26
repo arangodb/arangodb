@@ -42,7 +42,7 @@ class ApplicationServer;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace consensus {
 
@@ -108,9 +108,9 @@ class State {
    */
   void logEmplaceBackNoLock(log_t&& l);
 
-  /// @brief reads the _key value from the data and returns it as a numeric index value.
-  /// data needs to be an object with the _key attribute being present as a string value
-  /// inside.
+  /// @brief reads the _key value from the data and returns it as a numeric
+  /// index value. data needs to be an object with the _key attribute being
+  /// present as a string value inside.
   static index_t extractIndexFromKey(arangodb::velocypack::Slice data);
 
  public:
@@ -218,9 +218,8 @@ class State {
                             arangodb::consensus::term_t term);
 
   /// @brief Log single log entry. Must be guarded by caller.
-  index_t logNonBlocking(index_t idx, velocypack::Slice const& slice,
-                         term_t term, uint64_t millis,
-                         std::string const& clientId = std::string(),
+  index_t logNonBlocking(index_t idx, velocypack::Slice const& slice, term_t term,
+                         uint64_t millis, std::string const& clientId = std::string(),
                          bool leading = false, bool reconfiguration = false);
 
   /// @brief Save currentTerm, votedFor, log entries
@@ -228,8 +227,8 @@ class State {
                std::string const&) const;
 
   /// @brief Save currentTerm, votedFor, log entries for reconfiguration
-  bool persistConf(index_t, term_t, uint64_t, arangodb::velocypack::Slice const&,
-                   std::string const&) const;
+  bool persistConf(index_t, term_t, uint64_t,
+                   arangodb::velocypack::Slice const&, std::string const&) const;
 
   bool saveCompacted();
 
@@ -296,9 +295,7 @@ class State {
 
   /// @brief current number of entries in _clientIdLookupTable
   Gauge<uint64_t>& _clientIdLookupCount;
-
 };
 
 }  // namespace consensus
 }  // namespace arangodb
-

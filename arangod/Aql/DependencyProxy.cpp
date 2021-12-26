@@ -90,14 +90,12 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
 }
 
 template <BlockPassthrough blockPassthrough>
-DependencyProxy<blockPassthrough>::DependencyProxy(
-    std::vector<ExecutionBlock*> const& dependencies,
-    RegisterCount nrInputRegisters)
+DependencyProxy<blockPassthrough>::DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
+                                                   RegisterCount nrInputRegisters)
     : _dependencies(dependencies),
       _nrInputRegisters(nrInputRegisters),
       _distributeId(),
-      _currentDependency(0) {
-}
+      _currentDependency(0) {}
 
 template <BlockPassthrough blockPassthrough>
 RegisterCount DependencyProxy<blockPassthrough>::getNrInputRegisters() const {

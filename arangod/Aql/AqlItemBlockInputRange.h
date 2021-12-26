@@ -31,7 +31,6 @@ namespace arangodb::aql {
 
 class ShadowAqlItemRow;
 
-
 class AqlItemBlockInputRange {
  public:
   /// @brief tag that can be used to speed up nextDataRow
@@ -49,7 +48,7 @@ class AqlItemBlockInputRange {
 
   void reset() noexcept { _block.reset(nullptr); }
   bool hasBlock() const noexcept { return _block.get() != nullptr; }
-  
+
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
   ExecutorState upstreamState() const noexcept;
@@ -62,8 +61,8 @@ class AqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
-  
-  /// @brief optimized version of nextDataRow, only to be used when it is known that 
+
+  /// @brief optimized version of nextDataRow, only to be used when it is known that
   /// there is a next data row (i.e. if a previous call to hasDataRow() returned true)
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(HasDataRow);
 
@@ -131,4 +130,3 @@ class AqlItemBlockInputRange {
 };
 
 }  // namespace arangodb::aql
-

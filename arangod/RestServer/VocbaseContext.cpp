@@ -75,8 +75,9 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
                                 /*sysLevel*/ auth::Level::RO,
                                 /*dbLevel*/ auth::Level::RO, true);
     }
-    return new VocbaseContext(req, vocbase, req.user().empty() ?
-                              ExecContext::Type::Internal : ExecContext::Type::Default,
+    return new VocbaseContext(req, vocbase,
+                              req.user().empty() ? ExecContext::Type::Internal
+                                                 : ExecContext::Type::Default,
                               /*sysLevel*/ auth::Level::RW,
                               /*dbLevel*/ auth::Level::RW, true);
   }
@@ -85,8 +86,8 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
     return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
                               /*sysLevel*/ auth::Level::NONE,
                               /*dbLevel*/ auth::Level::NONE, false);
-  } 
-  
+  }
+
   if (req.user().empty()) {
     std::string msg = "only jwt can be used to authenticate as superuser";
     LOG_TOPIC("2d0f6", WARN, Logger::AUTHENTICATION) << msg;
@@ -108,8 +109,8 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   bool isAdminUser = (sysLvl == auth::Level::RW);
   if (!isAdminUser && ServerState::readOnly()) {
     // in case we are in read-only mode, we need to re-check the original permissions
-    isAdminUser = um->databaseAuthLevel(req.user(), StaticStrings::SystemDatabase, true) ==
-                  auth::Level::RW;
+    isAdminUser = um->databaseAuthLevel(req.user(), StaticStrings::SystemDatabase,
+                                        true) == auth::Level::RW;
   }
 
   return new VocbaseContext(req, vocbase, ExecContext::Type::Default,

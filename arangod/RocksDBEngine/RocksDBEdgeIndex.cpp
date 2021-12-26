@@ -89,8 +89,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   RocksDBEdgeIndexLookupIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  arangodb::RocksDBEdgeIndex const* index,
                                  std::unique_ptr<VPackBuilder> keys,
-                                 std::shared_ptr<cache::Cache> cache,
-                                 ReadOwnWrites readOwnWrites)
+                                 std::shared_ptr<cache::Cache> cache, ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cache(std::move(cache)),
@@ -113,9 +112,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   char const* typeName() const override { return "edge-index-iterator"; }
 
   bool hasExtra() const override {
-    TRI_IF_FAILURE("RocksDBEdgeIndex::disableHasExtra") {
-      return false;
-    }
+    TRI_IF_FAILURE("RocksDBEdgeIndex::disableHasExtra") { return false; }
     return true;
   }
 
@@ -126,33 +123,32 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   // calls cb(documentId)
   bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     return nextImplementation([&cb](LocalDocumentId docId,
-                                    VPackSlice /*fromTo*/) {
-      cb(docId);
-    }, limit);
+                                    VPackSlice /*fromTo*/) { cb(docId); },
+                              limit);
   }
 
   // calls cb(documentId, [_from, _to]) or cb(documentId, [_to, _from])
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     transaction::BuilderLeaser coveringBuilder(_trx);
-    return nextImplementation([&](LocalDocumentId docId,
-                                  VPackSlice fromTo) {
-      TRI_ASSERT(_lastKey.isString());
-      TRI_ASSERT(fromTo.isString());
-      coveringBuilder->clear();
-      coveringBuilder->openArray(/*unindexed*/true);
-      coveringBuilder->add(_lastKey);
-      coveringBuilder->add(fromTo);
-      coveringBuilder->close();
-      cb(docId, coveringBuilder->slice());
-    }, limit);
+    return nextImplementation(
+        [&](LocalDocumentId docId, VPackSlice fromTo) {
+          TRI_ASSERT(_lastKey.isString());
+          TRI_ASSERT(fromTo.isString());
+          coveringBuilder->clear();
+          coveringBuilder->openArray(/*unindexed*/ true);
+          coveringBuilder->add(_lastKey);
+          coveringBuilder->add(fromTo);
+          coveringBuilder->close();
+          cb(docId, coveringBuilder->slice());
+        },
+        limit);
   }
 
   // calls cb(documentId, _from) or (documentId, _to)
   bool nextExtraImpl(ExtraCallback const& cb, size_t limit) override {
     return nextImplementation([&cb](LocalDocumentId docId,
-                                    VPackSlice fromTo) {
-      cb(docId, fromTo);
-    }, limit);
+                                    VPackSlice fromTo) { cb(docId, fromTo); },
+                              limit);
   }
 
   void resetImpl() override {
@@ -201,9 +197,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
  private:
-
   void resetInplaceMemory() { _builder.clear(); }
-  
+
   /// internal retrieval loop
   template <typename F>
   inline bool nextImplementation(F&& cb, size_t limit) {
@@ -254,7 +249,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       if (_cache) {
         for (size_t attempts = 0; attempts < 10; ++attempts) {
           // Try to read from cache
-          auto finding = _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
+          auto finding =
+              _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
           if (finding.found()) {
             needRocksLookup = false;
             // We got sth. in the cache
@@ -309,24 +305,24 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void lookupInRocksDB(VPackStringRef fromTo) {
     // Bad (slow) case: read from RocksDB
-    
+
     auto* mthds = RocksDBTransactionState::toMethods(_trx);
-    
+
     // create iterator only on demand, so we save the allocation in case
     // the reads can be satisfied from the cache
-    
+
     // unfortunately we *must* create a new RocksDB iterator here for each edge lookup.
     // the problem is that if we don't and reuse an existing RocksDB iterator, it will not
     // work properly with different prefixes.
     // this will be problematic if we do an edge lookup from an inner loop, e.g.
     //
     //   FOR doc IN ...
-    //     FOR edge IN edgeCollection FILTER edge._to == doc._id 
+    //     FOR edge IN edgeCollection FILTER edge._to == doc._id
     //     ...
     //
     // in this setup, we do rearm the RocksDBEdgeIndexLookupIterator to look up multiple
     // times, with different _to values. However, if we reuse the same RocksDB iterator
-    // for this, it may or may not find all the edges. Even calling `Seek` using  a new
+    // for this, it may or may not find all the edges. Even calling `Seek` using a new
     // bound does not fix this. It seems to have to do with the Iterator preserving some
     // state when there is a prefix extractor in place.
     //
@@ -380,7 +376,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       if (!inserter.status.fail()) {
         LOG_TOPIC("c1809", DEBUG, arangodb::Logger::CACHE)
             << "Failed to cache: " << fromTo.toString();
-        }
+      }
     }
     TRI_ASSERT(_builder.slice().isArray());
     _builderIterator = VPackArrayIterator(_builder.slice());
@@ -439,8 +435,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
 
   if (!ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator only on DBServers
-    _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
-        RocksDBIndex::ESTIMATOR_SIZE);
+    _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(RocksDBIndex::ESTIMATOR_SIZE);
   }
   // edge indexes are always created with ID 1 or 2
   TRI_ASSERT(iid.isEdge());
@@ -479,9 +474,8 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                                LocalDocumentId const& documentId,
-                                velocypack::Slice doc, OperationOptions const& /*options*/,
-                                bool /*performChecks*/) {
+                                LocalDocumentId const& documentId, velocypack::Slice doc,
+                                OperationOptions const& /*options*/, bool /*performChecks*/) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
@@ -516,8 +510,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 }
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
-                                LocalDocumentId const& documentId,
-                                velocypack::Slice doc) {
+                                LocalDocumentId const& documentId, velocypack::Slice doc) {
   Result res;
 
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
@@ -552,8 +545,8 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 /// @brief checks whether the index supports the condition
 Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-    arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex) const {
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) const {
   SimpleAttributeEqualityMatcher matcher(this->_fields);
   return matcher.matchOne(this, node, reference, itemsInIndex);
 }
@@ -561,7 +554,8 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) {
+    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
+    ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   TRI_ASSERT(node != nullptr);
@@ -573,11 +567,11 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
   TRI_ASSERT(aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
              aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN);
-  
+
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache, readOwnWrites);
-  } 
+  }
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // "in"-checks never needs to observe own writes
     TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
@@ -645,7 +639,8 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   if (expectedCount < 100000) {
-    LOG_TOPIC("ac653", DEBUG, Logger::ENGINES) << "Skipping the multithreaded loading";
+    LOG_TOPIC("ac653", DEBUG, Logger::ENGINES)
+        << "Skipping the multithreaded loading";
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
                                                              bounds.start(),
                                                              bounds.end());
@@ -806,9 +801,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
 
       builder.add(VPackValue(docId.id()));
       VPackSlice doc(mdr.vpack());
-      VPackSlice toFrom =
-      _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
-                   : transaction::helpers::extractFromFromDocument(doc);
+      VPackSlice toFrom = _isFromIndex
+                              ? transaction::helpers::extractToFromDocument(doc)
+                              : transaction::helpers::extractFromFromDocument(doc);
       TRI_ASSERT(toFrom.isString());
       builder.add(toFrom);
     }
@@ -867,7 +862,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
 void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,
                                        arangodb::aql::AstNode const* value) const {
   TRI_ASSERT(keys.isEmpty());
-  keys.openArray(/*unindexed*/true);
+  keys.openArray(/*unindexed*/ true);
   handleValNode(&keys, value);
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -881,7 +876,7 @@ void RocksDBEdgeIndex::fillInLookupValues(transaction::Methods* trx, VPackBuilde
   TRI_ASSERT(values->type == arangodb::aql::NODE_TYPE_ARRAY);
   TRI_ASSERT(keys.isEmpty());
 
-  keys.openArray(/*unindexed*/true);
+  keys.openArray(/*unindexed*/ true);
   size_t const n = values->numMembers();
   for (size_t i = 0; i < n; ++i) {
     handleValNode(&keys, values->getMemberUnchecked(i));
@@ -955,7 +950,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(bounds.end()) < 1);
     uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
-    //cppcheck-suppress uninitvar ; doesn't understand above call
+    // cppcheck-suppress uninitvar ; doesn't understand above call
     _estimator->insert(hash);
   }
   _estimator->setAppliedSeq(seq);

@@ -148,19 +148,19 @@ class RocksDBCuckooIndexEstimator {
 
   RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator const&) = delete;
   RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) = delete;
-  
+
   enum SerializeFormat : char {
     // Estimators are serialized in the following way:
     // - the first 8 bytes contain the applied seq number, little endian
-    // - the next byte contains the serialization format, which is one of the 
+    // - the next byte contains the serialization format, which is one of the
     //   values from this enum
     // - the following bytes are format-specific payload
     //
     //   appliedSeq|format|payload
 
     // To describe formats we use | as a seperator for readability, but it
-    // is NOT a printed character in the serialized string. 
-    
+    // is NOT a printed character in the serialized string.
+
     // UNCOMPRESSED:
     // serializes all instance members in a simple way, writing them all out
     // one after another. the values are not compressed and will use a lot of
@@ -169,7 +169,7 @@ class RocksDBCuckooIndexEstimator {
     //   size|nrUsed|nrCuckood|nrTotal|niceSize|logSize|base|counters
     UNCOMPRESSED = '1',
 
-    // COMPRESSED: 
+    // COMPRESSED:
     // first serializes everything using the UNCOMPRESSED format, and then
     // compressed it with Snappy compression into a shorter equivalent.
     // after compression, we only have a size of the compressed blob, and
@@ -181,7 +181,7 @@ class RocksDBCuckooIndexEstimator {
     // serialized data structure
     COMPRESSED = '2',
   };
-  
+
   static bool isFormatSupported(arangodb::velocypack::StringRef serialized);
 
   /**
@@ -198,10 +198,9 @@ class RocksDBCuckooIndexEstimator {
    * @param  commitSeq  Above that are still uncommited operations
    * @param  format     The serialization format to use
    */
-  void serialize(std::string& serialized, 
-                 rocksdb::SequenceNumber maxCommitSeq, 
+  void serialize(std::string& serialized, rocksdb::SequenceNumber maxCommitSeq,
                  SerializeFormat format);
-  
+
   /// @brief only call directly during startup/recovery; otherwise buffer
   void clear();
 
@@ -244,8 +243,7 @@ class RocksDBCuckooIndexEstimator {
    * @param  removals Vector of hashes to remove
    * @return          May return error if any functions throw (e.g. alloc)
    */
-  Result bufferUpdates(rocksdb::SequenceNumber seq, 
-                       std::vector<Key>&& inserts,
+  Result bufferUpdates(rocksdb::SequenceNumber seq, std::vector<Key>&& inserts,
                        std::vector<Key>&& removals);
 
   /**
@@ -508,7 +506,7 @@ class RocksDBCuckooIndexEstimator {
 
   // Instance to compute the first hash function
   HashWithSeed<Key, 0xdeadbeefdeadbeefULL> _hasherKey;
-  
+
   // Instance to compute a fingerprint of a key
   HashWithSeed<Key, 0xabcdefabcdef1234ULL> _fingerprint;
 
@@ -516,9 +514,8 @@ class RocksDBCuckooIndexEstimator {
   HashWithSeed<uint16_t, 0xfedcbafedcba4321ULL> _hasherShort;
 
   arangodb::basics::ReadWriteLock mutable _lock;
-}; 
+};
 
 using RocksDBCuckooIndexEstimatorType = RocksDBCuckooIndexEstimator<uint64_t>;
 
 }  // namespace arangodb
-

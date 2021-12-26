@@ -73,8 +73,7 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator++() {
 
 template <class ModifierCompletion, typename Enable>
 bool SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator!=(
-    SimpleModifier<ModifierCompletion, Enable>::OutputIterator const& other) const
-    noexcept {
+    SimpleModifier<ModifierCompletion, Enable>::OutputIterator const& other) const noexcept {
   return _operationsIterator != other._operationsIterator;
 }
 
@@ -183,7 +182,7 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
   if (result.isReady()) {
     _results = std::move(result.get());
     return ExecutionState::DONE;
-  } 
+  }
 
   _results = Waiting{};
 
@@ -196,7 +195,8 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
   guard.unlock();
 
   auto self = this->shared_from_this();
-  std::move(result).thenFinal([self, sqs = _infos.engine()->sharedState()](futures::Try<OperationResult>&& opRes) {
+  std::move(result).thenFinal([self, sqs = _infos.engine()->sharedState()](
+                                  futures::Try<OperationResult>&& opRes) {
     sqs->executeAndWakeup([&]() noexcept {
       std::unique_lock<std::mutex> guard(self->_resultMutex);
       try {
@@ -240,7 +240,7 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(transaction:
           }
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, std::move(message));
         }
-      } catch(...) {
+      } catch (...) {
         auto exptr = std::current_exception();
         self->_results = exptr;
       }
@@ -292,8 +292,7 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfWritesIgnored() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
-ModificationExecutorInfos& SimpleModifier<ModifierCompletion, Enable>::getInfos() const
-    noexcept {
+ModificationExecutorInfos& SimpleModifier<ModifierCompletion, Enable>::getInfos() const noexcept {
   return _infos;
 }
 

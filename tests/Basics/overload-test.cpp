@@ -141,7 +141,6 @@ TEST_F(OverloadTest, overload_heterogenous_return_type_with_default) {
   }
 }
 
-
 TEST_F(OverloadTest, overload_differing_return_type) {
   auto const call = overload{
       [](int i) { return i + 1; },

@@ -35,4 +35,3 @@ using SmallVector = std::vector<T, detail::short_alloc<T, BufSize, ElementAlignm
 
 }  // namespace containers
 }  // namespace arangodb
-

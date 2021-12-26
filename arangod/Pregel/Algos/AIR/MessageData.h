@@ -57,4 +57,3 @@ struct MessageData {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-

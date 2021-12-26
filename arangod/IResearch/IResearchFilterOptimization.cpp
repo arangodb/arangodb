@@ -27,9 +27,7 @@
 namespace arangodb {
 namespace iresearch {
 
-
-bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
-                                    irs::string_ref name,
+bool includeStartsWithInLevenshtein(irs::boolean_filter* filter, irs::string_ref name,
                                     irs::string_ref startsWith) {
   if (filter->type() == irs::type<irs::And>::id()) {
     for (auto& f : *filter) {
@@ -38,8 +36,7 @@ bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
         if (levenshtein.field() == name) {
           auto options = levenshtein.mutable_options();
           if (startsWith.size() <= options->prefix.size()) {
-            if (irs::starts_with(irs::ref_cast<char>(options->prefix),
-                                 startsWith)) {
+            if (irs::starts_with(irs::ref_cast<char>(options->prefix), startsWith)) {
               // Nothing to do. We are already covered by this levenshtein prefix
               return true;
             }
@@ -73,5 +70,5 @@ bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
   return false;
 }
 
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb

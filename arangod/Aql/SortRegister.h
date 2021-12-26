@@ -49,4 +49,3 @@ struct SortRegister {
 
 }  // namespace aql
 }  // namespace arangodb
-

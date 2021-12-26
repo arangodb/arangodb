@@ -27,8 +27,8 @@
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
-#include "Pregel/Utils.h"
 #include "Pregel/Reports.h"
+#include "Pregel/Utils.h"
 
 namespace arangodb {
 namespace pregel {
@@ -54,9 +54,7 @@ class WorkerContext {
     return (T*)_readAggregators->getAggregatedValue(name);
   }
 
-  AggregatorHandler& getWriteAggregators() {
-    return *_writeAggregators;
-  }
+  AggregatorHandler& getWriteAggregators() { return *_writeAggregators; }
 
   virtual void preApplication() {}
   virtual void preGlobalSuperstep(uint64_t gss) {}

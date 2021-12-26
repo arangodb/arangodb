@@ -39,7 +39,8 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   resource /= std::string_view(arangodb::tests::testResourceDir);
   resource /= std::string_view("simple_sequential.json");
 
-  auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+  auto builder =
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
   auto docsSlice = builder.slice();
   ASSERT_TRUE(docsSlice.isArray());
   ASSERT_NE(0, docsSlice.length());
@@ -84,7 +85,8 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   resource /= std::string_view(arangodb::tests::testResourceDir);
   resource /= std::string_view("simple_sequential.json");
 
-  auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+  auto builder =
+      arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
   auto docsSlice = builder.slice();
   ASSERT_TRUE(docsSlice.isArray());
   ASSERT_NE(0, docsSlice.length());

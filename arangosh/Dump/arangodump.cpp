@@ -72,7 +72,8 @@ int main(int argc, char* argv[]) {
     server.addFeature<BasicFeaturePhaseClient>();
     server.addFeature<GreetingsFeaturePhase>(true);
 
-    server.addFeature<ClientFeature, HttpEndpointProvider>(true, std::numeric_limits<size_t>::max());
+    server.addFeature<ClientFeature, HttpEndpointProvider>(true,
+                                                           std::numeric_limits<size_t>::max());
     server.addFeature<ConfigFeature>("arangodump");
     server.addFeature<DumpFeature>(ret);
     server.addFeature<LoggerFeature>(false);

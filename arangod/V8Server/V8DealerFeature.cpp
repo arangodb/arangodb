@@ -62,10 +62,10 @@
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-deadline.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
-#include "V8/v8-deadline.h"
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
@@ -110,9 +110,11 @@ class V8GcThread : public Thread {
 }  // namespace
 
 DECLARE_COUNTER(arangodb_v8_context_created_total, "V8 contexts created");
-DECLARE_COUNTER(arangodb_v8_context_creation_time_msec_total, "Total time for creating V8 contexts [ms]");
+DECLARE_COUNTER(arangodb_v8_context_creation_time_msec_total,
+                "Total time for creating V8 contexts [ms]");
 DECLARE_COUNTER(arangodb_v8_context_destroyed_total, "V8 contexts destroyed");
-DECLARE_COUNTER(arangodb_v8_context_enter_failures_total, "V8 context enter failures");
+DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
+                "V8 context enter failures");
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
@@ -134,18 +136,18 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _stopping(false),
       _gcFinished(false),
       _dynamicContextCreationBlockers(0),
-      _contextsCreationTime(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_creation_time_msec_total{})),
-      _contextsCreated(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_created_total{})),
-      _contextsDestroyed(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_destroyed_total{})),
-      _contextsEntered(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_entered_total{})),
-      _contextsExited(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_exited_total{})),
-      _contextsEnterFailures(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_enter_failures_total{})) {
+      _contextsCreationTime(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_v8_context_creation_time_msec_total{})),
+      _contextsCreated(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_v8_context_created_total{})),
+      _contextsDestroyed(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_v8_context_destroyed_total{})),
+      _contextsEntered(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_v8_context_entered_total{})),
+      _contextsExited(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_v8_context_exited_total{})),
+      _contextsEnterFailures(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_v8_context_enter_failures_total{})) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
@@ -161,136 +163,115 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.gc-frequency",
       "JavaScript time-based garbage collection frequency (each x seconds)",
       new DoubleParameter(&_gcFrequency),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle,
-      arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnCoordinator,
+                                   arangodb::options::Flags::OnSingle,
+                                   arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
       new UInt64Parameter(&_gcInterval),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle,
-      arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnCoordinator,
+                                   arangodb::options::Flags::OnSingle,
+                                   arangodb::options::Flags::Hidden));
 
-  options->addOption(
-      "--javascript.app-path", "directory for Foxx applications",
-      new StringParameter(&_appPath),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+  options->addOption("--javascript.app-path", "directory for Foxx applications",
+                     new StringParameter(&_appPath),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.startup-directory",
       "path to the directory containing JavaScript startup scripts",
       new StringParameter(&_startupDirectory),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnCoordinator,
+                                   arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--javascript.module-directory",
-      "additional paths containing JavaScript modules",
-      new VectorParameter<StringParameter>(&_moduleDirectories),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle,
-      arangodb::options::Flags::Hidden));
+  options->addOption("--javascript.module-directory",
+                     "additional paths containing JavaScript modules",
+                     new VectorParameter<StringParameter>(&_moduleDirectories),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnSingle,
+                                                  arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.copy-installation",
       "copy contents of 'javascript.startup-directory' on first start",
       new BooleanParameter(&_copyInstallation),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnCoordinator,
+                                   arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--javascript.v8-contexts",
-      "maximum number of V8 contexts that are created for "
-      "executing JavaScript actions",
-      new UInt64Parameter(&_nrMaxContexts),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+  options->addOption("--javascript.v8-contexts",
+                     "maximum number of V8 contexts that are created for "
+                     "executing JavaScript actions",
+                     new UInt64Parameter(&_nrMaxContexts),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--javascript.v8-contexts-minimum",
-      "minimum number of V8 contexts that keep available for "
-      "executing JavaScript actions",
-      new UInt64Parameter(&_nrMinContexts),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle));
+  options->addOption("--javascript.v8-contexts-minimum",
+                     "minimum number of V8 contexts that keep available for "
+                     "executing JavaScript actions",
+                     new UInt64Parameter(&_nrMinContexts),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.v8-contexts-max-invocations",
       "maximum number of invocations for each V8 context before it is disposed",
       new UInt64Parameter(&_maxContextInvocations),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle,
-      arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnCoordinator,
+                                   arangodb::options::Flags::OnSingle,
+                                   arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.v8-contexts-max-age",
       "maximum age for each V8 context (in seconds) before it is disposed",
       new DoubleParameter(&_maxContextAge),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle,
-      arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnCoordinator,
+                                   arangodb::options::Flags::OnSingle,
+                                   arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle,
-      arangodb::options::Flags::Hidden));
-  
-  options->addOption(
-      "--javascript.transactions",
-      "enable JavaScript transactions",
-      new BooleanParameter(&_allowJavaScriptTransactions),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30800);
-  
-  options->addOption(
-      "--javascript.tasks",
-      "enable JavaScript tasks",
-      new BooleanParameter(&_allowJavaScriptTasks),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle))
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                   arangodb::options::Flags::OnCoordinator,
+                                   arangodb::options::Flags::OnSingle,
+                                   arangodb::options::Flags::Hidden));
+
+  options
+      ->addOption("--javascript.transactions", "enable JavaScript transactions",
+                  new BooleanParameter(&_allowJavaScriptTransactions),
+                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                               arangodb::options::Flags::OnCoordinator,
+                                               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
 
-  options->addOption(
-      "--javascript.enabled", "enable the V8 JavaScript engine",
-      new BooleanParameter(&_enableJS),
-      arangodb::options::makeFlags(
-      arangodb::options::Flags::DefaultNoComponents,
-      arangodb::options::Flags::OnCoordinator,
-      arangodb::options::Flags::OnSingle,
-      arangodb::options::Flags::Hidden));
+  options
+      ->addOption("--javascript.tasks", "enable JavaScript tasks",
+                  new BooleanParameter(&_allowJavaScriptTasks),
+                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                               arangodb::options::Flags::OnCoordinator,
+                                               arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30800);
+
+  options->addOption("--javascript.enabled", "enable the V8 JavaScript engine",
+                     new BooleanParameter(&_enableJS),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnSingle,
+                                                  arangodb::options::Flags::Hidden));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -299,9 +280,10 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // a bit of duck typing here to check if we are an agent.
   // the problem is that the server role may be still unclear in this early
   // phase, so we are also looking for startup options that identify an agent
-  bool const isAgent = 
+  bool const isAgent =
       (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_AGENT) ||
-      (result.touched("agency.activate") && *(options->get<BooleanParameter>("agency.activate")->ptr));
+      (result.touched("agency.activate") &&
+       *(options->get<BooleanParameter>("agency.activate")->ptr));
 
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
   if (!javascriptRequestedViaOptions(options) &&
@@ -333,7 +315,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC("ae845", FATAL, arangodb::Logger::V8) << "failed to get global context";
+    LOG_TOPIC("ae845", FATAL, arangodb::Logger::V8)
+        << "failed to get global context";
     FATAL_ERROR_EXIT();
   }
 
@@ -379,13 +362,14 @@ void V8DealerFeature::start() {
         FileUtils::buildFilename(dbJSPath, StaticStrings::checksumFileJs);
     std::string const serverPath = FileUtils::buildFilename(dbJSPath, "server");
     std::string const commonPath = FileUtils::buildFilename(dbJSPath, "common");
-    std::string const nodeModulesPath = FileUtils::buildFilename(dbJSPath, "node", "node_modules");
+    std::string const nodeModulesPath =
+        FileUtils::buildFilename(dbJSPath, "node", "node_modules");
     if (FileUtils::isDirectory(dbJSPath) && FileUtils::exists(checksumFile) &&
         FileUtils::isDirectory(serverPath) && FileUtils::isDirectory(commonPath)) {
       // js directory inside database directory looks good. now use it!
       _startupDirectory = dbJSPath;
-      // older versions didn't copy node_modules. so check if it exists inside the
-      // database directory or not. 
+      // older versions didn't copy node_modules. so check if it exists inside
+      // the database directory or not.
       if (FileUtils::isDirectory(nodeModulesPath)) {
         _nodeModulesDirectory = nodeModulesPath;
       } else {
@@ -393,12 +377,12 @@ void V8DealerFeature::start() {
       }
     }
   }
-  
+
   LOG_TOPIC("77c97", DEBUG, Logger::V8)
       << "effective startup-directory: " << _startupDirectory
       << ", effective module-directories: " << _moduleDirectories
       << ", node-modules-directory: " << _nodeModulesDirectory;
-  
+
   // add all paths to allowlists
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
   TRI_ASSERT(!_startupDirectory.empty());
@@ -417,7 +401,7 @@ void V8DealerFeature::start() {
   v8security.addToInternalAllowList(_appPath, FSAccessType::READ);
   v8security.addToInternalAllowList(_appPath, FSAccessType::WRITE);
   v8security.dumpAccessLists();
-  
+
   _startupLoader.setDirectory(_startupDirectory);
 
   // dump paths
@@ -476,7 +460,7 @@ void V8DealerFeature::start() {
   }
 
   LOG_TOPIC("09e14", DEBUG, Logger::V8) << "number of V8 contexts: min: " << _nrMinContexts
-                               << ", max: " << _nrMaxContexts;
+                                        << ", max: " << _nrMaxContexts;
 
   defineDouble("V8_CONTEXTS", static_cast<double>(_nrMaxContexts));
 
@@ -503,7 +487,7 @@ void V8DealerFeature::start() {
       } catch (...) {
         vocbase->release();
       }
-      
+
       guard.lock();
       // push_back will not fail as we reserved enough memory before
       _contexts.push_back(context);
@@ -557,11 +541,11 @@ void V8DealerFeature::copyInstallationFiles() {
     overwriteCopy = true;
   } else {
     try {
-      overwriteCopy =
-          (StringUtils::trim(FileUtils::slurp(copyChecksumFile)) != StringUtils::trim(FileUtils::slurp(checksumFile)));
+      overwriteCopy = (StringUtils::trim(FileUtils::slurp(copyChecksumFile)) !=
+                       StringUtils::trim(FileUtils::slurp(checksumFile)));
     } catch (basics::Exception const& e) {
       LOG_TOPIC("efa47", ERR, Logger::V8) << "Error reading '" << StaticStrings::checksumFileJs
-                                 << "' from disk: " << e.what();
+                                          << "' from disk: " << e.what();
       overwriteCopy = true;
     }
   }
@@ -590,8 +574,9 @@ void V8DealerFeature::copyInstallationFiles() {
       }
     }
     if (!FileUtils::createDirectory(copyJSPath, &res)) {
-      LOG_TOPIC("b8c79", FATAL, Logger::V8) << "Error creating JS installation path '"
-                                   << copyJSPath << "': " << TRI_errno_string(res);
+      LOG_TOPIC("b8c79", FATAL, Logger::V8)
+          << "Error creating JS installation path '" << copyJSPath
+          << "': " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
 
@@ -606,15 +591,17 @@ void V8DealerFeature::copyInstallationFiles() {
         FileUtils::buildFilename("js", "node", "node_modules", "eslint");
 
     // .bin directories could be harmful, and .map files are large and unnecessary
-    std::string const binDirectory = std::string(TRI_DIR_SEPARATOR_STR) + ".bin" + TRI_DIR_SEPARATOR_STR;
+    std::string const binDirectory =
+        std::string(TRI_DIR_SEPARATOR_STR) + ".bin" + TRI_DIR_SEPARATOR_STR;
 
     size_t copied = 0;
 
     auto filter = [&eslintPath, &binDirectory, &copied](std::string const& filename) -> bool {
-      if (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, ".map") == 0) {
+      if (filename.size() >= 4 &&
+          filename.compare(filename.size() - 4, 4, ".map") == 0) {
         // filename ends with ".map". filter it out!
         return true;
-      } 
+      }
       if (filename.find(binDirectory) != std::string::npos) {
         // don't copy files in .bin
         return true;
@@ -623,7 +610,8 @@ void V8DealerFeature::copyInstallationFiles() {
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
       if ((normalized.size() >= eslintPath.size() &&
-           normalized.compare(normalized.size() - eslintPath.size(), eslintPath.size(), eslintPath) == 0)) {
+           normalized.compare(normalized.size() - eslintPath.size(),
+                              eslintPath.size(), eslintPath) == 0)) {
         // filter it out!
         return true;
       }
@@ -637,8 +625,8 @@ void V8DealerFeature::copyInstallationFiles() {
 
     std::string error;
     if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, filter, error)) {
-      LOG_TOPIC("45261", FATAL, Logger::V8) << "Error copying JS installation files to '"
-                                   << copyJSPath << "': " << error;
+      LOG_TOPIC("45261", FATAL, Logger::V8)
+          << "Error copying JS installation files to '" << copyJSPath << "': " << error;
       FATAL_ERROR_EXIT();
     }
 
@@ -658,20 +646,22 @@ void V8DealerFeature::copyInstallationFiles() {
       }
     }
 
-    LOG_TOPIC("38e1e", INFO, Logger::V8) 
-      << "copying " << copied << " JS installation file(s) took " << Logger::FIXED(TRI_microtime() - start, 6) << "s";
+    LOG_TOPIC("38e1e", INFO, Logger::V8)
+        << "copying " << copied << " JS installation file(s) took "
+        << Logger::FIXED(TRI_microtime() - start, 6) << "s";
   }
 
   // finally switch over the paths
   _startupDirectory = copyJSPath;
-  _nodeModulesDirectory = basics::FileUtils::buildFilename(copyJSPath, "node", "node_modules");
+  _nodeModulesDirectory =
+      basics::FileUtils::buildFilename(copyJSPath, "node", "node_modules");
 }
 
 V8Context* V8DealerFeature::addContext() {
   if (server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
   // use vocbase here and hand ownership to context
   TRI_vocbase_t* vocbase = databaseFeature.useDatabase(StaticStrings::SystemDatabase);
@@ -704,7 +694,7 @@ V8Context* V8DealerFeature::addContext() {
     throw;
   }
 }
-  
+
 void V8DealerFeature::unprepare() {
   shutdownContexts();
 
@@ -864,7 +854,7 @@ void V8DealerFeature::collectGarbage() {
           }
         }
       } else {
-        useReducedWait = true; 
+        useReducedWait = true;
       }
     } catch (...) {
       // simply ignore errors here
@@ -905,10 +895,11 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     ++_dynamicContextCreationBlockers;
   }
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { unblockDynamicContextCreation(); });
+  auto sg =
+      arangodb::scopeGuard([&]() noexcept { unblockDynamicContextCreation(); });
 
   LOG_TOPIC("1364d", TRACE, Logger::V8) << "loading JavaScript file '" << file << "' in all ("
-                               << contexts.size() << ") V8 contexts";
+                                        << contexts.size() << ") V8 contexts";
 
   // now safely scan the local copy of the contexts
   for (auto& context : contexts) {
@@ -955,7 +946,8 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
         guard.lock();
         _idleContexts.push_back(context);
       } else {
-        LOG_TOPIC("d3a7f", WARN, Logger::V8) << "v8 context #" << context->id() << " has disappeared";
+        LOG_TOPIC("d3a7f", WARN, Logger::V8)
+            << "v8 context #" << context->id() << " has disappeared";
       }
     }
   }
@@ -1011,7 +1003,8 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* co
 
 /// @brief enter a V8 context
 /// currently returns a nullptr if no context can be acquired in time
-V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecurityContext const& securityContext) {
+V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
+                                         JavaScriptSecurityContext const& securityContext) {
   TRI_ASSERT(vocbase != nullptr);
 
   if (_stopping) {
@@ -1021,7 +1014,6 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
   if (!vocbase->use()) {
     return nullptr;
   }
-
 
   double const startTime = TRI_microtime();
   TRI_ASSERT(v8::Isolate::GetCurrent() == nullptr);
@@ -1035,7 +1027,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
     while (_idleContexts.empty() && !_stopping) {
       TRI_ASSERT(guard.isLocked());
 
-      LOG_TOPIC("619ab", TRACE, arangodb::Logger::V8) << "waiting for unused V8 context";
+      LOG_TOPIC("619ab", TRACE, arangodb::Logger::V8)
+          << "waiting for unused V8 context";
 
       if (!_dirtyContexts.empty()) {
         // we'll use a dirty context in this case
@@ -1054,7 +1047,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
         guard.unlock();
 
         try {
-          LOG_TOPIC("973d7", DEBUG, Logger::V8) << "creating additional V8 context";
+          LOG_TOPIC("973d7", DEBUG, Logger::V8)
+              << "creating additional V8 context";
           context = addContext();
         } catch (...) {
           guard.lock();
@@ -1105,30 +1099,27 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
         vocbase->release();
 
         ++_contextsEnterFailures;
-        
+
         LOG_TOPIC("e1807", WARN, arangodb::Logger::V8)
             << "giving up waiting for unused V8 context for '"
             << securityContext.typeName() << "' operation after "
             << Logger::FIXED(maxWaitTime) << " s - "
-            << "contexts: " << _contexts.size() << "/" << _nrMaxContexts 
-            << ", idle: " << _idleContexts.size() 
-            << ", busy: " << _busyContexts.size() 
-            << ", dirty: " << _dirtyContexts.size() 
-            << ", in flight: " << _nrInflightContexts
+            << "contexts: " << _contexts.size() << "/" << _nrMaxContexts
+            << ", idle: " << _idleContexts.size() << ", busy: " << _busyContexts.size()
+            << ", dirty: " << _dirtyContexts.size() << ", in flight: " << _nrInflightContexts
             << " - context overview following...";
 
         size_t i = 0;
         for (auto const& it : _contexts) {
           ++i;
           LOG_TOPIC("74439", WARN, arangodb::Logger::V8)
-              << "- context #" << it->id() 
-              << " (" << i << "/" << _contexts.size() << ")"
-              << ": acquired: " << Logger::FIXED(now - it->acquired()) << " s ago" 
+              << "- context #" << it->id() << " (" << i << "/" << _contexts.size() << ")"
+              << ": acquired: " << Logger::FIXED(now - it->acquired()) << " s ago"
               << ", performing '" << it->description() << "' operation";
         }
         return nullptr;
       }
-      
+
       guard.wait(100000);
     }
 
@@ -1174,7 +1165,8 @@ void V8DealerFeature::exitContextInternal(V8Context* context) {
 void V8DealerFeature::cleanupLockedContext(V8Context* context) {
   TRI_ASSERT(context != nullptr);
 
-  LOG_TOPIC("e1c52", TRACE, arangodb::Logger::V8) << "leaving V8 context #" << context->id();
+  LOG_TOPIC("e1c52", TRACE, arangodb::Logger::V8)
+      << "leaving V8 context #" << context->id();
 
   auto isolate = context->_isolate;
   TRI_ASSERT(isolate != nullptr);
@@ -1340,12 +1332,13 @@ void V8DealerFeature::shutdownContexts() {
 
     for (size_t n = 0; n < 10 * 5; ++n) {
       if (_busyContexts.empty()) {
-        LOG_TOPIC("36259", DEBUG, arangodb::Logger::V8) << "no busy V8 contexts";
+        LOG_TOPIC("36259", DEBUG, arangodb::Logger::V8)
+            << "no busy V8 contexts";
         break;
       }
 
-      LOG_TOPIC("ea785", DEBUG, arangodb::Logger::V8) << "waiting for busy V8 contexts ("
-                                             << _busyContexts.size() << ") to finish ";
+      LOG_TOPIC("ea785", DEBUG, arangodb::Logger::V8)
+          << "waiting for busy V8 contexts (" << _busyContexts.size() << ") to finish ";
 
       guard.wait(100 * 1000);
     }
@@ -1376,7 +1369,8 @@ void V8DealerFeature::shutdownContexts() {
   }
 
   if (!_busyContexts.empty()) {
-    LOG_TOPIC("4b09f", FATAL, arangodb::Logger::V8) << "cannot shutdown V8 contexts";
+    LOG_TOPIC("4b09f", FATAL, arangodb::Logger::V8)
+        << "cannot shutdown V8 contexts";
     FATAL_ERROR_EXIT();
   }
 
@@ -1409,7 +1403,8 @@ void V8DealerFeature::shutdownContexts() {
     }
   }
 
-  LOG_TOPIC("7cdb2", DEBUG, arangodb::Logger::V8) << "V8 contexts are shut down";
+  LOG_TOPIC("7cdb2", DEBUG, arangodb::Logger::V8)
+      << "V8 contexts are shut down";
 }
 
 V8Context* V8DealerFeature::pickFreeContextForGc() {
@@ -1474,7 +1469,7 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
   double const start = TRI_microtime();
 
   V8PlatformFeature& v8platform = server().getFeature<V8PlatformFeature>();
-      
+
   // create isolate
   v8::Isolate* isolate = v8platform.createIsolate();
   TRI_ASSERT(isolate != nullptr);
@@ -1484,7 +1479,7 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
   try {
     // pass isolate to a new context
     context = std::make_unique<V8Context>(id, isolate);
-  
+
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
     V8ContextEntryGuard contextGuard(context.get());
@@ -1506,14 +1501,21 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {
-        LOG_TOPIC("ba904", FATAL, arangodb::Logger::V8) << "cannot initialize V8 engine";
+        LOG_TOPIC("ba904", FATAL, arangodb::Logger::V8)
+            << "cannot initialize V8 engine";
         FATAL_ERROR_EXIT();
       }
 
       v8::Handle<v8::Object> globalObj = localContext->Global();
-      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj).FromMaybe(false);
-      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "global"), globalObj).FromMaybe(false);
-      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "root"),   globalObj).FromMaybe(false);
+      globalObj
+          ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj)
+          .FromMaybe(false);
+      globalObj
+          ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "global"), globalObj)
+          .FromMaybe(false);
+      globalObj
+          ->Set(localContext, TRI_V8_ASCII_STRING(isolate, "root"), globalObj)
+          .FromMaybe(false);
 
       std::string modules = "";
       std::string sep = "";
@@ -1542,7 +1544,7 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
       TRI_InitV8ServerUtils(isolate);
       TRI_InitV8Shell(isolate);
       TRI_InitV8Ttl(isolate);
-    
+
       {
         v8::HandleScope scope(isolate);
 
@@ -1573,10 +1575,10 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
               .FromMaybe(false);  // Ignore it...
         }
       }
-      
+
       auto queryRegistry = QueryRegistryFeature::registry();
       TRI_ASSERT(queryRegistry != nullptr);
-  
+
       JavaScriptSecurityContext old(v8g->_securityContext);
       v8g->_securityContext = JavaScriptSecurityContext::createInternalContext();
 
@@ -1588,7 +1590,7 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
         TRI_InitV8Dispatcher(isolate, localContext);
         TRI_InitV8Actions(isolate);
       }
-    
+
       // restore old security settings
       v8g->_securityContext = old;
     }
@@ -1612,8 +1614,10 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
   context->_hasActiveExternals = true;
   context->_lastGcStamp = now + randomWait;
 
-  LOG_TOPIC("83428", TRACE, arangodb::Logger::V8) << "initialized V8 context #" << id << " in " << Logger::FIXED(now - start, 6) << " s";
- 
+  LOG_TOPIC("83428", TRACE, arangodb::Logger::V8)
+      << "initialized V8 context #" << id << " in "
+      << Logger::FIXED(now - start, 6) << " s";
+
   // add context creation time to global metrics
   _contextsCreationTime += static_cast<uint64_t>(1000 * (now - start));
 
@@ -1623,8 +1627,8 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
 V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  return {_contexts.size(), _busyContexts.size(), _dirtyContexts.size(),
-          _idleContexts.size(), _nrMaxContexts, _nrMinContexts};
+  return {_contexts.size(),     _busyContexts.size(), _dirtyContexts.size(),
+          _idleContexts.size(), _nrMaxContexts,       _nrMinContexts};
 }
 
 std::vector<V8DealerFeature::DetailedContextStatistics> V8DealerFeature::getCurrentContextDetails() {
@@ -1635,15 +1639,9 @@ std::vector<V8DealerFeature::DetailedContextStatistics> V8DealerFeature::getCurr
     for (auto oneCtx : _contexts) {
       auto isolate = oneCtx->_isolate;
       TRI_GET_GLOBALS();
-      result.push_back(DetailedContextStatistics
-                       {
-                        v8g->_id,
-                        v8g->_lastMaxTime,
-                        v8g->_countOfTimes,
-                        v8g->_heapMax,
-                        v8g->_heapLow,
-                        oneCtx->invocations()
-                       });
+      result.push_back(DetailedContextStatistics{v8g->_id, v8g->_lastMaxTime, v8g->_countOfTimes,
+                                                 v8g->_heapMax, v8g->_heapLow,
+                                                 oneCtx->invocations()});
     }
   }
   return result;
@@ -1663,7 +1661,8 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
     return false;
   }
 
-  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
+  JavaScriptSecurityContext securityContext =
+      JavaScriptSecurityContext::createInternalContext();
 
   context->lockAndEnter();
   prepareLockedContext(vocbase, context, securityContext);
@@ -1692,7 +1691,8 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
 
     switch (_startupLoader.loadScript(context->_isolate, localContext, file, builder)) {
       case JSLoader::eSuccess:
-        LOG_TOPIC("29e73", TRACE, arangodb::Logger::V8) << "loaded JavaScript file '" << file << "'";
+        LOG_TOPIC("29e73", TRACE, arangodb::Logger::V8)
+            << "loaded JavaScript file '" << file << "'";
         break;
       case JSLoader::eFailLoad:
         LOG_TOPIC("0f13b", FATAL, arangodb::Logger::V8)
@@ -1709,8 +1709,8 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
 
   localContext->Exit();
 
-  LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8) << "loaded JavaScript file '" << file
-                                         << "' for V8 context #" << context->id();
+  LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8)
+      << "loaded JavaScript file '" << file << "' for V8 context #" << context->id();
 }
 
 void V8DealerFeature::shutdownContext(V8Context* context) {
@@ -1739,7 +1739,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
       v8g->_inForcedCollect = true;
       TRI_RunGarbageCollectionV8(isolate, 30.0);
       v8g->_inForcedCollect = false;
-      
+
       delete v8g;
     }
 
@@ -1750,7 +1750,8 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
   server().getFeature<V8PlatformFeature>().disposeIsolate(isolate);
 
-  LOG_TOPIC("34c28", TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->id();
+  LOG_TOPIC("34c28", TRACE, arangodb::Logger::V8)
+      << "closed V8 context #" << context->id();
 
   delete context;
   ++_contextsDestroyed;
@@ -1763,7 +1764,8 @@ bool V8DealerFeature::javascriptRequestedViaOptions(std::shared_ptr<ProgramOptio
     // --console
     return true;
   }
-  if (result.touched("javascript.enabled") && *(options->get<BooleanParameter>("javascript.enabled")->ptr)) {
+  if (result.touched("javascript.enabled") &&
+      *(options->get<BooleanParameter>("javascript.enabled")->ptr)) {
     // --javascript.enabled
     return true;
   }

@@ -34,7 +34,8 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  MockTypedNode(::arangodb::aql::ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id, NodeType);
+  MockTypedNode(::arangodb::aql::ExecutionPlan* plan,
+                arangodb::aql::ExecutionNodeId id, NodeType);
 
   // return mocked type
   NodeType getType() const override final;
@@ -51,6 +52,7 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
                        bool withDependencies, bool withProperties) const override;
 
   ::arangodb::aql::CostEstimate estimateCost() const override;
+
  private:
   NodeType _mockedType{};
 };

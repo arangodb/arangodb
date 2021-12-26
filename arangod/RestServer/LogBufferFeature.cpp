@@ -31,8 +31,8 @@
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogAppender.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/Metrics.h"
@@ -54,20 +54,15 @@ DECLARE_COUNTER(arangodb_logger_errors_total, "Number of errors logged.");
 namespace arangodb {
 
 LogBuffer::LogBuffer()
-    : _id(0), 
-      _level(LogLevel::DEFAULT), 
-      _topicId(0), 
-      _timestamp(0.0) {
+    : _id(0), _level(LogLevel::DEFAULT), _topicId(0), _timestamp(0.0) {
   memset(&_message[0], 0, sizeof(_message));
 }
 
 /// @brief logs to a fixed size ring buffer in memory
 class LogAppenderRingBuffer final : public LogAppender {
  public:
-  explicit LogAppenderRingBuffer(LogLevel minLogLevel) 
-      : LogAppender(),
-        _minLogLevel(minLogLevel),
-        _id(0) {
+  explicit LogAppenderRingBuffer(LogLevel minLogLevel)
+      : LogAppender(), _minLogLevel(minLogLevel), _id(0) {
     MUTEX_LOCKER(guard, _lock);
     _buffer.resize(LogBufferFeature::BufferSize);
   }
@@ -101,23 +96,21 @@ class LogAppenderRingBuffer final : public LogAppender {
     _buffer.resize(LogBufferFeature::BufferSize);
   }
 
-  std::string details() const override {
-    return std::string();
-  }
+  std::string details() const override { return std::string(); }
 
   /// @brief return all buffered log entries
   std::vector<LogBuffer> entries(LogLevel level, uint64_t start, bool upToLevel,
                                  std::string const& searchString) {
     std::vector<LogBuffer> result;
     result.reserve(16);
-    
+
     uint64_t s = 0;
     uint64_t n;
-  
+
     std::string search;
     if (!searchString.empty()) {
       search = arangodb::basics::StringUtils::tolower(searchString);
-    } 
+    }
 
     MUTEX_LOCKER(guard, _lock);
 
@@ -133,7 +126,8 @@ class LogAppenderRingBuffer final : public LogAppender {
 
       if (p._id >= start) {
         bool matches = (search.empty() ||
-                        arangodb::basics::StringUtils::tolower(p._message).find(search) != std::string::npos);
+                        arangodb::basics::StringUtils::tolower(p._message).find(search) !=
+                            std::string::npos);
 
         if (matches) {
           if (upToLevel) {
@@ -177,16 +171,14 @@ class LogAppenderDebugOutput final : public LogAppender {
     if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
     }
-    
+
     // log these errors to the debug output window in MSVC so
     // we can see them during development
     OutputDebugString(message._message.data() + message._offset);
     OutputDebugString("\r\n");
   }
 
-  std::string details() const override {
-    return std::string();
-  }
+  std::string details() const override { return std::string(); }
 };
 
 /// logs to the Windows event log
@@ -200,13 +192,12 @@ class LogAppenderEventLog final : public LogAppender {
     if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
     }
-    
-    TRI_LogWindowsEventlog(message._function, message._file, message._line, message._message);
+
+    TRI_LogWindowsEventlog(message._function, message._file, message._line,
+                           message._message);
   }
 
-  std::string details() const override {
-    return std::string();
-  }
+  std::string details() const override { return std::string(); }
 };
 #endif
 
@@ -216,8 +207,10 @@ class LogAppenderMetricsCounter final : public LogAppender {
  public:
   LogAppenderMetricsCounter(application_features::ApplicationServer& server)
       : LogAppender(),
-        _warningsCounter(server.getFeature<arangodb::MetricsFeature>().add(arangodb_logger_warnings_total{})),
-        _errorsCounter(server.getFeature<arangodb::MetricsFeature>().add(arangodb_logger_errors_total{})) {}
+        _warningsCounter(server.getFeature<arangodb::MetricsFeature>().add(
+            arangodb_logger_warnings_total{})),
+        _errorsCounter(server.getFeature<arangodb::MetricsFeature>().add(
+            arangodb_logger_errors_total{})) {}
 
   void logMessage(LogMessage const& message) override {
     // only handle WARN and ERR log messages
@@ -228,9 +221,7 @@ class LogAppenderMetricsCounter final : public LogAppender {
     }
   }
 
-  std::string details() const override {
-    return std::string();
-  }
+  std::string details() const override { return std::string(); }
 
  private:
   Counter& _warningsCounter;
@@ -243,7 +234,7 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
       _useInMemoryAppender(true) {
   setOptional(true);
   startsAfter<LoggerFeature>();
-  
+
 #ifdef _WIN32
   LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
                                  std::make_shared<LogAppenderDebugOutput>());
@@ -253,21 +244,26 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
   LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
                                  std::make_shared<LogAppenderMetricsCounter>(server));
 }
-  
+
 void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption("--log.in-memory", "use in-memory log appender, which can be queried via API and web UI",
-                  new BooleanParameter(&_useInMemoryAppender),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                  .setIntroducedIn(30800);
-  
-  std::unordered_set<std::string> const logLevels = { "fatal", "error", "err", "warning", "warn", "info", "debug", "trace" };
+      ->addOption(
+          "--log.in-memory",
+          "use in-memory log appender, which can be queried via API and web UI",
+          new BooleanParameter(&_useInMemoryAppender),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30800);
+
+  std::unordered_set<std::string> const logLevels = {"fatal",   "error", "err",
+                                                     "warning", "warn",  "info",
+                                                     "debug",   "trace"};
   options
-      ->addOption("--log.in-memory-level", "use in-memory log appender only for this log level and higher",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_minInMemoryLogLevel, logLevels),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                  .setIntroducedIn(30709);
+      ->addOption(
+          "--log.in-memory-level",
+          "use in-memory log appender only for this log level and higher",
+          new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel, logLevels),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30709);
 }
 
 void LogBufferFeature::prepare() {
@@ -294,13 +290,14 @@ void LogBufferFeature::clear() {
   }
 }
 
-std::vector<LogBuffer> LogBufferFeature::entries(LogLevel level, uint64_t start, bool upToLevel, 
+std::vector<LogBuffer> LogBufferFeature::entries(LogLevel level, uint64_t start, bool upToLevel,
                                                  std::string const& searchString) {
   if (_inMemoryAppender == nullptr) {
     return std::vector<LogBuffer>();
   }
   TRI_ASSERT(_useInMemoryAppender);
-  return static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())->entries(level, start, upToLevel, searchString);
+  return static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())
+      ->entries(level, start, upToLevel, searchString);
 }
 
 }  // namespace arangodb

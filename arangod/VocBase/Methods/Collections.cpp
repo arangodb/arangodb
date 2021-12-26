@@ -26,13 +26,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/fasthash.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -51,10 +51,10 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utilities/NameValidator.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
@@ -114,9 +114,11 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type, bo
   return _trx;
 }
 
-//TRI_vocbase_t& Collections::Context::vocbase() const { return _vocbase; }
+// TRI_vocbase_t& Collections::Context::vocbase() const { return _vocbase; }
 
-std::shared_ptr<LogicalCollection> Collections::Context::coll() const { return _coll; }
+std::shared_ptr<LogicalCollection> Collections::Context::coll() const {
+  return _coll;
+}
 
 void Collections::enumerate(TRI_vocbase_t* vocbase,
                             std::function<void(std::shared_ptr<LogicalCollection> const&)> const& func) {
@@ -140,10 +142,9 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 }
 
 /*static*/ Result methods::Collections::lookup(  // find collection
-    TRI_vocbase_t const& vocbase,                          // vocbase to search
-    std::string const& name,                               // collection name
-    std::shared_ptr<LogicalCollection>& ret
-) {
+    TRI_vocbase_t const& vocbase,                // vocbase to search
+    std::string const& name,                     // collection name
+    std::shared_ptr<LogicalCollection>& ret) {
   if (name.empty()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -162,7 +163,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
       auto coll = ci.getCollectionNT(vocbase.name(), name);
       if (coll) {
         // check authentication after ensuring the collection exists
-        if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
+        if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(),
+                                                     auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "No access to collection '" + name + "'");
         }
@@ -171,14 +173,16 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
         return Result();
       } else {
-        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection not found");
+        return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                      "collection not found");
       }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      return Result(TRI_ERROR_INTERNAL,"internal error during collection lookup");
+      return Result(TRI_ERROR_INTERNAL,
+                    "internal error during collection lookup");
     }
 
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -188,7 +192,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
-    if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
+    if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(),
+                                                 auth::Level::RO)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "No access to collection '" + name + "'");
     }
@@ -199,7 +204,9 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      return Result(TRI_ERROR_INTERNAL,"internal error during collection lookup - canUseCollection");
+      return Result(
+          TRI_ERROR_INTERNAL,
+          "internal error during collection lookup - canUseCollection");
     }
 
     return Result();
@@ -268,7 +275,10 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     TRI_ASSERT(builder.isOpenArray());
 
     if (ServerState::instance()->isCoordinator()) {
-      Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server(), enforceReplicationFactor);
+      Result res =
+          ShardingInfo::validateShardsAndReplicationFactor(info.properties,
+                                                           vocbase.server(),
+                                                           enforceReplicationFactor);
       if (res.fail()) {
         return res;
       }
@@ -281,14 +291,16 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 
     if (info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
         info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+      events::CreateCollection(vocbase.name(), info.name,
+                               TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
     }
 
     TRI_ASSERT(info.properties.isObject());
     helper.clear();
     helper.openObject();
-    helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
+    helper.add(arangodb::StaticStrings::DataSourceType,
+               VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
     if (addUseRevs) {
@@ -327,7 +339,7 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       case ServerState::ROLE_UNDEFINED:
         TRI_ASSERT(false);
     }
-    
+
     if (!isLocalCollection) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
@@ -341,20 +353,22 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
         // the combination if "isSmart" and replicationFactor "satellite" does not make any sense.
         // note: replicationFactor "satellite" can also be expressed as replicationFactor 0.
         VPackSlice s = info.properties.get(StaticStrings::IsSmart);
-        if (s.isBoolean() && s.getBoolean() && 
-            ((replicationFactorSlice.isNumber() && 
-              replicationFactorSlice.getNumber<int>() == 0) || 
-             (replicationFactorSlice.isString() && 
+        if (s.isBoolean() && s.getBoolean() &&
+            ((replicationFactorSlice.isNumber() &&
+              replicationFactorSlice.getNumber<int>() == 0) ||
+             (replicationFactorSlice.isString() &&
               replicationFactorSlice.stringRef() == StaticStrings::Satellite))) {
           // check for the combination of "satellite" replication factor and "isSmart"
           events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_BAD_PARAMETER);
-          return {TRI_ERROR_BAD_PARAMETER, "invalid combination of 'isSmart' and 'satellite' replicationFactor"};
+          return {TRI_ERROR_BAD_PARAMETER,
+                  "invalid combination of 'isSmart' and 'satellite' "
+                  "replicationFactor"};
         }
       }
 
       if (!isSystemName) {
-        // system-collections will be sharded normally. only user collections will get
-        // the forced sharding
+        // system-collections will be sharded normally. only user collections
+        // will get the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
             vocbase.isOneShard()) {
           auto const isSatellite =
@@ -372,18 +386,19 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
       }
 
       auto writeConcernSlice = info.properties.get(StaticStrings::WriteConcern);
-      if (writeConcernSlice.isNone()) { // "minReplicationFactor" deprecated in 3.6
+      if (writeConcernSlice.isNone()) {  // "minReplicationFactor" deprecated in 3.6
         writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
       }
 
       if (writeConcernSlice.isNone()) {
-        helper.add(StaticStrings::MinReplicationFactor, VPackValue(vocbase.writeConcern()));
+        helper.add(StaticStrings::MinReplicationFactor,
+                   VPackValue(vocbase.writeConcern()));
         helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
       }
-    } else  { // single server
-      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); // delete empty string from info slice
+    } else {  // single server
+      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice());  // delete empty string from info slice
       helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
-      helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice()); // deprecated
+      helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice());  // deprecated
       helper.add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
     }
 
@@ -392,7 +407,8 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
     VPackBuilder merged =
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
-    if (haveShardingFeature && !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
+    if (haveShardingFeature &&
+        !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
       // NOTE: We need to do this in a second merge as the feature call requires the
       // DataSourceType to be set in the JSON, which has just been done by the call above.
       helper.clear();
@@ -411,7 +427,6 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   TRI_ASSERT(builder.isOpenArray());
   builder.close();
 
-
   VPackSlice const infoSlice = builder.slice();
 
   std::vector<std::shared_ptr<LogicalCollection>> collections;
@@ -421,11 +436,9 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
   collections.reserve(infoSlice.length());
   try {
     if (ServerState::instance()->isCoordinator()) {
-      collections =
-          ClusterMethods::createCollectionOnCoordinator(vocbase, infoSlice, false,
-                                                        createWaitsForSyncReplication,
-                                                        enforceReplicationFactor,
-                                                        isNewDatabase, colToDistributeShardsLike);
+      collections = ClusterMethods::createCollectionOnCoordinator(
+          vocbase, infoSlice, false, createWaitsForSyncReplication,
+          enforceReplicationFactor, isNewDatabase, colToDistributeShardsLike);
 
       if (collections.empty()) {
         for (auto const& info : infos) {
@@ -518,8 +531,8 @@ Result Collections::create(TRI_vocbase_t& vocbase, OperationOptions const& optio
 }
 
 void Collections::createSystemCollectionProperties(std::string const& collectionName,
-                                                   VPackBuilder& bb, TRI_vocbase_t const& vocbase) {
-
+                                                   VPackBuilder& bb,
+                                                   TRI_vocbase_t const& vocbase) {
   uint32_t defaultReplicationFactor = vocbase.replicationFactor();
   uint32_t defaultWriteConcern = vocbase.writeConcern();
 
@@ -540,11 +553,13 @@ void Collections::createSystemCollectionProperties(std::string const& collection
     // that forces all collections to be on the same physical DBserver
     if (vocbase.isSystem()) {
       if (collectionName != StaticStrings::UsersCollection) {
-        bb.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::UsersCollection));
+        bb.add(StaticStrings::DistributeShardsLike,
+               VPackValue(StaticStrings::UsersCollection));
       }
     } else {
       if (collectionName != StaticStrings::GraphsCollection) {
-        bb.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphsCollection));
+        bb.add(StaticStrings::DistributeShardsLike,
+               VPackValue(StaticStrings::GraphsCollection));
       }
     }
   }
@@ -602,7 +617,9 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   ExecContext const& exec = ExecContext::current();
   bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
   if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
-    return Result(TRI_ERROR_FORBIDDEN, std::string("cannot access collection '") + coll->name() + "'");
+    return Result(TRI_ERROR_FORBIDDEN,
+                  std::string("cannot access collection '") + coll->name() +
+                      "'");
   }
 
   std::unordered_set<std::string> ignoreKeys{
@@ -613,9 +630,8 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
     // These are only relevant for cluster
     ignoreKeys.insert({StaticStrings::DistributeShardsLike, StaticStrings::IsSmart,
                        StaticStrings::NumberOfShards, StaticStrings::ReplicationFactor,
-                       StaticStrings::MinReplicationFactor,
-                       StaticStrings::ShardKeys, StaticStrings::ShardingStrategy,
-                       StaticStrings::IsDisjoint});
+                       StaticStrings::MinReplicationFactor, StaticStrings::ShardKeys,
+                       StaticStrings::ShardingStrategy, StaticStrings::IsDisjoint});
 
     // this transaction is held longer than the following if...
     auto trx = ctxt.trx(AccessMode::Type::READ, true, false);
@@ -624,7 +640,8 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
   // note that we have an ongoing transaction here if we are in single-server
   // case
-  VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::Properties);
+  VPackBuilder props =
+      coll->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::Properties);
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
 
@@ -634,7 +651,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice const& props,
                                      OperationOptions const& options) {
-  const bool partialUpdate = false; // always a full update for collections
+  const bool partialUpdate = false;  // always a full update for collections
 
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
@@ -650,7 +667,8 @@ Result Collections::updateProperties(LogicalCollection& collection,
                                  std::to_string(collection.id().id()));
 
     // replication checks
-    int64_t replFactor = Helper::getNumericValue<int64_t>(props, StaticStrings::ReplicationFactor, 0);
+    int64_t replFactor =
+        Helper::getNumericValue<int64_t>(props, StaticStrings::ReplicationFactor, 0);
     if (replFactor > 0) {
       if (static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
         return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
@@ -659,7 +677,8 @@ Result Collections::updateProperties(LogicalCollection& collection,
 
     // not an error: for historical reasons the write concern is read from the
     // variable "minReplicationFactor" if it exists
-    uint64_t writeConcern = Helper::getNumericValue(props, StaticStrings::MinReplicationFactor, 0);
+    uint64_t writeConcern =
+        Helper::getNumericValue(props, StaticStrings::MinReplicationFactor, 0);
     if (props.hasKey(StaticStrings::WriteConcern)) {
       writeConcern = Helper::getNumericValue(props, StaticStrings::WriteConcern, 0);
     }
@@ -670,7 +689,8 @@ Result Collections::updateProperties(LogicalCollection& collection,
       return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
     }
 
-    Result res = ShardingInfo::validateShardsAndReplicationFactor(props, collection.vocbase().server(), false);
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(
+        props, collection.vocbase().server(), false);
     if (res.fail()) {
       return res;
     }
@@ -754,7 +774,8 @@ Result Collections::rename(LogicalCollection& collection,
                               "non-system collection name or vice versa");
     }
 
-    bool extendedNames = collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections(); 
+    bool extendedNames =
+        collection.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
     if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, newName)) {
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;
     }
@@ -802,13 +823,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 /*static*/ arangodb::Result Collections::drop(  // drop collection
     arangodb::LogicalCollection& coll,          // collection to drop
     bool allowDropSystem,  // allow dropping system collection
-    double timeout,         // single-server drop timeout
-    bool keepUserRights
-) {
-
+    double timeout,        // single-server drop timeout
+    bool keepUserRights) {
   ExecContext const& exec = ExecContext::current();
-  if (!exec.canUseDatabase(coll.vocbase().name(), auth::Level::RW) || // vocbase modifiable
-      !exec.canUseCollection(coll.name(), auth::Level::RW)) { // collection modifiable
+  if (!exec.canUseDatabase(coll.vocbase().name(), auth::Level::RW) ||  // vocbase modifiable
+      !exec.canUseCollection(coll.name(), auth::Level::RW)) {  // collection modifiable
     events::DropCollection(coll.vocbase().name(), coll.name(), TRI_ERROR_FORBIDDEN);
     return arangodb::Result(                                     // result
         TRI_ERROR_FORBIDDEN,                                     // code
@@ -832,13 +851,12 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES, 
-               res.fail() && 
-               res.isNot(TRI_ERROR_FORBIDDEN) && 
-               res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
-               res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
-    << "error while dropping collection: '" << collName
-    << "' error: '" << res.errorMessage() << "'";
+  LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES,
+               res.fail() && res.isNot(TRI_ERROR_FORBIDDEN) &&
+                   res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                   res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
+      << "error while dropping collection: '" << collName << "' error: '"
+      << res.errorMessage() << "'";
 
   if (ADB_LIKELY(!keepUserRights)) {
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -928,8 +946,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     binds->openObject();
     binds->add("@coll", VPackValue(cname));
     binds->close();
-    auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(vocbase),
-                                              aql::QueryString(q), std::move(binds));
+    auto query =
+        arangodb::aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                                     aql::QueryString(q), std::move(binds));
     aql::QueryResult queryResult = query->executeSync();
 
     Result res = queryResult.result;
@@ -950,12 +969,15 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL,
+                                  ReadOwnWrites::no);
 
-    iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
-      cb(doc.resolveExternal());
-      return true;
-    }, 1000);
+    iterator->allDocuments(
+        [&](LocalDocumentId const&, VPackSlice doc) {
+          cb(doc.resolveExternal());
+          return true;
+        },
+        1000);
 
     return trx.finish(res);
   }
@@ -969,7 +991,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
     OperationOptions options(ExecContext::current());
     auto res = checksumOnCoordinator(feature, collection.vocbase().name(), cid,
-                                     options, withRevisions, withData).get();
+                                     options, withRevisions, withData)
+                   .get();
     if (res.ok()) {
       revId = RevisionId::fromSlice(res.slice().get("revision"));
       checksum = res.slice().get("checksum").getUInt();
@@ -989,66 +1012,60 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL,
+                                ReadOwnWrites::no);
 
-  iterator->allDocuments([&](LocalDocumentId const& /*token*/, VPackSlice slice) {
-    uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
+  iterator->allDocuments(
+      [&](LocalDocumentId const& /*token*/, VPackSlice slice) {
+        uint64_t localHash =
+            transaction::helpers::extractKeyFromDocument(slice).hashString();
 
-    if (withRevisions) {
-      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
-    }
-
-    if (withData) {
-      // with data
-      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
-      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
-
-      for (auto it : VPackObjectIterator(slice, false)) {
-        // loop over all attributes, but exclude _rev, _id and _key
-        // _id is different for each collection anyway, _rev is covered by
-        // withRevisions, and _key was already handled before
-        VPackValueLength keyLength;
-        char const* key = it.key.getString(keyLength);
-        if (keyLength >= 3 && key[0] == '_' &&
-            ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
-             (keyLength == 4 &&
-              (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
-          // exclude attribute
-          continue;
+        if (withRevisions) {
+          localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
         }
 
-        localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
-        localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
-      }
-    }
+        if (withData) {
+          // with data
+          uint64_t const n = slice.length() ^ 0xf00ba44ba5;
+          uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
 
-    checksum ^= localHash;
-    return true;
-  }, 1000);
+          for (auto it : VPackObjectIterator(slice, false)) {
+            // loop over all attributes, but exclude _rev, _id and _key
+            // _id is different for each collection anyway, _rev is covered by
+            // withRevisions, and _key was already handled before
+            VPackValueLength keyLength;
+            char const* key = it.key.getString(keyLength);
+            if (keyLength >= 3 && key[0] == '_' &&
+                ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
+                 (keyLength == 4 &&
+                  (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
+              // exclude attribute
+              continue;
+            }
+
+            localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
+            localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
+          }
+        }
+
+        checksum ^= localHash;
+        return true;
+      },
+      1000);
 
   return trx.finish(res);
 }
 
 arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Slice properties) {
-  return velocypack::Collection::keep(properties,
+  return velocypack::Collection::keep(
+      properties,
       std::unordered_set<std::string>{
-                                      StaticStrings::DataSourceSystem,
-                                      StaticStrings::DataSourceId,
-                                      "keyOptions",
-                                      StaticStrings::WaitForSyncString,
-                                      StaticStrings::CacheEnabled,
-                                      StaticStrings::ShardKeys,
-                                      StaticStrings::NumberOfShards,
-                                      StaticStrings::DistributeShardsLike,
-                                      "avoidServers",
-                                      StaticStrings::IsSmart,
-                                      StaticStrings::ShardingStrategy,
-                                      StaticStrings::GraphSmartGraphAttribute,
-                                      StaticStrings::Schema,
-                                      StaticStrings::SmartJoinAttribute,
-                                      StaticStrings::ReplicationFactor,
-                                      StaticStrings::MinReplicationFactor, // deprecated
-                                      StaticStrings::WriteConcern,
-                                      "servers"
-                                    });
+          StaticStrings::DataSourceSystem, StaticStrings::DataSourceId,
+          "keyOptions", StaticStrings::WaitForSyncString, StaticStrings::CacheEnabled,
+          StaticStrings::ShardKeys, StaticStrings::NumberOfShards, StaticStrings::DistributeShardsLike,
+          "avoidServers", StaticStrings::IsSmart, StaticStrings::ShardingStrategy,
+          StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,
+          StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
+          StaticStrings::MinReplicationFactor,  // deprecated
+          StaticStrings::WriteConcern, "servers"});
 }

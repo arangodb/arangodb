@@ -242,7 +242,8 @@ EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params, VPackBuilder& resu
     return EvalError("expected exactly two parameters");
   }
 
-  auto&& [key, slice] = arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
+  auto&& [key, slice] =
+      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -317,7 +318,8 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
 
 EvalResult Prim_Report(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   result.add(VPackSlice::nullSlice());
-  return ctx.print(paramsToString(params));;
+  return ctx.print(paramsToString(params));
+  ;
 }
 
 EvalResult Machine::print(const std::string& msg) const {
@@ -325,7 +327,8 @@ EvalResult Machine::print(const std::string& msg) const {
     printCallback(msg);
     return {};
   } else {
-    return EvalError("reporting not supported in this context (message was `" + msg + "`)");
+    return EvalError("reporting not supported in this context (message was `" +
+                     msg + "`)");
   }
 }
 
@@ -716,7 +719,7 @@ EvalResult Prim_FromJson(Machine& ctx, VPackSlice const paramsList, VPackBuilder
     VPackParser parser(result);
     parser.parse(json);
     return {};
-  } catch(VPackException const& e) {
+  } catch (VPackException const& e) {
     return EvalError(std::string{"failed to parse json: "} + e.what());
   }
 }

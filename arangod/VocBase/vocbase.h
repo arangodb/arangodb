@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <cstddef>
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -128,7 +128,7 @@ struct TRI_vocbase_t {
 
   TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
-  
+
  private:
   // explicitly document implicit behavior (due to presence of locks)
   TRI_vocbase_t(TRI_vocbase_t&&) = delete;
@@ -266,7 +266,7 @@ struct TRI_vocbase_t {
 
   /// @brief gets prototype collection for sharding (_users or _graphs)
   ShardingPrototype shardingPrototype() const;
- 
+
   /// @brief gets name of prototype collection for sharding (_users or _graphs)
   std::string const& shardingPrototypeName() const;
 
@@ -296,24 +296,19 @@ struct TRI_vocbase_t {
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   /// @brief looks up a collection by identifier
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(arangodb::DataSourceId id) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(arangodb::DataSourceId id) const noexcept;
 
   /// @brief looks up a collection by name or stringified cid or uuid
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(std::string const& nameOrId) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(std::string const& nameOrId) const noexcept;
 
   /// @brief looks up a collection by uuid
-  std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(std::string const& uuid) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(std::string const& uuid) const noexcept;
 
   /// @brief looks up a data-source by identifier
-  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(arangodb::DataSourceId id) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(arangodb::DataSourceId id) const noexcept;
 
   /// @brief looks up a data-source by name or stringified cid or uuid
-  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(std::string const& nameOrId) const
-      noexcept;
+  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(std::string const& nameOrId) const noexcept;
 
   /// @brief looks up a replicated log by identifier
   std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant> lookupLog(
@@ -355,7 +350,8 @@ struct TRI_vocbase_t {
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name, bool checkPermissions);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name,
+                                                             bool checkPermissions);
 
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection) noexcept;
@@ -377,12 +373,12 @@ struct TRI_vocbase_t {
   std::shared_ptr<arangodb::LogicalCollection> useCollectionInternal(
       std::shared_ptr<arangodb::LogicalCollection> const&, bool checkPermissions);
 
-  arangodb::Result loadCollection(arangodb::LogicalCollection& collection,
-                                  bool checkPermissions);
+  arangodb::Result loadCollection(arangodb::LogicalCollection& collection, bool checkPermissions);
 
   /// @brief adds a new collection
   /// caller must hold _dataSourceLock in write mode or set doLock
-  void registerCollection(bool doLock, std::shared_ptr<arangodb::LogicalCollection> const& collection);
+  void registerCollection(bool doLock,
+                          std::shared_ptr<arangodb::LogicalCollection> const& collection);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
@@ -404,7 +400,8 @@ struct TRI_vocbase_t {
   bool unregisterView(arangodb::LogicalView const& view);
 
   /// @brief adds a new replicated log with given log id
-  void registerReplicatedLog(arangodb::replication2::LogId, std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
+  void registerReplicatedLog(arangodb::replication2::LogId,
+                             std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
 
   /// @brief removes the replicated log with the given id
   void unregisterReplicatedLog(arangodb::replication2::LogId);
@@ -416,4 +413,3 @@ void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
                         arangodb::velocypack::Builder& builder);
 void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
                                  arangodb::velocypack::Builder& builder);
-

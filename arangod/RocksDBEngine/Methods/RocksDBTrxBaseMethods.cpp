@@ -34,17 +34,15 @@
 
 using namespace arangodb;
 
-RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state),
-      _db(db) {
+RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(RocksDBTransactionState* state,
+                                             rocksdb::TransactionDB* db)
+    : RocksDBTransactionMethods(state), _db(db) {
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
 }
 
-RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() {
-  cleanupTransaction();
-}
+RocksDBTrxBaseMethods::~RocksDBTrxBaseMethods() { cleanupTransaction(); }
 
 bool RocksDBTrxBaseMethods::DisableIndexing() {
   if (!_indexingDisabled) {
@@ -100,9 +98,7 @@ TRI_voc_tick_t RocksDBTrxBaseMethods::lastOperationTick() const noexcept {
 
 /// @brief acquire a database snapshot if we do not yet have one.
 /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
-bool RocksDBTrxBaseMethods::ensureSnapshot() {
-  return false;
-}
+bool RocksDBTrxBaseMethods::ensureSnapshot() { return false; }
 
 rocksdb::SequenceNumber RocksDBTrxBaseMethods::GetSequenceNumber() const noexcept {
   if (_rocksTransaction) {
@@ -122,7 +118,7 @@ Result RocksDBTrxBaseMethods::addOperation(DataSourceId cid, RevisionId revision
   if (currentSize > _state->options().maxTransactionSize) {
     // we hit the transaction size limit
     std::string message =
-    "aborting transaction because maximal transaction size limit of " +
+        "aborting transaction because maximal transaction size limit of " +
         std::to_string(_state->options().maxTransactionSize) +
         " bytes is reached";
     return Result(TRI_ERROR_RESOURCE_LIMIT, message);
@@ -172,8 +168,7 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(rocksdb::ColumnFamilyHandle*
 
 rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
-                                           rocksdb::Slice const& val,
-                                           bool assume_tracked) {
+                                           rocksdb::Slice const& val, bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   return _rocksTransaction->Put(cf, key.string(), val, assume_tracked);
@@ -283,10 +278,9 @@ void RocksDBTrxBaseMethods::createTransaction() {
 }
 
 arangodb::Result RocksDBTrxBaseMethods::doCommit() {
-  if (!hasOperations()) { // bail out early
+  if (!hasOperations()) {  // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
-               (_rocksTransaction->GetNumKeys() == 0 &&
-                _rocksTransaction->GetNumPuts() == 0 &&
+               (_rocksTransaction->GetNumKeys() == 0 && _rocksTransaction->GetNumPuts() == 0 &&
                 _rocksTransaction->GetNumDeletes() == 0));
     // this is most likely the fill index case
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -307,12 +301,12 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   if (exec.isCanceled() || cancelRW) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
   }
-  
+
   // we are actually going to attempt a commit
 
   ++_numCommits;
   uint64_t numOperations = this->numOperations();
-  
+
   if (_state->isSingleOperation()) {
     // integrity-check our on-disk WAL format
     TRI_ASSERT(numOperations <= 1 && _numLogdata == numOperations);
@@ -323,7 +317,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
     _rocksTransaction->PutLogData(logValue.slice());
     _numLogdata++;
-    
+
     // integrity-check our on-disk WAL format
     if (_numLogdata != (2 + _numRemoves)) {
       LOG_TOPIC("772e1", ERR, Logger::ENGINES)
@@ -361,12 +355,11 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   });
 
   // total number of sequence ID consuming records
-  uint64_t numOps = _rocksTransaction->GetNumPuts() +
-                    _rocksTransaction->GetNumDeletes() +
+  uint64_t numOps = _rocksTransaction->GetNumPuts() + _rocksTransaction->GetNumDeletes() +
                     _rocksTransaction->GetNumMerges();
 
   rocksdb::Status s = _rocksTransaction->Commit();
-  if (!s.ok()) { // cleanup performed by scope-guard
+  if (!s.ok()) {  // cleanup performed by scope-guard
     return rocksutils::convertStatus(s);
   }
 

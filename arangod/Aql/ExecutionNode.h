@@ -55,23 +55,23 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Aql/RegisterInfos.h"
 #include "Aql/IndexHint.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/TypeTraits.h"
 #include "Basics/Identifier.h"
+#include "Basics/TypeTraits.h"
 #include "Containers/HashSet.h"
 
 namespace arangodb {
@@ -91,9 +91,11 @@ class ExecutionNode;
 class ExecutionPlan;
 class RegisterInfos;
 class Expression;
-template<typename T> struct RegisterPlanWalkerT;
+template <typename T>
+struct RegisterPlanWalkerT;
 using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
-template<typename T> struct RegisterPlanT;
+template <typename T>
+struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
@@ -335,7 +337,7 @@ class ExecutionNode {
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone, bool withProperties) const;
-  
+
   // clone register plan of dependency, needed when inserting nodes after planning
   void cloneRegisterPlan(ExecutionNode* dependency);
 
@@ -373,9 +375,9 @@ class ExecutionNode {
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
 
   /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
-  /// This function implicitly creates an array and serializes all nodes top-down,
-  /// i.e., the upmost dependency will be the first, and this node will be the last
-  /// in the array.
+  /// This function implicitly creates an array and serializes all nodes
+  /// top-down, i.e., the upmost dependency will be the first, and this node
+  /// will be the last in the array.
   void allToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
 
   /** Variables used and set are disjunct!
@@ -472,20 +474,26 @@ class ExecutionNode {
   bool isInSplicedSubquery() const noexcept;
 
   void setIsInSplicedSubquery(bool) noexcept;
-  
-  bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
 
-  void setIsAsyncPrefetchEnabled(bool v) noexcept { _isAsyncPrefetchEnabled = v; }
+  bool isAsyncPrefetchEnabled() const noexcept {
+    return _isAsyncPrefetchEnabled;
+  }
 
-  bool isCallstackSplitEnabled() const noexcept { return _isCallstackSplitEnabled; }
-  
+  void setIsAsyncPrefetchEnabled(bool v) noexcept {
+    _isAsyncPrefetchEnabled = v;
+  }
+
+  bool isCallstackSplitEnabled() const noexcept {
+    return _isCallstackSplitEnabled;
+  }
+
   void enableCallstackSplit() noexcept { _isCallstackSplitEnabled = true; }
 
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
   [[nodiscard]] bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
-  
+
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
  protected:
@@ -493,7 +501,6 @@ class ExecutionNode {
   /// This function is called as part of `toVelocyPack` and must be overriden in
   /// order to serialize type specific information.
   virtual void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const = 0;
-
 
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
@@ -551,14 +558,14 @@ class ExecutionNode {
   bool _varUsageValid;
 
   bool _isInSplicedSubquery;
-  
+
   /// @brief whether or not asynchronous prefetching is enabled for this node
   bool _isAsyncPrefetchEnabled{false};
 
   /// @brief whether or not this node should split calls to upstream nodes to a
   /// separate thread to avoid the problem of stackoverflows in large queries.
   bool _isCallstackSplitEnabled{false};
-  
+
   /// @brief _plan, the ExecutionPlan object
   ExecutionPlan* _plan;
 
@@ -579,7 +586,7 @@ class ExecutionNode {
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
 
-private:
+ private:
   bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst);
 };
 
@@ -610,7 +617,7 @@ class SingletonNode : public ExecutionNode {
 
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
-  
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
@@ -806,7 +813,7 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -926,7 +933,7 @@ class FilterNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -989,7 +996,7 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -1041,7 +1048,6 @@ class NoResultsNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 };
-
 
 /// @brief class AsyncNode
 class AsyncNode : public ExecutionNode {
@@ -1106,6 +1112,7 @@ class MaterializeNode : public ExecutionNode {
   arangodb::aql::Variable const& outVariable() const noexcept {
     return *_outVariable;
   }
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;

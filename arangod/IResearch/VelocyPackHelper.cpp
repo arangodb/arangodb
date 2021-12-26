@@ -28,15 +28,15 @@
 #include <velocypack/Iterator.h>
 
 namespace {
-template<typename T>
-arangodb::velocypack::Builder& addRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::basic_string_ref<T> const& value // value
+template <typename T>
+arangodb::velocypack::Builder& addRef(       // add a value
+    arangodb::velocypack::Builder& builder,  // builder
+    irs::basic_string_ref<T> const& value    // value
 ) {
   // store nulls verbatim
   if (value.null()) {
-    builder.add( // add value
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
+    builder.add(  // add value
+        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)  // value
     );
   } else {
     builder.add(arangodb::iresearch::toValuePair(value));
@@ -45,20 +45,20 @@ arangodb::velocypack::Builder& addRef( // add a value
   return builder;
 }
 
-template<typename T>
-arangodb::velocypack::Builder& addRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::string_ref const& key, // key
-  irs::basic_string_ref<T> const& value // value
+template <typename T>
+arangodb::velocypack::Builder& addRef(       // add a value
+    arangodb::velocypack::Builder& builder,  // builder
+    irs::string_ref const& key,              // key
+    irs::basic_string_ref<T> const& value    // value
 ) {
-  TRI_ASSERT(!key.null()); // Builder uses memcpy(...) which cannot handle nullptr
+  TRI_ASSERT(!key.null());  // Builder uses memcpy(...) which cannot handle nullptr
 
   // store nulls verbatim
   if (value.null()) {
-    builder.add( // add value
-      key.c_str(), // key data
-      key.size(), // key size
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
+    builder.add(      // add value
+        key.c_str(),  // key data
+        key.size(),   // key size
+        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)  // value
     );
   } else {
     builder.add(key.c_str(), key.size(), arangodb::iresearch::toValuePair(value));
@@ -66,37 +66,37 @@ arangodb::velocypack::Builder& addRef( // add a value
 
   return builder;
 }
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
 
-arangodb::velocypack::Builder& addBytesRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::bytes_ref const& value // value
+arangodb::velocypack::Builder& addBytesRef(  // add a value
+    arangodb::velocypack::Builder& builder,  // builder
+    irs::bytes_ref const& value              // value
 ) {
   return addRef(builder, value);
 }
 
-arangodb::velocypack::Builder& addBytesRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::string_ref const& key, // key
-  irs::bytes_ref const& value // value
+arangodb::velocypack::Builder& addBytesRef(  // add a value
+    arangodb::velocypack::Builder& builder,  // builder
+    irs::string_ref const& key,              // key
+    irs::bytes_ref const& value              // value
 ) {
   return addRef(builder, key, value);
 }
 
-arangodb::velocypack::Builder& addStringRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::string_ref const& value // value
+arangodb::velocypack::Builder& addStringRef(  // add a value
+    arangodb::velocypack::Builder& builder,   // builder
+    irs::string_ref const& value              // value
 ) {
   return addRef(builder, value);
 }
 
-arangodb::velocypack::Builder& addStringRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::string_ref const& key, // key
-  irs::string_ref const& value // value
+arangodb::velocypack::Builder& addStringRef(  // add a value
+    arangodb::velocypack::Builder& builder,   // builder
+    irs::string_ref const& key,               // key
+    irs::string_ref const& value              // value
 ) {
   return addRef(builder, key, value);
 }
@@ -174,8 +174,8 @@ Iterator::Iterator(VPackSlice slice) {
 
   // according to Iterator.h:160 and Iterator.h:194
   auto const offset = isCompactArrayOrObject(slice)
-                         ? slice.getNthOffset(0)
-                         : slice.findDataOffset(slice.head());
+                          ? slice.getNthOffset(0)
+                          : slice.findDataOffset(slice.head());
   _begin = slice.start() + offset;
 
   _value.type = slice.type();

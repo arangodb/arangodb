@@ -84,4 +84,3 @@ Result toArrayUserFunctions(TRI_vocbase_t& vocbase, std::string const& functionF
                             velocypack::Builder& result);
 
 }  // namespace arangodb
-

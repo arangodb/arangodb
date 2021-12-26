@@ -37,9 +37,9 @@
 #include <Basics/voc-errors.h>
 #include <Futures/Promise.h>
 
-#include <algorithm>
 #include <Basics/ScopeGuard.h>
 #include <Basics/application-exit.h>
+#include <algorithm>
 
 #include <utility>
 #if (_MSC_VER >= 1)

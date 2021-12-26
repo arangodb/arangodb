@@ -36,11 +36,11 @@ namespace aql {
 class ExecutionEngine;
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
-  SingleRemoteModificationInfos(ExecutionEngine* engine,
-                                RegisterId inputRegister, RegisterId outputNewRegisterId,
+  SingleRemoteModificationInfos(ExecutionEngine* engine, RegisterId inputRegister,
+                                RegisterId outputNewRegisterId,
                                 RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-                                arangodb::aql::QueryContext& query, OperationOptions options,
-                                aql::Collection const* aqlCollection,
+                                arangodb::aql::QueryContext& query,
+                                OperationOptions options, aql::Collection const* aqlCollection,
                                 ConsultAqlWriteFilter consultAqlWriteFilter,
                                 IgnoreErrors ignoreErrors,
                                 IgnoreDocumentNotFound ignoreDocumentNotFound,
@@ -104,7 +104,7 @@ struct SingleRemoteModificationExecutor {
   auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&) -> OperationResult;
   auto doSingleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
                                         OperationResult&) -> void;
-  
+
   transaction::Methods _trx;
   Infos& _info;
   ExecutionState _upstreamState;
@@ -112,4 +112,3 @@ struct SingleRemoteModificationExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

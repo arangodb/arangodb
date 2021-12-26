@@ -127,7 +127,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
   void LogData(rocksdb::Slice const& blob) override {
     RocksDBLogType type = RocksDBLogValue::type(blob);
 
-    LOG_TOPIC("5a95b", TRACE, Logger::REPLICATION) << "[LOG] " << rocksDBLogTypeName(type);
+    LOG_TOPIC("5a95b", TRACE, Logger::REPLICATION)
+        << "[LOG] " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:  // not handled here
       case RocksDBLogType::DatabaseDrop: {
@@ -457,7 +458,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     DataSourceId const cid = std::get<1>(triple);
     if (!shouldHandleCollection(dbid, cid)) {
       _removedDocRid = RevisionId::none();  // ignore rid too
-      return;              // no reset here
+      return;                               // no reset here
     }
     TRI_ASSERT(_vocbase->id() == dbid);
 
@@ -501,30 +502,33 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     // truncation is already handled elsewhere
     return rocksdb::Status();
   }
-  
+
   rocksdb::Status MarkBeginPrepare(bool = false) override {
     TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument("MarkBeginPrepare() handler not defined.");
+    return rocksdb::Status::InvalidArgument(
+        "MarkBeginPrepare() handler not defined.");
   }
-  
+
   rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
     TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument("MarkEndPrepare() handler not defined.");
+    return rocksdb::Status::InvalidArgument(
+        "MarkEndPrepare() handler not defined.");
   }
-    
+
   rocksdb::Status MarkNoop(bool empty_batch) override {
     return rocksdb::Status::OK();
   }
-    
+
   rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
     TRI_ASSERT(false);
     return rocksdb::Status::InvalidArgument(
         "MarkRollbackPrepare() handler not defined.");
   }
-    
+
   rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
     TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument("MarkCommit() handler not defined.");
+    return rocksdb::Status::InvalidArgument(
+        "MarkCommit() handler not defined.");
   }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
@@ -541,7 +545,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
   void writeCommitMarker() {
     TRI_ASSERT(_state == TRANSACTION);
-    LOG_TOPIC("e09eb", TRACE, Logger::REPLICATION) << "tick: " << _currentSequence << " commit transaction";
+    LOG_TOPIC("e09eb", TRACE, Logger::REPLICATION)
+        << "tick: " << _currentSequence << " commit transaction";
 
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -677,8 +682,8 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
       vocbase->server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
-  // LOG_TOPIC("89157", WARN, Logger::FIXME) << "1. Starting tailing: tickStart " <<
-  // tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
+  // LOG_TOPIC("89157", WARN, Logger::FIXME) << "1. Starting tailing: tickStart
+  // " << tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
 
   auto handler = std::make_unique<WALParser>(vocbase, includeSystem, collectionId, builder);
 
@@ -710,7 +715,8 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   while (iterator->Valid() && lastTick <= tickEnd && builder.bufferRef().size() < chunkSize) {
     s = iterator->status();
     if (!s.ok()) {
-      LOG_TOPIC("ed096", ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
+      LOG_TOPIC("ed096", ERR, Logger::REPLICATION)
+          << "error during WAL scan: " << s.ToString();
       break;  // s is considered in the end
     }
 
@@ -736,12 +742,14 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
     handler->startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(handler.get());
     if (!s.ok()) {
-      LOG_TOPIC("f4b88", ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
+      LOG_TOPIC("f4b88", ERR, Logger::REPLICATION)
+          << "error during WAL scan: " << s.ToString();
       break;  // s is considered in the end
     }
 
     lastWrittenTick = handler->endBatch();
-    LOG_TOPIC("024fc", TRACE, Logger::REPLICATION) << "End WriteBatch written-tick: " << lastWrittenTick;
+    LOG_TOPIC("024fc", TRACE, Logger::REPLICATION)
+        << "End WriteBatch written-tick: " << lastWrittenTick;
     TRI_ASSERT(lastTick <= lastWrittenTick);
     if (!minTickIncluded && lastWrittenTick <= tickStart && lastWrittenTick <= tickEnd) {
       minTickIncluded = true;

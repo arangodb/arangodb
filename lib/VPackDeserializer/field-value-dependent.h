@@ -116,7 +116,7 @@ struct field_value_dependent_executor<I, E> {
 
   template <typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
-                     ::arangodb::velocypack::deserializer::slice_type v, C &&)
+                     ::arangodb::velocypack::deserializer::slice_type v, C&&)
       -> unpack_result {
     using namespace std::string_literals;
     if (s.isNone()) {

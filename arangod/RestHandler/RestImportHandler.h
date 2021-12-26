@@ -182,4 +182,3 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   bool _ignoreMissing;
 };
 }  // namespace arangodb
-

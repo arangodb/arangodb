@@ -257,7 +257,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
           constexpr size_t chunksize = 5;
           datasize = std::min<size_t>(datasize, chunksize);
         }
-        
+
         err = llhttp_execute(&_parser, data, datasize);
         if (err != HPE_OK) {
           ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
@@ -403,8 +403,10 @@ static void DTraceHttpCommTaskProcessRequest(size_t) {}
 template <SocketType T>
 std::string HttpCommTask<T>::url() const {
   if (_request != nullptr) {
-    return std::string((_request->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(_request->databaseName()))) +
-      (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
+    return std::string((_request->databaseName().empty()
+                            ? ""
+                            : "/_db/" + StringUtils::urlEncode(_request->databaseName()))) +
+           (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
   }
   return "";
 }
@@ -419,14 +421,15 @@ void HttpCommTask<T>::processRequest() {
   try {
     doProcessRequest();
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("1e6f8", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
-      << " " << ex.message();
-    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), respContentType,
-                            msgId, ex.code(), ex.message());
+    LOG_TOPIC("1e6f8", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.code() << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                            respContentType, msgId, ex.code(), ex.message());
   } catch (std::exception const& ex) {
-    LOG_TOPIC("1fbd2", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
-    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType,
-                            msgId, ErrorCode(TRI_ERROR_FAILED), ex.what());
+    LOG_TOPIC("1fbd2", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType, msgId,
+                            ErrorCode(TRI_ERROR_FAILED), ex.what());
   }
 }
 
@@ -461,7 +464,8 @@ void HttpCommTask<T>::doProcessRequest() {
     LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << url() << "\"";
+        << HttpRequest::translateMethod(_request->requestType()) << "\",\""
+        << url() << "\"";
 
     VPackStringRef body = _request->rawPayload();
     this->_generalServerFeature.countHttp1Request(body.size());
@@ -507,7 +511,6 @@ void HttpCommTask<T>::doProcessRequest() {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1, nullptr);
   resp->setContentType(_request->contentTypeResponse());
   this->executeRequest(std::move(_request), std::move(resp));
-
 }
 
 #ifdef USE_DTRACE
@@ -551,7 +554,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   // sending us an x-omit-www-authenticate header.
   bool needWwwAuthenticate =
       (response.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
-      (!_request || _request->header("x-omit-www-authenticate").empty()));
+       (!_request || _request->header("x-omit-www-authenticate").empty()));
 
   bool seenServerHeader = false;
   // bool seenConnectionHeader = false;
@@ -608,8 +611,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   if (needWwwAuthenticate) {
     TRI_ASSERT(response.responseCode() == rest::ResponseCode::UNAUTHORIZED);
-    _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Basic, realm=\"ArangoDB\"\r\n"));
-    _header.append(TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Bearer, token_type=\"JWT\", realm=\"ArangoDB\"\r\n"));
+    _header.append(TRI_CHAR_LENGTH_PAIR(
+        "Www-Authenticate: Basic, realm=\"ArangoDB\"\r\n"));
+    _header.append(
+        TRI_CHAR_LENGTH_PAIR("Www-Authenticate: Bearer, token_type=\"JWT\", "
+                             "realm=\"ArangoDB\"\r\n"));
   }
 
   // turn on the keepAlive timer
@@ -645,9 +651,10 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress << "\",\""
-      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
-      << url() << "\",\"" << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
+      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
+      << "\",\"" << url() << "\",\"" << static_cast<int>(response.responseCode())
+      << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
+      << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
   // sendResponse is always called from a scheduler thread
   boost::asio::post(this->_protocol->context.io_context,

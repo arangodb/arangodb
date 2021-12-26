@@ -145,7 +145,7 @@ CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
       _nodeAliases{nodeAliases} {}
 
 void CloneWorker::process() {
-  _root->walk(*this); 
+  _root->walk(*this);
 
   // Home-brew early cancel: We collect the processed nodes on a stack
   // and process them in reverse order in processAfter
@@ -322,7 +322,6 @@ void QuerySnippet::serializeIntoBuilder(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     ShardLocking& shardLocking, std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
     VPackBuilder& infoBuilder) {
-
   ExecutionNode* remoteParent{nullptr};
 
   TRI_ASSERT(!_expansions.empty());
@@ -333,8 +332,7 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(firstBranchRes.is(TRI_ERROR_CLUSTER_NOT_LEADER));
     return;
   }
-  MapNodeToColNameToShards& localExpansions =
-      firstBranchRes.get();
+  MapNodeToColNameToShards& localExpansions = firstBranchRes.get();
   // We clone every Node* and maintain a list of ReportingGroups for profiler
   if (_remoteNode != nullptr) {
     if (!_madeResponsibleForShutdown) {
@@ -549,10 +547,10 @@ void QuerySnippet::serializeIntoBuilder(
   }
 }
 
-auto QuerySnippet::prepareFirstBranch(
-    ServerID const& server,
-    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    ShardLocking& shardLocking) -> ResultT<MapNodeToColNameToShards> {
+auto QuerySnippet::prepareFirstBranch(ServerID const& server,
+                                      std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                                      ShardLocking& shardLocking)
+    -> ResultT<MapNodeToColNameToShards> {
   MapNodeToColNameToShards localExpansions;
   std::unordered_map<ShardID, ServerID> const& shardMapping =
       shardLocking.getShardMapping();
@@ -796,7 +794,8 @@ auto QuerySnippet::prepareFirstBranch(
 
       // All parts need to have exact same size, they need to be permutated pairwise!
       for (auto const& myExp : myExpFinal) {
-        TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.second.size() == numberOfShardsToPermutate);
+        TRI_ASSERT(numberOfShardsToPermutate == 0 ||
+                   myExp.second.size() == numberOfShardsToPermutate);
       }
 #endif
 

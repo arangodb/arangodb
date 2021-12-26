@@ -78,6 +78,7 @@
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestLicenseHandler.h"
+#include "RestHandler/RestLogHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
@@ -99,7 +100,6 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
-#include "RestHandler/RestLogHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -122,19 +122,19 @@ namespace arangodb {
 static uint64_t const _maxIoThreads = 64;
 
 struct RequestBodySizeScale {
-  static log_scale_t<uint64_t> scale() { return { 2, 64, 65536, 10 }; }
+  static log_scale_t<uint64_t> scale() { return {2, 64, 65536, 10}; }
 };
 
 DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
-    "Body size of HTTP/1.1 requests");
+                  "Body size of HTTP/1.1 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
-    "Body size of HTTP/2 requests");
+                  "Body size of HTTP/2 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
-    "Body size of VST requests");
+                  "Body size of VST requests");
 DECLARE_COUNTER(arangodb_http2_connections_total,
-    "Total number of HTTP/2 connections");
+                "Total number of HTTP/2 connections");
 DECLARE_COUNTER(arangodb_vst_connections_total,
-    "Total number of VST connections");
+                "Total number of VST connections");
 
 GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "GeneralServer"),
@@ -145,16 +145,15 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("hardened"),
       _numIoThreads(0),
-      _requestBodySizeHttp1(
-          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http1{})),
-      _requestBodySizeHttp2(
-          server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http2{})),
+      _requestBodySizeHttp1(server.getFeature<MetricsFeature>().add(
+          arangodb_request_body_size_http1{})),
+      _requestBodySizeHttp2(server.getFeature<MetricsFeature>().add(
+          arangodb_request_body_size_http2{})),
       _requestBodySizeVst(
           server.getFeature<MetricsFeature>().add(arangodb_request_body_size_vst{})),
-      _http2Connections(
-          server.getFeature<MetricsFeature>().add(arangodb_http2_connections_total{})),
-      _vstConnections(
-          server.getFeature<MetricsFeature>().add(arangodb_vst_connections_total{})) {
+      _http2Connections(server.getFeature<MetricsFeature>().add(
+          arangodb_http2_connections_total{})),
+      _vstConnections(server.getFeature<MetricsFeature>().add(arangodb_vst_connections_total{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -182,67 +181,71 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "number of threads used to handle IO",
                      new UInt64Parameter(&_numIoThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
-  
-  options->addOption("--server.support-info-api",
-                     "policy for exposing support info API",
-                     new DiscreteValuesParameter<StringParameter>(
-                         &_supportInfoApiPolicy,
-                         std::unordered_set<std::string>{"disabled", "jwt", "hardened", "public"}))
-                     .setIntroducedIn(30900);
+
+  options
+      ->addOption("--server.support-info-api",
+                  "policy for exposing support info API",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_supportInfoApiPolicy,
+                      std::unordered_set<std::string>{"disabled", "jwt",
+                                                      "hardened", "public"}))
+      .setIntroducedIn(30900);
 
   options->addSection("http", "HTTP server features");
 
-  options->addOption("--http.allow-method-override",
-                     "allow HTTP method override using special headers",
-                     new BooleanParameter(&_allowMethodOverride),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setDeprecatedIn(30800);
+  options
+      ->addOption("--http.allow-method-override",
+                  "allow HTTP method override using special headers",
+                  new BooleanParameter(&_allowMethodOverride),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30800);
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
                      new DoubleParameter(&_keepAliveTimeout));
 
-  options->addOption(
-      "--http.hide-product-header",
-      "do not expose \"Server: ArangoDB\" header in HTTP responses",
-      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
+  options
+      ->addOption("--http.hide-product-header",
+                  "do not expose \"Server: ArangoDB\" header in HTTP responses",
+                  new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
       .setDeprecatedIn(30800);
 
   options->addOption("--http.trusted-origin",
                      "trusted origin URLs for CORS requests with credentials",
                      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
 
-  options->addOption("--http.redirect-root-to",
-                    "redirect of root URL",
-                    new StringParameter(&_redirectRootTo))
-                    .setIntroducedIn(30712);
+  options
+      ->addOption("--http.redirect-root-to", "redirect of root URL",
+                  new StringParameter(&_redirectRootTo))
+      .setIntroducedIn(30712);
 
-  options->addOption("--http.permanently-redirect-root",
-                    "if true, use a permanent redirect. If false, use a temporary",
-                    new BooleanParameter(&_permanentRootRedirect))
-                    .setIntroducedIn(30712);
-  
-  options->addOption("--http.return-queue-time-header",
-                    "if true, return the 'x-arango-queue-time-seconds' response header",
-                    new BooleanParameter(&_returnQueueTimeHeader))
-                    .setIntroducedIn(30900);
+  options
+      ->addOption(
+          "--http.permanently-redirect-root",
+          "if true, use a permanent redirect. If false, use a temporary",
+          new BooleanParameter(&_permanentRootRedirect))
+      .setIntroducedIn(30712);
+
+  options
+      ->addOption(
+          "--http.return-queue-time-header",
+          "if true, return the 'x-arango-queue-time-seconds' response header",
+          new BooleanParameter(&_returnQueueTimeHeader))
+      .setIntroducedIn(30900);
 
   options->addOption("--frontend.proxy-request-check",
-                     "enable proxy request checking",
-                     new BooleanParameter(&_proxyCheck),
-                     arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle));
+                     "enable proxy request checking", new BooleanParameter(&_proxyCheck),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnSingle));
 
   options->addOption("--frontend.trusted-proxy",
                      "list of proxies to trust (may be IP or network). Make "
                      "sure --frontend.proxy-request-check is enabled",
                      new VectorParameter<StringParameter>(&_trustedProxies),
-                     arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnSingle));
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -276,7 +279,8 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   // we need at least one io thread and context
   if (_numIoThreads == 0) {
-    LOG_TOPIC("1ade3", WARN, Logger::FIXME) << "Need at least one io-context thread.";
+    LOG_TOPIC("1ade3", WARN, Logger::FIXME)
+        << "Need at least one io-context thread.";
     _numIoThreads = 1;
   } else if (_numIoThreads > _maxIoThreads) {
     LOG_TOPIC("80dcf", WARN, Logger::FIXME) << "IO-contexts are limited to " << _maxIoThreads;
@@ -333,7 +337,9 @@ double GeneralServerFeature::keepAliveTimeout() const noexcept {
 
 bool GeneralServerFeature::proxyCheck() const noexcept { return _proxyCheck; }
 
-bool GeneralServerFeature::returnQueueTimeHeader() const noexcept { return _returnQueueTimeHeader; }
+bool GeneralServerFeature::returnQueueTimeHeader() const noexcept {
+  return _returnQueueTimeHeader;
+}
 
 std::vector<std::string> GeneralServerFeature::trustedProxies() const {
   return _trustedProxies;
@@ -365,7 +371,7 @@ bool GeneralServerFeature::permanentRootRedirect() const noexcept {
 std::string GeneralServerFeature::redirectRootTo() const {
   return _redirectRootTo;
 }
-  
+
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
   return _supportInfoApiPolicy;
 }
@@ -416,9 +422,9 @@ void GeneralServerFeature::defineHandlers() {
   // /_api
   // ...........................................................................
 
-  _handlerFactory->addPrefixHandler( // add handler
-    RestVocbaseBaseHandler::ANALYZER_PATH, // base URL
-    RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData // handler
+  _handlerFactory->addPrefixHandler(          // add handler
+      RestVocbaseBaseHandler::ANALYZER_PATH,  // base URL
+      RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData  // handler
   );
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
@@ -500,9 +506,9 @@ void GeneralServerFeature::defineHandlers() {
   // This is the only handler were we need to inject
   // more than one data object. So we created the combinedRegistries
   // for it.
-  _handlerFactory->addPrefixHandler(
-      "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>, queryRegistry);
+  _handlerFactory->addPrefixHandler("/_api/aql",
+                                    RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
+                                    queryRegistry);
 
   _handlerFactory->addPrefixHandler("/_api/aql-builtin",
                                     RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
@@ -539,7 +545,6 @@ void GeneralServerFeature::defineHandlers() {
         agency.agent());
   }
 
-  
   if (cluster.isEnabled()) {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
@@ -553,12 +558,12 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
       RestHandlerCreator<InternalRestTraverserHandler>::createData<aql::QueryRegistry*>,
-       queryRegistry);
+      queryRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
-    
+
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
@@ -569,9 +574,8 @@ void GeneralServerFeature::defineHandlers() {
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }
 
-  _handlerFactory->addHandler("/_admin/time",
-                              RestHandlerCreator<RestTimeHandler>::createNoData);
-  
+  _handlerFactory->addHandler("/_admin/time", RestHandlerCreator<RestTimeHandler>::createNoData);
+
   _handlerFactory->addHandler("/_admin/compact",
                               RestHandlerCreator<RestCompactHandler>::createNoData);
 
@@ -588,8 +592,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler("/_api/transaction",
                                     RestHandlerCreator<RestTransactionHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/ttl",
-                                    RestHandlerCreator<RestTtlHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_api/ttl", RestHandlerCreator<RestTtlHandler>::createNoData);
 
   // ...........................................................................
   // /_admin
@@ -600,7 +603,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
- 
+
   if (_supportInfoApiPolicy != "disabled") {
     _handlerFactory->addHandler("/_admin/support-info",
                                 RestHandlerCreator<RestSupportInfoHandler>::createNoData);
@@ -653,7 +656,7 @@ void GeneralServerFeature::defineHandlers() {
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler("/_admin/metrics",
-                              RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+                                    RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
@@ -667,7 +670,6 @@ void GeneralServerFeature::defineHandlers() {
                                       RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
 #endif
-
 
   // ...........................................................................
   // test handler

@@ -57,16 +57,18 @@ struct constructor_factory {
   }
 };
 
-template<typename F>
+template <typename F>
 struct visiting_factory {
   using constructed_type = typename F::constructed_type;
 
   template <typename... S>
   auto operator()(std::variant<S...>&& s) const {
-    return std::visit([](auto&& p) {
-      F f;
-      return f(std::forward<decltype(p)>(p));
-    }, std::move(s));
+    return std::visit(
+        [](auto&& p) {
+          F f;
+          return f(std::forward<decltype(p)>(p));
+        },
+        std::move(s));
   }
 };
 

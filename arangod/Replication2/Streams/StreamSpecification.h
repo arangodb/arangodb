@@ -21,11 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <type_traits>
 #include <cstdint>
+#include <type_traits>
 
-#include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb::replication2::streams {
 
@@ -100,7 +100,7 @@ struct stream_descriptor_set {
 
   static constexpr auto length = sizeof...(Descriptors);
 
-  template<typename F, typename... Args>
+  template <typename F, typename... Args>
   static void for_each_descriptor(F&& f, Args&&... args) {
     (std::invoke(std::forward<F>(f), Descriptors{}, std::forward<Args>(args)...), ...);
   }

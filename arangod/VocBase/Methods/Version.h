@@ -78,4 +78,3 @@ struct Version {
 };
 }  // namespace methods
 }  // namespace arangodb
-

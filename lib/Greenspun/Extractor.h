@@ -25,21 +25,20 @@
 
 #pragma once
 
+#include "Basics/VelocyPackHelper.h"
 #include "EvalResult.h"
 #include "Interpreter.h"
-#include "Basics/VelocyPackHelper.h"
-
 
 namespace arangodb::greenspun {
 
-template<typename T, typename C = void>
+template <typename T, typename C = void>
 struct extractor {
-  template<typename E>
+  template <typename E>
   static inline constexpr auto always_false_v = std::false_type::value;
   static_assert(always_false_v<T>, "no extractor for that type available");
 };
 
-template<>
+template <>
 struct extractor<std::string> {
   EvalResultT<std::string> operator()(VPackSlice slice) {
     if (slice.isString()) {
@@ -49,7 +48,7 @@ struct extractor<std::string> {
   }
 };
 
-template<>
+template <>
 struct extractor<std::string_view> {
   EvalResultT<std::string_view> operator()(VPackSlice slice) {
     if (slice.isString()) {
@@ -59,7 +58,7 @@ struct extractor<std::string_view> {
   }
 };
 
-template<typename T>
+template <typename T>
 struct extractor<T, std::enable_if_t<std::is_arithmetic_v<T> && !std::is_same_v<bool, T>>> {
   EvalResultT<T> operator()(VPackSlice slice) {
     if (slice.isNumber<T>()) {
@@ -69,14 +68,14 @@ struct extractor<T, std::enable_if_t<std::is_arithmetic_v<T> && !std::is_same_v<
   }
 };
 
-template<>
+template <>
 struct extractor<bool> {
   EvalResultT<bool> operator()(VPackSlice slice) {
     return {ValueConsideredTrue(slice)};
   }
 };
 
-template<>
+template <>
 struct extractor<VPackArrayIterator> {
   EvalResultT<VPackArrayIterator> operator()(VPackSlice slice) {
     if (slice.isArray()) {
@@ -86,21 +85,19 @@ struct extractor<VPackArrayIterator> {
   }
 };
 
-template<>
+template <>
 struct extractor<VPackSlice> {
-  EvalResultT<VPackSlice> operator()(VPackSlice slice) {
-    return {slice};
-  }
+  EvalResultT<VPackSlice> operator()(VPackSlice slice) { return {slice}; }
 };
 
-
-template<typename T>
+template <typename T>
 auto extractValue(VPackSlice value) -> EvalResultT<T> {
-  static_assert(std::is_invocable_r_v<EvalResultT<T>, extractor<T>, VPackSlice>, "bad signature for extractor");
+  static_assert(std::is_invocable_r_v<EvalResultT<T>, extractor<T>, VPackSlice>,
+                "bad signature for extractor");
   return extractor<T>{}(value);
 }
 
-template<typename T, typename... Ts>
+template <typename T, typename... Ts>
 auto extractFromArray(VPackArrayIterator iter) -> EvalResultT<std::tuple<T, Ts...>> {
   if constexpr (sizeof...(Ts) == 0) {
     return extractValue<T>(*iter)
@@ -140,5 +137,4 @@ auto extract(VPackSlice values) -> EvalResultT<std::tuple<Ts...>> {
   return EvalError("expected parameter array, found: " + values.toJson());
 }
 
-}
-
+}  // namespace arangodb::greenspun

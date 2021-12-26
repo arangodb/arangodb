@@ -66,10 +66,9 @@ class AgencyCallbackRegistry {
 
   /// @brief total number of callbacks ever registered
   Counter& _totalCallbacksRegistered;
-  
+
   /// @brief current number of callbacks registered
   Gauge<uint64_t>& _callbacksCount;
 };
 
 }  // namespace arangodb
-

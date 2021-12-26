@@ -53,4 +53,3 @@ struct CleanOutServer : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

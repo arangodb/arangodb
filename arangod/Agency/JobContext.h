@@ -58,4 +58,3 @@ class JobContext {
 
 }  // namespace consensus
 }  // namespace arangodb
-

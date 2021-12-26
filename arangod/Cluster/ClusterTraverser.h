@@ -55,8 +55,9 @@ class ClusterTraverser final : public Traverser {
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  bool getSingleVertex(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef sourceVertexId,
-                       uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) override;
+  bool getSingleVertex(arangodb::velocypack::Slice edge,
+                       arangodb::velocypack::StringRef sourceVertexId, uint64_t depth,
+                       arangodb::velocypack::StringRef& targetVertexId) override;
 
   bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
 
@@ -70,7 +71,8 @@ class ClusterTraverser final : public Traverser {
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(arangodb::velocypack::StringRef, arangodb::velocypack::Builder&) override;
+  void addVertexToVelocyPack(arangodb::velocypack::StringRef,
+                             arangodb::velocypack::Builder&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy DBServer Traverser Engines
@@ -96,4 +98,3 @@ class ClusterTraverser final : public Traverser {
 
 }  // namespace traverser
 }  // namespace arangodb
-

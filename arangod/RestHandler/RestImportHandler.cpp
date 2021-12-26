@@ -892,7 +892,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
             TRI_ASSERT(_onDuplicateAction == DUPLICATE_IGNORE);
             res = TRI_ERROR_NO_ERROR;
             ++result._numIgnored;
-          } else { 
+          } else {
             makeError(babiesIterator.index(), errorCode, babiesIterator.value(), result);
             if (complete) {
               res = errorCode;
@@ -1033,13 +1033,14 @@ OperationOptions RestImportHandler::buildOperationOptions() const {
   OperationOptions opOptions(_context);
 
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
+  opOptions.validate =
+      !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   if (_onDuplicateAction == DUPLICATE_UPDATE) {
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Update;
-    opOptions.returnOld = false; 
+    opOptions.returnOld = false;
   } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
-    opOptions.returnOld = false; 
+    opOptions.returnOld = false;
   }
 
   return opOptions;

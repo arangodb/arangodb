@@ -60,21 +60,20 @@ class RocksDBEngine;
 
 namespace rocksutils {
 
-/// @brief throws an exception of appropriate type if the iterator's status is !ok().
-/// does nothing if the iterator's status is ok().
-/// this function can be used by IndexIterators to verify that an iterator is still
-/// in good shape
+/// @brief throws an exception of appropriate type if the iterator's status is
+/// !ok(). does nothing if the iterator's status is ok(). this function can be
+/// used by IndexIterators to verify that an iterator is still in good shape
 void checkIteratorStatus(rocksdb::Iterator const* iterator);
 
 /// @brief count all keys in the given column family
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, 
+std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&,
                           rocksdb::Snapshot const* snapshot, bool prefixSameAsStart);
 
 /// @brief whether or not the specified range has keys
-bool hasKeys(rocksdb::DB*, RocksDBKeyBounds const&, 
+bool hasKeys(rocksdb::DB*, RocksDBKeyBounds const&,
              rocksdb::Snapshot const* snapshot, bool prefixSameAsStart);
 
 /// @brief helper method to remove large ranges of data
@@ -94,7 +93,7 @@ Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel
 template <typename T>  // T is an invokeable that takes a rocksdb::Iterator*
 void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T callback) {
   rocksdb::Slice const end = bounds.end();
-  
+
   rocksdb::ReadOptions options;
   options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
   options.prefix_same_as_start = true;
@@ -108,4 +107,3 @@ void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T
 
 }  // namespace rocksutils
 }  // namespace arangodb
-

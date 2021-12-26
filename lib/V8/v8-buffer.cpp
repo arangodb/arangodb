@@ -235,8 +235,9 @@ static void FromConstructorTemplate(v8::Isolate* isolate, v8::Local<v8::Function
     argv[i] = args[(int)i];
   }
 
-  v8::MaybeLocal<v8::Object> ret =
-    t->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())->NewInstance(TRI_IGETC, (int)argc, argv);
+  v8::MaybeLocal<v8::Object> ret = t->GetFunction(TRI_IGETC)
+                                       .FromMaybe(v8::Local<v8::Function>())
+                                       ->NewInstance(TRI_IGETC, (int)argc, argv);
 
   TRI_V8_RETURN(ret.FromMaybe(v8::Local<v8::Object>()));
 }
@@ -422,8 +423,10 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
   if (is_buffer) {
     v8::Local<v8::Value> arg = TRI_V8_ASCII_STRING(isolate, "binary");
     v8::Handle<v8::Object> object = val.As<v8::Object>();
-    v8::Local<v8::Function> callback = TRI_GetProperty(context, isolate, object, "toString").As<v8::Function>();
-    str = TRI_GET_STRING(callback->Call(TRI_IGETC, object, 1, &arg).FromMaybe(v8::Local<v8::Value>()));
+    v8::Local<v8::Function> callback =
+        TRI_GetProperty(context, isolate, object, "toString").As<v8::Function>();
+    str = TRI_GET_STRING(
+        callback->Call(TRI_IGETC, object, 1, &arg).FromMaybe(v8::Local<v8::Value>()));
   } else {
     str = TRI_GET_STRING(val);
   }
@@ -565,7 +568,8 @@ v8::Handle<v8::Object> V8Buffer::New(v8::Isolate* isolate, v8::Handle<v8::String
   // get Buffer from global scope.
   v8::Local<v8::Object> global = TRI_IGETC->Global();
   TRI_GET_GLOBAL_STRING(BufferConstant);
-  v8::Local<v8::Value> bv = global->Get(context, BufferConstant).FromMaybe(v8::Local<v8::Value>());
+  v8::Local<v8::Value> bv =
+      global->Get(context, BufferConstant).FromMaybe(v8::Local<v8::Value>());
 
   if (!bv->IsFunction()) {
     return v8::Object::New(isolate);
@@ -589,8 +593,10 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, size_t length) {
 
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, (uint32_t)length);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
-  v8::Local<v8::Object> b =
-    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+  v8::Local<v8::Object> b = BufferTempl->GetFunction(TRI_IGETC)
+                                .FromMaybe(v8::Local<v8::Function>())
+                                ->NewInstance(TRI_IGETC, 1, &arg)
+                                .FromMaybe(v8::Local<v8::Object>());
 
   if (b.IsEmpty()) {
     return NULL;
@@ -608,9 +614,10 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char const* data, size_t length) {
 
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
-  v8::Local<v8::Object> obj =
-    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())
-    ->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+  v8::Local<v8::Object> obj = BufferTempl->GetFunction(TRI_IGETC)
+                                  .FromMaybe(v8::Local<v8::Function>())
+                                  ->NewInstance(TRI_IGETC, 1, &arg)
+                                  .FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, const_cast<char*>(data), length, NULL, NULL);
@@ -628,9 +635,10 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char* data, size_t length,
 
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
-  v8::Local<v8::Object> obj =
-    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())
-    ->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+  v8::Local<v8::Object> obj = BufferTempl->GetFunction(TRI_IGETC)
+                                  .FromMaybe(v8::Local<v8::Function>())
+                                  ->NewInstance(TRI_IGETC, 1, &arg)
+                                  .FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, data, length, callback, hint);
@@ -1479,7 +1487,7 @@ static void MapGetIndexedBuffer(uint32_t idx,
     // seems object has become a FastBuffer already
     if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
-        self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
+          self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
@@ -1513,7 +1521,7 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
     // seems object has become a FastBuffer already
     if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
-        self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
+          self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
@@ -1553,7 +1561,6 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   TRI_ASSERT(unbase64('\r') == -2);
 
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
-
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "BYTELENGTH"), JS_ByteLength);
@@ -1607,13 +1614,11 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "fill"), JS_Fill);
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "copy"), JS_Copy);
 
-
   // create the exports
   v8::Handle<v8::ObjectTemplate> exports = v8::ObjectTemplate::New(isolate);
 
-
   exports->Set(TRI_V8_ASCII_STRING(isolate, "SlowBuffer"), ft);
-  TRI_AddGlobalVariableVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "EXPORTS_SLOW_BUFFER"),
-                               exports->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
+  TRI_AddGlobalVariableVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "EXPORTS_SLOW_BUFFER"),
+      exports->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
 }

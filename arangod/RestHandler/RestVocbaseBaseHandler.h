@@ -138,7 +138,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
-  std::string assembleDocumentId(std::string const& collectionName, 
+  std::string assembleDocumentId(std::string const& collectionName,
                                  std::string const& key, bool urlEncode);
 
   /// @brief generates a HTTP 201 or 202 response
@@ -169,15 +169,13 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateForbidden();
 
   /// @brief generates conflict error
-  void generateConflictError(arangodb::OperationResult const&,
-                             bool precFailed = false);
+  void generateConflictError(arangodb::OperationResult const&, bool precFailed = false);
 
   /// @brief generates not modified
   void generateNotModified(RevisionId);
 
   /// @brief generates first entry from a result set
-  void generateDocument(arangodb::velocypack::Slice const& input, 
-                        bool generateBody,
+  void generateDocument(arangodb::velocypack::Slice const& input, bool generateBody,
                         arangodb::velocypack::Options const* options = nullptr);
 
   /// @brief generate an error message for a transaction error, this method
@@ -192,13 +190,13 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief extracts a string parameter value
   void extractStringParameter(std::string const& name, std::string& ret) const;
-  
+
   /**
    * @brief Helper to create a new Transaction for a single collection. The
-   * helper method will will lock the collection accordingly. It will additionally
-   * check if there is a transaction-id header and will make use of an existing
-   * transaction if a transaction id is specified. it can also start a new
-   * transaction lazily if requested.
+   * helper method will will lock the collection accordingly. It will
+   * additionally check if there is a transaction-id header and will make use of
+   * an existing transaction if a transaction id is specified. it can also start
+   * a new transaction lazily if requested.
    *
    * @param collectionName Name of the collection to be locked
    * @param mode The access mode (READ / WRITE / EXCLUSIVE)
@@ -209,7 +207,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
                                                           AccessMode::Type mode,
                                                           OperationOptions const& opOptions) const;
-  
+
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;
 
@@ -222,4 +220,3 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 };
 
 }  // namespace arangodb
-

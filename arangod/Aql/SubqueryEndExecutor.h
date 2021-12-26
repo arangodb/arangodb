@@ -45,10 +45,9 @@ class SingleRowFetcher;
 
 class SubqueryEndExecutorInfos {
  public:
-  SubqueryEndExecutorInfos(velocypack::Options const* options, 
-                           arangodb::ResourceMonitor& resourceMonitor, 
-                           RegisterId inReg,
-                           RegisterId outReg);
+  SubqueryEndExecutorInfos(velocypack::Options const* options,
+                           arangodb::ResourceMonitor& resourceMonitor,
+                           RegisterId inReg, RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) = default;
@@ -119,9 +118,10 @@ class SubqueryEndExecutor {
   // control of it to hand over to an AqlValue
   class Accumulator {
    public:
-    explicit Accumulator(arangodb::ResourceMonitor& resourceMonitor, velocypack::Options const* options);
+    explicit Accumulator(arangodb::ResourceMonitor& resourceMonitor,
+                         velocypack::Options const* options);
     ~Accumulator();
-    
+
     void reset() noexcept;
 
     void addValue(AqlValue const& value);
@@ -146,4 +146,3 @@ class SubqueryEndExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-

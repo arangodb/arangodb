@@ -23,7 +23,6 @@
 
 #include "StringUtils.h"
 
-#include <algorithm>
 #include <math.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -163,17 +162,13 @@ unsigned char const BASE64U_REVS[256] = {
 };
 
 inline bool isBase64(unsigned char c) {
-  return (c >= '0' && c <= '9') ||
-         (c >= 'a' && c <= 'z') ||
-         (c >= 'A' && c <= 'Z') ||
-         c == '+' || c == '/';
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') || c == '+' || c == '/';
 }
 
 inline bool isBase64U(unsigned char c) {
-  return (c >= '0' && c <= '9') ||
-         (c >= 'a' && c <= 'z') ||
-         (c >= 'A' && c <= 'Z') ||
-         c == '-' || c == '_';
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') || c == '-' || c == '_';
 }
 
 unsigned char consume(char const*& s) {
@@ -521,7 +516,7 @@ std::string lTrim(std::string const& str, std::string const& trimStr) {
 
   if (s == std::string::npos) {
     return std::string();
-  } 
+  }
   return std::string(str, s);
 }
 
@@ -1495,61 +1490,61 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   switch (length) {
     case 20:
       result += (value[length - 20] - '0') * 10000000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 19:
       result += (value[length - 19] - '0') * 1000000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 18:
       result += (value[length - 18] - '0') * 100000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 17:
       result += (value[length - 17] - '0') * 10000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 16:
       result += (value[length - 16] - '0') * 1000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 15:
       result += (value[length - 15] - '0') * 100000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 14:
       result += (value[length - 14] - '0') * 10000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 13:
       result += (value[length - 13] - '0') * 1000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 12:
       result += (value[length - 12] - '0') * 100000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 11:
       result += (value[length - 11] - '0') * 10000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 10:
       result += (value[length - 10] - '0') * 1000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 9:
       result += (value[length - 9] - '0') * 100000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 8:
       result += (value[length - 8] - '0') * 10000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 7:
       result += (value[length - 7] - '0') * 1000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 6:
       result += (value[length - 6] - '0') * 100000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 5:
       result += (value[length - 5] - '0') * 10000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 4:
       result += (value[length - 4] - '0') * 1000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 3:
       result += (value[length - 3] - '0') * 100ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 2:
       result += (value[length - 2] - '0') * 10ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 1:
       result += (value[length - 1] - '0');
   }
@@ -1968,22 +1963,22 @@ std::string formatSize(uint64_t value) {
   if (value < 1000) {
     if (value == 1) {
       out = "1";
-      label ="byte";
+      label = "byte";
     } else {
       out = std::to_string(value);
       label = "bytes";
     }
   } else if (value < 1000'000ULL) {
-    out = std::to_string((double) value / double(1000));
+    out = std::to_string((double)value / double(1000));
     label = "KB";
   } else if (value < 1'000'000'000ULL) {
-    out = std::to_string((double) value / 1e6);
+    out = std::to_string((double)value / 1e6);
     label = "MB";
   } else if (value < 1'000'000'000'000ULL) {
-    out = std::to_string((double) value / 1e9);
+    out = std::to_string((double)value / 1e9);
     label = "GB";
   } else if (value < 1'000'000'000'000'000ULL) {
-    out = std::to_string((double) value / 1e12);
+    out = std::to_string((double)value / 1e12);
     label = "TB";
   }
   out = arangodb::basics::StringUtils::replace(out, ",", ".");

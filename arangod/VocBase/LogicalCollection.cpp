@@ -43,9 +43,9 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utilities/NameValidator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
@@ -181,7 +181,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info, bo
 
   TRI_ASSERT(info.isObject());
 
-  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesForCollections();
   if (!CollectionNameValidator::isAllowedName(system(), extendedNames, name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -425,7 +426,8 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   _physical->prepareIndexes(indexesSlice);
 }
 
-std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) {
+std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(transaction::Methods* trx,
+                                                                 ReadOwnWrites readOwnWrites) {
   return _physical->getAllIterator(trx, readOwnWrites);
 }
 
@@ -1073,7 +1075,9 @@ void LogicalCollection::persistPhysicalCollection() {
   engine.createCollection(vocbase(), *this);
 }
 
-basics::ReadWriteLock& LogicalCollection::statusLock() noexcept { return _statusLock; }
+basics::ReadWriteLock& LogicalCollection::statusLock() noexcept {
+  return _statusLock;
+}
 
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop

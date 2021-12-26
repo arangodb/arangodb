@@ -70,44 +70,45 @@ using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
 namespace {
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
-    regSource(RegisterId(0)), regTarget(1), brokenSource{"IwillBreakYourSearch"},
+    regSource(RegisterId(0)),
+    regTarget(1), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
 
-  MatrixBuilder<2> const noneRow{{{{}}}};
-  MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
-  MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
-                                 {{{R"("vertex/a")"}, {R"("vertex/b")"}}}};
-  MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
-                                   {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
-                                   {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
-  MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
-                                  {{{R"("vertex/b")"}, {R"("vertex/target")"}}},
-                                  {{{R"("vertex/e")"}, {R"("vertex/target")"}}},
-                                  {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const noneRow{{{{}}}};
+MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
+                               {{{R"("vertex/a")"}, {R"("vertex/b")"}}}};
+MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
+                                 {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
+                                 {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/b")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/e")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
 
-  PathSequence const noPath = {};
-  PathSequence const onePath = {
-      {"vertex/source", "vertex/intermed", "vertex/target"}};
+PathSequence const noPath = {};
+PathSequence const onePath = {
+    {"vertex/source", "vertex/intermed", "vertex/target"}};
 
-  PathSequence const threePaths = {
-      {"vertex/source", "vertex/intermed", "vertex/target"},
-      {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/source", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/a", "vertex/b", "vertex/target"}};
+PathSequence const threePaths = {
+    {"vertex/source", "vertex/intermed", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/a", "vertex/b", "vertex/target"}};
 
-  PathSequence const somePaths = {
-      {"vertex/source", "vertex/intermed0", "vertex/target"},
-      {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/source", "vertex/intermed1", "vertex/target"},
-      {"vertex/source", "vertex/intermed2", "vertex/target"},
-      {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/source", "vertex/intermed3", "vertex/target"},
-      {"vertex/source", "vertex/intermed4", "vertex/target"},
-      {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/source", "vertex/intermed5", "vertex/target"},
-  };
+PathSequence const somePaths = {
+    {"vertex/source", "vertex/intermed0", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/intermed1", "vertex/target"},
+    {"vertex/source", "vertex/intermed2", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/intermed3", "vertex/target"},
+    {"vertex/source", "vertex/intermed4", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/intermed5", "vertex/target"},
+};
 
-  }  // namespace  // namespace
+}  // namespace
 
 // The FakeShortestPathsFinder does not do any real k shortest paths search; it
 // is merely initialized with a set of "paths" and then outputs them, keeping a
@@ -221,10 +222,8 @@ struct KShortestPathsTestParameters {
   size_t _blockSize{1000};
 };
 
-class KShortestPathsExecutorTest
-    : public ::testing::Test {
+class KShortestPathsExecutorTest : public ::testing::Test {
  protected:
-
   // parameters are copied because they are const otherwise
   // and that doesn't mix with std::move
   KShortestPathsTestParameters parameters;
@@ -335,7 +334,8 @@ class KShortestPathsExecutorTest
     auto expectedRowsIndex = size_t{skippedInitial};
     for (auto const& block : results) {
       if (block != nullptr) {
-        for (size_t blockIndex = 0; blockIndex < block->numRows(); ++blockIndex, ++expectedRowsIndex) {
+        for (size_t blockIndex = 0; blockIndex < block->numRows();
+             ++blockIndex, ++expectedRowsIndex) {
           AqlValue value =
               block->getValue(blockIndex, executorInfos.getOutputRegister());
           EXPECT_TRUE(value.isArray());
@@ -370,7 +370,8 @@ class KShortestPathsExecutorTest
     }
   }
 
-  void TestExecutor(RegisterInfos& registerInfos, KShortestPathsExecutorInfos<KShortestPathsFinder>& executorInfos,
+  void TestExecutor(RegisterInfos& registerInfos,
+                    KShortestPathsExecutorInfos<KShortestPathsFinder>& executorInfos,
                     AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 

@@ -45,8 +45,8 @@ namespace aql {
 class RegisterInfos {
  public:
   /**
-   * @brief Generic register information for ExecutionBlocks and related classes,
-   *        like OutputAqlItemRow.
+   * @brief Generic register information for ExecutionBlocks and related
+   * classes, like OutputAqlItemRow.
    * @param readableInputRegisters Registers the Block may use as input
    * @param writeableOutputRegisters Registers the Block writes into
    * @param nrInputRegisters Width of input AqlItemBlocks
@@ -131,4 +131,3 @@ class RegisterInfos {
 
 }  // namespace aql
 }  // namespace arangodb
-

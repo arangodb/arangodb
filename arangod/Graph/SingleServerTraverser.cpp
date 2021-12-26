@@ -81,7 +81,8 @@ void SingleServerTraverser::clear() {
   traverserCache()->clear();
 }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool SingleServerTraverser::getVertex(VPackSlice edge,
+                                      arangodb::traverser::EnumeratedPath& path) {
   return _vertexGetter->getVertex(edge, path);
 }
 

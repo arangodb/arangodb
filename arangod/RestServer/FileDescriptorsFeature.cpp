@@ -110,27 +110,30 @@ struct FileDescriptors {
 };
 
 FileDescriptorsFeature::FileDescriptorsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "FileDescriptors"), 
+    : ApplicationFeature(server, "FileDescriptors"),
       _descriptorsMinimum(FileDescriptors::recommendedMinimum()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 }
 
 void FileDescriptorsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--server.descriptors-minimum",
-                     "minimum number of file descriptors needed to start (0 = no minimum)",
-                     new UInt64Parameter(&_descriptorsMinimum),
-                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac));
+  options->addOption(
+      "--server.descriptors-minimum",
+      "minimum number of file descriptors needed to start (0 = no minimum)",
+      new UInt64Parameter(&_descriptorsMinimum),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsLinux,
+                                   arangodb::options::Flags::OsMac));
 }
 
 void FileDescriptorsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_descriptorsMinimum > 0 && 
+  if (_descriptorsMinimum > 0 &&
       (_descriptorsMinimum < FileDescriptors::requiredMinimum ||
        _descriptorsMinimum > std::numeric_limits<rlim_t>::max())) {
-    LOG_TOPIC("7e15c", FATAL, Logger::STARTUP) 
-      << "invalid value for --server.descriptors-minimum. must be between " 
-      << FileDescriptors::requiredMinimum << " and "
-      << std::numeric_limits<rlim_t>::max(); 
+    LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
+        << "invalid value for --server.descriptors-minimum. must be between "
+        << FileDescriptors::requiredMinimum << " and "
+        << std::numeric_limits<rlim_t>::max();
     FATAL_ERROR_EXIT();
   }
 }
@@ -142,22 +145,19 @@ void FileDescriptorsFeature::start() {
 
   LOG_TOPIC("a1c60", INFO, arangodb::Logger::SYSCALL)
       << "file-descriptors (nofiles) hard limit is "
-      << FileDescriptors::stringify(current.hard) 
-      << ", soft limit is "
+      << FileDescriptors::stringify(current.hard) << ", soft limit is "
       << FileDescriptors::stringify(current.soft);
 
-  rlim_t const required = std::max<rlim_t>(
-    static_cast<rlim_t>(_descriptorsMinimum),
-    FileDescriptors::requiredMinimum
-  );
+  rlim_t const required = std::max<rlim_t>(static_cast<rlim_t>(_descriptorsMinimum),
+                                           FileDescriptors::requiredMinimum);
 
   if (current.soft < required) {
     std::stringstream s;
     s << "file-descriptors (nofiles) soft limit is too low, currently "
-      << FileDescriptors::stringify(current.soft) 
-      << ". please raise to at least " << required 
-      << " (e.g. via ulimit -n " << required << ") or" 
-      << " adjust the value of the startup option --servers.descriptors-minimum";
+      << FileDescriptors::stringify(current.soft) << ". please raise to at least "
+      << required << " (e.g. via ulimit -n " << required << ") or"
+      << " adjust the value of the startup option "
+         "--servers.descriptors-minimum";
     if (_descriptorsMinimum == 0) {
       LOG_TOPIC("a33ba", WARN, arangodb::Logger::SYSCALL) << s.str();
     } else {
@@ -173,14 +173,13 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
 
     LOG_TOPIC("6762c", DEBUG, arangodb::Logger::SYSCALL)
         << "file-descriptors (nofiles) hard limit is "
-        << FileDescriptors::stringify(current.hard) 
-        << ", soft limit is "
+        << FileDescriptors::stringify(current.hard) << ", soft limit is "
         << FileDescriptors::stringify(current.soft);
 
     if (recommended > 0) {
       if (current.hard < recommended) {
         LOG_TOPIC("0835c", DEBUG, arangodb::Logger::SYSCALL)
-          << "hard limit " << current.hard << " is too small, trying to raise";
+            << "hard limit " << current.hard << " is too small, trying to raise";
 
         FileDescriptors copy = current;
         copy.hard = recommended;

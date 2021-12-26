@@ -22,8 +22,8 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <set>
 #include <random>
+#include <set>
 
 #include "Cluster/Maintenance.h"
 #include "MaintenanceFeature.h"
@@ -49,8 +49,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -60,25 +60,29 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-DECLARE_COUNTER(arangodb_maintenance_action_duplicate_total, "Counter of actions that have been discarded because of a duplicate");
-DECLARE_COUNTER(arangodb_maintenance_action_registered_total, "Counter of actions that have been registered in the action registry");
-DECLARE_COUNTER(arangodb_maintenance_action_failure_total, "Failure counter for the maintenance actions");
-
+DECLARE_COUNTER(
+    arangodb_maintenance_action_duplicate_total,
+    "Counter of actions that have been discarded because of a duplicate");
+DECLARE_COUNTER(
+    arangodb_maintenance_action_registered_total,
+    "Counter of actions that have been registered in the action registry");
+DECLARE_COUNTER(arangodb_maintenance_action_failure_total,
+                "Failure counter for the maintenance actions");
 
 ////////////////////////////////////////////////////////////////////////////////
 // FAKE DECLARATIONS - remove when v1 is removed
 ////////////////////////////////////////////////////////////////////////////////
 
 DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total,
-    "Accumulated runtime of phase one [ms]");
+                       "Accumulated runtime of phase one [ms]");
 DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total,
-    "Accumulated runtime of phase two [ms]");
+                       "Accumulated runtime of phase two [ms]");
 DECLARE_LEGACY_COUNTER(arangodb_maintenance_agency_sync_accum_runtime_msec_total,
-    "Accumulated runtime of agency sync phase [ms]");
+                       "Accumulated runtime of agency sync phase [ms]");
 DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total,
-    "Accumulated action runtime");
+                       "Accumulated action runtime");
 DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total,
-    "Accumulated action queue time");
+                       "Accumulated action queue time");
 
 struct MaintenanceScale {
   static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
@@ -90,16 +94,28 @@ struct MaintenanceActionQueueTimeScale {
   static log_scale_t<uint64_t> scale() { return {2, 82, 3600000, 12}; }
 };
 
-DECLARE_HISTOGRAM(arangodb_maintenance_phase1_runtime_msec, MaintenanceScale, "Maintenance Phase 1 runtime histogram [ms]");
-DECLARE_HISTOGRAM(arangodb_maintenance_phase2_runtime_msec, MaintenanceScale, "Maintenance Phase 2 runtime histogram [ms]");
-DECLARE_HISTOGRAM(arangodb_maintenance_agency_sync_runtime_msec, MaintenanceScale, "Total time spent on agency sync [ms]");
-DECLARE_HISTOGRAM(arangodb_maintenance_action_runtime_msec, MaintenanceActionRuntimeScale, "Time spent executing a maintenance action [ms]");
-DECLARE_HISTOGRAM(arangodb_maintenance_action_queue_time_msec, MaintenanceActionQueueTimeScale, "Time spent in the queue before execution for maintenance actions [ms]");
-DECLARE_COUNTER(arangodb_maintenance_action_done_total, "Counter of actions that are done and have been removed from the registry");
-DECLARE_GAUGE(arangodb_shards_out_of_sync, uint64_t, "Number of leader shards not fully replicated");
-DECLARE_GAUGE(arangodb_shards_number, uint64_t, "Number of shards on this machine");
-DECLARE_GAUGE(arangodb_shards_leader_number, uint64_t, "Number of leader shards on this machine");
-DECLARE_GAUGE(arangodb_shards_not_replicated, uint64_t, "Number of shards not replicated at all");
+DECLARE_HISTOGRAM(arangodb_maintenance_phase1_runtime_msec, MaintenanceScale,
+                  "Maintenance Phase 1 runtime histogram [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_phase2_runtime_msec, MaintenanceScale,
+                  "Maintenance Phase 2 runtime histogram [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_agency_sync_runtime_msec,
+                  MaintenanceScale, "Total time spent on agency sync [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_action_runtime_msec, MaintenanceActionRuntimeScale,
+                  "Time spent executing a maintenance action [ms]");
+DECLARE_HISTOGRAM(
+    arangodb_maintenance_action_queue_time_msec, MaintenanceActionQueueTimeScale,
+    "Time spent in the queue before execution for maintenance actions [ms]");
+DECLARE_COUNTER(
+    arangodb_maintenance_action_done_total,
+    "Counter of actions that are done and have been removed from the registry");
+DECLARE_GAUGE(arangodb_shards_out_of_sync, uint64_t,
+              "Number of leader shards not fully replicated");
+DECLARE_GAUGE(arangodb_shards_number, uint64_t,
+              "Number of shards on this machine");
+DECLARE_GAUGE(arangodb_shards_leader_number, uint64_t,
+              "Number of leader shards on this machine");
+DECLARE_GAUGE(arangodb_shards_not_replicated, uint64_t,
+              "Number of shards not replicated at all");
 
 namespace {
 
@@ -113,14 +129,14 @@ arangodb::Result arangodb::maintenance::collectionCount(arangodb::LogicalCollect
                                                         uint64_t& c) {
   std::string collectionName(collection.name());
   transaction::StandaloneContext ctx(collection.vocbase());
-  SingleCollectionTransaction trx(
-    std::shared_ptr<transaction::Context>(
-      std::shared_ptr<transaction::Context>(), &ctx),
-    collectionName, AccessMode::Type::READ);
+  SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
+                                      std::shared_ptr<transaction::Context>(), &ctx),
+                                  collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
   if (res.fail()) {
-    LOG_TOPIC("5be16", WARN, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
+    LOG_TOPIC("5be16", WARN, Logger::MAINTENANCE)
+        << "Failed to start count transaction: " << res;
     return res;
   }
 
@@ -147,8 +163,9 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
       _firstRun(true),
-      _maintenanceThreadsMax((std::max)(static_cast<uint32_t>(minThreadLimit),
-                                        static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1))),
+      _maintenanceThreadsMax(
+          (std::max)(static_cast<uint32_t>(minThreadLimit),
+                     static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1))),
       _maintenanceThreadsSlowMax(_maintenanceThreadsMax / 2),
       _secondsActionsBlock(2),
       _secondsActionsLinger(3600),
@@ -158,10 +175,10 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
-  // this feature has to know the role of this server in its `start` method. The role
-  // is determined by `ClusterFeature::validateOptions`, hence the following
-  // line of code is not required. For philosophical reasons we added it to the
-  // ClusterPhase and let it start after `Cluster`.
+  // this feature has to know the role of this server in its `start` method. The
+  // role is determined by `ClusterFeature::validateOptions`, hence the
+  // following line of code is not required. For philosophical reasons we added
+  // it to the ClusterPhase and let it start after `Cluster`.
   startsAfter<ClusterFeature>();
   startsAfter<MetricsFeature>();
 
@@ -169,9 +186,7 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
   requiresElevatedPrivileges(false);
 }
 
-MaintenanceFeature::~MaintenanceFeature() {
-  stop();
-}
+MaintenanceFeature::~MaintenanceFeature() { stop(); }
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
@@ -183,15 +198,16 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                                    arangodb::options::Flags::Hidden,
                                    arangodb::options::Flags::Dynamic));
 
-  options->addOption(
-      "--server.maintenance-slow-threads",
-      "maximum number of threads available for slow maintenance actions (long SynchronizeShard and long EnsureIndex)",
-      new UInt32Parameter(&_maintenanceThreadsSlowMax),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                   arangodb::options::Flags::OnDBServer,
-                                   arangodb::options::Flags::Hidden,
-                                   arangodb::options::Flags::Dynamic)).
-      setIntroducedIn(30803);
+  options
+      ->addOption("--server.maintenance-slow-threads",
+                  "maximum number of threads available for slow maintenance "
+                  "actions (long SynchronizeShard and long EnsureIndex)",
+                  new UInt32Parameter(&_maintenanceThreadsSlowMax),
+                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                               arangodb::options::Flags::OnDBServer,
+                                               arangodb::options::Flags::Hidden,
+                                               arangodb::options::Flags::Dynamic))
+      .setIntroducedIn(30803);
 
   options->addOption(
       "--server.maintenance-actions-block",
@@ -246,20 +262,17 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
   if (_maintenanceThreadsSlowMax + 2 > _maintenanceThreadsMax) {
     _maintenanceThreadsSlowMax = _maintenanceThreadsMax - 2;
     LOG_TOPIC("54251", WARN, Logger::MAINTENANCE)
-        << "maintenance-slow-threads limited to "
-        << _maintenanceThreadsSlowMax;
+        << "maintenance-slow-threads limited to " << _maintenanceThreadsSlowMax;
   }
   if (_maintenanceThreadsSlowMax == 0) {
     _maintenanceThreadsSlowMax = 1;
     LOG_TOPIC("54252", WARN, Logger::MAINTENANCE)
-        << "maintenance-slow-threads raised to "
-        << _maintenanceThreadsSlowMax;
+        << "maintenance-slow-threads raised to " << _maintenanceThreadsSlowMax;
   }
   if (ServerState::instance()->isDBServer()) {
     LOG_TOPIC("42531", INFO, Logger::MAINTENANCE)
-      << "Using " << _maintenanceThreadsMax
-      << " threads for maintenance, of which "
-      << _maintenanceThreadsSlowMax << " may be used for slow operations.";
+        << "Using " << _maintenanceThreadsMax << " threads for maintenance, of which "
+        << _maintenanceThreadsSlowMax << " may be used for slow operations.";
   }
 }
 
@@ -273,42 +286,45 @@ void MaintenanceFeature::initializeMetrics() {
   }
   auto& metricsFeature = server().getFeature<arangodb::MetricsFeature>();
 
-  _phase1_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_phase1_runtime_msec{});
-  _phase2_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_phase2_runtime_msec{});
+  _phase1_runtime_msec = metricsFeature.add(arangodb_maintenance_phase1_runtime_msec{});
+  _phase2_runtime_msec = metricsFeature.add(arangodb_maintenance_phase2_runtime_msec{});
   _agency_sync_total_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_agency_sync_runtime_msec{});
+      metricsFeature.add(arangodb_maintenance_agency_sync_runtime_msec{});
 
   _phase1_accum_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_phase1_accum_runtime_msec_total{});
+      metricsFeature.add(arangodb_maintenance_phase1_accum_runtime_msec_total{});
   _phase2_accum_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_phase2_accum_runtime_msec_total{});
+      metricsFeature.add(arangodb_maintenance_phase2_accum_runtime_msec_total{});
   _agency_sync_total_accum_runtime_msec =
-    metricsFeature.add(arangodb_maintenance_agency_sync_accum_runtime_msec_total{});
+      metricsFeature.add(arangodb_maintenance_agency_sync_accum_runtime_msec_total{});
 
   _shards_out_of_sync = metricsFeature.add(arangodb_shards_out_of_sync{});
   _shards_total_count = metricsFeature.add(arangodb_shards_number{});
   _shards_leader_count = metricsFeature.add(arangodb_shards_leader_number{});
   _shards_not_replicated_count = metricsFeature.add(arangodb_shards_not_replicated{});
 
-  _action_duplicated_counter = metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
-  _action_registered_counter = metricsFeature.add(arangodb_maintenance_action_registered_total{});
+  _action_duplicated_counter =
+      metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
+  _action_registered_counter =
+      metricsFeature.add(arangodb_maintenance_action_registered_total{});
   _action_done_counter = metricsFeature.add(arangodb_maintenance_action_done_total{});
 
-  const char* instrumentedActions[] =
-    {CREATE_COLLECTION, CREATE_DATABASE, UPDATE_COLLECTION, SYNCHRONIZE_SHARD, DROP_COLLECTION, DROP_DATABASE, DROP_INDEX};
+  const char* instrumentedActions[] = {CREATE_COLLECTION, CREATE_DATABASE,
+                                       UPDATE_COLLECTION, SYNCHRONIZE_SHARD,
+                                       DROP_COLLECTION,   DROP_DATABASE,
+                                       DROP_INDEX};
 
   std::string key("action");
   for (const char* action : instrumentedActions) {
-
     _maintenance_job_metrics_map.try_emplace(
-      action,
-      metricsFeature.add(arangodb_maintenance_action_runtime_msec{}.withLabel(key, action)),
-      metricsFeature.add(arangodb_maintenance_action_queue_time_msec{}.withLabel(key, action)),
-      metricsFeature.add(arangodb_maintenance_action_accum_runtime_msec_total{}.withLabel(key, action)),
-      metricsFeature.add(arangodb_maintenance_action_accum_queue_time_msec_total{}.withLabel(key, action)),
-      metricsFeature.add(arangodb_maintenance_action_failure_total{}.withLabel(key, action)));
+        action,
+        metricsFeature.add(arangodb_maintenance_action_runtime_msec{}.withLabel(key, action)),
+        metricsFeature.add(arangodb_maintenance_action_queue_time_msec{}.withLabel(key, action)),
+        metricsFeature.add(
+            arangodb_maintenance_action_accum_runtime_msec_total{}.withLabel(key, action)),
+        metricsFeature.add(
+            arangodb_maintenance_action_accum_queue_time_msec_total{}.withLabel(key, action)),
+        metricsFeature.add(arangodb_maintenance_action_failure_total{}.withLabel(key, action)));
   }
 }
 
@@ -340,10 +356,11 @@ void MaintenanceFeature::start() {
     // The first two workers are not allowed to execute SLOW_OP_PRIORITY,
     // all the others may:
     int minPrio = loop < _maintenanceThreadsMax - _maintenanceThreadsSlowMax
-                  ? maintenance::NORMAL_PRIORITY 
-                  : maintenance::SLOW_OP_PRIORITY;
+                      ? maintenance::NORMAL_PRIORITY
+                      : maintenance::SLOW_OP_PRIORITY;
 
-    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this, minPrio, labels);
+    auto newWorker =
+        std::make_unique<maintenance::MaintenanceWorker>(*this, minPrio, labels);
 
     if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC("4d8b8", ERR, Logger::MAINTENANCE)
@@ -396,28 +413,27 @@ void MaintenanceFeature::beginShutdown() {
     auto endtime = startTime + timeout;
 
     auto checkAgencyPathExists =
-      [cf = &server().getFeature<ClusterFeature>()](
-        std::string const& path, uint64_t jobId) -> bool {
-        try {
-          auto [acb, idx] =
-            cf->agencyCache().read(std::vector<std::string>{
-                AgencyCommHelper::path("Target/" + path + "/" + std::to_string(jobId))});
-          auto result = acb->slice();
-          if (!result.isNone()) {
-            VPackSlice value = result[0].get(
-              std::vector<std::string>{
-                AgencyCommHelper::path(), "Target", path, std::to_string(jobId)});
-            if (value.isObject() && value.hasKey("jobId") &&
-                value.get("jobId").isEqualString(std::to_string(jobId))) {
-              return true;
-            }
+        [cf = &server().getFeature<ClusterFeature>()](std::string const& path,
+                                                      uint64_t jobId) -> bool {
+      try {
+        auto [acb, idx] = cf->agencyCache().read(std::vector<std::string>{
+            AgencyCommHelper::path("Target/" + path + "/" + std::to_string(jobId))});
+        auto result = acb->slice();
+        if (!result.isNone()) {
+          VPackSlice value = result[0].get(
+              std::vector<std::string>{AgencyCommHelper::path(), "Target", path,
+                                       std::to_string(jobId)});
+          if (value.isObject() && value.hasKey("jobId") &&
+              value.get("jobId").isEqualString(std::to_string(jobId))) {
+            return true;
           }
-        } catch (...) {
-          LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
-            << "Exception when checking for job completion";
         }
-        return false;
-      };
+      } catch (...) {
+        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
+            << "Exception when checking for job completion";
+      }
+      return false;
+    };
 
     // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
     while (clock::now() < endtime) {
@@ -486,14 +502,14 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
 Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAction,
                                      bool executeNow) {
-
   TRI_ASSERT(newAction != nullptr);
   TRI_ASSERT(newAction->ok());
 
   Result result;
-  
+
   if (newAction == nullptr) {
-    return result.reset(TRI_ERROR_INTERNAL, "invalid call of MaintenanceFeature::addAction");
+    return result.reset(TRI_ERROR_INTERNAL,
+                        "invalid call of MaintenanceFeature::addAction");
   }
 
   // the underlying routines are believed to be safe and throw free,
@@ -710,7 +726,8 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   return std::shared_ptr<Action>();
 }
 
-std::shared_ptr<Action> MaintenanceFeature::findReadyAction(int minimalPriorityAllowed, std::unordered_set<std::string> const& labels) {
+std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
+    int minimalPriorityAllowed, std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
   while (!_isShuttingDown) {
@@ -959,9 +976,10 @@ void MaintenanceFeature::removeReplicationError(std::string const& database) {
 }
 
 /// @brief remove all replication errors for the shard in the database
-void MaintenanceFeature::removeReplicationError(std::string const& database, std::string const& shard) {
+void MaintenanceFeature::removeReplicationError(std::string const& database,
+                                                std::string const& shard) {
   MUTEX_LOCKER(guard, _replLock);
-  
+
   auto it = _replErrors.find(database);
   if (it != _replErrors.end()) {
     (*it).second.erase(shard);
@@ -973,9 +991,8 @@ void MaintenanceFeature::removeReplicationError(std::string const& database, std
 /// all we do here is to store a _timestamp_ of the last x errors per
 /// shard, so that we can calculate the number of errors in a given
 /// time period.
-void MaintenanceFeature::storeReplicationError(
-    std::string const& database, std::string const& shard) {
-
+void MaintenanceFeature::storeReplicationError(std::string const& database,
+                                               std::string const& shard) {
   auto now = std::chrono::steady_clock::now();
 
   MUTEX_LOCKER(guard, _replLock);
@@ -984,16 +1001,18 @@ void MaintenanceFeature::storeReplicationError(
   size_t n = bucket.size();
 
   // clean up existing bucket data while we are already on it
-  bucket.erase(std::remove_if(bucket.begin(), bucket.end(), [&](auto const& value) {
-    if (n >= maxReplicationErrorsPerShard ||
-        value < now - maxReplicationErrorsPerShardAge) {
-      // too many values. delete the first x OR entry too old
-      --n;
-      return true;
-    } 
-    // keep all the rest
-    return false;
-  }), bucket.end());
+  bucket.erase(std::remove_if(bucket.begin(), bucket.end(),
+                              [&](auto const& value) {
+                                if (n >= maxReplicationErrorsPerShard ||
+                                    value < now - maxReplicationErrorsPerShardAge) {
+                                  // too many values. delete the first x OR entry too old
+                                  --n;
+                                  return true;
+                                }
+                                // keep all the rest
+                                return false;
+                              }),
+               bucket.end());
 
   TRI_ASSERT(bucket.size() == n);
   bucket.emplace_back(now);
@@ -1003,7 +1022,7 @@ void MaintenanceFeature::storeReplicationError(
 /// @brief return the number of replication errors for a particular shard.
 /// note: we will return only those errors which happened not longer than
 /// maxReplicationErrorsPerShardAge  ago
-size_t MaintenanceFeature::replicationErrors(std::string const& database,   
+size_t MaintenanceFeature::replicationErrors(std::string const& database,
                                              std::string const& shard) const {
   auto since = std::chrono::steady_clock::now() - maxReplicationErrorsPerShardAge;
 
@@ -1011,7 +1030,7 @@ size_t MaintenanceFeature::replicationErrors(std::string const& database,
 
   auto it = _replErrors.find(database);
   if (it == _replErrors.end()) {
-    // no errors recorded for database, 
+    // no errors recorded for database,
     return 0;
   }
 
@@ -1020,11 +1039,10 @@ size_t MaintenanceFeature::replicationErrors(std::string const& database,
     // no errors recorded for shard
     return 0;
   }
-  
+
   auto& bucket = (*it2).second;
-  return std::count_if(bucket.begin(), bucket.end(), [&](auto const& value) {
-    return value >= since;
-  });
+  return std::count_if(bucket.begin(), bucket.end(),
+                       [&](auto const& value) { return value >= since; });
 }
 
 template <typename T>
@@ -1133,7 +1151,8 @@ void MaintenanceFeature::proceed() {
 void MaintenanceFeature::addDirty(std::string const& database) {
   server().getFeature<ClusterFeature>().addDirty(database);
 }
-void MaintenanceFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
+void MaintenanceFeature::addDirty(std::unordered_set<std::string> const& databases,
+                                  bool callNotify) {
   server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
 }
 
@@ -1144,9 +1163,9 @@ std::unordered_set<std::string> MaintenanceFeature::pickRandomDirty(size_t n) {
     n = left;
     more = true;
   }
-  std::unordered_set<std::string> ret(std::make_move_iterator(_databasesToCheck.end()-n),
+  std::unordered_set<std::string> ret(std::make_move_iterator(_databasesToCheck.end() - n),
                                       std::make_move_iterator(_databasesToCheck.end()));
-  _databasesToCheck.erase(_databasesToCheck.end()-n,_databasesToCheck.end());
+  _databasesToCheck.erase(_databasesToCheck.end() - n, _databasesToCheck.end());
   if (more) {
     refillToCheck();
   }
@@ -1162,13 +1181,12 @@ void MaintenanceFeature::refillToCheck() {
   std::shuffle(_databasesToCheck.begin(), _databasesToCheck.end(), e);
 }
 
-std::unordered_set<std::string> MaintenanceFeature::dirty(
-  std::unordered_set<std::string> const& more) {
+std::unordered_set<std::string> MaintenanceFeature::dirty(std::unordered_set<std::string> const& more) {
   auto& clusterFeature = server().getFeature<ClusterFeature>();
-  auto ret = clusterFeature.dirty(); // plan & current in first run
+  auto ret = clusterFeature.dirty();  // plan & current in first run
   if (_firstRun) {
     auto all = allDatabases();
-    ret.insert(std::make_move_iterator(all.begin()),std::make_move_iterator(all.end()));
+    ret.insert(std::make_move_iterator(all.begin()), std::make_move_iterator(all.end()));
     _firstRun = false;
   } else {
     if (!more.empty()) {
@@ -1187,15 +1205,16 @@ size_t MaintenanceFeature::lastNumberOfDatabases() const {
   return _lastNumberOfDatabases;
 }
 
-bool MaintenanceFeature::hasAction(ActionState state,  ShardID const& shardId, std::string const& type) const {
+bool MaintenanceFeature::hasAction(ActionState state, ShardID const& shardId,
+                                   std::string const& type) const {
   READ_LOCKER(rLock, _actionRegistryLock);
 
-  // this is not ideal, as it needs to do a linear scan of all maintenance jobs in the
-  // registry. however, this is our best bet, as we don't have active a struct with
-  // currently running jobs which allows quick access by shard id. the only thing we
-  // have is the ShardActionMap, but it also contains _planned_ actions, which are
-  // currently not executing. we want all actions with a specific status, so we need
-  // to do the linear scan here.
+  // this is not ideal, as it needs to do a linear scan of all maintenance jobs
+  // in the registry. however, this is our best bet, as we don't have active a
+  // struct with currently running jobs which allows quick access by shard id.
+  // the only thing we have is the ShardActionMap, but it also contains
+  // _planned_ actions, which are currently not executing. we want all actions
+  // with a specific status, so we need to do the linear scan here.
   for (auto const& action : _actionRegistry) {
     if (action->getState() != state) {
       continue;
@@ -1212,10 +1231,10 @@ bool MaintenanceFeature::isDirty(std::string const& dbName) const {
   return server().getFeature<ClusterFeature>().isDirty(dbName);
 }
 
-bool MaintenanceFeature::lockShard(
-  ShardID const& shardId, std::shared_ptr<maintenance::ActionDescription> const& description) {
+bool MaintenanceFeature::lockShard(ShardID const& shardId,
+                                   std::shared_ptr<maintenance::ActionDescription> const& description) {
   LOG_TOPIC("aaed2", DEBUG, Logger::MAINTENANCE)
-    << "Locking shard " << shardId << " for action " << *description;
+      << "Locking shard " << shardId << " for action " << *description;
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   auto pair = _shardActionMap.emplace(shardId, description);
   return pair.second;
@@ -1228,19 +1247,20 @@ bool MaintenanceFeature::unlockShard(ShardID const& shardId) noexcept {
     return false;
   }
   LOG_TOPIC("aaed3", DEBUG, Logger::MAINTENANCE)
-    << "Unlocking shard " << shardId << " for action " << *it->second;
+      << "Unlocking shard " << shardId << " for action " << *it->second;
   _shardActionMap.erase(it);
   return true;
 }
 
 MaintenanceFeature::ShardActionMap MaintenanceFeature::getShardLocks() const {
-  LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE) << "Copy of shard action map taken.";
+  LOG_TOPIC("aaed4", DEBUG, Logger::MAINTENANCE)
+      << "Copy of shard action map taken.";
   std::lock_guard<std::mutex> guard(_shardActionMapMutex);
   return _shardActionMap;
 }
 
 Result MaintenanceFeature::requeueAction(std::shared_ptr<maintenance::Action>& action,
-    int newPriority) {
+                                         int newPriority) {
   TRI_ASSERT(action->getState() == ActionState::COMPLETE ||
              action->getState() == ActionState::FAILED);
   auto newAction = std::make_shared<maintenance::Action>(*this, action->describe());

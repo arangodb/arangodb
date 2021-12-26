@@ -28,8 +28,12 @@ namespace arangodb {
 /**
  * @brief Construct an overloaded callable from multiple callables.
  */
-template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
-template<class... Ts> overload(Ts...) -> overload<Ts...>;
+template <class... Ts>
+struct overload : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts>
+overload(Ts...) -> overload<Ts...>;
 
 /*
  * Usage example:
@@ -41,6 +45,5 @@ template<class... Ts> overload(Ts...) -> overload<Ts...>;
  *   },
  *   intOrFloat;
  * );
-  */
-}
-
+ */
+}  // namespace arangodb

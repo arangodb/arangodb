@@ -119,10 +119,9 @@ void ArrayOutCache<M>::flushMessages() {
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValue(vertexMessagePair.first));   // key
+      data.add(VPackValue(vertexMessagePair.first));      // key
       data.add(VPackValue(VPackValueType::Array, true));  // message array
       for (M const& val : vertexMessagePair.second) {
-
         this->_format->addValue(data, val);
         if (this->_sendToNextGSS) {
           this->_sendCountNextGSS++;
@@ -180,7 +179,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
     std::unordered_map<VPackStringRef, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
-      auto& ref = (*it).second; // will be modified by combine(...)
+      auto& ref = (*it).second;   // will be modified by combine(...)
       _combiner->combine(ref, data);
     } else {  // first message for this vertex
       vertexMap.try_emplace(key, data);

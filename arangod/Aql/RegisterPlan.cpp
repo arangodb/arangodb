@@ -49,8 +49,10 @@ using namespace arangodb::aql;
 VarInfo::VarInfo(unsigned int depth, RegisterId registerId)
     : depth(depth), registerId(registerId) {
   if (!registerId.isValid()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, 
-                                   std::string("too many registers (") + std::to_string(registerId.value()) + ") needed for AQL query");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
+                                   std::string("too many registers (") +
+                                       std::to_string(registerId.value()) +
+                                       ") needed for AQL query");
   }
 }
 
@@ -90,7 +92,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   }
 #endif
-  
+
   // will remain constant for the node throughout this function
   std::vector<Variable const*> const varsSetHere = en->getVariablesSetHere();
   VarSet const varsUsedLater = en->getVarsUsedLater();
@@ -102,7 +104,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(mayReuseRegisterImmediately);
     plan->increaseDepth();
   }
-  
+
   if (explain) {
     plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
   }
@@ -195,7 +197,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
     return regsToReuse;
   };
-
 
   RegIdSet regsToClear;
   auto const updateRegistersToClearAndReuse = [&](bool insertIntoRegsToClear) {
@@ -299,16 +300,17 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   updateRegsToKeep(en, varsUsedLater, en->getVarsValid());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(), varsSetHere);
+  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(),
+                                     en->getVarsValidStack(), varsSetHere);
   TRI_ASSERT(regsToKeepStack == actual);
 
   TRI_ASSERT(!plan->nrRegs.empty());
-  for (auto regId: regsToClear) {
+  for (auto regId : regsToClear) {
     TRI_ASSERT(regId < plan->nrRegs.back());
   }
 
 #endif
-  
+
   // We need to delete those variables that have been used here but are
   // not used any more later:
   en->setRegsToClear(std::move(regsToClear));
@@ -318,8 +320,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 }
 
 template <typename T>
-RegisterPlanT<T>::RegisterPlanT() 
-    : depth(0) {
+RegisterPlanT<T>::RegisterPlanT() : depth(0) {
   nrRegs.reserve(8);
   nrRegs.emplace_back(0);
 }
@@ -343,7 +344,8 @@ RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
           "\"varInfoList\" item needs to be an object");
     }
     auto variableId = it.get("VariableId").getNumericValue<VariableId>();
-    auto registerId = RegisterId::fromUInt32(it.get("RegisterId").getNumericValue<uint32_t>());
+    auto registerId =
+        RegisterId::fromUInt32(it.get("RegisterId").getNumericValue<uint32_t>());
     auto depthParam = it.get("depth").getNumericValue<unsigned int>();
 
     varInfo.try_emplace(variableId, VarInfo(depthParam, registerId));
@@ -389,7 +391,7 @@ void RegisterPlanT<T>::increaseDepth() {
 
 template <typename T>
 void RegisterPlanT<T>::shrink(T* start) {
-  // remove all registers greater than maxRegister from the ExecutionNodes 
+  // remove all registers greater than maxRegister from the ExecutionNodes
   // starting at current that have the same depth as current
   auto removeRegistersGreaterThan = [](T* current, RegisterId maxRegister) {
     auto depth = current->getDepth();
@@ -401,14 +403,14 @@ void RegisterPlanT<T>::shrink(T* start) {
 
   // scan the execution plan upwards, starting at the root node, until
   // we either find the end of the plan or a change in the node's depth.
-  // while scanning the ExecutionNodes of a certain depth, we keep track 
+  // while scanning the ExecutionNodes of a certain depth, we keep track
   // of the maximum register id they use.
   // when we are at the end of the plan or at a depth change, we know which
   // is the maximum register id used by the depth. if it is different from
   // the already calculated number of registers for this depth, we walk over
   // all nodes in that depth again and remove the superfluous registers from
   // them.
-  
+
   auto maxUsedRegister = [this](auto const& container, RegisterId maxRegisterId) -> RegisterId {
     for (auto const& v : container) {
       auto it = varInfo.find(v->id);
@@ -421,16 +423,16 @@ void RegisterPlanT<T>::shrink(T* start) {
     }
     return maxRegisterId;
   };
-  
+
   // max RegisterId used by nodes on the current depth
   RegisterId maxRegisterId(0);
-  
+
   // node at which the current depth starts
   T* depthStart = start;
 
   // loop node pointer, will be modified while iterating
   T* current = start;
-  
+
   // currently used variables, outside of loop because the set is recycled
   VarSet varsUsedHere;
 
@@ -447,26 +449,26 @@ void RegisterPlanT<T>::shrink(T* start) {
 
     auto depth = current->getDepth();
     T* previous = current->getFirstDependency();
-    // check if from the next node onwards there will be a depth change, or if 
+    // check if from the next node onwards there will be a depth change, or if
     // we are at the end of the plan
     bool const depthChange = (previous == nullptr || previous->getDepth() != depth);
 
     if (depthChange) {
       auto neededRegisters = static_cast<RegisterCount>(maxRegisterId.value() + 1);
       if (nrRegs[depth] > neededRegisters) {
-        // the current RegisterPlan has superfluous registers planned for this 
+        // the current RegisterPlan has superfluous registers planned for this
         // depth. so let's put in some more effort and remove them.
         nrRegs[depth] = neededRegisters;
         // remove the superfluous registers from all the nodes starting at the
         // start node of our current depth...
         removeRegistersGreaterThan(depthStart, maxRegisterId);
       }
-      
+
       // new depth starting, so update the start node for the depth
       depthStart = previous;
       maxRegisterId = RegisterId(0);
     }
-    
+
     // walk upwards
     current = previous;
   }
@@ -480,7 +482,6 @@ RegisterId RegisterPlanT<T>::addRegister() {
 template <typename T>
 RegisterId RegisterPlanT<T>::registerVariable(Variable const* v,
                                               std::set<RegisterId>& unusedRegisters) {
-
   RegisterId regId;
   if (v->type() == Variable::Type::Const) {
     regId = RegisterId::makeConst(nrConstRegs++);

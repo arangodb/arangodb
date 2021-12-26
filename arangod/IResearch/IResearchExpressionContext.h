@@ -25,8 +25,8 @@
 #pragma once
 
 #include "Aql/ExecutionNode.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
 
@@ -54,7 +54,7 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   explicit ViewExpressionContextBase(arangodb::transaction::Methods* trx,
                                      aql::QueryContext* query,
                                      aql::AqlFunctionsInternalCache* cache)
-  : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache)  {}
+      : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
 
   void registerWarning(ErrorCode errorCode, char const* msg) override final;
   void registerError(ErrorCode errorCode, char const* msg) override final;
@@ -63,7 +63,8 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
                                       bool caseInsensitive) override final;
-  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression, velocypack::Options const* opts,
+  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                       velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
   arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
@@ -74,12 +75,12 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   bool killed() const override final;
 
   aql::AstNode const* _expr{};  // for troubleshooting
-  
-protected:
+
+ protected:
   arangodb::transaction::Methods* _trx;
   arangodb::aql::QueryContext* _query;
   arangodb::aql::AqlFunctionsInternalCache* _aqlFunctionsInternalCache;
-};                              // ViewExpressionContextBase
+};  // ViewExpressionContextBase
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct ViewExpressionContext
@@ -87,8 +88,7 @@ protected:
 struct ViewExpressionContext final : public ViewExpressionContextBase {
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
-  ViewExpressionContext(arangodb::transaction::Methods& trx,
-                        aql::QueryContext& query,
+  ViewExpressionContext(arangodb::transaction::Methods& trx, aql::QueryContext& query,
                         aql::AqlFunctionsInternalCache& cache, aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(&trx, &query, &cache),
@@ -115,4 +115,3 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

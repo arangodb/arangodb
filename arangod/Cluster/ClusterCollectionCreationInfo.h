@@ -50,7 +50,7 @@ struct ClusterCollectionCreationInfo {
   std::string name;
   ClusterCollectionCreationState state;
 
- class CreatorInfo : public velocypack::Serializable {
+  class CreatorInfo : public velocypack::Serializable {
    public:
     CreatorInfo(std::string coordinatorId, RebootId rebootId);
 
@@ -61,11 +61,10 @@ struct ClusterCollectionCreationInfo {
     RebootId rebootId() const noexcept;
     std::string const& coordinatorId() const noexcept;
 
-  private:
-   std::string _coordinatorId;
-   RebootId _rebootId;
-
- };
+   private:
+    std::string _coordinatorId;
+    RebootId _rebootId;
+  };
   std::optional<CreatorInfo> creator;
 
  public:
@@ -78,4 +77,3 @@ struct ClusterCollectionCreationInfo {
   velocypack::Builder _isBuildingJson;
 };
 }  // namespace arangodb
-

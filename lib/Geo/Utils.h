@@ -46,8 +46,8 @@ namespace geo {
 /// bounds for any kind of arithmetics
 struct Interval {
   Interval(S2CellId mn, S2CellId mx) noexcept : range_min(mn), range_max(mx) {}
-  S2CellId range_min; /// @brief inclusive minimum cell id
-  S2CellId range_max; /// @brief inclusive maximum cell id
+  S2CellId range_min;  /// @brief inclusive minimum cell id
+  S2CellId range_max;  /// @brief inclusive maximum cell id
   static bool compare(const Interval& a, const Interval& b) {
     return a.range_min < b.range_min;
   }
@@ -86,4 +86,3 @@ S2LatLng geodesicPointAtDist(S2LatLng const& p, double dist, double azimuth,
 }  // namespace utils
 }  // namespace geo
 }  // namespace arangodb
-

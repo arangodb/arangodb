@@ -55,7 +55,8 @@ void preventUseOnSmartEdgeCollection(LogicalCollection const* collection,
   }
 }
 
-inline void parseAttributeAndPart(std::string const& attr, arangodb::velocypack::StringRef& realAttr, Part& part) {
+inline void parseAttributeAndPart(std::string const& attr,
+                                  arangodb::velocypack::StringRef& realAttr, Part& part) {
   if (!attr.empty() && attr.back() == ':') {
     realAttr = arangodb::velocypack::StringRef(attr.data(), attr.size() - 1);
     part = Part::FRONT;
@@ -87,19 +88,21 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
         if (!splitSlash) {
           return sub;
         }
-        // by adding the key to the builder, we may invalidate the original key...
-        // however, this is safe here as the original key is not used after we have
-        // added to the builder
-        return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
+        // by adding the key to the builder, we may invalidate the original
+        // key... however, this is safe here as the original key is not used
+        // after we have added to the builder
+        return VPackSlice(temporaryBuilder.add(
+            VPackValuePair(key.data(), key.size(), VPackValueType::String)));
       }
       case Part::FRONT: {
         size_t pos = key.find(':');
         if (pos != std::string::npos) {
           key = key.substr(0, pos);
-          // by adding the key to the builder, we may invalidate the original key...
-          // however, this is safe here as the original key is not used after we have
-          // added to the builder
-          return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
+          // by adding the key to the builder, we may invalidate the original
+          // key... however, this is safe here as the original key is not used
+          // after we have added to the builder
+          return VPackSlice(temporaryBuilder.add(
+              VPackValuePair(key.data(), key.size(), VPackValueType::String)));
         }
         // fall-through to returning null or original slice
         break;
@@ -108,10 +111,11 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
         size_t pos = key.rfind(':');
         if (pos != std::string::npos) {
           key = key.substr(pos + 1);
-          // by adding the key to the builder, we may invalidate the original key...
-          // however, this is safe here as the original key is not used after we have
-          // added to the builder
-          return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
+          // by adding the key to the builder, we may invalidate the original
+          // key... however, this is safe here as the original key is not used
+          // after we have added to the builder
+          return VPackSlice(temporaryBuilder.add(
+              VPackValuePair(key.data(), key.size(), VPackValueType::String)));
         }
         // fall-through to returning null or original slice
         break;
@@ -132,7 +136,7 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
   uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
-  
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder temporaryBuilder(buffer);
 
@@ -155,19 +159,18 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
           sub = VPackSlice::nullSlice();
         }
       }
-      // buildTemporarySlice may append data to the builder, which may invalidate
-      // the original "sub" value. however, "sub" is reassigned immediately with
-      // a new value, so it does not matter in reality
+      // buildTemporarySlice may append data to the builder, which may
+      // invalidate the original "sub" value. however, "sub" is reassigned
+      // immediately with a new value, so it does not matter in reality
       sub = ::buildTemporarySlice<returnNullSlice>(sub, part, temporaryBuilder,
-                                                   /*splitSlash*/false);
+                                                   /*splitSlash*/ false);
       hashval = sub.normalizedHash(hashval);
       temporaryBuilder.clear();
     }
-    
+
     return hashval;
-    
+
   } else if (slice.isString()) {
-    
     // optimization for `_key` and `_id` with default sharding
     if (attributes.size() == 1) {
       arangodb::velocypack::StringRef realAttr;
@@ -175,29 +178,29 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
       ::parseAttributeAndPart(attributes[0], realAttr, part);
       if (realAttr == StaticStrings::KeyString) {
         TRI_ASSERT(key.empty());
-        
+
         // We always need the _key part. Everything else should be ignored
         // beforehand.
         VPackSlice sub =
-        ::buildTemporarySlice<returnNullSlice>(slice, part, temporaryBuilder,
-                                               /*splitSlash*/true);
+            ::buildTemporarySlice<returnNullSlice>(slice, part, temporaryBuilder,
+                                                   /*splitSlash*/ true);
         return sub.normalizedHash(hashval);
       }
     }
-    
-    if (!docComplete) { // ok for use in update, replace and remove operation
+
+    if (!docComplete) {  // ok for use in update, replace and remove operation
       error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
       return hashval;
     }
   }
-  
+
   // we can only get here if a developer calls this wrongly.
   // allowed cases are either and object or (as an optimization)
   // `_key` or `_id` string values and default sharding
-  
+
   TRI_ASSERT(false);
   error = TRI_ERROR_BAD_PARAMETER;
-  
+
   return hashval;
 }
 
@@ -282,7 +285,8 @@ ErrorCode ShardingStrategyHashBase::getResponsibleShard(
   usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
 
-  uint64_t hashval = hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
+  uint64_t hashval =
+      hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
   // To improve our hash function result:
   hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
   shardID = _shards[hashval % _shards.size()];

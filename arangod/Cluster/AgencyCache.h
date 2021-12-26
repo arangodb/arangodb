@@ -41,15 +41,15 @@ class AgencyCache final : public arangodb::Thread {
   typedef std::unordered_map<std::string, consensus::query_t> databases_t;
 
   struct change_set_t {
-    consensus::index_t ind;  // Raft index
-    uint64_t version;        // Plan / Current version
-    databases_t dbs; // touched databases
-    consensus::query_t rest; // Plan / Current rest
-    change_set_t(consensus::index_t const& i, uint64_t const& v, databases_t const& d,
-                 consensus::query_t const& r) :
-      ind(i), version(v), dbs(d), rest(r) {}
-    change_set_t(consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
-      ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
+    consensus::index_t ind;   // Raft index
+    uint64_t version;         // Plan / Current version
+    databases_t dbs;          // touched databases
+    consensus::query_t rest;  // Plan / Current rest
+    change_set_t(consensus::index_t const& i, uint64_t const& v,
+                 databases_t const& d, consensus::query_t const& r)
+        : ind(i), version(v), dbs(d), rest(r) {}
+    change_set_t(consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r)
+        : ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
   };
 
   /// @brief start off with our server
@@ -76,10 +76,12 @@ class AgencyCache final : public arangodb::Thread {
   consensus::query_t dump() const;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
-  consensus::index_t get(arangodb::velocypack::Builder& result, std::string const& path = "/") const;
+  consensus::index_t get(arangodb::velocypack::Builder& result,
+                         std::string const& path = "/") const;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
-  std::tuple<consensus::query_t, consensus::index_t> get(std::string const& path = "/") const;
+  std::tuple<consensus::query_t, consensus::index_t> get(
+      std::string const& path = "/") const;
 
   /// @brief Get velocypack from node downward
   std::tuple<consensus::query_t, consensus::index_t> read(std::vector<std::string> const& paths) const;
@@ -106,7 +108,7 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief Used exclusively in unit tests!
   ///        Do not use for production code under any circumstances
   std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction(
-    consensus::query_t const& trx);
+      consensus::query_t const& trx);
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -124,9 +126,8 @@ class AgencyCache final : public arangodb::Thread {
    * @return        The currently last noted RAFT index and  a velocypack
    *                representation of planned and other desired databases
    */
-  change_set_t changedSince(
-    std::string const& section, consensus::index_t const& last) const;
-  
+  change_set_t changedSince(std::string const& section, consensus::index_t const& last) const;
+
   /**
    * @brief         Clean up planned/current changes up to including index
    *
@@ -136,7 +137,6 @@ class AgencyCache final : public arangodb::Thread {
   void clearChanged(std::string const& section, consensus::index_t const& doneIndex);
 
  private:
-
   /// @brief invoke all callbacks
   void invokeAllCallbacks() const;
 
@@ -146,14 +146,15 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief invoke given callbacks
   void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
-  /// @brief reinitialize all databases, after a snapshot or after a hotbackup restore
-  /// Must hold storeLock to call!
+  /// @brief reinitialize all databases, after a snapshot or after a hotbackup
+  /// restore Must hold storeLock to call!
   std::unordered_set<std::string> reInitPlan();
 
   /// @brief handle callbacks for specific log document
-  void handleCallbacksNoLock(
-    VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&,
-    std::unordered_set<std::string>& plannedChanges, std::unordered_set<std::string>& currentChanges);
+  void handleCallbacksNoLock(VPackSlice, std::unordered_set<uint64_t>&,
+                             std::vector<uint64_t>&,
+                             std::unordered_set<std::string>& plannedChanges,
+                             std::unordered_set<std::string>& currentChanges);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock
@@ -193,16 +194,14 @@ class AgencyCache final : public arangodb::Thread {
 
   /// @brief snapshot note for client
   consensus::index_t _lastSnapshot;
-  
+
   /// @brief current number of entries in _callbacks
   Gauge<uint64_t>& _callbacksCount;
 };
 
-} // namespace
+}  // namespace arangodb
 
 namespace std {
 ostream& operator<<(ostream& o, arangodb::AgencyCache::change_set_t const& c);
 ostream& operator<<(ostream& o, arangodb::AgencyCache::databases_t const& d);
-}
-
-
+}  // namespace std

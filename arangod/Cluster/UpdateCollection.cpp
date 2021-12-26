@@ -46,8 +46,7 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc),
-      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+    : ActionBase(feature, desc), ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -56,7 +55,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-  
+
   if (!ShardDefinition::isValid()) {
     error << "database and shard must be specified. ";
   }
@@ -88,7 +87,7 @@ bool UpdateCollection::first() {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
-    
+
     std::shared_ptr<LogicalCollection> coll;
     Result found = methods::Collections::lookup(vocbase, shard, coll);
     if (found.ok()) {
@@ -126,7 +125,7 @@ bool UpdateCollection::first() {
                " of collection "
             << shard << ": " << res.errorMessage();
       }
-      
+
     } else {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << "in database " + database;
@@ -145,8 +144,7 @@ bool UpdateCollection::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+    _feature.storeShardError(database, collection, shard, _description.get(SERVER_ID), res);
   }
 
   return false;

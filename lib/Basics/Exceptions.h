@@ -165,7 +165,7 @@ Result catchVoidToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) no
 namespace helper {
 // just so we don't have to include logger into this header
 [[noreturn]] void logAndAbort(char const* what);
-}
+}  // namespace helper
 
 // @brief Throws the passed exception, but in maintainer mode, logs the error
 // and aborts instead.

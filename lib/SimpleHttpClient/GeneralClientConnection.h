@@ -35,7 +35,7 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 class CommunicationFeaturePhase;
-}
+}  // namespace application_features
 namespace basics {
 class StringBuffer;
 }
@@ -120,8 +120,7 @@ class GeneralClientConnection {
 
   inline size_t connectRetries() const { return _connectRetries; }
 
-  void repurpose(double connectTimeout, double requestTimeout,
-                 size_t connectRetries);
+  void repurpose(double connectTimeout, double requestTimeout, size_t connectRetries);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -242,7 +241,7 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   Endpoint* _endpoint;
-  
+
   // reference to communication feature phase (populated only once for
   // the entire lifetime of the SimpleHttpClient, as the repeated feature
   // lookup may be expensive otherwise)
@@ -271,7 +270,7 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _numConnectRetries;
-  
+
   bool _freeEndpointOnDestruction;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -293,4 +292,3 @@ class GeneralClientConnection {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

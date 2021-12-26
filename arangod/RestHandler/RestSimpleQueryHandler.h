@@ -46,4 +46,3 @@ class RestSimpleQueryHandler : public RestCursorHandler {
   RestStatus byExample();
 };
 }  // namespace arangodb
-

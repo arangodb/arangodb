@@ -53,4 +53,3 @@ constexpr
 }
 }  // namespace meta
 }  // namespace arangodb
-

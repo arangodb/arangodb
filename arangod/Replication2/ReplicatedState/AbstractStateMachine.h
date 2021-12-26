@@ -23,8 +23,8 @@
 #pragma once
 #include <memory>
 
-#include "Basics/Result.h"
 #include "Basics/Guarded.h"
+#include "Basics/Result.h"
 #include "Basics/UnshackledMutex.h"
 #include "Futures/Future.h"
 

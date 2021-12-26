@@ -24,10 +24,10 @@
 
 #pragma once
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -97,21 +97,26 @@ class IResearchViewExecutorInfos {
 
   std::vector<RegisterId> const& getScoreRegisters() const noexcept;
 
-  iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const
-      noexcept;
+  iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
   aql::QueryContext& getQuery() noexcept;
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
   aql::AstNode const& filterCondition() const noexcept;
-  bool filterConditionIsEmpty() const noexcept { return _filterConditionIsEmpty; }
+  bool filterConditionIsEmpty() const noexcept {
+    return _filterConditionIsEmpty;
+  }
   VarInfoMap const& varInfoMap() const noexcept;
   int getDepth() const noexcept;
   bool volatileSort() const noexcept;
   bool volatileFilter() const noexcept;
-  iresearch::CountApproximate countApproximate() const noexcept { return _countApproximate; }
-  iresearch::FilterOptimization filterOptimization() const noexcept { return _filterOptimization; }
+  iresearch::CountApproximate countApproximate() const noexcept {
+    return _countApproximate;
+  }
+  iresearch::FilterOptimization filterOptimization() const noexcept {
+    return _filterOptimization;
+  }
 
   // first - sort
   // second - number of sort conditions to take into account
@@ -148,7 +153,7 @@ class IResearchViewStats {
   void incrScanned() noexcept;
   void incrScanned(size_t value) noexcept;
 
-  void operator+= (IResearchViewStats const& stats) {
+  void operator+=(IResearchViewStats const& stats) {
     _scannedIndex += stats._scannedIndex;
   }
 
@@ -164,22 +169,18 @@ ExecutionStats& operator+=(ExecutionStats& executionStats,
 struct ColumnIterator {
   irs::doc_iterator::ptr itr;
   const irs::payload* value{};
-}; // ColumnIterator
+};  // ColumnIterator
 
 struct FilterCtx final : irs::attribute_provider {
   explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
-    : _execCtx(ctx) {
-  }
+      : _execCtx(ctx) {}
 
   irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return irs::type<iresearch::ExpressionExecutionContext>::id() == type
-      ? &_execCtx
-      : nullptr;
+    return irs::type<iresearch::ExpressionExecutionContext>::id() == type ? &_execCtx : nullptr;
   }
 
   iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
-}; // FilterCtx
-
+};                                                 // FilterCtx
 
 template <typename ValueType, bool>
 class IndexReadBuffer;
@@ -196,20 +197,21 @@ class IndexReadBufferEntry {
 
  protected:
   size_t _keyIdx;
-}; // IndexReadBufferEntry
+};  // IndexReadBufferEntry
 
 class ScoreIterator {
-  public:
-   ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
+ public:
+  ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx,
+                size_t numScores) noexcept;
 
-   std::vector<AqlValueHintDouble>::iterator begin() noexcept;
+  std::vector<AqlValueHintDouble>::iterator begin() noexcept;
 
-   std::vector<AqlValueHintDouble>::iterator end() noexcept;
+  std::vector<AqlValueHintDouble>::iterator end() noexcept;
 
-  private:
-   std::vector<AqlValueHintDouble>& _scoreBuffer;
-   size_t _scoreBaseIdx;
-   size_t _numScores;
+ private:
+  std::vector<AqlValueHintDouble>& _scoreBuffer;
+  size_t _scoreBaseIdx;
+  size_t _numScores;
 };
 
 // Holds and encapsulates the data read from the iresearch index.
@@ -259,9 +261,8 @@ class IndexReadBuffer {
     _storedValuesBuffer.emplace_back(value.c_str(), value.size());
   }
 
-  using StoredValuesContainer =  typename std::conditional<copyStored,
-                   std::vector<irs::bstring>,
-                   std::vector<irs::bytes_ref>>::type;
+  using StoredValuesContainer =
+      typename std::conditional<copyStored, std::vector<irs::bstring>, std::vector<irs::bytes_ref>>::type;
 
   StoredValuesContainer const& getStoredValues() const noexcept;
 
@@ -275,7 +276,7 @@ class IndexReadBuffer {
   // correspond to
   //   _keyBuffer[i / getNumScoreRegisters()]
   // .
-  
+
   std::vector<ValueType> _keyBuffer;
   std::vector<AqlValueHintDouble> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
@@ -300,7 +301,8 @@ class IResearchViewExecutorBase {
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = IResearchViewExecutorInfos;
   using Stats = IResearchViewStats;
-  using IndexReadBufferType = IndexReadBuffer<typename Traits::IndexBufferValueType, Traits::CopyStored>;
+  using IndexReadBufferType =
+      IndexReadBuffer<typename Traits::IndexBufferValueType, Traits::CopyStored>;
   /**
    * @brief produce the next Rows of Aql Values.
    *
@@ -365,7 +367,6 @@ class IResearchViewExecutorBase {
     IndexIterator::DocumentCallback callback;
   };  // ReadContext
 
-
  public:
   IResearchViewExecutorBase() = delete;
   IResearchViewExecutorBase(IResearchViewExecutorBase const&) = delete;
@@ -389,7 +390,7 @@ class IResearchViewExecutorBase {
 
   void reset();
 
-  bool writeStoredValue(ReadContext& ctx, 
+  bool writeStoredValue(ReadContext& ctx,
                         typename IndexReadBufferType::StoredValuesContainer const& storedValues,
                         size_t index, std::map<size_t, RegisterId> const& fieldsRegs);
 
@@ -422,7 +423,8 @@ template <bool copyStored, bool ordered, iresearch::MaterializeType materializeT
 class IResearchViewExecutor
     : public IResearchViewExecutorBase<IResearchViewExecutor<copyStored, ordered, materializeType>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewExecutor<copyStored, ordered, materializeType>>;
+  using Base =
+      IResearchViewExecutorBase<IResearchViewExecutor<copyStored, ordered, materializeType>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -459,8 +461,8 @@ class IResearchViewExecutor
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
-  size_t _currentSegmentPos; // current document iterator position in segment
-  size_t _totalPos; // total position for full snapshot
+  size_t _currentSegmentPos;  // current document iterator position in segment
+  size_t _totalPos;           // total position for full snapshot
   LogicalCollection const* _collection{};
 
   // case ordered only:
@@ -480,7 +482,8 @@ template <bool copyStored, bool ordered, iresearch::MaterializeType materializeT
 class IResearchViewMergeExecutor
     : public IResearchViewExecutorBase<IResearchViewMergeExecutor<copyStored, ordered, materializeType>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<copyStored, ordered, materializeType>>;
+  using Base =
+      IResearchViewExecutorBase<IResearchViewMergeExecutor<copyStored, ordered, materializeType>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -496,12 +499,9 @@ class IResearchViewMergeExecutor
 
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
-            irs::score const& score, size_t numScores,
-            LogicalCollection const& collection,
-            irs::doc_iterator::ptr&& pkReader,
-            size_t index,
-            irs::doc_iterator* sortReaderRef,
-            irs::payload const* sortReaderValue,
+            irs::score const& score, size_t numScores, LogicalCollection const& collection,
+            irs::doc_iterator::ptr&& pkReader, size_t index,
+            irs::doc_iterator* sortReaderRef, irs::payload const* sortReaderValue,
             irs::doc_iterator::ptr&& sortReader) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
@@ -513,11 +513,11 @@ class IResearchViewMergeExecutor
     irs::score const* score{};
     size_t numScores{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
-    ColumnIterator pkReader;    // primary key reader
-    size_t segmentIndex;  // first stored values index
-    irs::doc_iterator* sortReaderRef; // pointer to sort column reader
-    irs::payload const* sortValue;    // sort column value
-    irs::doc_iterator::ptr sortReader; // sort column reader
+    ColumnIterator pkReader;                          // primary key reader
+    size_t segmentIndex;                // first stored values index
+    irs::doc_iterator* sortReaderRef;   // pointer to sort column reader
+    irs::payload const* sortValue;      // sort column value
+    irs::doc_iterator::ptr sortReader;  // sort column reader
     size_t segmentPos{0};
   };
 
@@ -564,4 +564,3 @@ struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<copyStored, ordere
 
 }  // namespace aql
 }  // namespace arangodb
-

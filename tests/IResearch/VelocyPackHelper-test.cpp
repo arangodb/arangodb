@@ -22,8 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
 #include <unordered_set>
+#include "gtest/gtest.h"
 
 #include "IResearch/VelocyPackHelper.h"
 

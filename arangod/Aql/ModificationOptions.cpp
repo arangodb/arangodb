@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ModificationOptions.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -32,19 +32,26 @@
 
 using namespace arangodb::aql;
 
-ModificationOptions::ModificationOptions(VPackSlice const& slice) 
+ModificationOptions::ModificationOptions(VPackSlice const& slice)
     : OperationOptions() {
   VPackSlice obj = slice.get("modificationFlags");
 
-  waitForSync = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::WaitForSyncString, false);
-  validate = !basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::SkipDocumentValidation, false);
+  waitForSync =
+      basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::WaitForSyncString, false);
+  validate = !basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::SkipDocumentValidation,
+                                                        false);
   keepNull = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::KeepNullString, true);
-  mergeObjects = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::MergeObjectsString, true);
-  ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IgnoreRevsString , true);
-  isRestore = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IsRestoreString, false);
-  overwriteMode = OperationOptions::determineOverwriteMode(VPackStringRef(basics::VelocyPackHelper::getStringValue(obj, StaticStrings::OverwriteMode, "")));
+  mergeObjects =
+      basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::MergeObjectsString, true);
+  ignoreRevs =
+      basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IgnoreRevsString, true);
+  isRestore =
+      basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IsRestoreString, false);
+  overwriteMode = OperationOptions::determineOverwriteMode(VPackStringRef(
+      basics::VelocyPackHelper::getStringValue(obj, StaticStrings::OverwriteMode,
+                                               "")));
 
-  ignoreErrors = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false); 
+  ignoreErrors = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false);
   ignoreDocumentNotFound =
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreDocumentNotFound", false);
   consultAqlWriteFilter =
@@ -62,9 +69,10 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add(StaticStrings::MergeObjectsString, VPackValue(mergeObjects));
   builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
   builder.add(StaticStrings::IsRestoreString, VPackValue(isRestore));
-  
+
   if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
-    builder.add(StaticStrings::OverwriteMode, VPackValue(OperationOptions::stringifyOverwriteMode(overwriteMode)));
+    builder.add(StaticStrings::OverwriteMode,
+                VPackValue(OperationOptions::stringifyOverwriteMode(overwriteMode)));
   }
 
   // our own attributes

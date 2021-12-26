@@ -113,7 +113,7 @@ class SortedCollectExecutorInfos {
 
   /// @brief input expression variable (might be null)
   Variable const* _expressionVariable;
-  
+
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
 };
@@ -209,4 +209,3 @@ class SortedCollectExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -98,7 +98,8 @@ void VertexComputation::registerLocalFunctions() {
                                 &VertexComputation::air_globalSuperstep, this);
 
   _airMachine.setPrintCallback([this](std::string const& msg) {
-    auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+    auto const& phase_index =
+        getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
     auto const& phase = _algorithm.options().phases.at(phase_index);
     this->getReportManager()
             .report(ReportLevel::DEBUG)
@@ -350,7 +351,8 @@ greenspun::EvalResult VertexComputation::air_thisUniqueId(greenspun::Machine& ct
 
   // asserts to check truth of uniqueness here.
   TRI_ASSERT(this->vertexData()._vertexId <= std::uint64_t{1} << 48);
-  static_assert(std::is_unsigned_v<decltype(pid.shard)> && std::numeric_limits<decltype(pid.shard)>::max() < (1ul << 16));
+  static_assert(std::is_unsigned_v<decltype(pid.shard)> &&
+                std::numeric_limits<decltype(pid.shard)>::max() < (1ul << 16));
 
   uint64_t combined = this->vertexData()._vertexId;
   combined <<= 16;
@@ -412,7 +414,8 @@ void VertexComputation::traceMessage(MessageData const* msg) {
       }
 
       if (traceMessage) {
-        auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+        auto const& phase_index =
+            getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
         auto const& phase = _algorithm.options().phases.at(phase_index);
 
         getReportManager()
@@ -440,7 +443,8 @@ greenspun::EvalResultT<bool> VertexComputation::processIncomingMessages(
     traceMessage(msg);
     auto res = accum->updateByMessage(*msg);
     if (res.fail()) {
-      auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+      auto const& phase_index =
+          getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
       auto const& phase = _algorithm.options().phases.at(phase_index);
       getReportManager()
               .report(ReportLevel::ERR)
@@ -514,7 +518,8 @@ greenspun::EvalResult VertexComputation::runProgram(greenspun::Machine& ctx, VPa
 }
 
 void VertexComputation::compute(MessageIterator<MessageData> const& incomingMessages) {
-  auto const& phase_index = getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
+  auto const& phase_index =
+      getAggregatedValueRef<uint32_t>(StaticStrings::VertexComputationPhase);
   auto const& phase = _algorithm.options().phases.at(phase_index);
 
   auto phaseStep = phaseGlobalSuperstep();

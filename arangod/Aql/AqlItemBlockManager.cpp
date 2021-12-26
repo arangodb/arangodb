@@ -38,9 +38,7 @@ AqlItemBlockManager::AqlItemBlockManager(arangodb::ResourceMonitor& resourceMoni
     : _resourceMonitor(resourceMonitor), _format(format) {}
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() {
-  delete _constValueBlock;
-}
+AqlItemBlockManager::~AqlItemBlockManager() { delete _constValueBlock; }
 
 void AqlItemBlockManager::initializeConstValueBlock(RegisterCount nrRegs) {
   TRI_ASSERT(_constValueBlock == nullptr);
@@ -57,7 +55,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, Register
   int tries = 0;
   do {
     TRI_ASSERT(i < numBuckets);
-    
+
     std::lock_guard<std::mutex> guard(_buckets[i]._mutex);
     if (!_buckets[i].empty()) {
       block = _buckets[i].pop();
@@ -153,9 +151,7 @@ arangodb::ResourceMonitor& AqlItemBlockManager::resourceMonitor() const noexcept
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) {
-  delete block;
-}
+void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) { delete block; }
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -207,7 +203,7 @@ uint32_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
   if (ADB_UNLIKELY(targetSize >= (1ULL << numBuckets))) {
     return (numBuckets - 1);
   }
-  
+
   uint32_t value = arangodb::NumberUtils::log2(static_cast<uint32_t>(targetSize));
   TRI_ASSERT(value < numBuckets);
   return value;

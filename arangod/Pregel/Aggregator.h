@@ -79,8 +79,7 @@ struct NumberAggregator : public IAggregator {
     _value = slice.getNumber<T>();
   }
 
-  void serialize(std::string const& key,
-                 arangodb::velocypack::Builder& builder) const override {
+  void serialize(std::string const& key, arangodb::velocypack::Builder& builder) const override {
     builder.add(key, arangodb::velocypack::Value(_value));
   };
 
@@ -166,7 +165,7 @@ struct BoolOrAggregator : public IAggregator {
     _value = slice.getBool();
   }
 
-  void serialize( std::string const& key, arangodb::velocypack::Builder& builder) const override {
+  void serialize(std::string const& key, arangodb::velocypack::Builder& builder) const override {
     builder.add(key, arangodb::velocypack::Value(_value));
   };
 

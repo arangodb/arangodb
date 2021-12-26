@@ -42,12 +42,9 @@ static bool testInternalIdValid(size_t id, std::vector<RegisterId> const& regs) 
 }
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
-    transaction::Methods& trx,
-    QueryContext& context,
-    AqlFunctionsInternalCache& cache,
-    std::vector<Variable const*> vars,
-    std::vector<RegisterId> regs, size_t vertexVarIdx,
-    size_t edgeVarIdx, size_t pathVarIdx)
+    transaction::Methods& trx, QueryContext& context, AqlFunctionsInternalCache& cache,
+    std::vector<Variable const*> vars, std::vector<RegisterId> regs,
+    size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx)
     : QueryExpressionContext(trx, context, cache),
       _input{CreateInvalidInputRowHint()},
       _vars(std::move(vars)),
@@ -78,9 +75,7 @@ bool InAndOutRowExpressionContext::isDataFromCollection(Variable const* variable
         return true;
       }
       TRI_ASSERT(i < _regs.size());
-      if (i == _vertexVarIdx ||
-          i == _edgeVarIdx ||
-          i == _pathVarIdx) {
+      if (i == _vertexVarIdx || i == _edgeVarIdx || i == _pathVarIdx) {
         return true;
       }
     }

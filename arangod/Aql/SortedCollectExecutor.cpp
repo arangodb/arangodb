@@ -168,18 +168,20 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder,
-                                                                 /*resolveExternals*/false,
-                                                                 /*allowUnindexed*/false);
+      input.getValue(infos.getExpressionRegister())
+          .toVelocyPack(infos.getVPackOptions(), _builder,
+                        /*resolveExternals*/ false,
+                        /*allowUnindexed*/ false);
     } else {
       // copy variables / keep variables into result register
 
       _builder.openObject();
       for (auto const& pair : infos.getInputVariables()) {
         _builder.add(VPackValue(pair.first));
-        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder,
-                                                 /*resolveExternals*/false,
-                                                 /*allowUnindexed*/false);
+        input.getValue(pair.second)
+            .toVelocyPack(infos.getVPackOptions(), _builder,
+                          /*resolveExternals*/ false,
+                          /*allowUnindexed*/ false);
       }
       _builder.close();
     }
@@ -225,8 +227,8 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
   builder.openArray();
   for (auto const& value : groupValues) {
     value.toVelocyPack(infos.getVPackOptions(), builder,
-                       /*resolveExternals*/false,
-                       /*allowUnindexed*/false);
+                       /*resolveExternals*/ false,
+                       /*allowUnindexed*/ false);
   }
 
   builder.close();
@@ -266,10 +268,10 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
     TRI_ASSERT(_builder.isOpenArray());
     _builder.close();
 
-    AqlValue val(std::move(_buffer)); // _buffer still usable after
+    AqlValue val(std::move(_buffer));  // _buffer still usable after
     AqlValueGuard guard{val, true};
     TRI_ASSERT(_buffer.size() == 0);
-    _builder.clear(); // necessary
+    _builder.clear();  // necessary
 
     output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
   }
@@ -316,7 +318,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     auto [state, input] = inputRange.peekDataRow();
 
     INTERNAL_LOG_SC << "SortedCollectExecutor::produceRows " << state << " "
-                 << input.isInitialized();
+                    << input.isInitialized();
 
     if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
       // we have never been called with data
@@ -407,7 +409,7 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
     auto [state, input] = inputRange.peekDataRow();
 
     INTERNAL_LOG_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
-                 << std::boolalpha << input.isInitialized();
+                    << std::boolalpha << input.isInitialized();
 
     if (input.isInitialized()) {
       // we received data

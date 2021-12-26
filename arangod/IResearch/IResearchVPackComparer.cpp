@@ -27,21 +27,20 @@
 
 #include "Basics/VelocyPackHelper.h"
 
-namespace  {
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reverse multiplier to use in VPackComparer
 ////////////////////////////////////////////////////////////////////////////////
-constexpr const int MULTIPLIER[] { -1, 1 };
+constexpr const int MULTIPLIER[]{-1, 1};
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
 
 VPackComparer::VPackComparer()
-  : VPackComparer(IResearchViewMeta::DEFAULT()._primarySort) {
-}
+    : VPackComparer(IResearchViewMeta::DEFAULT()._primarySort) {}
 
 bool VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
   TRI_ASSERT(_sort);
@@ -70,5 +69,5 @@ bool VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) c
   return false;
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb

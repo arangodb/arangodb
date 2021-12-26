@@ -59,4 +59,3 @@ static inline void storeNumber(uint8_t* dest, T value, uint32_t length) {
 
 }  // namespace encoding
 }  // namespace arangodb
-

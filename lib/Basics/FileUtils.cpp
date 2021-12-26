@@ -67,11 +67,11 @@ std::function<bool(std::string const&)> const passAllFilter =
     [](std::string const&) { return false; };
 
 enum class StatResultType {
-  Error, // in case it cannot be determined
+  Error,  // in case it cannot be determined
   Directory,
   SymLink,
   File,
-  Other // potentially file
+  Other  // potentially file
 };
 
 StatResultType statResultType(TRI_stat_t const& stbuf) {
@@ -90,11 +90,11 @@ StatResultType statResultType(TRI_stat_t const& stbuf) {
     return StatResultType::SymLink;
   }
 #endif
-  
+
   if ((stbuf.st_mode & S_IFMT) == S_IFREG) {
     return StatResultType::File;
   }
-    
+
   return StatResultType::Other;
 }
 
@@ -107,7 +107,7 @@ StatResultType statResultType(std::string const& path) {
   return statResultType(stbuf);
 }
 
-} // namespace
+}  // namespace
 
 namespace arangodb {
 namespace basics {
@@ -393,24 +393,21 @@ bool createDirectory(std::string const& name, int mask, ErrorCode* errorNumber) 
 bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
-
   // "auto lambda" will not work here
   std::function<TRI_copy_recursive_e(std::string const&)> lambda =
-    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
+      [&filter](std::string const& pathname) -> TRI_copy_recursive_e {
     return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
   };
 
   return copyRecursive(source, target, lambda, error);
 
-} // copyRecursive (bool filter())
-
+}  // copyRecursive (bool filter())
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
 bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
                    std::string& error) {
-
   bool ret_bool = false;
 
   if (isDirectory(source)) {
@@ -430,14 +427,13 @@ bool copyRecursive(std::string const& source, std::string const& target,
         break;
 
       default:
-        ret_bool = false; // TRI_ERROR_BAD_PARAMETER seems wrong since returns "true"
+        ret_bool = false;  // TRI_ERROR_BAD_PARAMETER seems wrong since returns "true"
         break;
-    } // switch
-  } // else
+    }  // switch
+  }    // else
 
   return ret_bool;
-} // copyRecursive (TRI_copy_recursive_e filter())
-
+}  // copyRecursive (TRI_copy_recursive_e filter())
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
@@ -445,13 +441,12 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
                             std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
                             std::string& error) {
   bool rc_bool = true;
-  
+
   // these strings will be recycled over and over
   std::string dst = target + TRI_DIR_SEPARATOR_STR;
   size_t const dstPrefixLength = dst.size();
   std::string src = source + TRI_DIR_SEPARATOR_STR;
   size_t const srcPrefixLength = src.size();
-
 
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   struct _wfinddata_t oneItem;
@@ -471,7 +466,8 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   do {
     rcs.clear();
-    icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d((wchar_t*)oneItem.name,
+                         static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     char const* fn = (char*)rcs.c_str();
 #else
@@ -504,7 +500,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
     src.resize(srcPrefixLength);
     TRI_ASSERT(src.back() == TRI_DIR_SEPARATOR_CHAR);
     src.append(fn);
-    
+
     auto filterResult = filter(src);
 
     if (filterResult != TRI_COPY_IGNORE) {
@@ -512,7 +508,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
       dst.resize(dstPrefixLength);
       TRI_ASSERT(dst.back() == TRI_DIR_SEPARATOR_CHAR);
       dst.append(fn);
- 
+
       // figure out the type of the directory entry.
       StatResultType type = StatResultType::Error;
       TRI_stat_t stbuf;
@@ -560,9 +556,9 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
         case TRI_COPY_LINK:
           if (!TRI_CreateHardlink(src, dst, error)) {
             rc_bool = false;
-          } // if
+          }  // if
           break;
-      } // switch
+      }  // switch
     }
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   } while (_wfindnext(handle, &oneItem) != -1 && rc_bool);
@@ -602,7 +598,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   do {
     rcs.clear();
-    icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d((wchar_t*)oneItem.name,
+                         static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 
@@ -751,18 +748,12 @@ std::string slurpProgram(std::string const& program) {
 
   moreArgs.push_back(std::string("version"));
 
-  TRI_CreateExternalProcess(program.c_str(),
-                            moreArgs,
-                            additionalEnv,
-                            true,
-                            &external);
+  TRI_CreateExternalProcess(program.c_str(), moreArgs, additionalEnv, true, &external);
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME)
-      << StringUtils::concatT("open failed for file '",
-                              program, "': ",
-                              TRI_last_error());
+        << StringUtils::concatT("open failed for file '", program, "': ", TRI_last_error());
     THROW_ARANGO_EXCEPTION(res);
   }
   process = TRI_LookupSpawnedProcess(external._pid);
@@ -770,13 +761,10 @@ std::string slurpProgram(std::string const& program) {
     auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     LOG_TOPIC("a557c", TRACE, arangodb::Logger::FIXME)
-      << StringUtils::concatT("process gone? '",
-                              program, "': ",
-                              TRI_last_error());
+        << StringUtils::concatT("process gone? '", program, "': ", TRI_last_error());
     THROW_ARANGO_EXCEPTION(res);
   }
-  while (res = TRI_CheckExternalProcess(external, false, 0),
-         (res._status == TRI_EXT_RUNNING)) {
+  while (res = TRI_CheckExternalProcess(external, false, 0), (res._status == TRI_EXT_RUNNING)) {
     auto nRead = TRI_ReadPipe(process, buf, sizeof(buf) - 1);
     if (nRead > 0) {
       output.append(buf, nRead);
@@ -784,7 +772,6 @@ std::string slurpProgram(std::string const& program) {
   }
   return output;
 }
-
 
 }  // namespace FileUtils
 }  // namespace basics

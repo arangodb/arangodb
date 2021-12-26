@@ -35,8 +35,8 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplier.h"
 #include "Replication/ReplicationTransaction.h"
@@ -120,9 +120,7 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
       _ignoreDatabaseMarkers(true),
       _stats(_state.applier._server.getFeature<arangodb::ReplicationMetricsFeature>(), true) {}
 
-TailingSyncer::~TailingSyncer() { 
-  abortOngoingTransactions(); 
-}
+TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
 /// @brief decide based on _state.leader which api to use
 ///        GlobalTailingSyncer should overwrite this probably
@@ -151,12 +149,14 @@ void TailingSyncer::abortOngoingTransactions() noexcept {
   }
 }
 
-/// @brief abort all ongoing transactions for a specific database 
+/// @brief abort all ongoing transactions for a specific database
 void TailingSyncer::abortOngoingTransactions(std::string const& dbName) {
-  for (auto it = _ongoingTransactions.begin(); it != _ongoingTransactions.end(); /* no hoisting */) {
+  for (auto it = _ongoingTransactions.begin(); it != _ongoingTransactions.end();
+       /* no hoisting */) {
     auto& trx = (*it).second;
     if (trx != nullptr && trx->vocbase().name() == dbName) {
-      LOG_TOPIC("c1ec8", TRACE, Logger::REPLICATION) << "aborting open transaction for db " << dbName;
+      LOG_TOPIC("c1ec8", TRACE, Logger::REPLICATION)
+          << "aborting open transaction for db " << dbName;
       it = _ongoingTransactions.erase(it);
     } else {
       ++it;
@@ -164,18 +164,19 @@ void TailingSyncer::abortOngoingTransactions(std::string const& dbName) {
   }
 }
 
-/// @brief count all ongoing transactions for a specific database 
+/// @brief count all ongoing transactions for a specific database
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 size_t TailingSyncer::countOngoingTransactions(VPackSlice slice) const {
   size_t result = 0;
 
   TRI_ASSERT(slice.isObject());
   VPackSlice nameSlice = slice.get(::dbRef);
-  
+
   if (nameSlice.isString()) {
     for (auto const& it : _ongoingTransactions) {
       auto const& trx = it.second;
-      if (trx != nullptr && arangodb::velocypack::StringRef(nameSlice) == trx->vocbase().name()) {
+      if (trx != nullptr &&
+          arangodb::velocypack::StringRef(nameSlice) == trx->vocbase().name()) {
         ++result;
       }
     }
@@ -202,8 +203,9 @@ bool TailingSyncer::hasMultipleOngoingTransactions() const {
 #endif
 
 /// @brief whether or not a marker should be skipped
-bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice slice,
-                               TRI_voc_tick_t actualMarkerTick, TRI_replication_operation_e type) {
+bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
+                               VPackSlice slice, TRI_voc_tick_t actualMarkerTick,
+                               TRI_replication_operation_e type) {
   TRI_ASSERT(slice.isObject());
 
   bool tooOld = (actualMarkerTick < firstRegularTick);
@@ -229,7 +231,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice slice
         }
       }
     }
-  
+
     if (tooOld) {
       return true;
     }
@@ -275,7 +277,7 @@ bool TailingSyncer::isExcludedCollection(std::string const& collectionName) cons
     return true;
   }
 
-  if (TRI_ExcludeCollectionReplication(collectionName, /*includeSystem*/true,
+  if (TRI_ExcludeCollectionReplication(collectionName, /*includeSystem*/ true,
                                        _state.applier._includeFoxxQueues)) {
     return true;
   }
@@ -297,7 +299,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   }
   std::string name = nameSlice.copyString();
   if (name.empty() || (name[0] >= '0' && name[0] <= '9')) {
-    LOG_TOPIC("e9bdc", ERR, Logger::REPLICATION) << "invalid database name in log";
+    LOG_TOPIC("e9bdc", ERR, Logger::REPLICATION)
+        << "invalid database name in log";
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
@@ -388,7 +391,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   bool const isSystem = coll->system();
   bool const isUsers = coll->name() == StaticStrings::UsersCollection;
   bool const isAnalyzers = coll->name() == StaticStrings::AnalyzersCollection;
-  
+
   // extract "data"
   VPackSlice const data = slice.get(::dataRef);
 
@@ -455,7 +458,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
     std::string conflictingDocumentKey;
-    Result r = applyCollectionDumpMarker(*trx, coll.get(), type, applySlice, conflictingDocumentKey);
+    Result r = applyCollectionDumpMarker(*trx, coll.get(), type, applySlice,
+                                         conflictingDocumentKey);
     TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
@@ -472,29 +476,29 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     return r;  // done
   }
-    
+
   // standalone operation
 
   // this variable will store the key of a conflicting document we will have to remove first
   // it is initially empty, and may be populated by a failing operation
   std::string conflictDocumentKey;
-    
-  // normally we will go into this while loop just once. only in the very exceptional case
-  // that there is a unique constraint violation in one of the secondary indexes we will
-  // get into the while loop a second time
+
+  // normally we will go into this while loop just once. only in the very
+  // exceptional case that there is a unique constraint violation in one of the
+  // secondary indexes we will get into the while loop a second time
   int tries = 0;
   while (tries++ < 10) {
     if (!conflictDocumentKey.empty()) {
-      // a rather exceptional case in which we have to remove a conflicting document,
-      // which is conflicting with the to-be-inserted document in one the unique
-      // secondary indexes
+      // a rather exceptional case in which we have to remove a conflicting
+      // document, which is conflicting with the to-be-inserted document in one
+      // the unique secondary indexes
 
-      // intentionally ignore the return code here, as the operation will be followed
-      // by yet another insert/replace
+      // intentionally ignore the return code here, as the operation will be
+      // followed by yet another insert/replace
       removeSingleDocument(coll.get(), conflictDocumentKey);
       conflictDocumentKey.clear();
     }
-    
+
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
                                     *coll, AccessMode::Type::EXCLUSIVE);
@@ -566,15 +570,15 @@ Result TailingSyncer::removeSingleDocument(LogicalCollection* coll, std::string 
   options.ignoreRevs = true;
   options.isRestore = true;
   options.waitForSync = false;
-            
+
   VPackBuilder tmp;
   tmp.add(VPackValue(key));
-  
+
   OperationResult opRes = trx.remove(coll->name(), tmp.slice(), options);
   if (opRes.fail()) {
     return opRes.result;
   }
-  
+
   return trx.commit();
 }
 
@@ -610,7 +614,8 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid.isSet());
 
-  LOG_TOPIC("e39dc", TRACE, Logger::REPLICATION) << "starting replication transaction " << tid.id();
+  LOG_TOPIC("e39dc", TRACE, Logger::REPLICATION)
+      << "starting replication transaction " << tid.id();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(countOngoingTransactions(slice) == 0);
@@ -650,7 +655,8 @@ Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid.isSet());
 
-  LOG_TOPIC("19551", TRACE, Logger::REPLICATION) << "aborting replication transaction " << tid.id();
+  LOG_TOPIC("19551", TRACE, Logger::REPLICATION)
+      << "aborting replication transaction " << tid.id();
 
   _ongoingTransactions.erase(it);
   return Result();
@@ -679,7 +685,8 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid.isSet());
 
-  LOG_TOPIC("fb331", TRACE, Logger::REPLICATION) << "committing replication transaction " << tid.id();
+  LOG_TOPIC("fb331", TRACE, Logger::REPLICATION)
+      << "committing replication transaction " << tid.id();
 
   std::unique_ptr<ReplicationTransaction>& trx = (*it).second;
   Result res = trx->commit();
@@ -745,7 +752,8 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
   }
 
   if (col->system()) {
-    LOG_TOPIC("36d7e", WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
+    LOG_TOPIC("36d7e", WARN, Logger::REPLICATION)
+        << "Renaming system collection " << col->name();
   }
 
   return vocbase->renameCollection(col->id(), name);
@@ -848,13 +856,13 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
     if (opRes.fail()) {
       return opRes.result;
     }
-  
+
     res = trx.finish(opRes.result);
   }
 
   if (res.ok() && count >= 4 * 1024) {
-    // only compact if the collection contained a substantial amount of documents
-    // before truncation
+    // only compact if the collection contained a substantial amount of
+    // documents before truncation
     col->compact();
   }
 
@@ -930,8 +938,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 }
 
 /// @brief apply a single marker from the continuous log
-Result TailingSyncer::applyLogMarker(VPackSlice const& slice, 
-                                     ApplyStats& applyStats,
+Result TailingSyncer::applyLogMarker(VPackSlice const& slice, ApplyStats& applyStats,
                                      TRI_voc_tick_t /*firstRegularTick*/,
                                      TRI_voc_tick_t /*markerTick*/,
                                      TRI_replication_operation_e type) {
@@ -967,7 +974,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   if (type == REPLICATION_COLLECTION_CREATE) {
     if (_ignoreRenameCreateDrop) {
-      LOG_TOPIC("ff01b", DEBUG, Logger::REPLICATION) << "Ignoring collection marker";
+      LOG_TOPIC("ff01b", DEBUG, Logger::REPLICATION)
+          << "Ignoring collection marker";
       return Result();
     }
 
@@ -1021,7 +1029,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   if (type == REPLICATION_VIEW_CREATE) {
     if (_ignoreRenameCreateDrop) {
-      LOG_TOPIC("846a7", DEBUG, Logger::REPLICATION) << "Ignoring view create marker";
+      LOG_TOPIC("846a7", DEBUG, Logger::REPLICATION)
+          << "Ignoring view create marker";
       return Result();
     }
 
@@ -1038,7 +1047,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   if (type == REPLICATION_VIEW_DROP) {
     if (_ignoreRenameCreateDrop) {
-      LOG_TOPIC("9ea21", DEBUG, Logger::REPLICATION) << "Ignoring view drop marker";
+      LOG_TOPIC("9ea21", DEBUG, Logger::REPLICATION)
+          << "Ignoring view drop marker";
       return Result();
     }
 
@@ -1051,7 +1061,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   if (type == REPLICATION_DATABASE_CREATE || type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
-      LOG_TOPIC("4254e", DEBUG, Logger::REPLICATION) << "Ignoring database marker";
+      LOG_TOPIC("4254e", DEBUG, Logger::REPLICATION)
+          << "Ignoring database marker";
       return Result();
     }
 
@@ -1063,9 +1074,9 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 }
 
 /// @brief apply the data from the continuous log
-Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstRegularTick,
-                               ApplyStats& applyStats, arangodb::velocypack::Builder& builder, 
-                               uint64_t& ignoreCount) {
+Result TailingSyncer::applyLog(SimpleHttpResult* response,
+                               TRI_voc_tick_t firstRegularTick, ApplyStats& applyStats,
+                               arangodb::velocypack::Builder& builder, uint64_t& ignoreCount) {
   // reload users if they were modified
   _usersModified = false;
   _analyzersModified.clear();
@@ -1080,7 +1091,8 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
       auto& begin = *_analyzersModified.begin();
       auto& server = begin->server();
       if (server.hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-        auto& analyzersFeature = server.getFeature<iresearch::IResearchAnalyzerFeature>();
+        auto& analyzersFeature =
+            server.getFeature<iresearch::IResearchAnalyzerFeature>();
         for (auto* vocbase : _analyzersModified) {
           TRI_ASSERT(vocbase);
           // we need to trigger cache invalidation
@@ -1141,7 +1153,8 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
     }
 
     int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
-    TRI_replication_operation_e markerType = static_cast<TRI_replication_operation_e>(typeValue);
+    TRI_replication_operation_e markerType =
+        static_cast<TRI_replication_operation_e>(typeValue);
     TRI_voc_tick_t markerTick = 0;
 
     VPackSlice tickSlice = slice.get(::tickRef);
@@ -1176,8 +1189,8 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 
         ignoreCount--;
         LOG_TOPIC("c887a", WARN, Logger::REPLICATION)
-            << "ignoring replication error for database '" << _state.databaseName
-            << "': " << errorMsg;
+            << "ignoring replication error for database '"
+            << _state.databaseName << "': " << errorMsg;
       }
     }
 
@@ -1211,9 +1224,10 @@ Result TailingSyncer::run() {
   try {
     auto guard = scopeGuard([this]() noexcept {
       try {
-          abortOngoingTransactions();
-      } catch(std::exception const& ex) {
-          LOG_TOPIC("6f832", ERR, Logger::REPLICATION) << "Failed to abort ongoing transactions: " << ex.what();
+        abortOngoingTransactions();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("6f832", ERR, Logger::REPLICATION)
+            << "Failed to abort ongoing transactions: " << ex.what();
       }
     });
     return runInternal();
@@ -1256,7 +1270,7 @@ retry:
   {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     _applier->_state._failedConnects = 0;
-    _applier->_state.setStartTime(); 
+    _applier->_state.setStartTime();
   }
 
   while (true) {
@@ -1310,7 +1324,8 @@ retry:
 
   if (res.fail()) {
     // stop ourselves
-    LOG_TOPIC("06384", INFO, Logger::REPLICATION) << "stopping applier: " << res.errorMessage();
+    LOG_TOPIC("06384", INFO, Logger::REPLICATION)
+        << "stopping applier: " << res.errorMessage();
     try {
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       _applier->_state._totalRequests++;
@@ -1335,9 +1350,8 @@ retry:
   if (res.fail()) {
     // stop ourselves
     if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) ||
-        res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) || // data source -- collection or view
+        res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) ||  // data source -- collection or view
         res.is(TRI_ERROR_REPLICATION_NO_START_TICK)) {
-
       // additional logging
       if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
         LOG_TOPIC("a1040", WARN, Logger::REPLICATION)
@@ -1345,17 +1359,17 @@ retry:
             << "' because required tick is not present on leader";
       } else {
         LOG_TOPIC("33feb", WARN, Logger::REPLICATION)
-            << "replication applier stopped for database '" << _applier->databaseName()
-            << "': " << res.errorMessage();
+            << "replication applier stopped for database '"
+            << _applier->databaseName() << "': " << res.errorMessage();
       }
 
       // remove previous applier state
-      abortOngoingTransactions(); //tries to clear map - no further side effects
+      abortOngoingTransactions();  // tries to clear map - no further side effects
 
       LOG_TOPIC("902e2", DEBUG, Logger::REPLICATION)
-            << "stopped replication applier for database '" << _applier->databaseName();
+          << "stopped replication applier for database '" << _applier->databaseName();
       auto rv = _applier->resetState(true /*reducedSet*/);
-      
+
       setAborted(false);
 
       if (rv.fail()) {
@@ -1364,7 +1378,8 @@ retry:
 
       if (!_state.applier._autoResync) {
         LOG_TOPIC("713c2", INFO, Logger::REPLICATION)
-            << "Auto resync disabled, applier for " << _applier->databaseName() << " will stop";
+            << "Auto resync disabled, applier for " << _applier->databaseName()
+            << " will stop";
         _applier->stop(res);
         return res;
       }
@@ -1382,23 +1397,24 @@ retry:
         if (_state.applier._autoResyncRetries > 0) {
           // message only makes sense if there's at least one retry
           LOG_TOPIC("91bb3", WARN, Logger::REPLICATION)
-              << "aborting automatic resynchronization for " << _applier->databaseName()
-              << " after " << _state.applier._autoResyncRetries << " short-term retries";
+              << "aborting automatic resynchronization for "
+              << _applier->databaseName() << " after "
+              << _state.applier._autoResyncRetries << " short-term retries";
         } else {
           LOG_TOPIC("7db04", WARN, Logger::REPLICATION)
-              << "aborting automatic resynchronization for " << _applier->databaseName()
-              << " because autoResyncRetries is 0";
+              << "aborting automatic resynchronization for "
+              << _applier->databaseName() << " because autoResyncRetries is 0";
         }
 
         // always abort if we get here
         _applier->stop(res);
         return res;
       }
-      
+
       // do an automatic full resync
       LOG_TOPIC("41845", WARN, Logger::REPLICATION)
-          << "restarting initial synchronization for " << _applier->databaseName() 
-          << " because autoResync option is set. retry #" << shortTermFailsInRow 
+          << "restarting initial synchronization for " << _applier->databaseName()
+          << " because autoResync option is set. retry #" << shortTermFailsInRow
           << " of " << _state.applier._autoResyncRetries;
 
       {
@@ -1427,7 +1443,7 @@ retry:
               << lastLogTick;
           _initialTick = lastLogTick;
           _useTick = true;
-        
+
           {
             WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
             _applier->_state.setStartTime();
@@ -1437,17 +1453,18 @@ retry:
         }
         res.reset(r.errorNumber(), r.errorMessage());
         LOG_TOPIC("45736", WARN, Logger::REPLICATION)
-            << "initial replication for " << _applier->databaseName() << " failed: " << res.errorMessage();
+            << "initial replication for " << _applier->databaseName()
+            << " failed: " << res.errorMessage();
         // fall through otherwise
       } catch (...) {
         res.reset(TRI_ERROR_INTERNAL,
                   "caught unknown exception during initial replication");
       }
-        
+
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       _applier->_state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
     }
-      
+
     abortOngoingTransactions();
 
     _applier->stop(res);
@@ -1519,7 +1536,7 @@ Result TailingSyncer::runContinuousSync() {
           << ", lastProcessedContinuousTick in state: " << _applier->_state._lastProcessedContinuousTick
           << ", safeResumeTick in state: " << _applier->_state._safeResumeTick
           << ", fromTick: 0";
-      
+
       fromTick = _applier->_state._lastAppliedContinuousTick;
       safeResumeTick = _applier->_state._safeResumeTick;
     }
@@ -1542,9 +1559,9 @@ Result TailingSyncer::runContinuousSync() {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
     if (safeResumeTick > 0) {
-      // important: we must not resume tailing in the middle of a RocksDB transaction,
-      // as this would mean we would be missing the transaction begin marker. this would
-      // cause "unexpected transaction errors"
+      // important: we must not resume tailing in the middle of a RocksDB
+      // transaction, as this would mean we would be missing the transaction
+      // begin marker. this would cause "unexpected transaction errors"
       fromTick = safeResumeTick;
     }
 
@@ -1574,7 +1591,8 @@ Result TailingSyncer::runContinuousSync() {
           // simply send the request, but don't care about the response. if it
           // fails, there is not much we can do from here.
           auto headers = replutils::createHeaders();
-          response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
+          response.reset(client->request(rest::RequestType::DELETE_REQ, url,
+                                         nullptr, 0, headers));
         });
       } catch (...) {
         // this must be exception-safe, but if an exception occurs, there is not
@@ -1606,8 +1624,9 @@ Result TailingSyncer::runContinuousSync() {
     // initially fetch the next batch from the leader passing "mustFetchBatch =
     // false" to processLeaderLog requires that processLeaderLog has already
     // requested the next batch in the background on the previous invocation
-    Result res = processLeaderLog(sharedStatus, builder, fetchTick, lastScannedTick, fromTick,
-                                  _state.applier._ignoreErrors, worked, mustFetchBatch);
+    Result res =
+        processLeaderLog(sharedStatus, builder, fetchTick, lastScannedTick, fromTick,
+                         _state.applier._ignoreErrors, worked, mustFetchBatch);
 
     uint64_t sleepTime;
 
@@ -1738,9 +1757,8 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
       // to get out of stalled requests to failed/non-responsive leaders quicker.
       double oldTimeout = client->params().getRequestTimeout();
       client->params().setRequestTimeout(std::min(_state.applier._requestTimeout, 10.0));
-      auto guard = scopeGuard([&]() noexcept {
-        client->params().setRequestTimeout(oldTimeout);
-      });
+      auto guard = scopeGuard(
+          [&]() noexcept { client->params().setRequestTimeout(oldTimeout); });
       auto headers = replutils::createHeaders();
       response.reset(client->request(rest::RequestType::PUT, url, body.c_str(),
                                      body.size(), headers));
@@ -1750,11 +1768,15 @@ void TailingSyncer::fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> shar
 
     if (replutils::hasFailed(response.get())) {
       // failure
-      sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _state.connection), time);
+      sharedStatus->gotResponse(replutils::buildHttpError(response.get(), url,
+                                                          _state.connection),
+                                time);
     } else {
       // success!
-      LOG_TOPIC("a4822", DEBUG, Logger::REPLICATION) << "fetching leader log from tick " + StringUtils::itoa(fetchTick) + " took " << time << " s";
+      LOG_TOPIC("a4822", DEBUG, Logger::REPLICATION)
+          << "fetching leader log from tick " + StringUtils::itoa(fetchTick) +
+                 " took "
+          << time << " s";
       sharedStatus->gotResponse(std::move(response), time);
     }
   } catch (basics::Exception const& ex) {
@@ -1774,7 +1796,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
       << "entering processLeaderLog. fetchTick: " << fetchTick
       << ", worked: " << worked << ", mustFetchBatch: " << mustFetchBatch;
 
-  // a batch must have been requested before 
+  // a batch must have been requested before
   if (mustFetchBatch) {
     TRI_ASSERT(!sharedStatus->gotResponse());
     fetchLeaderLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
@@ -1789,7 +1811,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   // block until we either got a response or were shut down
   Result res = sharedStatus->waitForResponse(response);
-      
+
   ++_stats.numTailingRequests;
   _stats.waitedForTailing += sharedStatus->time();
 
@@ -1800,7 +1822,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   // now we have got a response!
   TRI_ASSERT(response != nullptr);
-    
+
   if (response->hasContentLength()) {
     _stats.numTailingBytesReceived += response->getContentLength();
   }
@@ -1828,13 +1850,17 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
                       StaticStrings::ReplicationHeaderLastIncluded +
                       " is missing in logger-follow response");
   }
-    
+
   TRI_voc_tick_t lastIncludedTick =
       getUIntHeader(response, StaticStrings::ReplicationHeaderLastIncluded);
-  TRI_voc_tick_t const tick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
-  
-  LOG_TOPIC("5e543", DEBUG, Logger::REPLICATION) << "applyLog. fetchTick: " << fetchTick << ", checkMore: " << checkMore << ", fromIncluded: " << fromIncluded << ", lastScannedTick: " << lastScannedTick << ", lastIncludedTick: " << lastIncludedTick << ", tick: " << tick;
-  
+  TRI_voc_tick_t const tick =
+      getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
+
+  LOG_TOPIC("5e543", DEBUG, Logger::REPLICATION)
+      << "applyLog. fetchTick: " << fetchTick << ", checkMore: " << checkMore
+      << ", fromIncluded: " << fromIncluded << ", lastScannedTick: " << lastScannedTick
+      << ", lastIncludedTick: " << lastIncludedTick << ", tick: " << tick;
+
   TRI_ASSERT(tick >= lastIncludedTick);
 
   if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fetchTick) {
@@ -1849,7 +1875,8 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
   } else {
     // we got the same tick again, this indicates we're at the end
     checkMore = false;
-    LOG_TOPIC("425e4", DEBUG, Logger::REPLICATION) << "applyLog. got the same tick again, turning off checkMore";
+    LOG_TOPIC("425e4", DEBUG, Logger::REPLICATION)
+        << "applyLog. got the same tick again, turning off checkMore";
   }
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderLastTick)) {
@@ -1878,7 +1905,8 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
     lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
 
-    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
+    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
+               _applier->_state._lastAppliedContinuousTick);
 
     _applier->_state._totalFetchTime += sharedStatus->time();
     _applier->_state._totalFetchInstances++;
@@ -1900,8 +1928,8 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // do not fetch the same batch next time we enter processLeaderLog
     // (that would be duplicate work)
     mustFetchBatch = false;
-    sharedStatus->request([this, self = shared_from_this(), sharedStatus, fetchTick, lastScannedTick,
-                           firstRegularTick]() {
+    sharedStatus->request([this, self = shared_from_this(), sharedStatus,
+                           fetchTick, lastScannedTick, firstRegularTick]() {
       fetchLeaderLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });
   }
@@ -1912,7 +1940,7 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
   double time = TRI_microtime();
   Result r = applyLog(response.get(), firstRegularTick, applyStats, builder, ignoreCount);
   time = TRI_microtime() - time;
-      
+
   _stats.numProcessedMarkers += applyStats.processedMarkers;
   _stats.numProcessedDocuments += applyStats.processedDocuments;
   _stats.numProcessedRemovals += applyStats.processedRemovals;
@@ -1920,12 +1948,17 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
   _stats.publish();
 
   if (r.fail()) {
-    LOG_TOPIC("04ba9", DEBUG, Logger::REPLICATION) << "applyLog failed with error: " << r.errorMessage();
+    LOG_TOPIC("04ba9", DEBUG, Logger::REPLICATION)
+        << "applyLog failed with error: " << r.errorMessage();
     return r;
   }
 
   // success!
-  LOG_TOPIC("608c2", DEBUG, Logger::REPLICATION) << "applyLog successful, lastAppliedTick: " << lastAppliedTick << ", firstRegularTick: " << firstRegularTick << ", processedMarkers: " << applyStats.processedMarkers << ", took: " << time << " s";
+  LOG_TOPIC("608c2", DEBUG, Logger::REPLICATION)
+      << "applyLog successful, lastAppliedTick: " << lastAppliedTick
+      << ", firstRegularTick: " << firstRegularTick
+      << ", processedMarkers: " << applyStats.processedMarkers
+      << ", took: " << time << " s";
 
   // we grab the write-lock here and hold it until the end of this function
   WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
@@ -1947,8 +1980,9 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
       _hasWrittenState = true;
       saveApplierState();
     }
-    
-    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
+
+    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
+               _applier->_state._lastAppliedContinuousTick);
   } else if (bumpTick) {
     if (_applier->_state._lastProcessedContinuousTick < tick) {
       _applier->_state._lastProcessedContinuousTick = tick;
@@ -1966,8 +2000,9 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
       _hasWrittenState = true;
       saveApplierState();
     }
-    
-    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
+
+    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
+               _applier->_state._lastAppliedContinuousTick);
   }
 
   if (!_hasWrittenState && _useTick) {
@@ -1982,8 +2017,9 @@ Result TailingSyncer::processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> 
     }
 
     saveApplierState();
-    
-    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
+
+    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >=
+               _applier->_state._lastAppliedContinuousTick);
   }
 
   if (!worked && checkMore) {
@@ -1997,11 +2033,11 @@ Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
                                                        TRI_voc_tick_t readTick,
                                                        char const* type) {
   std::string const msg =
-        std::string("required ") + type + " tick value '" + StringUtils::itoa(fromTick) +
-        "' is not present (anymore?) on leader at " + _state.leader.endpoint +
-        ". Last tick available on leader is '" + StringUtils::itoa(readTick) +
-        "'. It may be required to do a full resync and increase the number "
-        "of historic logfiles/WAL file timeout or archive size on the leader.";
+      std::string("required ") + type + " tick value '" + StringUtils::itoa(fromTick) +
+      "' is not present (anymore?) on leader at " + _state.leader.endpoint +
+      ". Last tick available on leader is '" + StringUtils::itoa(readTick) +
+      "'. It may be required to do a full resync and increase the number "
+      "of historic logfiles/WAL file timeout or archive size on the leader.";
   LOG_TOPIC("4c6d2", WARN, Logger::REPLICATION) << msg;
 
   if (_requireFromPresent) {  // hard fail
@@ -2009,14 +2045,15 @@ Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
   }
 
-  // only print a warning about the failure, abort ongoing transactions and go on...
-  // we may have data loss and follow-up failures here, but at least all these
-  // will be either logged or make the replication fail later on
-    
+  // only print a warning about the failure, abort ongoing transactions and go
+  // on... we may have data loss and follow-up failures here, but at least all
+  // these will be either logged or make the replication fail later on
+
   // we have to abort any running ongoing transactions, as they will be
   // holding exclusive locks on the underlying collection(s)
   if (!_ongoingTransactions.empty()) {
-    LOG_TOPIC("63e32", WARN, Logger::REPLICATION) << "aborting ongoing open transactions (" << _ongoingTransactions.size() << ")";
+    LOG_TOPIC("63e32", WARN, Logger::REPLICATION)
+        << "aborting ongoing open transactions (" << _ongoingTransactions.size() << ")";
     abortOngoingTransactions();
   }
 

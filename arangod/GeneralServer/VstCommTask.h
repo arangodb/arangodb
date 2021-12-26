@@ -102,7 +102,6 @@ class VstCommTask final : public GeneralCommTask<T> {
   static constexpr size_t maxChunkSize = 30 * 1024;
 
  private:
-
   std::string url(VstRequest const* req) const;
 
   std::map<uint64_t, Message> _messages;
@@ -128,4 +127,3 @@ class VstCommTask final : public GeneralCommTask<T> {
 };
 }  // namespace rest
 }  // namespace arangodb
-

@@ -64,7 +64,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     : RestReplicationHandler(server, request, response),
       _manager(
           server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()),
-      _quickKeysNumDocsLimit(server.getFeature<ReplicationFeature>().quickKeysLimit())  {
+      _quickKeysNumDocsLimit(server.getFeature<ReplicationFeature>().quickKeysLimit()) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   adjustQuickKeysNumDocsLimit();
 #endif
@@ -83,7 +83,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     bool parseSuccess = true;
     VPackSlice body = this->parseVPackBody(parseSuccess);
-    if (!parseSuccess || !body.isObject()) { // error already created
+    if (!parseSuccess || !body.isObject()) {  // error already created
       return;
     }
     std::string patchCount =
@@ -95,7 +95,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     std::string const clientInfo = _request->value("clientInfo");
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
-    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl",
+                                                         replutils::BatchInfo::DefaultTimeout);
     auto& engine = server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     auto* ctx = _manager->createContext(engine, ttl, syncerId, clientId, patchCount);
     RocksDBReplicationContextGuard guard(_manager, ctx);
@@ -109,7 +110,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
             << " collection count patching: " << res.errorMessage();
       }
     }
-    
+
     std::string const snapTick = std::to_string(ctx->snapshotTick());
     bool withState = _request->parsedValue("state", false);
 
@@ -118,16 +119,16 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("id", VPackValue(std::to_string(ctx->id())));  // id always string
     b.add("lastTick", VPackValue(snapTick));
     if (withState) {
-      // we have been asked to also return the "state" attribute. 
+      // we have been asked to also return the "state" attribute.
       // this is used from 3.8 onwards during shard synchronization, in order
       // to combine the two requests for starting a batch and fetching the
       // leader state into a single one.
-      
+
       // get original logger state data
       VPackBuilder tmp;
       engine.createLoggerState(nullptr, tmp);
       TRI_ASSERT(tmp.slice().isObject());
-      
+
       // and now merge it into our response, while rewriting the "lastLogTick"
       // and "lastUncommittedLogTick"
       b.add("state", VPackValue(VPackValueType::Object));
@@ -141,7 +142,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
           b.add(it.key.stringRef(), it.value);
         }
       }
-      b.close(); // state
+      b.close();  // state
     }
     b.close();
 
@@ -158,12 +159,13 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     bool parseSuccess = true;
     VPackSlice body = this->parseVPackBody(parseSuccess);
-    if (!parseSuccess || !body.isObject()) { // error already created
+    if (!parseSuccess || !body.isObject()) {  // error already created
       return;
     }
 
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl",
+                                                         replutils::BatchInfo::DefaultTimeout);
 
     auto res = _manager->extendLifetime(id, ttl);
     if (res.fail()) {
@@ -405,7 +407,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
-  
+
   // "collection" is optional, and may in the DB server case contain the name of
   // a single shard for shard synchronization
   std::string collection;
@@ -469,8 +471,9 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
   std::string const& quick = _request->value("quick");
   if (!quick.empty() && !(quick == "true" || quick == "false")) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::string("invalid quick parameter: must be boolean, got ") + quick);
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        std::string("invalid quick parameter: must be boolean, got ") + quick);
     return;
   }
 
@@ -709,7 +712,8 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 }
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
-  LOG_TOPIC("213e2", TRACE, arangodb::Logger::REPLICATION) << "enter handleCommandDump";
+  LOG_TOPIC("213e2", TRACE, arangodb::Logger::REPLICATION)
+      << "enter handleCommandDump";
 
   bool found = false;
   uint64_t contextId = 0;
@@ -850,13 +854,13 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
 
   // shall we do a verification?
   bool withVerification = _request->parsedValue("verification", false);
-  
+
   // return only populated nodes in the tree (can make the result a lot
   // smaller and thus improve efficiency)
   bool onlyPopulated = _request->parsedValue("onlyPopulated", false);
 
   auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
-   
+
   {
     RocksDBReplicationContext* c = _manager->find(ctx.batchId);
     RocksDBReplicationContextGuard guard(_manager, c);
@@ -870,13 +874,13 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
                   "could not generate revision tree");
     return;
   }
-  
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder result(buffer);
 
   if (withVerification) {
     auto tree2 = ctx.collection->getPhysical()->computeRevisionTree(ctx.batchId);
-  
+
     if (!tree2) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "could not generate revision tree from collection");

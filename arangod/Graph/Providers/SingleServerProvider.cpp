@@ -74,8 +74,8 @@ SingleServerProvider<Step>::SingleServerProvider(arangodb::aql::QueryContext& qu
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
              _opts.collectionToShardMap()),
       _stats{} {
-  // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
-  // activateCache(false);
+  // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
+  // to do benchmarks if affordable) activateCache(false);
   _cursor = buildCursor(opts.expressionContext());
 }
 

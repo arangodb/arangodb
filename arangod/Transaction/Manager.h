@@ -68,8 +68,8 @@ class Manager final {
   };
 
   struct ManagedTrx {
-    ManagedTrx(ManagerFeature const& feature, MetaType type, double ttl, 
-               std::shared_ptr<TransactionState> state, 
+    ManagedTrx(ManagerFeature const& feature, MetaType type, double ttl,
+               std::shared_ptr<TransactionState> state,
                arangodb::cluster::CallbackGuard rGuard);
     ~ManagedTrx();
 
@@ -100,8 +100,8 @@ class Manager final {
     double expiryTime;                        // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     arangodb::cluster::CallbackGuard rGuard;
-    std::string const user;                         /// user owning the transaction
-    std::string const db;  /// database in which the transaction operates
+    std::string const user;  /// user owning the transaction
+    std::string const db;    /// database in which the transaction operates
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -111,8 +111,8 @@ class Manager final {
   Manager& operator=(Manager const&) = delete;
 
   explicit Manager(ManagerFeature& feature);
-  
-  static constexpr double idleTTLDBServer = 5 * 60.0;              //  5 minutes
+
+  static constexpr double idleTTLDBServer = 5 * 60.0;  //  5 minutes
 
   // register a transaction
   void registerTransaction(TransactionId transactionId, bool isReadOnlyTransaction,
@@ -160,9 +160,11 @@ class Manager final {
   Result beginTransaction(transaction::Hints hints, std::shared_ptr<TransactionState>& state);
 
   /// @brief lease the transaction, increases nesting
-  std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid, AccessMode::Type mode, bool isSideUser);
+  std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,
+                                                        AccessMode::Type mode,
+                                                        bool isSideUser);
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
-  
+
   /// @brief get the meta transasction state
   transaction::Status getManagedTrxStatus(TransactionId, std::string const& database) const;
 
@@ -243,7 +245,8 @@ class Manager final {
     return std::hash<TransactionId>()(tid) % numBuckets;
   }
 
-  std::shared_ptr<ManagedContext> buildManagedContextUnderLock(TransactionId tid, ManagedTrx& mtrx);
+  std::shared_ptr<ManagedContext> buildManagedContextUnderLock(TransactionId tid,
+                                                               ManagedTrx& mtrx);
 
   Result updateTransaction(TransactionId tid, transaction::Status status,
                            bool clearServers, std::string const& database = "" /* leave empty to operate across all databases */);
@@ -286,4 +289,3 @@ class Manager final {
 };
 }  // namespace transaction
 }  // namespace arangodb
-

@@ -76,11 +76,9 @@ class LogAppender {
   static bool allowStdLogging() { return _allowStdLogging; }
   static void allowStdLogging(bool value) { _allowStdLogging = value; }
 
-  static Result parseDefinition(std::string const& definition, 
-                                std::string& topicName,
-                                std::string& output,
-                                LogTopic*& topic);
- 
+  static Result parseDefinition(std::string const& definition, std::string& topicName,
+                                std::string& output, LogTopic*& topic);
+
  private:
   static arangodb::basics::ReadWriteLock _appendersLock;
   static std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> _globalAppenders;
@@ -89,4 +87,3 @@ class LogAppender {
   static bool _allowStdLogging;
 };
 }  // namespace arangodb
-

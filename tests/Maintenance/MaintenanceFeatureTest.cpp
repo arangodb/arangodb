@@ -46,8 +46,7 @@
 class TestActionBasic : public ActionBase {
  public:
   TestActionBasic(arangodb::MaintenanceFeature& feature, ActionDescription const& description)
-      : ActionBase(feature, description), _iteration(1), _resultCode(0),
-        _reschedule(false) {
+      : ActionBase(feature, description), _iteration(1), _resultCode(0), _reschedule(false) {
     std::string value, iterate_count;
     auto gres = description.get("iterate_count", iterate_count);
 
@@ -73,7 +72,9 @@ class TestActionBasic : public ActionBase {
       if (gres.ok()) {
         pred.insert({"iterate_count", iterate_count});
       }
-      _preAction = std::make_shared<ActionDescription>(std::move(pred), arangodb::maintenance::NORMAL_PRIORITY, false);
+      _preAction = std::make_shared<ActionDescription>(std::move(pred),
+                                                       arangodb::maintenance::NORMAL_PRIORITY,
+                                                       false);
     }  // if
 
     if (description.get("postaction_result_code", value).ok()) {
@@ -82,8 +83,9 @@ class TestActionBasic : public ActionBase {
       if (gres.ok()) {
         postd.insert({"iterate_count", iterate_count});
       }
-      _postAction =
-          std::make_shared<ActionDescription>(std::move(postd), arangodb::maintenance::NORMAL_PRIORITY, false);
+      _postAction = std::make_shared<ActionDescription>(std::move(postd),
+                                                        arangodb::maintenance::NORMAL_PRIORITY,
+                                                        false);
     }  // if
 
     if (description.get("reschedule", value).ok()) {
@@ -183,14 +185,13 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
   std::unique_ptr<ActionBase> action_base_ptr;
-  action_base_ptr.reset(
-    new TestActionBasic(
+  action_base_ptr.reset(new TestActionBasic(
       tf, ActionDescription(
-        std::map<std::string, std::string>{
-          {"name", "TestActionBasic"}, {"iterate_count", "0"}},
-        arangodb::maintenance::NORMAL_PRIORITY, false)));
+              std::map<std::string, std::string>{{"name", "TestActionBasic"},
+                                                 {"iterate_count", "0"}},
+              arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-    tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
 
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(tf._recentAction->result().ok());
@@ -430,9 +431,9 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
-  
+
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
-  
+
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
@@ -514,7 +515,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
-  
+
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
@@ -542,7 +543,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   // The following is somehow expected, but it is not possible since we
   // fixed `verifyRegistryState`. This means that probably the pre actions
   // do not work. They are scheduled to be removed.
-  //post_thread.push_back({2, 0, COMPLETE, 100});  // preaction results
+  // post_thread.push_back({2, 0, COMPLETE, 100});  // preaction results
 
   //
   // 2. see if happy about queue prior to threads running
@@ -577,9 +578,9 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
-  
+
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
-  
+
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
@@ -606,7 +607,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   // The following is somehow expected, but it is not possible since we
   // fixed `verifyRegistryState`. This means that probably the post actions
   // do not work. They are scheduled to be removed.
-  //post_thread.push_back({2, 0, COMPLETE, 100});  // postaction results
+  // post_thread.push_back({2, 0, COMPLETE, 100});  // postaction results
 
   //
   // 2. see if happy about queue prior to threads running
@@ -642,9 +643,9 @@ TEST(MaintenanceFeatureTestThreaded, priority_queue_should_be_able_to_process_fa
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
-  
+
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
-  
+
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
@@ -692,9 +693,9 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
   as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
   TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
       &as.getFeature<arangodb::MaintenanceFeature>());
-  
+
   std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
-  
+
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
     th.join();
@@ -763,8 +764,8 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_reschedule_and_valida
 
   // 0. Add factory for our TestActionBasic:
   auto factory = [](arangodb::MaintenanceFeature& f, ActionDescription const& a) {
-      return std::make_unique<TestActionBasic>(f, a);
-    };
+    return std::make_unique<TestActionBasic>(f, a);
+  };
   Action::addNewFactoryForTest("TestActionBasic", std::move(factory));
 
   //
@@ -807,4 +808,3 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_reschedule_and_valida
   std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
 }
-

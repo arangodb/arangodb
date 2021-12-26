@@ -36,8 +36,8 @@ class SubqueryEndNode : public ExecutionNode {
  public:
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
-                  Variable const* outVariable);
+  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
+                  Variable const* inVariable, Variable const* outVariable);
 
   CostEstimate estimateCost() const override final;
 
@@ -83,4 +83,3 @@ class SubqueryEndNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

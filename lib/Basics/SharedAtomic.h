@@ -135,4 +135,3 @@ struct SharedAtomic {
 
 }  // namespace basics
 }  // namespace arangodb
-

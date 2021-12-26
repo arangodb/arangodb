@@ -42,10 +42,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create a collection wrapper
-Collection::Collection(std::string const& name, 
-                       TRI_vocbase_t* vocbase, 
-                       AccessMode::Type accessType,
-                       Hint hint)
+Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
+                       AccessMode::Type accessType, Hint hint)
     : _collection(nullptr),
       _vocbase(vocbase),
       _name(name),
@@ -55,8 +53,8 @@ Collection::Collection(std::string const& name,
   TRI_ASSERT(_vocbase != nullptr);
 
   // _collection will only be populated here in the constructor, and not later.
-  // note that it will only be populated for "real" collections and shards though. 
-  // aql::Collection objects can also be created for views and for non-existing 
+  // note that it will only be populated for "real" collections and shards though.
+  // aql::Collection objects can also be created for views and for non-existing
   // collections. In these cases it is not possible to populate _collection, at all.
   if (hint == Hint::Collection) {
     if (ServerState::instance()->isRunningInCluster()) {
@@ -77,7 +75,7 @@ Collection::Collection(std::string const& name,
   }
 
   // Whenever getCollection() is called later, _collection must have been set
-  // here to a non-nullptr, or an assertion will be triggered. 
+  // here to a non-nullptr, or an assertion will be triggered.
   // In non-maintainer mode an exception will be thrown.
 }
 
@@ -247,7 +245,7 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const
   if (!idxId.empty() && !Index::validateId(idxId)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
   }
-  
+
   auto iid = arangodb::IndexId{arangodb::basics::StringUtils::uint64(idxId)};
   auto idx = this->getCollection()->lookupIndex(iid);
 
@@ -257,18 +255,18 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const
                                        "' in collection '" + this->name() +
                                        "'.");
   }
-  
+
   return idx;
 }
 
 std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
   auto coll = this->getCollection();
-  
+
   // update selectivity estimates if they were expired
   if (ServerState::instance()->isCoordinator()) {
-    coll->clusterIndexEstimates(true); 
+    coll->clusterIndexEstimates(true);
   }
-  
+
   std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
@@ -278,12 +276,12 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
   return indexes;
 }
 
-/// @brief use the already set collection 
+/// @brief use the already set collection
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   checkCollection();
   return _collection;
 }
-  
+
 /// @brief whether or not we have a collection object underneath (true for
 /// existing collections, false for non-existing collections and for views).
 bool Collection::hasCollectionObject() const noexcept {
@@ -294,6 +292,7 @@ bool Collection::hasCollectionObject() const noexcept {
 void Collection::checkCollection() const {
   if (_collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ": " + _name);
+                                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
+                                       ": " + _name);
   }
 }

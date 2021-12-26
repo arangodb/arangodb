@@ -78,4 +78,3 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
 };
 
 }  // namespace arangodb
-

@@ -30,15 +30,13 @@
 
 using namespace arangodb;
 
-IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods* trx, ReadOwnWrites readOwnWrites)
-    : _collection(collection), 
-      _trx(trx),
-      _hasMore(true),
-      _readOwnWrites(readOwnWrites) {
+IndexIterator::IndexIterator(LogicalCollection* collection,
+                             transaction::Methods* trx, ReadOwnWrites readOwnWrites)
+    : _collection(collection), _trx(trx), _hasMore(true), _readOwnWrites(readOwnWrites) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
 }
-  
+
 void IndexIterator::reset() {
   _hasMore = true;
   resetImpl();
@@ -46,8 +44,7 @@ void IndexIterator::reset() {
 
 /// @brief Calls cb for the next batchSize many elements
 ///        NOTE: This will throw on OUT_OF_MEMORY
-bool IndexIterator::next(LocalDocumentIdCallback const& callback,
-                         uint64_t batchSize) {
+bool IndexIterator::next(LocalDocumentIdCallback const& callback, uint64_t batchSize) {
   if (_hasMore) {
     TRI_ASSERT(batchSize != UINT64_MAX);
 
@@ -57,8 +54,7 @@ bool IndexIterator::next(LocalDocumentIdCallback const& callback,
   return _hasMore;
 }
 
-bool IndexIterator::nextDocument(DocumentCallback const& callback,
-                                 uint64_t batchSize) {
+bool IndexIterator::nextDocument(DocumentCallback const& callback, uint64_t batchSize) {
   if (_hasMore) {
     TRI_ASSERT(batchSize != UINT64_MAX);
 
@@ -74,8 +70,7 @@ bool IndexIterator::nextDocument(DocumentCallback const& callback,
 ///        who support it.
 //////////////////////////////////////////////////////////////////////////////
 
-bool IndexIterator::nextExtra(ExtraCallback const& callback,
-                              uint64_t batchSize) {
+bool IndexIterator::nextExtra(ExtraCallback const& callback, uint64_t batchSize) {
   TRI_ASSERT(hasExtra());
 
   if (_hasMore) {
@@ -87,8 +82,7 @@ bool IndexIterator::nextExtra(ExtraCallback const& callback,
   return _hasMore;
 }
 
-bool IndexIterator::nextCovering(DocumentCallback const& callback,
-                                 uint64_t batchSize) {
+bool IndexIterator::nextCovering(DocumentCallback const& callback, uint64_t batchSize) {
   TRI_ASSERT(hasCovering());
 
   if (_hasMore) {
@@ -144,17 +138,20 @@ void IndexIterator::skipAll(uint64_t& skipped) {
 /// @brief default implementation for rearm
 /// specialized index iterators can implement this method with some
 /// sensible behavior
-bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*,
-                              arangodb::aql::Variable const*,
+bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
                               IndexIteratorOptions const&) {
   TRI_ASSERT(canRearm());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested rearming of an index iterator that does not support it");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "requested rearming of an index iterator that does not support it");
 }
 
 /// @brief default implementation for nextImpl
 bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
   TRI_ASSERT(hasExtra());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested next values from an index iterator that does not support it");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "requested next values from an index iterator that does not support it");
 }
 
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
@@ -168,7 +165,9 @@ bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
 /// @brief default implementation for nextExtra
 bool IndexIterator::nextExtraImpl(ExtraCallback const&, size_t /*limit*/) {
   TRI_ASSERT(hasExtra());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested next extra values from an index iterator that does not support it");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "requested next extra values from an index "
+                                 "iterator that does not support it");
 }
 
 /// @brief default implementation for nextCovering
@@ -176,16 +175,20 @@ bool IndexIterator::nextExtraImpl(ExtraCallback const&, size_t /*limit*/) {
 /// sensible behavior
 bool IndexIterator::nextCoveringImpl(DocumentCallback const&, size_t /*limit*/) {
   TRI_ASSERT(hasCovering());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested next covering values from an index iterator that does not support it");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "requested next covering values from an index "
+                                 "iterator that does not support it");
 }
 
 /// @brief default implementation for skip
 void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
-  nextImpl([&skipped](LocalDocumentId const&) { 
-    ++skipped; 
-    return true; 
-  }, count);
+  nextImpl(
+      [&skipped](LocalDocumentId const&) {
+        ++skipped;
+        return true;
+      },
+      count);
 }
 
 /// @brief Get the next elements
@@ -221,7 +224,8 @@ bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback, size_
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback, size_t limit) {
-  auto cb = [&limit, &callback](LocalDocumentId const& token, arangodb::velocypack::Slice slice) {
+  auto cb = [&limit, &callback](LocalDocumentId const& token,
+                                arangodb::velocypack::Slice slice) {
     if (callback(token, slice)) {
       --limit;
       return true;
@@ -245,7 +249,9 @@ bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback, size
 }
 
 bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback, size_t limit) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested extra values from an index iterator that does not support it");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "requested extra values from an index iterator that does not support it");
 }
 
 /// @brief Get the next elements

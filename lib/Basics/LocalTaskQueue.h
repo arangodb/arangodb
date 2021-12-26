@@ -181,4 +181,3 @@ class LocalTaskQueue {
 
 }  // namespace basics
 }  // namespace arangodb
-

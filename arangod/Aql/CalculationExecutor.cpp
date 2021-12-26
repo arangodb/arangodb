@@ -51,8 +51,7 @@ CalculationExecutorInfos::CalculationExecutorInfos(
 template <CalculationType calculationType>
 CalculationExecutor<calculationType>::CalculationExecutor(Fetcher& fetcher,
                                                           CalculationExecutorInfos& infos)
-    :
-      _trx(infos.getQuery().newTrxContext()),
+    : _trx(infos.getQuery().newTrxContext()),
       _infos(infos),
       _fetcher(fetcher),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
@@ -66,7 +65,9 @@ RegisterId CalculationExecutorInfos::getOutputRegisterId() const noexcept {
   return _outputRegisterId;
 }
 
-QueryContext& CalculationExecutorInfos::getQuery() const noexcept { return _query; }
+QueryContext& CalculationExecutorInfos::getQuery() const noexcept {
+  return _query;
+}
 
 Expression& CalculationExecutorInfos::getExpression() const noexcept {
   return _expression;
@@ -89,7 +90,8 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(state, input) =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
 
     doEvaluation(input, output);
@@ -163,8 +165,8 @@ template <>
 void CalculationExecutor<CalculationType::Condition>::doEvaluation(InputAqlItemRow& input,
                                                                    OutputAqlItemRow& output) {
   // execute the expression
-  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
-                                _infos.getVarToRegs());
+  ExecutorExpressionContext ctx(_trx, _infos.getQuery(), _aqlFunctionsInternalCache,
+                                input, _infos.getVarToRegs());
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);

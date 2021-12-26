@@ -44,8 +44,8 @@ namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc, std::chrono::seconds offset) {
   std::lock_guard<std::mutex> guard(mutex);
-  workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
-    arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
+  workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(arangodb::RequestLane::INTERNAL_LOW,
+                                                                 offset, gcfunc);
 }
 
 constexpr double CongestionRatio = 0.5;
@@ -59,18 +59,26 @@ using namespace arangodb::options;
 namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
-    : NetworkFeature(server, network::ConnectionPool::Config{server.getFeature<MetricsFeature>()}) {
-  this->_numIOThreads = 2; // override default
+    : NetworkFeature(server, network::ConnectionPool::Config{
+                                 server.getFeature<MetricsFeature>()}) {
+  this->_numIOThreads = 2;  // override default
 }
 
 struct NetworkFeatureScale {
-  static fixed_scale_t<double> scale() { return { 0.0, 100.0, {1.0, 5.0, 15.0, 50.0} }; }
+  static fixed_scale_t<double> scale() {
+    return {0.0, 100.0, {1.0, 5.0, 15.0, 50.0}};
+  }
 };
 
-DECLARE_COUNTER(arangodb_network_forwarded_requests_total, "Number of requests forwarded to another coordinator");
-DECLARE_COUNTER(arangodb_network_request_timeouts_total, "Number of internal requests that have timed out");
-DECLARE_HISTOGRAM(arangodb_network_request_duration_as_percentage_of_timeout, NetworkFeatureScale, "Internal request round-trip time as a percentage of timeout [%]");
-DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t, "Number of outgoing internal requests in flight");
+DECLARE_COUNTER(arangodb_network_forwarded_requests_total,
+                "Number of requests forwarded to another coordinator");
+DECLARE_COUNTER(arangodb_network_request_timeouts_total,
+                "Number of internal requests that have timed out");
+DECLARE_HISTOGRAM(
+    arangodb_network_request_duration_as_percentage_of_timeout, NetworkFeatureScale,
+    "Internal request round-trip time as a percentage of timeout [%]");
+DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
+              "Number of outgoing internal requests in flight");
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
@@ -81,15 +89,15 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts),
       _prepared(false),
-      _forwardedRequests(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_forwarded_requests_total{})),
+      _forwardedRequests(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_network_forwarded_requests_total{})),
       _maxInFlight(::MaxAllowedInFlight),
-      _requestsInFlight(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_requests_in_flight{})),
-      _requestTimeouts(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_timeouts_total{})),
-      _requestDurations(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_duration_as_percentage_of_timeout{})) {
+      _requestsInFlight(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_network_requests_in_flight{})),
+      _requestTimeouts(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_network_request_timeouts_total{})),
+      _requestDurations(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_network_request_duration_as_percentage_of_timeout{})) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -100,30 +108,41 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
 
-  options->addOption("--network.io-threads", "number of network IO threads for cluster-internal communication",
-                     new UInt32Parameter(&_numIOThreads))
-                     .setIntroducedIn(30600);
-  options->addOption("--network.max-open-connections",
-                     "max open TCP connections for cluster-internal communication per endpoint",
-                     new UInt64Parameter(&_maxOpenConnections))
-                     .setIntroducedIn(30600);
-  options->addOption("--network.idle-connection-ttl",
-                     "default time-to-live of idle connections for cluster-internal communication (in milliseconds)",
-                     new UInt64Parameter(&_idleTtlMilli))
-                     .setIntroducedIn(30600);
-  options->addOption("--network.verify-hosts", "verify hosts when using TLS in cluster-internal communication",
-                     new BooleanParameter(&_verifyHosts))
-                     .setIntroducedIn(30600);
+  options
+      ->addOption(
+          "--network.io-threads",
+          "number of network IO threads for cluster-internal communication",
+          new UInt32Parameter(&_numIOThreads))
+      .setIntroducedIn(30600);
+  options
+      ->addOption("--network.max-open-connections",
+                  "max open TCP connections for cluster-internal communication "
+                  "per endpoint",
+                  new UInt64Parameter(&_maxOpenConnections))
+      .setIntroducedIn(30600);
+  options
+      ->addOption("--network.idle-connection-ttl",
+                  "default time-to-live of idle connections for "
+                  "cluster-internal communication (in milliseconds)",
+                  new UInt64Parameter(&_idleTtlMilli))
+      .setIntroducedIn(30600);
+  options
+      ->addOption(
+          "--network.verify-hosts",
+          "verify hosts when using TLS in cluster-internal communication",
+          new BooleanParameter(&_verifyHosts))
+      .setIntroducedIn(30600);
 
-  std::unordered_set<std::string> protos = {
-      "", "http", "http2", "h2", "vst"};
+  std::unordered_set<std::string> protos = {"", "http", "http2", "h2", "vst"};
 
   // starting with 3.9, we will hard-code the protocol for cluster-internal communication
-  options->addOption("--network.protocol", "network protocol to use for cluster-internal communication",
-                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
-                     options::makeDefaultFlags(options::Flags::Hidden))
-                     .setIntroducedIn(30700)
-                     .setDeprecatedIn(30900);
+  options
+      ->addOption("--network.protocol",
+                  "network protocol to use for cluster-internal communication",
+                  new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
+                  options::makeDefaultFlags(options::Flags::Hidden))
+      .setIntroducedIn(30700)
+      .setDeprecatedIn(30900);
 
   options
       ->addOption("--network.max-requests-in-flight",
@@ -159,7 +178,7 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
 void NetworkFeature::prepare() {
   ClusterInfo* ci = nullptr;
   if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
-     ci = &server().getFeature<ClusterFeature>().clusterInfo();
+    ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
 
   network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
@@ -172,8 +191,8 @@ void NetworkFeature::prepare() {
 
   // using an internal network protocol other than HTTP/1 is
   // not supported since 3.9. the protocol is always hard-coded
-  // to HTTP/1 from now on. 
-  // note: we plan to upgrade the internal protocol to HTTP/2 at 
+  // to HTTP/1 from now on.
+  // note: we plan to upgrade the internal protocol to HTTP/2 at
   // some point in the future
   config.protocol = fuerte::ProtocolType::Http;
   if (_protocol == "http" || _protocol == "h1") {
@@ -187,37 +206,37 @@ void NetworkFeature::prepare() {
   if (config.protocol != fuerte::ProtocolType::Http) {
     LOG_TOPIC("6d221", WARN, Logger::CONFIG)
         << "using `--network.protocol` is deprecated. "
-        << "the network protocol for cluster-internal requests is hard-coded to HTTP/1 in this version";
+        << "the network protocol for cluster-internal requests is hard-coded "
+           "to HTTP/1 in this version";
     config.protocol = fuerte::ProtocolType::Http;
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_relaxed);
 
-  _gcfunc =
-    [this, ci](bool canceled) {
-      if (canceled) {
-        return;
-      }
+  _gcfunc = [this, ci](bool canceled) {
+    if (canceled) {
+      return;
+    }
 
-      _pool->pruneConnections();
+    _pool->pruneConnections();
 
-      if (ci != nullptr) {
-        auto failed = ci->getFailedServers();
-        for (ServerID const& srvId : failed) {
-          std::string endpoint = ci->getServerEndpoint(srvId);
-          size_t n = _pool->cancelConnections(endpoint);
-          LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
-            << "canceling " << n << " connection(s) to failed server '"
-            << srvId << "' on endpoint '" << endpoint << "'";
-        }
+    if (ci != nullptr) {
+      auto failed = ci->getFailedServers();
+      for (ServerID const& srvId : failed) {
+        std::string endpoint = ci->getServerEndpoint(srvId);
+        size_t n = _pool->cancelConnections(endpoint);
+        LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
+            << "canceling " << n << " connection(s) to failed server '" << srvId
+            << "' on endpoint '" << endpoint << "'";
       }
+    }
 
-      if (!server().isStopping() && !canceled) {
-        std::chrono::seconds off(12);
-        ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
-      }
-    };
+    if (!server().isStopping() && !canceled) {
+      std::chrono::seconds off(12);
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
+    }
+  };
 
   _prepared = true;
 }
@@ -229,7 +248,6 @@ void NetworkFeature::start() {
     ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
   }
 }
-
 
 void NetworkFeature::beginShutdown() {
   {
@@ -269,13 +287,9 @@ void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
 }
 #endif
 
-bool NetworkFeature::prepared() const {
-  return _prepared;
-}
+bool NetworkFeature::prepared() const { return _prepared; }
 
-void NetworkFeature::trackForwardedRequest() {
-  ++_forwardedRequests;
-}
+void NetworkFeature::trackForwardedRequest() { ++_forwardedRequests; }
 
 std::size_t NetworkFeature::requestsInFlight() const {
   return _requestsInFlight.load();
@@ -331,7 +345,7 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::
     std::chrono::milliseconds timeout = req->timeout();
     TRI_ASSERT(timeout.count() > 0);
     if (timeout.count() > 0) {
-      // only go in here if we are sure to not divide by zero 
+      // only go in here if we are sure to not divide by zero
       double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
                                          static_cast<double>(timeout.count()),
                                      0.0, 100.0);
@@ -342,8 +356,8 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::
       // so instead log a warning and interpret this as a request that took
       // 100% of the timeout duration.
       _requestDurations.count(100.0);
-      LOG_TOPIC("1688c", WARN, Logger::FIXME) 
-          << "encountered invalid 0s timeout for internal request to path " 
+      LOG_TOPIC("1688c", WARN, Logger::FIXME)
+          << "encountered invalid 0s timeout for internal request to path "
           << req->header.path;
     }
   }

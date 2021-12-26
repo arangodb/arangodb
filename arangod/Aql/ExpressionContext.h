@@ -37,7 +37,7 @@ class Methods;
 namespace velocypack {
 struct Options;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 struct AqlValue;

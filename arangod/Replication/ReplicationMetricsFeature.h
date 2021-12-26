@@ -40,7 +40,7 @@ class ReplicationMetricsFeature final : public application_features::Application
   struct InitialSyncStats {
     explicit InitialSyncStats(ReplicationMetricsFeature& feature, bool autoPublish) noexcept
         : feature(feature), autoPublish(autoPublish) {}
-    
+
     // will update the system-wide statistics with the current values
     ~InitialSyncStats() noexcept;
 
@@ -48,7 +48,7 @@ class ReplicationMetricsFeature final : public application_features::Application
 
     /// @brief updates the system-wide metrics
     void publish();
-    
+
     /// @brief resets the local statistics
     void reset() noexcept;
 
@@ -95,18 +95,18 @@ class ReplicationMetricsFeature final : public application_features::Application
   struct TailingSyncStats {
     explicit TailingSyncStats(ReplicationMetricsFeature& feature, bool autoPublish) noexcept
         : feature(feature), autoPublish(autoPublish) {}
-    
+
     // will update the system-wide statistics with the current values
     ~TailingSyncStats() noexcept;
 
     ReplicationMetricsFeature& feature;
-    
+
     /// @brief updates the system-wide metrics
     void publish();
-    
+
     /// @brief resets the local statistics
     void reset() noexcept;
-    
+
     TailingSyncStats& operator+=(TailingSyncStats const& other) noexcept;
 
     // total number of requests to /_api/wal/tail
@@ -130,7 +130,7 @@ class ReplicationMetricsFeature final : public application_features::Application
 
  private:
   // dump statistics
-  
+
   // total number of requests to /_api/replication/dump
   Counter& _numDumpRequests;
   // total number of bytes received for dump requests
@@ -143,7 +143,7 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _waitedForDumpApply;
 
   // initial sync statistics
-  
+
   // total number of requests to /_api/replication/keys?type=keys
   Counter& _numSyncKeysRequests;
   // total number of requests to /_api/replication/keys?type=docs
@@ -165,9 +165,9 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _waitedForSyncDocs;
   Counter& _waitedForSyncInsertions;
   Counter& _waitedForSyncRemovals;
-  
+
   // tailing statistics
-  
+
   // total number of requests to tailing API
   Counter& _numTailingRequests;
   // required follow tick value ... is not present on leader ...
@@ -195,5 +195,4 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _syncOpsTotal;
 };
 
-} // namespace arangodb
-
+}  // namespace arangodb

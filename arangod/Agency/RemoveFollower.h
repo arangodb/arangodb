@@ -52,4 +52,3 @@ struct RemoveFollower : public Job {
 
 }  // namespace consensus
 }  // namespace arangodb
-

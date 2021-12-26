@@ -36,8 +36,7 @@ struct Section {
   // sections are default copy-constructible and default movable
 
   Section(std::string const& name, std::string const& description,
-          std::string const& link, std::string const& alias, 
-          bool hidden, bool obsolete)
+          std::string const& link, std::string const& alias, bool hidden, bool obsolete)
       : name(name),
         description(description),
         link(link),
@@ -48,7 +47,7 @@ struct Section {
 
   // get display name for the section
   std::string displayName() const { return alias.empty() ? name : alias; }
-  
+
   // whether or not the section has (displayable) options
   bool hasOptions() const;
 
@@ -70,7 +69,7 @@ struct Section {
 
   // program options of the section
   std::map<std::string, Option> options;
-  
+
   // sub-headlines
   std::map<std::string, std::string> headlines;
 };
@@ -79,7 +78,7 @@ struct Section {
 /// must have the same storage layout as struct Section
 struct EnterpriseSection : public Section {
   EnterpriseSection(std::string const& name, std::string const& description,
-                    std::string const& link, std::string const& alias, 
+                    std::string const& link, std::string const& alias,
                     bool hidden, bool obsolete)
       : Section(name, description, link, alias, hidden, obsolete) {
     enterpriseOnly = true;
@@ -88,4 +87,3 @@ struct EnterpriseSection : public Section {
 
 }  // namespace options
 }  // namespace arangodb
-

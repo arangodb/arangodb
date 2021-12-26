@@ -82,8 +82,9 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
                  std::string const& refName = "d") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
-  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                             arangodb::aql::QueryString(queryString), bindVars);
+  auto query =
+      arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                   arangodb::aql::QueryString(queryString), bindVars);
 
   auto const parseResult = query->parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -124,7 +125,8 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
 
   // optimization time check
   {
-    arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
+                                                nullptr, nullptr, ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
@@ -143,13 +145,14 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
 
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        {}, {}, {}, arangodb::transaction::Options());
-    
+
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
       mockCtx->setTrx(&trx);
     }
 
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
+    arangodb::iresearch::QueryContext const ctx{
+        &trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
@@ -197,8 +200,9 @@ void assertOrderParseFail(arangodb::application_features::ApplicationServer& ser
                           std::string const& queryString, ErrorCode parseCode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
-  auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
-                             nullptr);
+  auto query =
+      arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                   arangodb::aql::QueryString(queryString), nullptr);
 
   auto const parseResult = query->parse();
   ASSERT_EQ(parseCode, parseResult.result.errorNumber());
@@ -220,8 +224,10 @@ class IResearchOrderTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   IResearchOrderTest()
-    : server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", ""), nullptr),
-      engine(server) {
+      : server(std::make_shared<arangodb::options::ProgramOptions>("", "", "",
+                                                                   ""),
+               nullptr),
+        engine(server) {
     arangodb::tests::init();
 
     // setup required application features
@@ -234,11 +240,14 @@ class IResearchOrderTest
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for IResearchFeature
     features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
     {
-      auto& feature = features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true).first;
+      auto& feature =
+          features
+              .emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true)
+              .first;
       feature.validateOptions(server.options());
       feature.collectOptions(server.options());
     }
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false); // required for calculationVocbase
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  // required for calculationVocbase
 
     for (auto& f : features) {
       f.first.prepare();
@@ -254,11 +263,11 @@ class IResearchOrderTest
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
-    arangodb::aql::Function invalid("INVALID", "|.",
-                                    arangodb::aql::Function::makeFlags(
-                                        arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
-                                        arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
-                                    nullptr);
+    arangodb::aql::Function invalid(
+        "INVALID", "|.",
+        arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                           arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        nullptr);
     functions.add(invalid);
   }
 
@@ -307,8 +316,8 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) RETURN d";
     irs::order expected;
-    auto scorer =
-        irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
+                                    irs::string_ref::NIL);
 
     expected.add(false, std::move(scorer));  // SortCondition is by default ascending
     assertOrderSuccess(server, query, expected);
@@ -319,8 +328,8 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT tfidf(d) ASC RETURN d";
     irs::order expected;
-    auto scorer =
-        irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
+                                    irs::string_ref::NIL);
 
     expected.add(false, std::move(scorer));
     assertOrderSuccess(server, query, expected);
@@ -331,8 +340,8 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT tfidf(d) DESC RETURN d";
     irs::order expected;
-    auto scorer =
-        irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
+                                    irs::string_ref::NIL);
 
     expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
@@ -343,7 +352,8 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT tfidf(d, true) DESC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
+                                    "[ true ]");
 
     expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
@@ -354,11 +364,12 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     std::string query =
         "LET withNorms=true FOR d IN collection FILTER '1' SORT tfidf(d, "
         "withNorms) DESC RETURN d";
-    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
+                                    "[ true ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
-    
+
     ExpressionContextMock ctx;
     ctx.vars.emplace("withNorms",
                      arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
@@ -371,14 +382,14 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     std::string query =
         "LET x=5 FOR d IN collection FILTER '1' SORT tfidf(d, 1+x > 3) DESC "
         "RETURN d";
-    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
+                                    "[ true ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
-    
+
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
-
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
@@ -436,7 +447,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT bm25(d) RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    irs::string_ref::NIL);
 
     expected.add(false, std::move(scorer));  // SortCondition is by default ascending
     assertOrderSuccess(server, query, expected);
@@ -447,7 +459,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d) ASC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    irs::string_ref::NIL);
 
     expected.add(false, std::move(scorer));
     assertOrderSuccess(server, query, expected);
@@ -458,7 +471,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d) DESC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    irs::string_ref::NIL);
 
     expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
@@ -469,7 +483,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d, 0.99) DESC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.99 ]");
 
     expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
@@ -483,7 +498,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET k=0.99 FOR d IN collection FILTER '1' SORT bm25(d, k) DESC RETURN "
         "d";
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.99 ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
@@ -499,7 +515,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET x=0.97 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02) DESC "
         "RETURN d";
-    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.99 ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
@@ -522,8 +539,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2) DESC RETURN d";
-    auto scorer =
-        irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.99, 1.2 ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
@@ -540,8 +557,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET k=0.97 LET b=1.2 FOR d IN collection FILTER '1' SORT bm25(d, k, "
         "b) DESC RETURN d";
-    auto scorer =
-        irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.97, 1.2 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.97, 1.2 ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
@@ -558,8 +575,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, "
         "x+0.02, 1+y) DESC RETURN d";
-    auto scorer =
-        irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.99, 1.2 ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
@@ -583,8 +600,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2) DESC RETURN d";
     irs::order expected;
-    auto scorer =
-        irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.99, 1.2 ]");
 
     expected.add(true, std::move(scorer));
     assertOrderSuccess(server, query, expected);
@@ -601,8 +618,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET k=0.97 LET b=1.2 FOR d IN collection FILTER '1' SORT bm25(d, k, "
         "b) DESC RETURN d";
-    auto scorer =
-        irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.97, 1.2 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.97, 1.2 ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
@@ -619,8 +636,8 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, "
         "x+0.02, 1+y) DESC RETURN d";
-    auto scorer =
-        irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.1 ]");
+    auto scorer = irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
+                                    "[ 0.99, 1.1 ]");
     irs::order expected;
 
     expected.add(true, std::move(scorer));
@@ -949,8 +966,8 @@ TEST_F(IResearchOrderTest, test_order) {
         "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC, tfidf(d) "
         "RETURN d";
     irs::order expected;
-    auto scorer =
-        irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
+                                    irs::string_ref::NIL);
 
     expected.add<dummy_scorer>(true, irs::string_ref::NIL);
     expected.add(false, std::move(scorer));

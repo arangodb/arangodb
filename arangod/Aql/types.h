@@ -40,17 +40,17 @@
 
 namespace boost {
 namespace container {
-template<class T>
+template <class T>
 class new_allocator;
 template <class Key, class Compare, class AllocatorOrContainer>
 class flat_set;
-}
+}  // namespace container
 }  // namespace boost
 
 namespace arangodb {
 
 namespace containers {
-template <class Key, class Compare = std::less<Key>, class AllocatorOrContainer = boost::container::new_allocator<Key> >
+template <class Key, class Compare = std::less<Key>, class AllocatorOrContainer = boost::container::new_allocator<Key>>
 using flat_set = boost::container::flat_set<Key, Compare, AllocatorOrContainer>;
 }
 
@@ -59,7 +59,6 @@ struct Collection;
 
 /// @brief type for variable ids
 typedef uint32_t VariableId;
-
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
@@ -107,10 +106,6 @@ class BaseEngine;
 using GraphEngineList = std::vector<std::unique_ptr<BaseEngine>>;
 }  // namespace traverser
 
-enum class ExplainRegisterPlan {
-  No = 0,
-  Yes
-};
+enum class ExplainRegisterPlan { No = 0, Yes };
 
 }  // namespace arangodb
-

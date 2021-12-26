@@ -24,8 +24,8 @@
 
 #include <string>
 #include <unordered_map>
-#include <vector>
 #include <variant>
+#include <vector>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
@@ -42,7 +42,6 @@ class Slice;
 namespace arangodb::replication2::replicated_log {
 
 struct FollowerState {
-
   struct UpToDate {};
   struct ErrorBackoff {
     std::chrono::duration<double, std::milli> durationMS;
@@ -63,9 +62,11 @@ struct FollowerState {
   void toVelocyPack(velocypack::Builder&) const;
 
   FollowerState() = default;
+
  private:
-  template<typename... Args>
-  explicit FollowerState(std::in_place_t, Args&&... args) : value(std::forward<Args>(args)...) {}
+  template <typename... Args>
+  explicit FollowerState(std::in_place_t, Args&&... args)
+      : value(std::forward<Args>(args)...) {}
 };
 
 auto to_string(FollowerState const&) -> std::string_view;
@@ -97,7 +98,8 @@ struct LogStatistics {
 
 struct AbstractFollower {
   virtual ~AbstractFollower() = default;
-  [[nodiscard]] virtual auto getParticipantId() const noexcept -> ParticipantId const& = 0;
+  [[nodiscard]] virtual auto getParticipantId() const noexcept
+      -> ParticipantId const& = 0;
   [[nodiscard]] virtual auto appendEntries(AppendEntriesRequest)
       -> futures::Future<AppendEntriesResult> = 0;
 };

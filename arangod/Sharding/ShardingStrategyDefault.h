@@ -153,4 +153,3 @@ class ShardingStrategyHash final : public ShardingStrategyHashBase {
 };
 
 }  // namespace arangodb
-

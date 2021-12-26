@@ -102,9 +102,10 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
   }
 #ifdef USE_ENTERPRISE
   builder.add("isSatellite", VPackValue(isUsedAsSatellite()));
-  builder.add("isSatelliteOf", isUsedAsSatellite()
-                                   ? VPackValue(getRawSatelliteOf().value().id(), VPackValueType::UInt)
-                                   : VPackValue(VPackValueType::Null));
+  builder.add("isSatelliteOf",
+              isUsedAsSatellite()
+                  ? VPackValue(getRawSatelliteOf().value().id(), VPackValueType::UInt)
+                  : VPackValue(VPackValueType::Null));
 #endif
 }
 
@@ -112,13 +113,13 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypac
   auto col = collection()->getCollection();
   builder.add(VPackValue("indexes"));
   col->getIndexesVPack(builder, [](arangodb::Index const* idx, uint8_t& flags) {
-                         if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-                           flags = Index::makeFlags(Index::Serialize::Basics);
-                           return true;
-                         }
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      flags = Index::makeFlags(Index::Serialize::Basics);
+      return true;
+    }
 
-                         return false;
-                       });
+    return false;
+  });
 }
 
 bool CollectionAccessingNode::isUsedAsSatellite() const {
@@ -136,7 +137,8 @@ auto CollectionAccessingNode::getSatelliteOf(
   return _collectionAccess.getSatelliteOf(nodesById);
 }
 
-auto CollectionAccessingNode::getRawSatelliteOf() const -> std::optional<aql::ExecutionNodeId> {
+auto CollectionAccessingNode::getRawSatelliteOf() const
+    -> std::optional<aql::ExecutionNodeId> {
   return _collectionAccess.getRawSatelliteOf();
 }
 

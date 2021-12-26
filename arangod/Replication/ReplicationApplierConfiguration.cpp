@@ -144,7 +144,7 @@ void ReplicationApplierConfiguration::reset() {
   _verbose = false;
   _restrictType = RestrictType::None;
   _restrictCollections.clear();
-    
+
   if (_server.hasFeature<ReplicationFeature>()) {
     auto& feature = _server.getFeature<ReplicationFeature>();
     _requestTimeout = feature.requestTimeout();
@@ -268,7 +268,8 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     if (existing._server.hasFeature<ReplicationFeature>()) {
       auto& feature = existing._server.getFeature<ReplicationFeature>();
-      configuration._requestTimeout = feature.checkRequestTimeout(value.getNumber<double>());
+      configuration._requestTimeout =
+          feature.checkRequestTimeout(value.getNumber<double>());
     }
   }
 
@@ -276,7 +277,8 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     if (existing._server.hasFeature<ReplicationFeature>()) {
       auto& feature = existing._server.getFeature<ReplicationFeature>();
-      configuration._connectTimeout = feature.checkConnectTimeout(value.getNumber<double>());
+      configuration._connectTimeout =
+          feature.checkConnectTimeout(value.getNumber<double>());
     }
   }
 
@@ -324,7 +326,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isBoolean()) {
     configuration._includeSystem = value.getBoolean();
   }
-  
+
   value = slice.get("includeFoxxQueues");
   if (value.isBoolean()) {
     configuration._includeFoxxQueues = value.getBoolean();
@@ -467,6 +469,8 @@ std::string ReplicationApplierConfiguration::restrictTypeToString(
     case RestrictType::Exclude:
       return "exclude";
     case RestrictType::None:
-    default: { return ""; }
+    default: {
+      return "";
+    }
   }
 }

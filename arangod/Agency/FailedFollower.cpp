@@ -59,8 +59,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_created = _snapshot.hasAsString(path + "timeCreated");
 
-  if (tmp_database && tmp_collection && tmp_from &&
-      tmp_shard && tmp_creator && tmp_created) {
+  if (tmp_database && tmp_collection && tmp_from && tmp_shard && tmp_creator && tmp_created) {
     _database = tmp_database.value();
     _collection = tmp_collection.value();
     _from = tmp_from.value();
@@ -111,14 +110,13 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   if (envelope == nullptr) {
-    _jb->close(); // object
-    _jb->close(); // array
+    _jb->close();  // object
+    _jb->close();  // array
     write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
 
   return true;
-
 }
 
 bool FailedFollower::start(bool& aborts) {
@@ -145,7 +143,7 @@ bool FailedFollower::start(bool& aborts) {
   auto plannedPair = _snapshot.hasAsSlice(planPath);
   if (!plannedPair) {
     finish("", _shard, true,
-        "Plan entry for collection " + _collection + " gone");
+           "Plan entry for collection " + _collection + " gone");
     return false;
   }
   Slice const& planned = plannedPair.value();
@@ -162,15 +160,15 @@ bool FailedFollower::start(bool& aborts) {
     }
   }
   if (!found) {
-    finish("", _shard, true, "Server no longer found in Plan for collection " +
-        _collection + ", our job is done.");
+    finish("", _shard, true,
+           "Server no longer found in Plan for collection " + _collection +
+               ", our job is done.");
     return false;
   }
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
   auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
-  auto failoverCands = Job::findAllFailoverCandidates(
-      _snapshot, _database, shardsLikeMe);
+  auto failoverCands = Job::findAllFailoverCandidates(_snapshot, _database, shardsLikeMe);
   std::vector<std::string> excludes;
   for (const auto& s : VPackArrayIterator(planned)) {
     if (s.isString()) {
@@ -208,8 +206,9 @@ bool FailedFollower::start(bool& aborts) {
       if (jobIdNode) {
         jobIdNode->get().toBuilder(todo);
       } else {
-        LOG_TOPIC("4571c", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("4571c", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -276,18 +275,17 @@ bool FailedFollower::start(bool& aborts) {
         addPreconditionUnchanged(job, planPath, planned);
         // Check that failoverCandidates are still as we inspected them:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-            [this, &job](Slice plan, Slice current,
-                             std::string& planPath,
-                             std::string& curPath) {
-              // take off "servers" from curPath and add
-              // "failoverCandidates":
-              std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
-              foCandsPath += StaticStrings::FailoverCandidates;
-              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
-              if (foCands) {
-                addPreconditionUnchanged(job, foCandsPath, foCands.value());
-              }
-            });
+                       [this, &job](Slice plan, Slice current,
+                                    std::string& planPath, std::string& curPath) {
+                         // take off "servers" from curPath and add
+                         // "failoverCandidates":
+                         std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+                         foCandsPath += StaticStrings::FailoverCandidates;
+                         auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+                         if (foCands) {
+                           addPreconditionUnchanged(job, foCandsPath, foCands.value());
+                         }
+                       });
         // toServer not blocked
         addPreconditionServerNotBlocked(job, _to);
         // shard not blocked
@@ -306,7 +304,8 @@ bool FailedFollower::start(bool& aborts) {
       return false;
     } else if (jobId) {
       aborts = true;
-      JobContext(PENDING, *jobId, _snapshot, _agent).abort("failed follower requests abort");
+      JobContext(PENDING, *jobId, _snapshot, _agent)
+          .abort("failed follower requests abort");
       return false;
     }
   }
@@ -316,7 +315,8 @@ bool FailedFollower::start(bool& aborts) {
 
   auto res = generalTransaction(_agent, job);
   if (!res.accepted) {  // lost leadership
-    LOG_TOPIC("f5b87", INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    LOG_TOPIC("f5b87", INFO, Logger::SUPERVISION)
+        << "Leadership lost! Job " << _jobId << " handed off.";
     return false;
   }
 

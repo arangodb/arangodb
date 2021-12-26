@@ -48,7 +48,7 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle*
 rocksdb::Status RocksDBBatchedWithIndexMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
                                                              rocksdb::Slice const& key,
                                                              rocksdb::PinnableSlice* val) {
-  return this->Get(cf, key, val, ReadOwnWrites::yes); // update operations always have to read own writes
+  return this->Get(cf, key, val, ReadOwnWrites::yes);  // update operations always have to read own writes
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle* cf,
@@ -62,7 +62,7 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle*
 rocksdb::Status RocksDBBatchedWithIndexMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
                                                              RocksDBKey const& key,
                                                              rocksdb::Slice const& val) {
-  return RocksDBBatchedWithIndexMethods::Put(cf, key, val, /*assume_tracked*/false);
+  return RocksDBBatchedWithIndexMethods::Put(cf, key, val, /*assume_tracked*/ false);
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Delete(rocksdb::ColumnFamilyHandle* cf,

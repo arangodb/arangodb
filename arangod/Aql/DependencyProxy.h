@@ -100,4 +100,3 @@ class DependencyProxy {
 };
 
 }  // namespace arangodb::aql
-

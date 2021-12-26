@@ -60,7 +60,6 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _options(options),
       _id(tid),
       _registeredTransaction(false) {
-
   // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
@@ -167,21 +166,21 @@ Result TransactionState::addCollection(DataSourceId cid, std::string const& cnam
     // upgrade transaction type if required
     if (AccessMode::isWriteOrExclusive(accessType) &&
         !AccessMode::isWriteOrExclusive(_type)) {
-        // if one collection is written to, the whole transaction becomes a
-        // write-y transaction
+      // if one collection is written to, the whole transaction becomes a
+      // write-y transaction
       if (_status == transaction::Status::CREATED) {
         // this is safe to do before the transaction has started
         _type = std::max(_type, accessType);
       } else if (_status == transaction::Status::RUNNING &&
-                 _options.allowImplicitCollectionsForWrite &&
-                 !isReadOnlyTransaction()) {
+                 _options.allowImplicitCollectionsForWrite && !isReadOnlyTransaction()) {
         // it is also safe to add another write collection to a write
         _type = std::max(_type, accessType);
       } else {
         // everything else is not safe and must be rejected
         res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
                   std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                  ": " + cname + " [" + AccessMode::typeString(accessType) + "]");
+                      ": " + cname + " [" + AccessMode::typeString(accessType) +
+                      "]");
       }
     }
   }

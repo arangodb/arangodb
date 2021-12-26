@@ -35,9 +35,7 @@ using namespace arangodb;
 
 /// @brief create the context
 transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
-    : Context(vocbase),
-      _currentTransaction(nullptr),
-      _embeddable(embeddable) {}
+    : Context(vocbase), _currentTransaction(nullptr), _embeddable(embeddable) {}
 
 transaction::V8Context::~V8Context() noexcept {
   auto v8g = getV8State();
@@ -49,7 +47,8 @@ transaction::V8Context::~V8Context() noexcept {
 /// @brief order a custom type handler for the collection
 VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
-    _customTypeHandler = transaction::Context::createCustomTypeHandler(_vocbase, resolver());
+    _customTypeHandler =
+        transaction::Context::createCustomTypeHandler(_vocbase, resolver());
     _options.customTypeHandler = _customTypeHandler.get();
   }
 
@@ -60,22 +59,22 @@ VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
 }
 
 /// @brief get transaction state, determine commit responsibility
-/*virtual*/ std::shared_ptr<TransactionState> transaction::V8Context::acquireState(transaction::Options const& options,
-                                                                                   bool& responsibleForCommit) {
+/*virtual*/ std::shared_ptr<TransactionState> transaction::V8Context::acquireState(
+    transaction::Options const& options, bool& responsibleForCommit) {
   if (_currentTransaction) {
     responsibleForCommit = false;
     return _currentTransaction;
   }
- 
+
   auto v8g = getV8State();
   TRI_ASSERT(v8g != nullptr);
-  
+
   if (v8g->_transactionContext != nullptr) {
     _currentTransaction = v8g->_transactionContext->_currentTransaction;
   } else if (v8g->_transactionState) {
     _currentTransaction = v8g->_transactionState;
   }
-  
+
   if (!_currentTransaction) {
     _currentTransaction = transaction::Context::createState(options);
     responsibleForCommit = true;
@@ -94,11 +93,10 @@ void transaction::V8Context::enterV8Context() {
   // registerTransaction
   auto v8g = getV8State();
   TRI_ASSERT(v8g != nullptr);
-  
+
   TRI_ASSERT(_currentTransaction != nullptr);
-  TRI_ASSERT(v8g->_transactionContext == nullptr ||
-             v8g->_transactionContext == this);
-  
+  TRI_ASSERT(v8g->_transactionContext == nullptr || v8g->_transactionContext == this);
+
   v8g->_transactionContext = this;
 }
 
@@ -152,9 +150,8 @@ std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(TRI_vocba
 std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
     TRI_vocbase_t& vocbase, bool embeddable) {
   // is V8 enabled and are currently in a V8 scope ?
-  if (vocbase.server().hasFeature<V8DealerFeature>() && 
-      vocbase.server().isEnabled<V8DealerFeature>() && 
-      v8::Isolate::GetCurrent() != nullptr) {
+  if (vocbase.server().hasFeature<V8DealerFeature>() &&
+      vocbase.server().isEnabled<V8DealerFeature>() && v8::Isolate::GetCurrent() != nullptr) {
     return transaction::V8Context::Create(vocbase, embeddable);
   }
 
@@ -166,6 +163,7 @@ std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired
   if (isolate == nullptr) {
     return nullptr;
   }
-  auto v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+  auto v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
   return v8g;
 }

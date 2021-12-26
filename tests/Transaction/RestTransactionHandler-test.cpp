@@ -40,8 +40,8 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
+#include "../IResearch/common.h"
 #include "ManagerSetup.h"
 
 using namespace arangodb;
@@ -66,7 +66,8 @@ class RestTransactionHandlerTest : public ::testing::Test {
   velocypack::Parser parser;
 
   RestTransactionHandlerTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())),
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                testDBInfo(setup.server.server())),
         mgr(transaction::ManagerFeature::manager()),
         requestPtr(std::make_unique<GeneralRequestMock>(vocbase)),
         request(*requestPtr),

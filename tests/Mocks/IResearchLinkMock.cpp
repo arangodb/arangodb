@@ -46,9 +46,8 @@ IResearchLinkMock::IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& c
   _sparse = true;   // always sparse
 }
 
-void IResearchLinkMock::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+void IResearchLinkMock::toVelocyPack(arangodb::velocypack::Builder& builder,
+                                     std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
         TRI_ERROR_BAD_PARAMETER,              // code
@@ -57,8 +56,8 @@ void IResearchLinkMock::toVelocyPack(
             std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
-  auto forPersistence = // definition for persistence
-    arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
+  auto forPersistence =  // definition for persistence
+      arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
 
   builder.openObject();
 

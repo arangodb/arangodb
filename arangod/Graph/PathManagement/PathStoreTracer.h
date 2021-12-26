@@ -73,8 +73,8 @@ class PathStoreTracer {
   auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
       -> void;
 
-  auto visitReversePath(Step const& step, std::function<bool(Step const&)> const& visitor) const
-      -> bool;
+  auto visitReversePath(Step const& step,
+                        std::function<bool(Step const&)> const& visitor) const -> bool;
 
   auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor) -> bool;
 
@@ -88,4 +88,3 @@ class PathStoreTracer {
 
 }  // namespace graph
 }  // namespace arangodb
-

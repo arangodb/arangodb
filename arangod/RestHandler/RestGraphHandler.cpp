@@ -283,7 +283,8 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
 
   if (!result.ok()) {
-    generateTransactionError(collectionName, result, key, maybeRev.value_or(RevisionId::none()));
+    generateTransactionError(collectionName, result, key,
+                             maybeRev.value_or(RevisionId::none()));
     return;
   }
 
@@ -432,9 +433,8 @@ void RestGraphHandler::generateModified(TRI_col_type_e colType,
     objectTypeName = "edge";
   }
 
-  VPackBuilder objectBuilder =
-      velocypack::Collection::remove(resultSlice,
-                              std::unordered_set<std::string>{"old", "new"});
+  VPackBuilder objectBuilder = velocypack::Collection::remove(
+      resultSlice, std::unordered_set<std::string>{"old", "new"});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
   VPackSlice oldSlice = resultSlice.get("old");
@@ -474,9 +474,8 @@ void RestGraphHandler::generateCreated(TRI_col_type_e colType,
     objectTypeName = "edge";
   }
 
-  VPackBuilder objectBuilder =
-      velocypack::Collection::remove(resultSlice,
-                              std::unordered_set<std::string>{StaticStrings::Old, StaticStrings::New});
+  VPackBuilder objectBuilder = velocypack::Collection::remove(
+      resultSlice, std::unordered_set<std::string>{StaticStrings::Old, StaticStrings::New});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
   VPackSlice newSlice = resultSlice.get(StaticStrings::New);
@@ -540,7 +539,8 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
   if (result.fail()) {
-    generateTransactionError(/*collection*/"", result, key, maybeRev.value_or(RevisionId::none()));
+    generateTransactionError(/*collection*/ "", result, key,
+                             maybeRev.value_or(RevisionId::none()));
     return;
   }
 
@@ -584,12 +584,13 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& defin
       gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
 
   if (result.fail()) {
-    generateTransactionError(/*collection*/"", result, key, maybeRev.value_or(RevisionId::none()));
+    generateTransactionError(/*collection*/ "", result, key,
+                             maybeRev.value_or(RevisionId::none()));
     return result.result;
   }
 
-  generateRemoved(true, result.options.waitForSync, result.slice().get(StaticStrings::Old),
-                  *ctx->getVPackOptions());
+  generateRemoved(true, result.options.waitForSync,
+                  result.slice().get(StaticStrings::Old), *ctx->getVPackOptions());
 
   return Result();
 }
@@ -703,7 +704,7 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   }
 
   if (result.fail()) {
-    generateTransactionError(/*collection*/"", result);
+    generateTransactionError(/*collection*/ "", result);
     return result.result;
   }
 
@@ -748,7 +749,7 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
   }
 
   if (result.fail()) {
-    generateTransactionError(/*collection*/"", result);
+    generateTransactionError(/*collection*/ "", result);
     return result.result;
   }
 
@@ -819,7 +820,8 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   if (result.fail()) {
     // simon: do not pass in collection name, otherwise HTTP return code
     //        changes to 404 in for unknown _to/_from collection -> breaks API
-    generateTransactionError(/*cname*/"", result, key, maybeRev.value_or(RevisionId::none()));
+    generateTransactionError(/*cname*/ "", result, key,
+                             maybeRev.value_or(RevisionId::none()));
     return result.result;
   }
 
@@ -904,12 +906,13 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
       gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);
 
   if (result.fail()) {
-    generateTransactionError(collectionName, result, key, maybeRev.value_or(RevisionId::none()));
+    generateTransactionError(collectionName, result, key,
+                             maybeRev.value_or(RevisionId::none()));
     return result.result;
   }
 
-  generateRemoved(true, result.options.waitForSync, result.slice().get(StaticStrings::Old),
-                  *ctx->getVPackOptions());
+  generateRemoved(true, result.options.waitForSync,
+                  result.slice().get(StaticStrings::Old), *ctx->getVPackOptions());
 
   return Result();
 }
@@ -932,7 +935,7 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
   OperationResult result = _gmngr.removeGraph(graph, waitForSync, dropCollections);
 
   if (result.fail()) {
-    generateTransactionError(/*collection*/"", result);
+    generateTransactionError(/*collection*/ "", result);
     return result.result;
   }
 
@@ -954,7 +957,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
     OperationResult result = _gmngr.createGraph(body, waitForSync);
 
     if (result.fail()) {
-      generateTransactionError(/*collection*/"", result);
+      generateTransactionError(/*collection*/ "", result);
       return result.result;
     }
   }
@@ -1022,4 +1025,3 @@ std::optional<RevisionId> RestGraphHandler::handleRevision() const {
   }
   return revision.isSet() ? std::optional{revision} : std::nullopt;
 }
-

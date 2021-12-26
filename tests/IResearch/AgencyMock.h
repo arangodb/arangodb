@@ -36,7 +36,7 @@ namespace arangodb::fuerte {
 inline namespace v1 {
 class ConnectionBuilder;
 }
-}
+}  // namespace arangodb::fuerte
 
 struct AsyncAgencyStorePoolConnection final : public arangodb::fuerte::Connection {
   AsyncAgencyStorePoolConnection(arangodb::AgencyCache& cache, std::string endpoint);
@@ -56,20 +56,19 @@ struct AsyncAgencyStorePoolConnection final : public arangodb::fuerte::Connectio
 };
 
 struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool {
-
-  explicit AsyncAgencyStorePoolMock(
-    arangodb::application_features::ApplicationServer& server, ConnectionPool::Config const& config)
-    : ConnectionPool(config), _server(server), _index(0) {}
+  explicit AsyncAgencyStorePoolMock(arangodb::application_features::ApplicationServer& server,
+                                    ConnectionPool::Config const& config)
+      : ConnectionPool(config), _server(server), _index(0) {}
 
   explicit AsyncAgencyStorePoolMock(arangodb::application_features::ApplicationServer& server)
-    : ConnectionPool(server.getFeature<arangodb::MetricsFeature>()), _server(server), _index(0) {}
+      : ConnectionPool(server.getFeature<arangodb::MetricsFeature>()),
+        _server(server),
+        _index(0) {}
 
-  std::shared_ptr<arangodb::fuerte::Connection> createConnection(
-    arangodb::fuerte::ConnectionBuilder&) override;
+  std::shared_ptr<arangodb::fuerte::Connection> createConnection(arangodb::fuerte::ConnectionBuilder&) override;
 
   arangodb::application_features::ApplicationServer& _server;
   arangodb::consensus::index_t _index;
-
 };
 
 #endif

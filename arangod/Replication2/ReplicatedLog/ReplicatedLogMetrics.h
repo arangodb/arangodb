@@ -22,9 +22,9 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
-#include <chrono>
 
 class Counter;
 template <typename T>
@@ -75,6 +75,7 @@ struct MeasureTimeGuard {
   ~MeasureTimeGuard();
 
   void fire();
+
  private:
   std::chrono::steady_clock::time_point const _start;
   std::shared_ptr<Histogram<log_scale_t<std::uint64_t>>> _histogram;

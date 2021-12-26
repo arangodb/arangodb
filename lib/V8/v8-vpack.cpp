@@ -41,11 +41,10 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 namespace {
 /// @brief maximum array/object nesting depth
 static constexpr int maxRecursion = 80;
-}
+}  // namespace
 
 /// @brief converts a VelocyValueType::String into a V8 object
-static inline v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate,
-                                                      VPackSlice slice) {
+static inline v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate, VPackSlice slice) {
   arangodb::velocypack::ValueLength l;
   char const* val = slice.getString(l);
   if (l == 0) {
@@ -225,7 +224,9 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate, VPackSlice slice,
     }
     case VPackValueType::External: {
       // resolve external
-      return TRI_VPackToV8(isolate, VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal())), options, base);
+      return TRI_VPackToV8(isolate,
+                           VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal())),
+                           options, base);
     }
     case VPackValueType::Custom: {
       if (options == nullptr || options->customTypeHandler == nullptr || base == nullptr) {
@@ -236,7 +237,9 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate, VPackSlice slice,
       return TRI_V8_STD_STRING(isolate, id);
     }
     case VPackValueType::None:
-    default: { return v8::Undefined(isolate); }
+    default: {
+      return v8::Undefined(isolate);
+    }
   }
 }
 
@@ -260,7 +263,8 @@ struct BuilderContext {
 /// @brief adds a VPackValue to either an array or an object
 template <typename T, bool inObject>
 static inline void AddValue(BuilderContext& context,
-                            arangodb::velocypack::StringRef const& attributeName, T const& value) {
+                            arangodb::velocypack::StringRef const& attributeName,
+                            T const& value) {
   if (inObject) {
     context.builder.addUnchecked(attributeName.data(), attributeName.size(), value);
   } else {
@@ -271,7 +275,8 @@ static inline void AddValue(BuilderContext& context,
 /// @brief convert a V8 value to a VPack value
 template <bool inObject>
 static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
-                      arangodb::velocypack::StringRef const& attributeName, bool convertFunctionsToNull) {
+                      arangodb::velocypack::StringRef const& attributeName,
+                      bool convertFunctionsToNull) {
   if (parameter->IsNullOrUndefined() ||
       (convertFunctionsToNull && parameter->IsFunction())) {
     AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
@@ -296,14 +301,15 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     } else {
       double value = parameter->ToNumber(context.context).ToLocalChecked()->Value();
       if (std::isnan(value) || !std::isfinite(value)) {
-        AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
+        AddValue<VPackValue, inObject>(context, attributeName,
+                                       VPackValue(VPackValueType::Null));
       } else {
         AddValue<VPackValue, inObject>(
             context, attributeName,
             VPackValue(parameter->ToNumber(context.context).ToLocalChecked()->Value()));
       }
     }
-    return ;
+    return;
   }
 
   if (parameter->IsString()) {
@@ -324,27 +330,28 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
 
     if (context.level + 1 > ::maxRecursion) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "input value is nested too deep"); 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "input value is nested too deep");
     }
 
     AddValue<VPackValue, inObject>(context, attributeName,
                                    VPackValue(VPackValueType::Array));
-    
+
     ++context.level;
 
     uint32_t const n = array->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> value = array->Get(context.context, i).FromMaybe(v8::Local<v8::Value>());
+      v8::Handle<v8::Value> value =
+          array->Get(context.context, i).FromMaybe(v8::Local<v8::Value>());
       if (value->IsUndefined()) {
         // ignore array values which are undefined
         continue;
       }
 
-      V8ToVPack<false>(context, value, arangodb::velocypack::StringRef(),
-                       convertFunctionsToNull);
+      V8ToVPack<false>(context, value, arangodb::velocypack::StringRef(), convertFunctionsToNull);
     }
-      
+
     --context.level;
 
     if (!context.keepTopLevelOpen || context.level > 0) {
@@ -355,16 +362,20 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
 
   if (parameter->IsObject()) {
     if (parameter->IsBooleanObject()) {
-      AddValue<VPackValue, inObject>(context, attributeName,
-                                     VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)
-                                                ->BooleanValue(context.isolate)));
+      AddValue<VPackValue, inObject>(
+          context, attributeName,
+          VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)->BooleanValue(
+              context.isolate)));
       return;
     }
 
     if (parameter->IsNumberObject()) {
-      double value = v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue(context.context).FromMaybe(0.0);
+      double value = v8::Handle<v8::NumberObject>::Cast(parameter)
+                         ->NumberValue(context.context)
+                         .FromMaybe(0.0);
       if (std::isnan(value) || !std::isfinite(value)) {
-        AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
+        AddValue<VPackValue, inObject>(context, attributeName,
+                                       VPackValue(VPackValueType::Null));
       } else {
         AddValue<VPackValue, inObject>(context, attributeName,
                                        VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)
@@ -389,7 +400,8 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     }
 
     if (parameter->IsRegExp() || parameter->IsFunction() || parameter->IsExternal()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "unknown input type");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "unknown input type");
     }
 
     v8::Handle<v8::Object> o = parameter->ToObject(context.context).ToLocalChecked();
@@ -397,7 +409,8 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     // first check if the object has a "toJSON" function
     if (o->Has(context.context, context.toJsonKey).FromMaybe(false)) {
       // call it if yes
-      v8::Handle<v8::Value> func = o->Get(context.context, context.toJsonKey).FromMaybe(v8::Local<v8::Value>());
+      v8::Handle<v8::Value> func =
+          o->Get(context.context, context.toJsonKey).FromMaybe(v8::Local<v8::Value>());
       if (func->IsFunction()) {
         v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
@@ -405,7 +418,8 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
         // this prevents "error C2466: cannot allocate an array of constant
         // size 0" in MSVC
         v8::Handle<v8::Value> args[] = {v8::Null(context.isolate)};
-        v8::Handle<v8::Value> converted = toJson->Call(context.context, o, 0, args).FromMaybe(v8::Local<v8::Value>());
+        v8::Handle<v8::Value> converted =
+            toJson->Call(context.context, o, 0, args).FromMaybe(v8::Local<v8::Value>());
 
         if (!converted.IsEmpty()) {
           // return whatever toJSON returned
@@ -417,38 +431,43 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
       // intentionally falls through
     }
 
-    v8::Handle<v8::Array> names = o->GetOwnPropertyNames(context.context).FromMaybe(v8::Local<v8::Array>());
+    v8::Handle<v8::Array> names =
+        o->GetOwnPropertyNames(context.context).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
-    
+
     if (context.level + 1 > ::maxRecursion) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "input value is nested too deep"); 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "input value is nested too deep");
     }
-      
-    AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Object));
-    
+
+    AddValue<VPackValue, inObject>(context, attributeName,
+                                   VPackValue(VPackValueType::Object));
+
     ++context.level;
 
     for (uint32_t i = 0; i < n; ++i) {
       // process attribute name
-      v8::Handle<v8::String> key =
-        names->Get(context.context, i).FromMaybe(v8::Local<v8::Value>())->ToString(context.context).ToLocalChecked();
+      v8::Handle<v8::String> key = names->Get(context.context, i)
+                                       .FromMaybe(v8::Local<v8::Value>())
+                                       ->ToString(context.context)
+                                       .ToLocalChecked();
       v8::String::Utf8Value str(context.isolate, key);
 
       if (*str == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      v8::Handle<v8::Value> value = o->Get(context.context, key).FromMaybe(v8::Handle<v8::Value>());
+      v8::Handle<v8::Value> value =
+          o->Get(context.context, key).FromMaybe(v8::Handle<v8::Value>());
       if (value->IsUndefined()) {
         // ignore object values which are undefined
         continue;
       }
 
-      V8ToVPack<true>(context, value,
-                      arangodb::velocypack::StringRef(*str, str.length()),
+      V8ToVPack<true>(context, value, arangodb::velocypack::StringRef(*str, str.length()),
                       convertFunctionsToNull);
     }
-    
+
     --context.level;
 
     if (!context.keepTopLevelOpen || context.level > 0) {
@@ -461,9 +480,8 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
 }
 
 /// @brief convert a V8 value to VPack value
-void TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
-                   v8::Local<v8::Value> value, bool keepTopLevelOpen,
-                   bool convertFunctionsToNull) {
+void TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder, v8::Local<v8::Value> value,
+                   bool keepTopLevelOpen, bool convertFunctionsToNull) {
   v8::HandleScope scope(isolate);
   BuilderContext context(isolate->GetCurrentContext(), isolate, builder, keepTopLevelOpen);
   TRI_GET_GLOBALS();

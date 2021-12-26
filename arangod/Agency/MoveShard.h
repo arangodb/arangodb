@@ -67,6 +67,7 @@ struct MoveShard : public Job {
     _parentJobId = std::move(parentId);
     return *this;
   }
+
  private:
   [[nodiscard]] bool isSubJob() const noexcept { return !_parentJobId.empty(); }
   void addMoveShardToServerLock(Builder& ops) const;
@@ -84,4 +85,3 @@ struct MoveShard : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

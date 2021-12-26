@@ -50,4 +50,3 @@ struct Quantifier {
 };
 }  // namespace aql
 }  // namespace arangodb
-

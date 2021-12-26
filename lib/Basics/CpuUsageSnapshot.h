@@ -30,8 +30,8 @@ namespace arangodb {
 
 /// @brief simple struct to store a single CPU usage snapshot.
 /// there are different slots for user time, nice time, system time, etc.
-/// all values are supposed to be measured in units of USER_HZ 
-/// (1/100ths of a second on most architectures, use sysconf(_SC_CLK_TCK) 
+/// all values are supposed to be measured in units of USER_HZ
+/// (1/100ths of a second on most architectures, use sysconf(_SC_CLK_TCK)
 /// to obtain the right value), at least that is the unit that /proc
 /// will report for them.
 struct CpuUsageSnapshot {
@@ -50,7 +50,7 @@ struct CpuUsageSnapshot {
   /// @brief clear/invalidate a snapshot
   void clear() noexcept;
 
-  /// @brief return total CPU time spent in the snapshot, including idle time 
+  /// @brief return total CPU time spent in the snapshot, including idle time
   uint64_t total() const noexcept;
 
   /// @brief percent of user time (plus nice time) in ratio to total CPU time
@@ -58,19 +58,19 @@ struct CpuUsageSnapshot {
     uint64_t t = total();
     return (t > 0) ? (100.0 * double(user + nice) / double(t)) : 0.0;
   }
-  
+
   /// @brief percent of system time in ratio to total CPU time
   double systemPercent() const noexcept {
     uint64_t t = total();
     return (t > 0) ? (100.0 * double(system) / double(t)) : 0.0;
   }
-  
+
   /// @brief percent of idle time in ratio to total CPU time
   double idlePercent() const noexcept {
     uint64_t t = total();
     return (t > 0) ? (100.0 * double(idle) / double(t)) : 0.0;
   }
-  
+
   /// @brief percent of io wait time in ratio to total CPU time
   double iowaitPercent() const noexcept {
     uint64_t t = total();
@@ -104,4 +104,3 @@ struct CpuUsageSnapshot {
 };
 
 }  // namespace arangodb
-

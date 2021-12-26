@@ -77,4 +77,3 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   void executeJSTransaction();
 };
 }  // namespace arangodb
-

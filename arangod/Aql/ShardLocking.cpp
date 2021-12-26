@@ -68,19 +68,19 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       TRI_ASSERT(!shardKeys.empty());
       auto const& shardKey = shardKeys.at(0);
       if (shardKey == "_key:") {
-        errorCode =
-            col->getCollection()->getResponsibleShard(forceOneShardAttributeValue + ":test", shardId);
+        errorCode = col->getCollection()->getResponsibleShard(forceOneShardAttributeValue +
+                                                                  ":test",
+                                                              shardId);
       } else if (shardKey == ":_key") {
-        errorCode =
-            col->getCollection()->getResponsibleShard("test:" + forceOneShardAttributeValue, shardId);
+        errorCode = col->getCollection()->getResponsibleShard("test:" + forceOneShardAttributeValue,
+                                                              shardId);
       } else {
         VPackBuilder builder;
         {
           VPackObjectBuilder guard(&builder);
           builder.add(shardKey, VPackValue(forceOneShardAttributeValue));
         }
-        errorCode =
-            col->getCollection()->getResponsibleShard(builder.slice(), false, shardId);
+        errorCode = col->getCollection()->getResponsibleShard(builder.slice(), false, shardId);
       }
     }
     if (errorCode != TRI_ERROR_NO_ERROR) {
@@ -108,7 +108,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       }
       auto const graphIsUsedAsSatellite = graphNode->isUsedAsSatellite();
       auto const isUsedAsSatellite = [&](auto const& col) {
-        return graphIsUsedAsSatellite || (col->isSatellite() && (pushToSingleServer || graphNode->isSmart()));
+        return graphIsUsedAsSatellite ||
+               (col->isSatellite() && (pushToSingleServer || graphNode->isSmart()));
       };
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : graphNode->edgeColls()) {

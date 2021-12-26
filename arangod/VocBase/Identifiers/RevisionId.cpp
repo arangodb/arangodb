@@ -94,7 +94,7 @@ void RevisionId::toPersistent(std::string& buffer) const {
 }
 
 /// @brief create a revision id with a lower-bound HLC value
-RevisionId RevisionId::lowerBound() { 
+RevisionId RevisionId::lowerBound() {
   // "2021-01-01T00:00:00.000Z" => 1609459200000 milliseconds since the epoch
   RevisionId value{uint64_t(1609459200000ULL) << 20ULL};
   TRI_ASSERT(value.id() > ::TickLimit);

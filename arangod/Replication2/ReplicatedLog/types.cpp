@@ -117,12 +117,13 @@ auto FollowerState::withUpToDate() noexcept -> FollowerState {
   return FollowerState(std::in_place, UpToDate{});
 }
 
-auto FollowerState::withErrorBackoff(std::chrono::duration<double, std::milli> duration, std::size_t retryCount) noexcept
-    -> FollowerState {
+auto FollowerState::withErrorBackoff(std::chrono::duration<double, std::milli> duration,
+                                     std::size_t retryCount) noexcept -> FollowerState {
   return FollowerState(std::in_place, ErrorBackoff{duration, retryCount});
 }
 
-auto FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli> duration) noexcept -> FollowerState {
+auto FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli> duration) noexcept
+    -> FollowerState {
   return FollowerState(std::in_place, RequestInFlight{duration});
 }
 

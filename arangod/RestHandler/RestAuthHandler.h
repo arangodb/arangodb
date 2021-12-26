@@ -43,4 +43,3 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   RestStatus badRequest();
 };
 }  // namespace arangodb
-

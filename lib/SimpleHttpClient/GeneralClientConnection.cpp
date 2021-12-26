@@ -152,7 +152,7 @@ GeneralClientConnection* GeneralClientConnection::factory(
 
   return nullptr;
 }
-  
+
 void GeneralClientConnection::repurpose(double connectTimeout, double requestTimeout,
                                         size_t connectRetries) {
   _requestTimeout = requestTimeout;

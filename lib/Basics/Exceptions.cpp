@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdio>
 #include <cstdarg>
+#include <cstdio>
 #include <type_traits>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -31,8 +31,8 @@
 
 #include "Exceptions.h"
 
-#include "Basics/debugging.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -42,9 +42,7 @@ using namespace arangodb::basics;
 
 // All other constructors delegate to this one.
 Exception::Exception(ErrorCode code, std::string&& errorMessage, SourceLocation location) noexcept
-    : _errorMessage(std::move(errorMessage)),
-      _location(location),
-      _code(code) {
+    : _errorMessage(std::move(errorMessage)), _location(location), _code(code) {
   appendLocation();
 }
 Exception::Exception(ErrorCode code, SourceLocation location)

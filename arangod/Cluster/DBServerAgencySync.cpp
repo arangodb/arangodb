@@ -65,9 +65,9 @@ void DBServerAgencySync::work() {
   _heartbeat->dispatchedJobResult(result);
 }
 
-Result DBServerAgencySync::getLocalCollections(
-    std::unordered_set<std::string> const& dirty, AgencyCache::databases_t& databases,
-    LocalLogsMap& replLogs) {
+Result DBServerAgencySync::getLocalCollections(std::unordered_set<std::string> const& dirty,
+                                               AgencyCache::databases_t& databases,
+                                               LocalLogsMap& replLogs) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -88,11 +88,12 @@ Result DBServerAgencySync::getLocalCollections(
     auto unuse = scopeGuard([&vocbase]() noexcept { vocbase.release(); });
 
     auto [it, created] =
-      databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
+        databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
     if (!created) {
       LOG_TOPIC("0e9d7", ERR, Logger::MAINTENANCE)
-        << "Failed to emplace new entry in local collection cache";
-      return Result(TRI_ERROR_INTERNAL, "Failed to emplace new entry in local collection cache");
+          << "Failed to emplace new entry in local collection cache";
+      return Result(TRI_ERROR_INTERNAL,
+                    "Failed to emplace new entry in local collection cache");
     }
 
     {
@@ -100,8 +101,9 @@ Result DBServerAgencySync::getLocalCollections(
       if (!created) {
         LOG_TOPIC("5d5c9", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new entry in local replicated logs cache";
-        return Result(TRI_ERROR_INTERNAL,
-                      "Failed to emplace new entry in local replicated logs cache");
+        return Result(
+            TRI_ERROR_INTERNAL,
+            "Failed to emplace new entry in local replicated logs cache");
       }
     }
 
@@ -187,12 +189,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
   uint64_t planIndex = 0, currentIndex = 0;
 
-
-  // The rationale is that even with 1000 databases and us waking up every 5 seconds,
-  // we should approximately visit every database without being dirty once per hour.
-  // That is why we divide by 720.
-  auto moreDirt = mfeature.pickRandomDirty(
-    static_cast<size_t>(std::ceil(static_cast<double>(mfeature.lastNumberOfDatabases()) / 720.)));
+  // The rationale is that even with 1000 databases and us waking up every 5
+  // seconds, we should approximately visit every database without being dirty
+  // once per hour. That is why we divide by 720.
+  auto moreDirt = mfeature.pickRandomDirty(static_cast<size_t>(
+      std::ceil(static_cast<double>(mfeature.lastNumberOfDatabases()) / 720.)));
   auto dirty = mfeature.dirty();
   // Add `moreDirt` to `dirty` but remove from `moreDirt`, if already dirty anyway.
   // Then we can reasonably be surprised if we find anything in a database in `moreDirt`.
@@ -207,7 +208,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   if (dirty.empty()) {
     LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)
-      << "DBServerAgencySync::execute no dirty collections";
+        << "DBServerAgencySync::execute no dirty collections";
     result.success = true;
     result.errorMessage = "DBServerAgencySync::execute no dirty databases";
     return result;
@@ -222,10 +223,12 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t local;
   LocalLogsMap localLogs;
-  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
+  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
+      << "Before getLocalCollections for phaseOne";
   Result glc = getLocalCollections(dirty, local, localLogs);
 
-  LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
+  LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE)
+      << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
     result.errorMessage =
         StringUtils::concatT("Could not do getLocalCollections for phase 1: '",
@@ -300,10 +303,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     for (auto const& fs : failedServersList) {
       failedServers.emplace(fs);
     }
-    tmp = arangodb::maintenance::phaseTwo(plan, current, currentIndex, dirty,
-                                          local, serverId, mfeature, rb,
-                                          currentShardLocks, localLogs,
-                                          failedServers);
+    tmp = arangodb::maintenance::phaseTwo(plan, current, currentIndex, dirty, local,
+                                          serverId, mfeature, rb, currentShardLocks,
+                                          localLogs, failedServers);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -362,8 +364,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         VPackSlice planSlice = report.get("Plan");
         VPackSlice currentSlice = report.get("Current");
         result = DBServerAgencySyncResult(
-          true, planSlice.isObject() ? planSlice.get("Index").getNumber<uint64_t>() : 0,
-          currentSlice.isObject() ? currentSlice.get("Index").getNumber<uint64_t>() : 0);
+            true, planSlice.isObject() ? planSlice.get("Index").getNumber<uint64_t>() : 0,
+            currentSlice.isObject() ? currentSlice.get("Index").getNumber<uint64_t>() : 0);
       } else {
         // Report an error:
         result = DBServerAgencySyncResult(
@@ -400,7 +402,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   auto end = clock::now();
-  auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  auto total_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   mfeature._agency_sync_total_runtime_msec->get().count(total_ms);
   mfeature._agency_sync_total_accum_runtime_msec->get().count(total_ms);
   auto took = duration<double>(end - start).count();

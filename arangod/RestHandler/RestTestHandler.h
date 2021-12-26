@@ -45,4 +45,3 @@ class RestTestHandler : public RestVocbaseBaseHandler {
   ResultT<RequestLane> requestLaneFromString(const std::string& str);
 };
 }  // namespace arangodb
-

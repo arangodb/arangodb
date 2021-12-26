@@ -36,7 +36,7 @@ struct Options;
 }  // namespace velocypack
 
 class HttpRequest final : public GeneralRequest {
-  friend class RestBatchHandler; // TODO remove
+  friend class RestBatchHandler;  // TODO remove
 
  public:
   HttpRequest(ConnectionInfo const&, uint64_t mid, bool allowMethodOverride);
@@ -67,9 +67,7 @@ class HttpRequest final : public GeneralRequest {
     _payload = std::move(buffer);
   }
 
-  arangodb::velocypack::Buffer<uint8_t>& body() {
-    return _payload;
-  }
+  arangodb::velocypack::Buffer<uint8_t>& body() { return _payload; }
 
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
@@ -88,7 +86,6 @@ class HttpRequest final : public GeneralRequest {
   void setArrayValue(char const* key, size_t length, char const* value);
 
  private:
-
   /// used by RestBatchHandler (an API straight from hell)
   void parseHeader(char* buffer, size_t length);
   void setValues(char* buffer, char* end);
@@ -106,4 +103,3 @@ class HttpRequest final : public GeneralRequest {
   bool _validatedPayload = false;
 };
 }  // namespace arangodb
-

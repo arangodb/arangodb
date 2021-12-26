@@ -31,7 +31,8 @@ namespace arangodb {
 // must know its container).
 // This is rudimentary and maybe not complete.
 template <typename F, typename R = std::invoke_result_t<F, std::size_t>>
-class IndexIter : public std::iterator<std::random_access_iterator_tag, std::remove_reference_t<R>> {
+class IndexIter
+    : public std::iterator<std::random_access_iterator_tag, std::remove_reference_t<R>> {
  public:
   explicit IndexIter(F accessor, std::size_t i)
       : _get(std::move(accessor)), _idx(i) {}

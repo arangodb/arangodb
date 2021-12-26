@@ -156,10 +156,11 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     }
 
     {
-      auto stats = std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
+      auto stats =
+          std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
-      EXPECT_EQ(stats.spearHead,  TermIndexPair(LogTerm{2}, LogIndex{3}));
+      EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
       EXPECT_EQ(stats.commitIndex, LogIndex{3});
     }
   }
@@ -242,7 +243,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     }
 
     {
-      auto stats = std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
+      auto stats =
+          std::get<FollowerStatus>(newFollower->getStatus().getVariant()).local;
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));

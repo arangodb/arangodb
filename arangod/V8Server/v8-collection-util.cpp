@@ -71,35 +71,35 @@ arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a LogicalCollection
 ////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapCollection( // wrap collection
-    v8::Isolate* isolate, // isolate
-    std::shared_ptr<arangodb::LogicalCollection> const& collection // collection
+v8::Handle<v8::Object> WrapCollection(  // wrap collection
+    v8::Isolate* isolate,               // isolate
+    std::shared_ptr<arangodb::LogicalCollection> const& collection  // collection
 ) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   auto context = TRI_IGETC;
   TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> result =
+      VocbaseColTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
   }
 
-  auto value = std::shared_ptr<void>( // persistent value
-    collection.get(), // value
-    [collection](void*)->void { // ensure collection shared_ptr is not deallocated
-      TRI_ASSERT(!collection->vocbase().isDangling());
-      collection->vocbase().release(); // decrease the reference-counter for the database
-    }
-  );
+  auto value = std::shared_ptr<void>(  // persistent value
+      collection.get(),                // value
+      [collection](void*) -> void {  // ensure collection shared_ptr is not deallocated
+        TRI_ASSERT(!collection->vocbase().isDangling());
+        collection->vocbase().release();  // decrease the reference-counter for the database
+      });
   auto itr = TRI_v8_global_t::SharedPtrPersistent::emplace(*isolate, value);
   auto& entry = itr.first;
 
   TRI_ASSERT(!collection->vocbase().isDangling());
-  collection->vocbase().forceUse(); // increase the reference-counter for the database (will be decremented by 'value' distructor above, valid for both new and existing mappings)
+  collection->vocbase().forceUse();  // increase the reference-counter for the database (will be decremented by 'value' distructor above, valid for both new and existing mappings)
 
-  result->SetInternalField(// required for TRI_UnwrapClass(...)
-    SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE) // args
+  result->SetInternalField(  // required for TRI_UnwrapClass(...)
+      SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE)  // args
   );
   result->SetInternalField(SLOT_CLASS, entry.get());
 
@@ -114,15 +114,19 @@ v8::Handle<v8::Object> WrapCollection( // wrap collection
           v8::ReadOnly  // attributes
           )
       .FromMaybe(false);  // Ignore result...
-  result->Set(context, // set value
-    _DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name()) // args
-  ).FromMaybe(false);
-  result->DefineOwnProperty( // define own property
-    TRI_IGETC, // context
-    VersionKeyHidden, // key
-    v8::Integer::NewFromUnsigned(isolate, collection->v8CacheVersion()), // value
-    v8::DontEnum // attributes
-  ).FromMaybe(false);  // ignore return value
+  result
+      ->Set(context,  // set value
+            _DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name())  // args
+            )
+      .FromMaybe(false);
+  result
+      ->DefineOwnProperty(   // define own property
+          TRI_IGETC,         // context
+          VersionKeyHidden,  // key
+          v8::Integer::NewFromUnsigned(isolate, collection->v8CacheVersion()),  // value
+          v8::DontEnum  // attributes
+          )
+      .FromMaybe(false);  // ignore return value
 
   return scope.Escape<v8::Object>(result);
 }

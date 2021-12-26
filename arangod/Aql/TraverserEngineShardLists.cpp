@@ -79,9 +79,11 @@ std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
     if (it == shardMapping.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, 
-          "no entry for shard '" + shard + "' in shard mapping table (" + std::to_string(shardMapping.size()) + " entries)");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "no entry for shard '" + shard +
+                                         "' in shard mapping table (" +
+                                         std::to_string(shardMapping.size()) +
+                                         " entries)");
     }
     if (it->second == server) {
       localShards.emplace_back(shard);
@@ -95,8 +97,7 @@ std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
   return localShards;
 }
 
-void TraverserEngineShardLists::serializeIntoBuilder(
-    VPackBuilder& infoBuilder) const {
+void TraverserEngineShardLists::serializeIntoBuilder(VPackBuilder& infoBuilder) const {
   TRI_ASSERT(_hasShard);
   TRI_ASSERT(infoBuilder.isOpenArray());
   infoBuilder.openObject();
@@ -151,5 +152,3 @@ void TraverserEngineShardLists::serializeIntoBuilder(
   infoBuilder.close();  // base
   TRI_ASSERT(infoBuilder.isOpenArray());
 }
-
-

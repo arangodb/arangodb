@@ -126,7 +126,7 @@ struct Collection {
     TRI_ASSERT(_shardToServerMapping.find(sid) == _shardToServerMapping.end());
     _shardToServerMapping.try_emplace(sid, server);
   }
-  
+
   /// @brief lookup the server responsible for the given shard.
   ServerID const& getServerForShard(ShardID const& sid) const {
     auto const& it = _shardToServerMapping.find(sid);
@@ -138,28 +138,28 @@ struct Collection {
   /// @brief get the index by it's identifier. Will either throw or
   ///        return a valid index. nullptr is impossible.
   std::shared_ptr<arangodb::Index> indexByIdentifier(std::string const& idxId) const;
-  
+
   std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
-  
-  /// @brief use the already set collection 
-  /// Whenever getCollection() is called, _collection must be a non-nullptr or an 
-  /// assertion will be triggered. In non-maintainer mode an exception will be thrown.
-  /// that means getCollection() must not be called on non-existing collections or
-  /// views
+
+  /// @brief use the already set collection
+  /// Whenever getCollection() is called, _collection must be a non-nullptr or
+  /// an assertion will be triggered. In non-maintainer mode an exception will
+  /// be thrown. that means getCollection() must not be called on non-existing
+  /// collections or views
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
 
   /// @brief whether or not we have a collection object underneath (true for
   /// existing collections, false for non-existing collections and for views).
   bool hasCollectionObject() const noexcept;
-  
+
  private:
   /// @brief throw if the underlying collection has not been set
   void checkCollection() const;
 
  private:
   // _collection will only be populated here in the constructor, and not later.
-  // note that it will only be populated for "real" collections and shards though. 
-  // aql::Collection objects can also be created for views and for non-existing 
+  // note that it will only be populated for "real" collections and shards though.
+  // aql::Collection objects can also be created for views and for non-existing
   // collections. In these cases it is not possible to populate _collection, at all.
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
@@ -182,4 +182,3 @@ struct Collection {
 };
 }  // namespace aql
 }  // namespace arangodb
-

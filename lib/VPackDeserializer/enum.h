@@ -56,13 +56,14 @@ struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues,
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template<typename...>
-  struct type_list{};
-  template<typename, bool>
+  template <typename...>
+  struct type_list {};
+  template <typename, bool>
   struct value_hidden_pair {};
 
   template <typename V, bool hidden, bool... hiddens, typename... Vs>
-  static std::string joinValues(type_list<value_hidden_pair<V, hidden>, value_hidden_pair<Vs, hiddens>...>) {
+  static std::string joinValues(
+      type_list<value_hidden_pair<V, hidden>, value_hidden_pair<Vs, hiddens>...>) {
     static_assert(!hidden, "please make the first entry not hidden");
     return to_string(V{}) + ((hiddens ? std::string{} : (", " + to_string(Vs{}))) + ...);
   }
@@ -70,8 +71,8 @@ struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues,
   static constexpr bool all_strings = (values::is_string_v<Values> && ...);
 
   template <typename C>
-  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, typename H::state_type hints, C &&)
-      -> result_type {
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
+                     typename H::state_type hints, C&&) -> result_type {
     using comparator_hints =
         std::conditional_t<all_strings, hints::hint_list<hints::is_string>, hints::hint_list_empty>;
 
@@ -88,9 +89,9 @@ struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues,
         return result_type{result};
       }
     }
-    return result_type{
-        deserialize_error{"Unrecognized enum value: " + s.toJson() +
-                          ", possible values are: " + joinValues(type_list<value_hidden_pair<Values, IsHidden>...>{})}};
+    return result_type{deserialize_error{
+        "Unrecognized enum value: " + s.toJson() + ", possible values are: " +
+        joinValues(type_list<value_hidden_pair<Values, IsHidden>...>{})}};
   }
 };
 

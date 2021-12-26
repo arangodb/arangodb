@@ -72,8 +72,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
  public:
-
-
   std::string const& queryId() const { return _queryId; }
 #endif
 
@@ -109,7 +107,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   void traceRequest(char const* rpc, velocypack::Slice slice, std::string const& args);
 
  private:
-
   RegisterInfos _registerInfos;
 
   QueryContext const& _query;
@@ -138,9 +135,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   bool const _isResponsibleForInitializeCursor;
 
   bool _requestInFlight;
-  
+
   unsigned _lastTicket;  /// used to check for canceled requests
 };
 
 }  // namespace arangodb::aql
-

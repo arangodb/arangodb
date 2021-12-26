@@ -94,14 +94,14 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
     ec = TRI_ERROR_SHUTTING_DOWN;
     return nullptr;
   }
-  
+
   TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
                                    // DatabaseGuard constructor which on failure
                                    // would fail Task constructor
 
   std::string const& user = ExecContext::current().user();
   auto task = std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
-  
+
   MUTEX_LOCKER(guard, _tasksLock);
 
   if (!_tasks.try_emplace(id, user, task).second) {
@@ -194,7 +194,8 @@ void Task::shutdownTasks() {
     if (++iterations % 10 == 0) {
       LOG_TOPIC("3966b", INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
     } else if (iterations >= 25) {
-      LOG_TOPIC("54653", INFO, Logger::FIXME) << "giving up waiting for unfinished tasks";
+      LOG_TOPIC("54653", INFO, Logger::FIXME)
+          << "giving up waiting for unfinished tasks";
       MUTEX_LOCKER(guard, _tasksLock);
       _tasks.clear();
       break;
@@ -232,16 +233,14 @@ bool Task::tryCompile(application_features::ApplicationServer& server,
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
   auto current = isolate->GetCurrentContext()->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-                                            current->Get(context,
-                                                         TRI_V8_ASCII_STRING(isolate, "Function"))
-                                            .FromMaybe(v8::Local<v8::Value>())
-                                            );
+      current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function")).FromMaybe(v8::Local<v8::Value>()));
 
   // Invoke Function constructor to create function with the given body and no
   // arguments
   v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                    TRI_V8_STD_STRING(isolate, command)};
-  v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
+  v8::Local<v8::Object> function =
+      ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
 
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
@@ -416,8 +415,8 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
 void Task::work(ExecContext const* exec) {
   JavaScriptSecurityContext securityContext =
       _allowUseDatabase
-          ? JavaScriptSecurityContext::createInternalContext() // internal context that may access internal data
-          : JavaScriptSecurityContext::createTaskContext(false /*_allowUseDatabase*/); // task context that has no access to dbs
+          ? JavaScriptSecurityContext::createInternalContext()  // internal context that may access internal data
+          : JavaScriptSecurityContext::createTaskContext(false /*_allowUseDatabase*/);  // task context that has no access to dbs
   V8ContextGuard guard(&(_dbGuard->database()), securityContext);
 
   // now execute the function within this context
@@ -429,17 +428,16 @@ void Task::work(ExecContext const* exec) {
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     auto current = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-                                              current->Get(context,
-                                                           TRI_V8_ASCII_STRING(isolate, "Function"))
-                                              .FromMaybe(v8::Local<v8::Value>())
-                                              );
+        current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
+            .FromMaybe(v8::Local<v8::Value>()));
 
     // Invoke Function constructor to create function with the given body and
     // no
     // arguments
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                      TRI_V8_STD_STRING(isolate, _command)};
-    v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
+    v8::Local<v8::Object> function =
+        ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 

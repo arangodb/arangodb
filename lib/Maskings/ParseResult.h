@@ -47,4 +47,3 @@ struct ParseResult {
   std::string message;
   T result;
 };
-

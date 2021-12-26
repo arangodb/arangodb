@@ -36,12 +36,11 @@ class GlobalTailingSyncer : public TailingSyncer {
  private:
   // constructor is private, as GlobalTailingSyncer uses shared_from_this() and
   // we must ensure that it is only created via make_shared.
-  GlobalTailingSyncer(ReplicationApplierConfiguration const&, 
-                      TRI_voc_tick_t initialTick,
-                      bool useTick);
-  
+  GlobalTailingSyncer(ReplicationApplierConfiguration const&,
+                      TRI_voc_tick_t initialTick, bool useTick);
+
  public:
-  static std::shared_ptr<GlobalTailingSyncer> create(ReplicationApplierConfiguration const&, 
+  static std::shared_ptr<GlobalTailingSyncer> create(ReplicationApplierConfiguration const&,
                                                      TRI_voc_tick_t initialTick,
                                                      bool useTick);
 
@@ -67,4 +66,3 @@ class GlobalTailingSyncer : public TailingSyncer {
 };
 
 }  // namespace arangodb
-

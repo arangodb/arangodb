@@ -47,26 +47,20 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
     : replicatedLogNumber(
           createMetric<arangodb_replication2_replicated_log_number, mock>(metricsFeature)),
       replicatedLogAppendEntriesRttUs(
-          createMetric<arangodb_replication2_replicated_log_append_entries_rtt, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_log_append_entries_rtt, mock>(metricsFeature)),
       replicatedLogFollowerAppendEntriesRtUs(
           createMetric<arangodb_replication2_replicated_log_follower_append_entries_rt, mock>(
               metricsFeature)),
       replicatedLogCreationNumber(
-          createMetric<arangodb_replication2_replicated_log_creation_total, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_log_creation_total, mock>(metricsFeature)),
       replicatedLogDeletionNumber(
-          createMetric<arangodb_replication2_replicated_log_deletion_total, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_log_deletion_total, mock>(metricsFeature)),
       replicatedLogLeaderNumber(
-          createMetric<arangodb_replication2_replicated_log_leader_number, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_log_leader_number, mock>(metricsFeature)),
       replicatedLogFollowerNumber(
-          createMetric<arangodb_replication2_replicated_log_follower_number, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_log_follower_number, mock>(metricsFeature)),
       replicatedLogInactiveNumber(
-          createMetric<arangodb_replication2_replicated_log_inactive_number, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_log_inactive_number, mock>(metricsFeature)),
       replicatedLogLeaderTookOverNumber(
           createMetric<arangodb_replication2_replicated_log_leader_took_over_total, mock>(
               metricsFeature)),
@@ -74,11 +68,9 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
           createMetric<arangodb_replication2_replicated_log_started_following_total, mock>(
               metricsFeature)),
       replicatedLogInsertsBytes(
-          createMetric<arangodb_replication2_replicated_log_inserts_bytes, mock>(
-              metricsFeature)),
+          createMetric<arangodb_replication2_replicated_log_inserts_bytes, mock>(metricsFeature)),
       replicatedLogInsertsRtt(
-          createMetric<arangodb_replication2_replicated_log_inserts_rtt, mock>(
-              metricsFeature)) {
+          createMetric<arangodb_replication2_replicated_log_inserts_rtt, mock>(metricsFeature)) {
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   static_assert(!mock);
   static_assert(!std::is_null_pointer_v<MFP>);

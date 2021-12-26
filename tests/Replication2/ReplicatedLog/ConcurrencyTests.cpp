@@ -37,7 +37,6 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
-
 struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
   using ThreadIdx = uint16_t;
   using IterIdx = uint32_t;
@@ -153,7 +152,8 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
       auto snapshot = log->getReplicatedLogSnapshot();
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
         using namespace std::string_literals;
-        auto const payload = std::optional(LogPayload::createFromString(genPayload(threadIdx, i + k)));
+        auto const payload =
+            std::optional(LogPayload::createFromString(genPayload(threadIdx, i + k)));
         auto const idx = idxs[k];
         ASSERT_LT(0, idx.value);
         ASSERT_LE(idx.value, snapshot.size());
@@ -172,21 +172,20 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
     }
   };
 
-  constexpr static auto runReplicationWithIntermittentPauses =
-      [](ThreadCoordinationData& data) {
-        using namespace std::chrono_literals;
-        auto log = std::dynamic_pointer_cast<LogLeader>(data.log);
-        ASSERT_NE(log, nullptr);
-        for (auto i = 0;; ++i) {
-          log->triggerAsyncReplication();
-          if (i % 16) {
-            std::this_thread::sleep_for(100ns);
-            if (data.stopReplicationThreads.load()) {
-              return;
-            }
-          }
+  constexpr static auto runReplicationWithIntermittentPauses = [](ThreadCoordinationData& data) {
+    using namespace std::chrono_literals;
+    auto log = std::dynamic_pointer_cast<LogLeader>(data.log);
+    ASSERT_NE(log, nullptr);
+    for (auto i = 0;; ++i) {
+      log->triggerAsyncReplication();
+      if (i % 16) {
+        std::this_thread::sleep_for(100ns);
+        if (data.stopReplicationThreads.load()) {
+          return;
         }
-      };
+      }
+    }
+  };
 
   constexpr static auto runFollowerReplicationWithIntermittentPauses =
       // NOLINTNEXTLINE(performance-unnecessary-value-param)
@@ -267,8 +266,10 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   auto follower1Log = makeReplicatedLog(LogId{2});
   auto follower2Log = makeReplicatedLog(LogId{3});
 
-  auto follower1 = follower1Log->becomeFollower("follower1", LogTerm{1}, "leader");
-  auto follower2 = follower2Log->becomeFollower("follower2", LogTerm{1}, "leader");
+  auto follower1 =
+      follower1Log->becomeFollower("follower1", LogTerm{1}, "leader");
+  auto follower2 =
+      follower2Log->becomeFollower("follower2", LogTerm{1}, "leader");
   auto leader =
       leaderLog->becomeLeader("leader", LogTerm{1},
                               {std::static_pointer_cast<AbstractFollower>(follower1),

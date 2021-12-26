@@ -49,11 +49,8 @@ class TRI_action_result_t {
 /// @brief action descriptor
 class TRI_action_t {
  public:
-  TRI_action_t() : 
-    _urlParts(0), 
-    _isPrefix(false), 
-    _allowUseDatabase(false),
-    _isSystem(false) {}
+  TRI_action_t()
+      : _urlParts(0), _isPrefix(false), _allowUseDatabase(false), _isSystem(false) {}
 
   virtual ~TRI_action_t() = default;
 
@@ -79,11 +76,10 @@ class TRI_action_t {
   bool _isSystem;
 };
 
-/// @brief fake action class used only inside /_admin/execute RestHandler 
+/// @brief fake action class used only inside /_admin/execute RestHandler
 class TRI_fake_action_t final : public TRI_action_t {
  public:
-  TRI_fake_action_t(std::string const& url, size_t urlParts) 
-      : TRI_action_t() {
+  TRI_fake_action_t(std::string const& url, size_t urlParts) : TRI_action_t() {
     setUrl(url, urlParts);
   }
 
@@ -91,8 +87,7 @@ class TRI_fake_action_t final : public TRI_action_t {
 
   /// @brief actions of this type are executed directly. nothing to do here
   TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
-                              arangodb::GeneralResponse*,
-                              arangodb::Mutex*, void**) override;
+                              arangodb::GeneralResponse*, arangodb::Mutex*, void**) override;
 
   /// @brief actions of this type are not registered anywhere, and thus
   /// cannot be canceled
@@ -111,4 +106,3 @@ void TRI_CleanupActions();
 
 /// @brief visit all actions
 void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor);
-

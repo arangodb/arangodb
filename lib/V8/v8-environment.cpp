@@ -95,7 +95,8 @@ static void EnvGetter(v8::Local<v8::Name> property,
 #endif
   auto context = TRI_IGETC;
   // Not found.  Fetch from prototype.
-  TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(context, property).FromMaybe(v8::Local<v8::Value>()));
+  TRI_V8_RETURN(
+      args.Data().As<v8::Object>()->Get(context, property).FromMaybe(v8::Local<v8::Value>()));
 }
 
 static void EnvSetter(v8::Local<v8::Name> property, v8::Local<v8::Value> value,

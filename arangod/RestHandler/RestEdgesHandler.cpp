@@ -49,7 +49,7 @@ RestEdgesHandler::RestEdgesHandler(application_features::ApplicationServer& serv
 RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-  
+
   if (!ServerState::instance()->isSingleServerOrCoordinator()) {
     generateNotImplemented("ILLEGAL " + EDGES_PATH);
     return RestStatus::DONE;
@@ -177,7 +177,8 @@ bool RestEdgesHandler::readEdges() {
       generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
       return false;
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.result.errorNumber(),
         StringUtils::concatT("Error executing edges query ",
                              queryResult.result.errorMessage()));
   }
@@ -252,7 +253,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.openObject();
   // build edges
   resultBuilder.add("edges", VPackValue(VPackValueType::Array));
-  
+
   std::unordered_set<std::string> foundEdges;
 
   std::shared_ptr<transaction::Context> ctx;
@@ -266,14 +267,17 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
         generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
         return false;
       }
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          queryResult.result.errorNumber(),
           StringUtils::concatT("Error executing edges query ",
                                queryResult.result.errorMessage()));
     }
 
     VPackSlice edges = queryResult.data->slice();
     for (VPackSlice edge : VPackArrayIterator(edges)) {
-      if (foundEdges.emplace(transaction::helpers::extractKeyFromDocument(edge).copyString()).second) {
+      if (foundEdges
+              .emplace(transaction::helpers::extractKeyFromDocument(edge).copyString())
+              .second) {
         resultBuilder.add(edge);
       }
     }

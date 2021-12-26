@@ -34,42 +34,42 @@ namespace options {
 
 /// @brief option flags. these can be bit-ORed to combine multiple flags
 enum class Flags : uint16_t {
-  None = 0,                               // nothing special here
-  Hidden = 1,                             // the option is hidden by default, only made visible by
-                                          // --help-all or --help-.
-  Obsolete = 2,                           // the option is obsolete. setting it does not influence the
-                                          // program behavior
-  Enterprise = 4,                         // the option is only available in the Enterprise Edition
-  Command = 8,                            // the option executes a special command, e.g. --version,
-                                          // --check-configuration, --dump-options
-  Dynamic = 16,                           // the option's default value is dynamic and depends on the
-                                          // target host configuration
-  FlushOnFirst = 32,                      // when we first see this parameter, we will flush the contents
-                                          // of its default value before setting it.
+  None = 0,        // nothing special here
+  Hidden = 1,      // the option is hidden by default, only made visible by
+                   // --help-all or --help-.
+  Obsolete = 2,    // the option is obsolete. setting it does not influence the
+                   // program behavior
+  Enterprise = 4,  // the option is only available in the Enterprise Edition
+  Command = 8,     // the option executes a special command, e.g. --version,
+                   // --check-configuration, --dump-options
+  Dynamic = 16,    // the option's default value is dynamic and depends on the
+                   // target host configuration
+  FlushOnFirst = 32,  // when we first see this parameter, we will flush the
+                      // contents of its default value before setting it.
 
   // operating systems
-  OsLinux = 64,                           // option can be used on Linux
-  OsWindows = 128,                        // option can be used on Windows
-  OsMac = 256,                            // option can be used on MacOS
+  OsLinux = 64,     // option can be used on Linux
+  OsWindows = 128,  // option can be used on Windows
+  OsMac = 256,      // option can be used on MacOS
 
-  OsAll = OsLinux | OsWindows | OsMac,    // option can be used on all OSes (linux + win + mac)
+  OsAll = OsLinux | OsWindows | OsMac,  // option can be used on all OSes (linux + win + mac)
 
   // components
-  OnCoordinator = 512,                    // option can be used on coordinator
-  OnDBServer = 1024,                      // option can be used on database server
-  OnAgent = 2048,                         // option can be used on agent
+  OnCoordinator = 512,  // option can be used on coordinator
+  OnDBServer = 1024,    // option can be used on database server
+  OnAgent = 2048,       // option can be used on agent
 
   OnCluster = OnCoordinator | OnDBServer | OnAgent,
 
-  OnSingle = 4096,                        // option can be used on single server
+  OnSingle = 4096,  // option can be used on single server
 
-  OnAll = OnCluster | OnSingle,           // option can be used everywhere
+  OnAll = OnCluster | OnSingle,  // option can be used everywhere
 
   // defaults
-  Default = OsAll | OnAll,                // default options
-  
-  DefaultNoOs = Default & ~OsAll,         // default, but not specifying any OSes
-  DefaultNoComponents = Default & ~OnAll, // default, but not specifying any components
+  Default = OsAll | OnAll,  // default options
+
+  DefaultNoOs = Default & ~OsAll,  // default, but not specifying any OSes
+  DefaultNoComponents = Default & ~OnAll,  // default, but not specifying any components
 
   // experimental flag
   Experimental = 8192,
@@ -86,8 +86,9 @@ static constexpr inline std::underlying_type<Flags>::type makeFlags(Flags flag, 
 }
 
 template <typename... Args>
-static constexpr inline std::underlying_type<Flags>::type makeDefaultFlags(Flags flag, Args... args) {
-  return (static_cast<std::underlying_type<Flags>::type>(Flags::Default) | 
+static constexpr inline std::underlying_type<Flags>::type makeDefaultFlags(Flags flag,
+                                                                           Args... args) {
+  return (static_cast<std::underlying_type<Flags>::type>(Flags::Default) |
           static_cast<std::underlying_type<Flags>::type>(flag) | makeFlags(args...));
 }
 
@@ -104,7 +105,7 @@ struct Option {
   void toVPack(arangodb::velocypack::Builder& builder) const;
 
   bool hasFlag(Flags flag) const {
-    return (static_cast<std::underlying_type<Flags>::type>(flag) & flags) == 
+    return (static_cast<std::underlying_type<Flags>::type>(flag) & flags) ==
            static_cast<std::underlying_type<Flags>::type>(flag);
   }
 
@@ -198,4 +199,3 @@ struct Option {
 
 }  // namespace options
 }  // namespace arangodb
-

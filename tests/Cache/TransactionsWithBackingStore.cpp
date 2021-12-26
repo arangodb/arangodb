@@ -36,8 +36,8 @@
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
+#include "Mocks/Servers.h"
 #include "TransactionalStore.h"
 
 using namespace arangodb;
@@ -50,9 +50,7 @@ struct ThreadGuard {
 
   ThreadGuard(std::unique_ptr<std::thread> thread)
       : thread(std::move(thread)) {}
-  ~ThreadGuard() {
-    join();
-  }
+  ~ThreadGuard() { join(); }
 
   void join() {
     if (thread != nullptr) {

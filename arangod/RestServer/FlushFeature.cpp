@@ -32,14 +32,14 @@
 #include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "Utils/FlushThread.h"
 
 using namespace arangodb::application_features;
@@ -51,9 +51,7 @@ namespace arangodb {
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Flush"),
-      _flushInterval(1000000),
-      _stopped(false) {
+    : ApplicationFeature(server, "Flush"), _flushInterval(1000000), _stopped(false) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -116,7 +114,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
   // WAL tick has to be synced prior to releasing it, if the storage
   // engine supports it
   //   engine->waitForSyncTick(minTick);
-  
+
   TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
     TRI_TerminateDebugging("crashing after syncing min tick");
   }

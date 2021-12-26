@@ -66,5 +66,3 @@ std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status con
 
 }  // namespace transaction
 }  // namespace arangodb
-
-

@@ -26,8 +26,8 @@
 
 #include "gtest/gtest.h"
 
-#include <sstream>
 #include <cstring>
+#include <sstream>
 
 #include "Basics/csv.h"
 #include "Basics/tri-strings.h"
@@ -36,11 +36,11 @@
 /// @brief create a parser instance
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INIT_PARSER                                                                  \
-  TRI_csv_parser_t parser;                                                           \
-                                                                                     \
-  TRI_InitCsvParser(&parser, &CCsvTest::ProcessCsvBegin, &CCsvTest::ProcessCsvAdd, \
-                    &CCsvTest::ProcessCsvEnd, nullptr);                             \
+#define INIT_PARSER                                                               \
+  TRI_csv_parser_t parser;                                                        \
+                                                                                  \
+  TRI_InitCsvParser(&parser, &CCsvTest::ProcessCsvBegin,                          \
+                    &CCsvTest::ProcessCsvAdd, &CCsvTest::ProcessCsvEnd, nullptr); \
   parser._dataAdd = this;
 
 ////////////////////////////////////////////////////////////////////////////////

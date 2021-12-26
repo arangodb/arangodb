@@ -40,9 +40,8 @@ struct QueryOptions;
 class QueryWarnings final {
   QueryWarnings(QueryWarnings const&) = delete;
   QueryWarnings& operator=(QueryWarnings const&) = delete;
-  
-public:
 
+ public:
   explicit QueryWarnings();
   ~QueryWarnings() = default;
 
@@ -53,26 +52,24 @@ public:
   void registerWarning(ErrorCode code, std::string_view details = {});
 
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
-  
+
   bool empty() const;
-  
+
   void updateOptions(QueryOptions const&);
-  
+
   std::vector<std::pair<ErrorCode, std::string>> all() const;
 
   static std::string buildFormattedString(ErrorCode code, char const* details);
 
  private:
-  
   mutable std::mutex _mutex;
-  
+
   /// @brief warnings collected during execution
   std::vector<std::pair<ErrorCode, std::string>> _list;
-  
+
   size_t _maxWarningCount;
   bool _failOnWarning;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -120,7 +120,7 @@ class AqlItemMatrix {
 
   class RowIterator {
    public:
-    using value_type        = InputAqlItemRow;
+    using value_type = InputAqlItemRow;
 
     RowIterator() = default;
     RowIterator(AqlItemMatrix const* matrix, size_t blockIndex, size_t rowIndex);

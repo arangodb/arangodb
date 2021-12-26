@@ -120,7 +120,7 @@ class KShortestPathsNode : public virtual GraphNode {
   }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesSetHere
@@ -142,7 +142,7 @@ class KShortestPathsNode : public virtual GraphNode {
   std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
 
   std::vector<arangodb::graph::IndexAccessor> buildReverseUsedIndexes() const;
-  
+
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;
@@ -183,4 +183,3 @@ class KShortestPathsNode : public virtual GraphNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

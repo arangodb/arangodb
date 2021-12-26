@@ -34,25 +34,22 @@ namespace aql {
 class ClusterQuery : public arangodb::aql::Query {
  protected:
   /// Used to construct a cluster query. the constructor is protected to ensure
-  /// that call sites only create ClusterQuery objects using the `create` factory
-  /// method
-  ClusterQuery(QueryId id, 
-               std::shared_ptr<arangodb::transaction::Context> ctx,
+  /// that call sites only create ClusterQuery objects using the `create`
+  /// factory method
+  ClusterQuery(QueryId id, std::shared_ptr<arangodb::transaction::Context> ctx,
                QueryOptions options);
 
  public:
   ~ClusterQuery();
-  
+
   /// @brief factory method for creating a cluster query. this must be used to
   /// ensure that ClusterQuery objects are always created using shared_ptrs.
-  static std::shared_ptr<ClusterQuery> create(QueryId id, 
+  static std::shared_ptr<ClusterQuery> create(QueryId id,
                                               std::shared_ptr<transaction::Context> ctx,
                                               QueryOptions options);
-  
-  traverser::GraphEngineList const& traversers() const {
-    return _traversers;
-  }
-  
+
+  traverser::GraphEngineList const& traversers() const { return _traversers; }
+
   void prepareClusterQuery(arangodb::velocypack::Slice querySlice,
                            arangodb::velocypack::Slice collections,
                            arangodb::velocypack::Slice variables,
@@ -60,7 +57,7 @@ class ClusterQuery : public arangodb::aql::Query {
                            arangodb::velocypack::Slice traversals,
                            arangodb::velocypack::Builder& answer,
                            arangodb::QueryAnalyzerRevisions const& analyzersRevision);
-  
+
   arangodb::futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
  private:
@@ -70,4 +67,3 @@ class ClusterQuery : public arangodb::aql::Query {
 
 }  // namespace aql
 }  // namespace arangodb
-

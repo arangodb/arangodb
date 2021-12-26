@@ -74,7 +74,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   /// @brief called when the handler is dequeued in the scheduler
   void trackQueueEnd() noexcept;
-  
+
   /// @brief called when the handler execution is started
   void trackTaskStart() noexcept;
 
@@ -116,7 +116,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
 
-  RequestLane determineRequestLane(); 
+  RequestLane determineRequestLane();
 
   virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;
@@ -228,4 +228,3 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
 }  // namespace rest
 }  // namespace arangodb
-

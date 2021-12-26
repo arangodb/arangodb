@@ -189,7 +189,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
 
   json.openObject();
 
-  if (!link->properties(json, true).ok()) { // link definition used for recreation and persistence
+  if (!link->properties(json, true).ok()) {  // link definition used for recreation and persistence
     LOG_TOPIC("15f11", ERR, arangodb::iresearch::TOPIC)
         << "Failed to generate jSON definition for link '" << iid.id()
         << "' to the collection '" << cid.id() << "' in the database '" << dbId;
@@ -197,22 +197,23 @@ void ensureLink(arangodb::DatabaseFeature& db,
   }
   // we need to keep objectId
   if (indexSlice.hasKey(arangodb::StaticStrings::ObjectId)) {
-    json.add(arangodb::StaticStrings::ObjectId, indexSlice.get(arangodb::StaticStrings::ObjectId));
+    json.add(arangodb::StaticStrings::ObjectId,
+             indexSlice.get(arangodb::StaticStrings::ObjectId));
   } else {
     LOG_TOPIC("ed031", WARN, arangodb::iresearch::TOPIC)
         << "Missing objectId in jSON definition for link '" << iid.id()
         << "' to the collection '" << cid.id() << "' in the database '" << dbId
         << "'. ObjectId will be regenerated";
   }
-  
+
   json.close();
 
   bool created;
 
   // re-insert link
-  if (!col->dropIndex(link->id()) // index drop failure
-      || !col->createIndex(json.slice(), created) // index creation failure
-      || !created) { // index not created
+  if (!col->dropIndex(link->id())                  // index drop failure
+      || !col->createIndex(json.slice(), created)  // index creation failure
+      || !created) {                               // index not created
     LOG_TOPIC("44a02", ERR, arangodb::iresearch::TOPIC)
         << "Failed to recreate an arangosearch link '" << iid.id()
         << "' to the collection '" << cid.id() << "' in the database '" << dbId;
@@ -236,11 +237,10 @@ void IResearchRocksDBRecoveryHelper::prepare() {
                     ->GetID();
 }
 
-void IResearchRocksDBRecoveryHelper::PutCF(
-    uint32_t column_family_id,
-    const rocksdb::Slice& key,
-    const rocksdb::Slice& value,
-    rocksdb::SequenceNumber /*tick*/) {
+void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
+                                           const rocksdb::Slice& key,
+                                           const rocksdb::Slice& value,
+                                           rocksdb::SequenceNumber /*tick*/) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -263,10 +263,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(
   transaction::StandaloneContext ctx(coll->vocbase());
 
   SingleCollectionTransaction trx(
-    std::shared_ptr<transaction::Context>(
-      std::shared_ptr<transaction::Context>(),
-      &ctx), // aliasing ctor
-    *coll, arangodb::AccessMode::Type::WRITE);
+      std::shared_ptr<transaction::Context>(std::shared_ptr<transaction::Context>(),
+                                            &ctx),  // aliasing ctor
+      *coll, arangodb::AccessMode::Type::WRITE);
 
   Result res = trx.begin();
 
@@ -300,10 +299,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(
 }
 
 // common implementation for DeleteCF / SingleDeleteCF
-void IResearchRocksDBRecoveryHelper::handleDeleteCF(
-    uint32_t column_family_id,
-    const rocksdb::Slice& key,
-    rocksdb::SequenceNumber /*tick*/) {
+void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
+                                                    const rocksdb::Slice& key,
+                                                    rocksdb::SequenceNumber /*tick*/) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -325,10 +323,9 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
   transaction::StandaloneContext ctx(coll->vocbase());
 
   SingleCollectionTransaction trx(
-    std::shared_ptr<transaction::Context>(
-      std::shared_ptr<transaction::Context>(),
-      &ctx), // aliasing ctor
-    *coll, arangodb::AccessMode::Type::WRITE);
+      std::shared_ptr<transaction::Context>(std::shared_ptr<transaction::Context>(),
+                                            &ctx),  // aliasing ctor
+      *coll, arangodb::AccessMode::Type::WRITE);
 
   Result res = trx.begin();
 
@@ -343,8 +340,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.remove(trx, docId,
-                arangodb::velocypack::Slice::emptyObjectSlice());
+    impl.remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice());
   }
 
   res = trx.commit();
@@ -354,9 +350,8 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
   }
 }
 
-void IResearchRocksDBRecoveryHelper::LogData(
-    const rocksdb::Slice& blob,
-    rocksdb::SequenceNumber tick) {
+void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob,
+                                             rocksdb::SequenceNumber tick) {
   RocksDBLogType const type = RocksDBLogValue::type(blob);
 
   switch (type) {

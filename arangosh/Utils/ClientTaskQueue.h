@@ -83,8 +83,7 @@ class ClientTaskQueue {
       std::function<void(std::unique_ptr<JobData>&& jobData, Result const& result)>;
 
  public:
-  ClientTaskQueue(application_features::ApplicationServer& server,
-                  JobProcessor processJob);
+  ClientTaskQueue(application_features::ApplicationServer& server, JobProcessor processJob);
   virtual ~ClientTaskQueue();
 
  public:
@@ -250,8 +249,7 @@ inline bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
 }
 
 template <typename JobData>
-inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics() const
-    noexcept {
+inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics() const noexcept {
   size_t busy = 0;
   size_t workers = 0;
   MUTEX_LOCKER(lock, _jobsLock);
@@ -407,4 +405,3 @@ inline void ClientTaskQueue<JobData>::Worker::run() {
 }
 
 }  // namespace arangodb
-

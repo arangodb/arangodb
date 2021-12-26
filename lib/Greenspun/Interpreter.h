@@ -49,7 +49,8 @@ struct StackFrame {
   VariableBindings bindings;
 
   StackFrame() = default;
-  explicit StackFrame(VariableBindings bindings) : bindings(std::move(bindings)) {}
+  explicit StackFrame(VariableBindings bindings)
+      : bindings(std::move(bindings)) {}
 
   EvalResult getVariable(std::string const& name, VPackBuilder& result) const;
   EvalResult setVariable(std::string const& name, VPackSlice value);
@@ -143,4 +144,3 @@ std::string paramsToString(VPackArrayIterator iter);
 std::string paramsToString(VPackSlice params);
 
 }  // namespace arangodb::greenspun
-

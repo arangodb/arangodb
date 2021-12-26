@@ -129,4 +129,3 @@ class DistinctCollectExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

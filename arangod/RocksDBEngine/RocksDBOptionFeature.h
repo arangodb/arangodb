@@ -121,4 +121,3 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
 };
 
 }  // namespace arangodb
-

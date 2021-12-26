@@ -49,7 +49,6 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
 
-
   /// Enable or disable standalone authentication
   bool localAuthentication() const noexcept { return _localAuthentication; }
 
@@ -72,7 +71,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 #endif
 
   double sessionTimeout() const { return _sessionTimeout; }
-  
+
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
 
@@ -92,7 +91,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   bool _active;
   double _authenticationTimeout;
   double _sessionTimeout;
-  
+
   mutable std::mutex _jwtSecretsLock;
 
   std::string _jwtSecretProgramOption;
@@ -108,4 +107,3 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 };
 
 }  // namespace arangodb
-

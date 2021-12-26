@@ -142,4 +142,3 @@ class TraversalExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -21,8 +21,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Logger/LogMacros.h"
 #include "Reports.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::pregel;
 
@@ -42,7 +42,7 @@ ReportBuilder::ReportBuilder(ReportManager& manager, ReportLevel lvl)
     : level(lvl), manager(manager) {}
 
 std::string arangodb::pregel::to_string(ReportLevel lvl) {
-  switch(lvl) {
+  switch (lvl) {
     case ReportLevel::DEBUG:
       return "debug";
     case ReportLevel::INFO:
@@ -67,7 +67,7 @@ ReportLevel levelFromString(std::string_view str) {
     return ReportLevel::ERR;
   }
 }
-}
+}  // namespace
 
 Report Report::fromVelocyPack(VPackSlice slice) {
   std::string msg = slice.get("msg").copyString();
@@ -79,8 +79,7 @@ Report Report::fromVelocyPack(VPackSlice slice) {
     annotations.emplace(pair.key.copyString(), std::move(builder));
   }
 
-  return Report{msg, level,
-                std::move(annotations)};
+  return Report{msg, level, std::move(annotations)};
 }
 
 void Report::intoBuilder(VPackBuilder& builder) const {

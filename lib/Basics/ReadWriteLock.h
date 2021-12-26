@@ -77,7 +77,7 @@ class ReadWriteLock {
 
   /// @brief releases the write-lock
   void unlockWrite() noexcept;
-  
+
   [[nodiscard]] bool isLocked() const noexcept;
   [[nodiscard]] bool isLockedRead() const noexcept;
   [[nodiscard]] bool isLockedWrite() const noexcept;
@@ -121,4 +121,3 @@ class ReadWriteLock {
                 "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
 };
 }  // namespace arangodb::basics
-

@@ -55,7 +55,8 @@ class IResearchQueryAggregateTest : public IResearchQueryTest {};
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_P(IResearchQueryAggregateTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -140,7 +141,6 @@ TEST_P(IResearchQueryAggregateTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-
     auto* viewDefinitionTemplate = R"({ "links": {
         "testCollection0": {
           "includeAllFields": true,
@@ -150,10 +150,10 @@ TEST_P(IResearchQueryAggregateTest, test) {
           "includeAllFields": true,
           "version": %d } } })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
 
@@ -247,7 +247,7 @@ TEST_P(IResearchQueryAggregateTest, test) {
 
         for (; name.valid(); name.next()) {
           auto const actualName = arangodb::iresearch::getStringRef(name.value());
-          auto expectedName = expectedNames.find(static_cast<std::string>(actualName)); // FIXME: remove cast after C++20
+          auto expectedName = expectedNames.find(static_cast<std::string>(actualName));  // FIXME: remove cast after C++20
           ASSERT_NE(expectedName, expectedNames.end());
           expectedNames.erase(expectedName);
         }
@@ -310,7 +310,5 @@ TEST_P(IResearchQueryAggregateTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryAggregateTest,
-  IResearchQueryAggregateTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryAggregateTest,
+                        IResearchQueryAggregateTest, GetLinkVersions());

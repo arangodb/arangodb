@@ -49,7 +49,7 @@ class VariableGenerator;
 namespace graph {
 class EdgeCursor;
 struct ShortestPathOptions;
-}
+}  // namespace graph
 
 namespace velocypack {
 class Builder;
@@ -61,13 +61,12 @@ namespace traverser {
 struct TraverserOptions;
 
 class BaseEngine {
-
  public:
   enum EngineType { TRAVERSER, SHORTESTPATH };
 
-  static std::unique_ptr<BaseEngine> BuildEngine(
-      TRI_vocbase_t& vocbase, aql::QueryContext& query,
-      arangodb::velocypack::Slice info);
+  static std::unique_ptr<BaseEngine> BuildEngine(TRI_vocbase_t& vocbase,
+                                                 aql::QueryContext& query,
+                                                 arangodb::velocypack::Slice info);
 
   BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
              arangodb::velocypack::Slice info);
@@ -78,16 +77,15 @@ class BaseEngine {
   // The engine is NOT copyable.
   BaseEngine(BaseEngine const&) = delete;
 
-  void getVertexData(arangodb::velocypack::Slice vertex, 
-                     arangodb::velocypack::Builder& builder,
-                     bool nestedOutput);
+  void getVertexData(arangodb::velocypack::Slice vertex,
+                     arangodb::velocypack::Builder& builder, bool nestedOutput);
 
   std::shared_ptr<transaction::Context> context() const;
 
   virtual EngineType getType() const = 0;
 
   virtual bool produceVertices() const { return true; }
-  
+
   arangodb::aql::EngineId engineId() const { return _engineId; }
 
  protected:
@@ -105,8 +103,7 @@ class BaseTraverserEngine : public BaseEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  BaseTraverserEngine(TRI_vocbase_t& vocbase,
-                      aql::QueryContext& query,
+  BaseTraverserEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                       arangodb::velocypack::Slice info);
 
   ~BaseTraverserEngine();
@@ -115,8 +112,7 @@ class BaseTraverserEngine : public BaseEngine {
 
   graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
 
-  virtual void smartSearch(arangodb::velocypack::Slice,
-                           arangodb::velocypack::Builder&) = 0;
+  virtual void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) = 0;
 
   EngineType getType() const override { return TRAVERSER; }
 
@@ -151,8 +147,9 @@ class ShortestPathEngine : public BaseEngine {
   EngineType getType() const override { return SHORTESTPATH; }
 
  private:
-  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward, arangodb::velocypack::StringRef v);
- 
+  void addEdgeData(arangodb::velocypack::Builder& builder, bool backward,
+                   arangodb::velocypack::StringRef v);
+
  protected:
   std::unique_ptr<graph::ShortestPathOptions> _opts;
 
@@ -178,4 +175,3 @@ class TraverserEngine : public BaseTraverserEngine {
 
 }  // namespace traverser
 }  // namespace arangodb
-

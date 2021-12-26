@@ -146,7 +146,7 @@ class Parser {
 
   /// @brief abstract syntax tree for the query, build during parsing
   Ast& _ast;
-  
+
   QueryString& _queryString;
 
   /// @brief lexer / scanner used when parsing the query (Aql/tokens.ll)
@@ -183,4 +183,3 @@ int Aqllex_destroy(void*);
 
 /// @brief forward for the context function provided by the lexer (.l)
 void Aqlset_extra(arangodb::aql::Parser*, void*);
-

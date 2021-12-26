@@ -24,12 +24,12 @@
 
 #include "IResearch/VelocyPackHelper.h"
 
-#include <analysis/analyzers.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <analysis/analyzers.hpp>
 
 TestAnalyzer::TestAnalyzer()
-    : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) { }
+    : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {}
 
 bool TestAnalyzer::reset(const iresearch::string_ref& data) {
   _data = irs::ref_cast<irs::byte_type>(data);
@@ -55,11 +55,11 @@ bool TestAnalyzer::normalize(const iresearch::string_ref& args, std::string& def
   if (slice.isString()) {
     VPackObjectBuilder scope(&builder);
     arangodb::iresearch::addStringRef(builder, "args",
-        arangodb::iresearch::getStringRef(slice));
+                                      arangodb::iresearch::getStringRef(slice));
   } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
     VPackObjectBuilder scope(&builder);
     arangodb::iresearch::addStringRef(builder, "args",
-        arangodb::iresearch::getStringRef(slice.get("args")));
+                                      arangodb::iresearch::getStringRef(slice.get("args")));
   } else {
     return false;
   }

@@ -110,9 +110,7 @@ auto SkipResult::fromVelocyPack(VPackSlice slice) -> arangodb::ResultT<SkipResul
   }
 }
 
-auto SkipResult::incrementSubquery() -> void { 
-  _skipped.emplace_back(0); 
-}
+auto SkipResult::incrementSubquery() -> void { _skipped.emplace_back(0); }
 
 auto SkipResult::decrementSubquery() -> void {
   TRI_ASSERT(!_skipped.empty());

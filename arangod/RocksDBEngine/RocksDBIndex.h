@@ -36,7 +36,7 @@
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 namespace cache {
@@ -49,11 +49,10 @@ struct OperationOptions;
 
 class RocksDBIndex : public Index {
  protected:
-  
   // This is the number of distinct elements the index estimator can reliably
   // store
   // This correlates directly with the memory of the estimator:
-  // memory == ESTIMATOR_SIZE * 6 bytes. 
+  // memory == ESTIMATOR_SIZE * 6 bytes.
   // note: if this is ever adjusted, it will break the stored estimator data!
   static constexpr uint64_t ESTIMATOR_SIZE = 4096;
 
@@ -76,8 +75,7 @@ class RocksDBIndex : public Index {
 
   Result drop() override;
 
-  virtual void afterTruncate(TRI_voc_tick_t tick,
-                             transaction::Methods* trx) override;
+  virtual void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
 
   void load() override;
   void unload() override;
@@ -101,7 +99,7 @@ class RocksDBIndex : public Index {
                              LocalDocumentId const& documentId,
                              arangodb::velocypack::Slice doc,
                              OperationOptions const& options);
-  
+
   /// performs a preflight check for an update/replace operation, not carrying out any
   /// modifications to the index.
   /// the default implementation does nothing. indexes can override this and
@@ -113,10 +111,8 @@ class RocksDBIndex : public Index {
 
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice doc,
-                        OperationOptions const& options,
-                        bool performChecks) = 0;
+                        LocalDocumentId const& documentId, arangodb::velocypack::Slice doc,
+                        OperationOptions const& options, bool performChecks) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -126,10 +122,8 @@ class RocksDBIndex : public Index {
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& oldDocumentId,
                         arangodb::velocypack::Slice oldDoc,
-                        LocalDocumentId const& newDocumentId,
-                        velocypack::Slice newDoc,
-                        OperationOptions const& options,
-                        bool performChecks);
+                        LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+                        OperationOptions const& options, bool performChecks);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
@@ -159,9 +153,9 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
   inline bool useCache() const { return (_cacheEnabled && _cache); }
-  
+
   void invalidateCacheEntry(char const* data, std::size_t len);
-  
+
   void invalidateCacheEntry(arangodb::velocypack::StringRef& ref) {
     invalidateCacheEntry(ref.data(), ref.size());
   }
@@ -176,4 +170,3 @@ class RocksDBIndex : public Index {
   std::atomic<uint64_t> _objectId;
 };
 }  // namespace arangodb
-

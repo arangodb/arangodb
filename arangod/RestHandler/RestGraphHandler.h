@@ -220,4 +220,3 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   graph::GraphManager _gmngr;
 };
 }  // namespace arangodb
-

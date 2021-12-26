@@ -57,4 +57,3 @@ struct FailedFollower : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

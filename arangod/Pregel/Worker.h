@@ -43,7 +43,7 @@ namespace arangodb {
 class RestPregelHandler;
 
 namespace pregel {
-  
+
 class PregelFeature;
 
 class IWorker : public std::enable_shared_from_this<IWorker> {
@@ -54,8 +54,7 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   virtual void startGlobalStep(VPackSlice const& data) = 0;  // called by coordinator
   virtual void cancelGlobalStep(VPackSlice const& data) = 0;  // called by coordinator
   virtual void receivedMessages(VPackSlice const& data) = 0;
-  virtual void finalizeExecution(VPackSlice const& data,
-                                 std::function<void()> cb) = 0;
+  virtual void finalizeExecution(VPackSlice const& data, std::function<void()> cb) = 0;
   virtual void startRecovery(VPackSlice const& data) = 0;
   virtual void compensateStep(VPackSlice const& data) = 0;
   virtual void finalizeRecovery(VPackSlice const& data) = 0;
@@ -141,7 +140,7 @@ class Worker : public IWorker {
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  bool _processVertices(size_t threadId, RangeIterator<Vertex<V,E>>& vertexIterator);
+  bool _processVertices(size_t threadId, RangeIterator<Vertex<V, E>>& vertexIterator);
   void _finishedProcessing();
   void _continueAsync();
   void _callConductor(std::string const& path, VPackBuilder const& message);
@@ -149,7 +148,8 @@ class Worker : public IWorker {
                                   std::function<void(VPackSlice slice)> handle);
 
  public:
-  Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm, VPackSlice params, PregelFeature& feature);
+  Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
+         VPackSlice params, PregelFeature& feature);
   ~Worker();
 
   // ====== called by rest handler =====
@@ -168,4 +168,3 @@ class Worker : public IWorker {
 
 }  // namespace pregel
 }  // namespace arangodb
-

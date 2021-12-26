@@ -60,8 +60,8 @@
 #include "Basics/error.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
-#include "Containers/Helpers.h"
 #include "Cluster/ServerState.h"
+#include "Containers/Helpers.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -85,11 +85,11 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/VersionTracker.h"
-#include "Utilities/NameValidator.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
@@ -337,7 +337,8 @@ void TRI_vocbase_t::registerCollection(bool doLock,
                                  _dataSourceLockWriteOwner, doLock);
 
     checkCollectionInvariants();
-    auto sg = arangodb::scopeGuard([&]() noexcept { checkCollectionInvariants(); });
+    auto sg =
+        arangodb::scopeGuard([&]() noexcept { checkCollectionInvariants(); });
 
     // check name
     auto it = _dataSourceByName.try_emplace(name, collection);
@@ -567,7 +568,8 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 /// @brief creates a new collection, worker function
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWorker(VPackSlice parameters) {
   std::string const name =
-      arangodb::basics::VelocyPackHelper::getStringValue(parameters, StaticStrings::DataSourceName, "");
+      arangodb::basics::VelocyPackHelper::getStringValue(parameters, StaticStrings::DataSourceName,
+                                                         "");
   TRI_ASSERT(!name.empty());
 
   // Try to create a new collection. This is not registered yet
@@ -1060,8 +1062,10 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   if (valid) {
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
-    bool isSystem = VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
-    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+    bool isSystem =
+        VelocyPackHelper::getBooleanValue(parameters, StaticStrings::DataSourceSystem, false);
+    bool extendedNames =
+        server().getFeature<DatabaseFeature>().extendedNamesForCollections();
     valid = CollectionNameValidator::isAllowedName(isSystem, extendedNames, name);
   }
 
@@ -1418,14 +1422,15 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
   std::string const& dbName = _info.getName();
-  
+
   std::string name;
   bool valid = parameters.isObject();
   if (valid) {
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
-  
-    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+
+    bool extendedNames =
+        server().getFeature<DatabaseFeature>().extendedNamesForCollections();
     valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name);
   }
 
@@ -1759,7 +1764,7 @@ std::vector<std::shared_ptr<arangodb::LogicalCollection>> TRI_vocbase_t::collect
 
 bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
   TRI_ASSERT(visitor);
-  
+
   std::vector<std::shared_ptr<arangodb::LogicalDataSource>> dataSources;
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);

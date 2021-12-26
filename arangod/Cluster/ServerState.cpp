@@ -65,11 +65,12 @@ namespace {
 // whenever the format of the generated UUIDs changes, please make sure to
 // adjust this regex too!
 std::regex const uuidRegex(
-    "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$");
+    "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-"
+    "f0-9]{12}$");
 
-static constexpr char const* extendedNamesDatabasesKey = "extendedNamesDatabases";
+static constexpr char const* extendedNamesDatabasesKey =
+    "extendedNamesDatabases";
 }  // namespace
-
 
 static constexpr char const* currentServersRegisteredPref =
     "/Current/ServersRegistered/";
@@ -326,7 +327,7 @@ static std::atomic<bool> _license_readonly(false);
 
 bool ServerState::readOnly() {
   return _serverstate_readonly.load(std::memory_order_acquire) ||
-    _license_readonly.load(std::memory_order_acquire);
+         _license_readonly.load(std::memory_order_acquire);
 }
 
 bool ServerState::readOnlyByAPI() {
@@ -340,7 +341,7 @@ bool ServerState::readOnlyByLicense() {
 /// @brief set server read-only
 bool ServerState::setReadOnly(ReadOnlyMode ro) {
   auto ret = readOnly();
-  if(ro == API_FALSE) {
+  if (ro == API_FALSE) {
     _serverstate_readonly.exchange(false, std::memory_order_release);
   } else if (ro == API_TRUE) {
     _serverstate_readonly.exchange(true, std::memory_order_release);
@@ -363,11 +364,14 @@ bool ServerState::unregister(double timeout) {
   std::string const& id = getId();
   std::vector<AgencyOperation> operations;
   operations.reserve(6);
-  operations.emplace_back("Current/" + agencyListKey + "/" + id, AgencySimpleOperationType::DELETE_OP);
+  operations.emplace_back("Current/" + agencyListKey + "/" + id,
+                          AgencySimpleOperationType::DELETE_OP);
   operations.emplace_back("Current/ServersKnown/" + id, AgencySimpleOperationType::DELETE_OP);
-  operations.emplace_back("Current/ServersRegistered/" + id, AgencySimpleOperationType::DELETE_OP);
+  operations.emplace_back("Current/ServersRegistered/" + id,
+                          AgencySimpleOperationType::DELETE_OP);
   operations.emplace_back("Current/Version", AgencySimpleOperationType::INCREMENT_OP);
-  operations.emplace_back("Plan/" + agencyListKey + "/" + id, AgencySimpleOperationType::DELETE_OP);
+  operations.emplace_back("Plan/" + agencyListKey + "/" + id,
+                          AgencySimpleOperationType::DELETE_OP);
   operations.emplace_back("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
   AgencyWriteTransaction unregisterTransaction(operations);
@@ -385,8 +389,10 @@ bool ServerState::logoff(double timeout) {
   std::string const& id = getId();
   std::vector<AgencyOperation> operations;
   operations.reserve(3);
-  operations.emplace_back("Current/" + agencyListKey + "/" + id, AgencySimpleOperationType::DELETE_OP);
-  operations.emplace_back("Current/ServersRegistered/" + id, AgencySimpleOperationType::DELETE_OP);
+  operations.emplace_back("Current/" + agencyListKey + "/" + id,
+                          AgencySimpleOperationType::DELETE_OP);
+  operations.emplace_back("Current/ServersRegistered/" + id,
+                          AgencySimpleOperationType::DELETE_OP);
   operations.emplace_back("Current/Version", AgencySimpleOperationType::INCREMENT_OP);
 
   AgencyWriteTransaction unregisterTransaction(operations);
@@ -394,7 +400,8 @@ bool ServerState::logoff(double timeout) {
 
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
-  int maxTries = static_cast<int>(timeout / 3.0);;
+  int maxTries = static_cast<int>(timeout / 3.0);
+  ;
   int tries = 0;
   while (true) {
     AgencyCommResult res = comm.sendTransactionWithFailover(unregisterTransaction, 3.0);
@@ -466,7 +473,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         << "cluster is unsupported and may cause issues";
     return false;
   }
- 
+
   if (!checkNamingConventionsEquality(comm)) {
     return false;
   }
@@ -662,7 +669,8 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
 /// @brief check equality of naming conventions settings with other registered servers
 bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
   // our own setting
-  bool const extendedNamesForDatabases = _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
+  bool const extendedNamesForDatabases =
+      _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
@@ -681,11 +689,13 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
       if (setting.isBool() && setting.getBool() != extendedNamesForDatabases) {
         // different setting detected. bail out!
         LOG_TOPIC("75972", FATAL, arangodb::Logger::STARTUP)
-          << "The usage of different settings for database object naming "
-          << "conventions (i.e. `--database.extended-names-databases` settings) "
-          << "in the cluster is unsupported and may cause follow-up issues. "
-          << "Please unify the settings for the startup option `--database.extended-names-databases` "
-          << "on all coordinators and DB servers in this cluster.";
+            << "The usage of different settings for database object naming "
+            << "conventions (i.e. `--database.extended-names-databases` "
+               "settings) "
+            << "in the cluster is unsupported and may cause follow-up issues. "
+            << "Please unify the settings for the startup option "
+               "`--database.extended-names-databases` "
+            << "on all coordinators and DB servers in this cluster.";
 
         std::string msg;
         for (VPackObjectIterator::ObjectPair p : VPackObjectIterator(servers)) {
@@ -696,13 +706,18 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
           if (!msg.empty()) {
             msg += ", ";
           }
-          msg += "[" + p.key.copyString() + ": " + (s.isBool() ? (s.getBool() ? "true" : "false") : "not set") + "]";
+          msg += "[" + p.key.copyString() + ": " +
+                 (s.isBool() ? (s.getBool() ? "true" : "false") : "not set") +
+                 "]";
         }
 
         if (!msg.empty()) {
           LOG_TOPIC("1220d", FATAL, arangodb::Logger::STARTUP)
-            << "The following effective settings exist for `--database.extended-names-databases` "
-            << "for the servers in this cluster, either explicitly configured or persisted on database servers: " << msg;
+              << "The following effective settings exist for "
+                 "`--database.extended-names-databases` "
+              << "for the servers in this cluster, either explicitly "
+                 "configured or persisted on database servers: "
+              << msg;
         }
         return false;
       }
@@ -727,8 +742,8 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
       std::vector<std::string>({AgencyCommHelper::path(), "Plan", agencyListKey}));
   if (!servers.isObject()) {
     LOG_TOPIC("6507f", WARN, Logger::STARTUP)
-        << "Plan/" << agencyListKey << " in agency is no object, but " << servers.typeName()
-        << ". Agency not initialized?";
+        << "Plan/" << agencyListKey << " in agency is no object, but "
+        << servers.typeName() << ". Agency not initialized?";
     return false;
   }
   return true;
@@ -739,9 +754,8 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
 //////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
-
-  // if the agency is not initialized, we'll give the bunch a little time to get their
-  // act together before calling it a day.
+  // if the agency is not initialized, we'll give the bunch a little time to get
+  // their act together before calling it a day.
 
   using namespace std::chrono;
   using clock = steady_clock;
@@ -890,7 +904,7 @@ std::string ServerState::getShortName() const {
   std::stringstream ss;  // ShortName
   auto num = getShortId();
   if (num == 0) {
-    return std::string{};   // not yet known
+    return std::string{};  // not yet known
   }
   size_t width = std::max(std::to_string(num).size(), static_cast<size_t>(4));
   ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0') << num;

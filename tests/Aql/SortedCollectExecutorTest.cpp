@@ -416,8 +416,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
       SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                  expressionRegister, expressionVariable,
                                  std::move(aggregateTypes), std::move(variables),
-                                 std::move(aggregateRegisters),
-                                 &VPackOptions::Defaults);
+                                 std::move(aggregateRegisters), &VPackOptions::Defaults);
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
@@ -510,8 +509,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
       SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                  expressionRegister, expressionVariable,
                                  std::move(aggregateTypes), std::move(variables),
-                                 std::move(aggregateRegisters),
-                                 &VPackOptions::Defaults);
+                                 std::move(aggregateRegisters), &VPackOptions::Defaults);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
 
@@ -950,9 +948,8 @@ class SortedCollectExecutorTestSplit
         registerInfos(RegIdSet{0}, RegIdSet{1, 2}, 1, nrOutputRegister,
                       RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-                      expressionVariable, std::move(aggregateTypes),
-                      std::move(variables), std::move(aggregateRegisters),
-                      &VPackOptions::Defaults) {}
+                      expressionVariable, std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {

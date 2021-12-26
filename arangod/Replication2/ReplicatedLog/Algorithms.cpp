@@ -29,8 +29,8 @@
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
-#include <type_traits>
 #include <random>
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -80,7 +80,6 @@ auto checkCurrentTerm(DatabaseID const& database,
                       LogPlanSpecification const& spec, LogCurrent const& current,
                       std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection> {
-
   auto const verifyServerRebootId = [&](ParticipantId const& id, RebootId rebootId) -> bool {
     if (auto it = info.find(id); it != std::end(info)) {
       return it->second.rebootId == rebootId;
@@ -96,7 +95,6 @@ auto checkCurrentTerm(DatabaseID const& database,
 
     return false;
   };
-
 
   auto const& term = spec.currentTerm;
   if (auto const& leader = term->leader; leader) {
@@ -128,7 +126,7 @@ auto checkCurrentTerm(DatabaseID const& database,
     auto numberOfAvailableParticipants = std::size_t{0};
 
     for (auto const& [participant, status] : current.localState) {
-      auto error = std::invoke([&, &status = status, &participant = participant]{
+      auto error = std::invoke([&, &status = status, &participant = participant] {
         bool const isHealthy = isServerHealthy(participant);
         if (!isHealthy) {
           return agency::LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
@@ -154,9 +152,10 @@ auto checkCurrentTerm(DatabaseID const& database,
       }
     }
 
-    auto const requiredNumberOfAvailableParticipants = std::invoke([&spec = spec.currentTerm] {
-      return spec->participants.size() - spec->config.writeConcern + 1;
-    });
+    auto const requiredNumberOfAvailableParticipants =
+        std::invoke([&spec = spec.currentTerm] {
+          return spec->participants.size() - spec->config.writeConcern + 1;
+        });
 
     LOG_TOPIC("8a53d", TRACE, Logger::REPLICATION2)
         << "participant size = " << spec.currentTerm->participants.size()
@@ -189,8 +188,8 @@ auto checkCurrentTerm(DatabaseID const& database,
       newTermSpec.term.value += 1;
       newTermSpec.leader = LogPlanTermSpecification::Leader{newLeader, record.rebootId};
       LOG_TOPIC("458ad", INFO, Logger::REPLICATION2)
-          << "declaring " << newLeader << " as new leader for log "
-          << database << "/" << spec.id;
+          << "declaring " << newLeader << " as new leader for log " << database
+          << "/" << spec.id;
       return newTermSpec;
 
     } else {
@@ -217,7 +216,6 @@ auto algorithms::checkReplicatedLog(DatabaseID const& database,
                                     LogCurrent const& current,
                                     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection> {
-
   if (spec.currentTerm.has_value()) {
     return checkCurrentTerm(database, spec, current, info);
   } else {
@@ -311,7 +309,7 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
 
       auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
                                          spec->currentTerm->term, followers);
-      newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
+      newLeader->triggerAsyncReplication();  // TODO move this call into becomeLeader?
     } else {
       auto leaderString = std::optional<ParticipantId>{};
       if (spec->currentTerm->leader) {

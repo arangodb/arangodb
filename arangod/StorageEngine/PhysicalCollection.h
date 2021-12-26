@@ -52,7 +52,7 @@ class Result;
 class PhysicalCollection {
  public:
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
-  
+
   virtual ~PhysicalCollection() = default;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
@@ -103,7 +103,7 @@ class PhysicalCollection {
   /// @brief determines order of index execution on collection
   struct IndexOrder {
     bool operator()(const std::shared_ptr<Index>& left,
-                              const std::shared_ptr<Index>& right) const;
+                    const std::shared_ptr<Index>& right) const;
   };
 
   using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder>;
@@ -122,8 +122,9 @@ class PhysicalCollection {
   /// @brief get list of all indices
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&,
-                       std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
+  void getIndexesVPack(
+      velocypack::Builder&,
+      std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
   virtual futures::Future<OperationResult> figures(bool details,
@@ -136,7 +137,8 @@ class PhysicalCollection {
 
   virtual bool dropIndex(IndexId iid) = 0;
 
-  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) const = 0;
+  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
+                                                        ReadOwnWrites readOwnWrites) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
 
   /// @brief Get an iterator associated with the specified replication batch
@@ -165,19 +167,22 @@ class PhysicalCollection {
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
 
   virtual Result lookupKey(transaction::Methods*, arangodb::velocypack::StringRef,
-                           std::pair<LocalDocumentId, RevisionId>&, ReadOwnWrites readOwnWrites) const = 0;
+                           std::pair<LocalDocumentId, RevisionId>&,
+                           ReadOwnWrites readOwnWrites) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const = 0;
-  
+                      IndexIterator::DocumentCallback const& cb,
+                      ReadOwnWrites readOwnWrites) const = 0;
+
   /// @brief read a documument referenced by token (internal method)
-  virtual Result read(transaction::Methods* trx,
-                    LocalDocumentId const& token,
-                    IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const = 0;
+  virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
+                      IndexIterator::DocumentCallback const& cb,
+                      ReadOwnWrites readOwnWrites) const = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                            ManagedDocumentResult& result, ReadOwnWrites readOwnWrites) const = 0;
+                            ManagedDocumentResult& result,
+                            ReadOwnWrites readOwnWrites) const = 0;
 
   /**
    * @brief Perform document insert, may generate a '_key' value
@@ -210,8 +215,7 @@ class PhysicalCollection {
                             bool isEdgeCollection, velocypack::Builder& builder,
                             bool isRestore, RevisionId& revisionId) const;
 
-  virtual std::unique_ptr<containers::RevisionTree> revisionTree(
-      transaction::Methods& trx);
+  virtual std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId);
   virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId);
 
@@ -250,8 +254,7 @@ class PhysicalCollection {
                              bool isEdgeCollection, velocypack::Builder& builder,
                              bool isRestore, RevisionId& revisionId) const;
 
-  bool checkRevision(transaction::Methods* trx, RevisionId expected,
-                     RevisionId found) const;
+  bool checkRevision(transaction::Methods* trx, RevisionId expected, RevisionId found) const;
 
   LogicalCollection& _logicalCollection;
   ClusterInfo* _ci;
@@ -264,4 +267,3 @@ class PhysicalCollection {
 };
 
 }  // namespace arangodb
-

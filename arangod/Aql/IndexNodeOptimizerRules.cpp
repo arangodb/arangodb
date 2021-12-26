@@ -21,7 +21,6 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "IndexNodeOptimizerRules.h"
 
 #include "Aql/Ast.h"
@@ -49,7 +48,8 @@ bool attributesMatch(arangodb::transaction::Methods::IndexHandle const& index,
     size_t indexFieldNum = 0;
     for (auto const& field : index->fields()) {
       TRI_ASSERT(nodeAttr.afData.postfix.empty());
-      if (latematerialized::isPrefix(field, nodeAttr.attr, false, nodeAttr.afData.postfix)) {
+      if (latematerialized::isPrefix(field, nodeAttr.attr, false,
+                                     nodeAttr.afData.postfix)) {
         nodeAttr.afData.fieldNumber = indexFieldNum;
         nodeAttr.afData.field = &field;
         break;
@@ -64,10 +64,10 @@ bool attributesMatch(arangodb::transaction::Methods::IndexHandle const& index,
   return true;
 }
 
-bool processCalculationNode(
-    Variable const* var, arangodb::transaction::Methods::IndexHandle const& index,
-    CalculationNode* calculationNode, Expression* expression,
-    std::vector<latematerialized::NodeExpressionWithAttrs>& nodesToChange) {
+bool processCalculationNode(Variable const* var,
+                            arangodb::transaction::Methods::IndexHandle const& index,
+                            CalculationNode* calculationNode, Expression* expression,
+                            std::vector<latematerialized::NodeExpressionWithAttrs>& nodesToChange) {
   latematerialized::NodeExpressionWithAttrs node;
   node.expression = expression;
   node.node = calculationNode;
@@ -85,7 +85,7 @@ bool processCalculationNode(
   return true;
 }
 
-}
+}  // namespace
 
 void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
                                                     std::unique_ptr<ExecutionPlan> plan,
@@ -111,17 +111,18 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
     if (loop != nullptr && ExecutionNode::INDEX == loop->getType()) {
       auto* indexNode = ExecutionNode::castTo<IndexNode*>(loop);
       TRI_ASSERT(indexNode);
-      if (!indexNode->canApplyLateDocumentMaterializationRule() || indexNode->isLateMaterialized()) {
-        continue; // loop is already optimized
+      if (!indexNode->canApplyLateDocumentMaterializationRule() ||
+          indexNode->isLateMaterialized()) {
+        continue;  // loop is already optimized
       }
       auto& indexes = indexNode->getIndexes();
       TRI_ASSERT(!indexes.empty());
       if (indexes.size() != 1) {
-        continue; // several indexes are not supported
+        continue;  // several indexes are not supported
       }
       auto& index = indexes.front();
       if (!index->hasCoveringIterator()) {
-        continue; // index must be covering
+        continue;  // index must be covering
       }
       auto const* var = indexNode->outVariable();
       std::vector<latematerialized::NodeExpressionWithAttrs> nodesToChange;
@@ -150,7 +151,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         auto const type = current->getType();
         switch (type) {
           case ExecutionNode::SORT:
-            if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
+            if (sortNode == nullptr) {  // we need nearest to limit sort node, so keep selected if any
               sortNode = current;
             }
             break;
@@ -158,8 +159,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
             auto* calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
             TRI_ASSERT(calculationNode);
             valid = processCalculationNode(var, index, calculationNode,
-                                           calculationNode->expression(),
-                                           nodesToChange);
+                                           calculationNode->expression(), nodesToChange);
             break;
           }
           case ExecutionNode::REMOTE:
@@ -168,7 +168,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
               stopSearch = true;
             }
             break;
-          default: // make clang happy
+          default:  // make clang happy
             break;
         }
         // currently only calculation nodes expected to use a loop variable with attributes
@@ -187,7 +187,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
               // find calculation nodes in the plan of a subquery
               CalculationNodeVarFinder finder(var, subqueryCalcNodes);
               valid = !subquery->walk(finder);
-              if (valid) { // if the finder did not stop
+              if (valid) {  // if the finder did not stop
                 for (auto* scn : subqueryCalcNodes) {
                   TRI_ASSERT(scn && scn->getType() == ExecutionNode::CALCULATION);
                   currentUsedVars.clear();
@@ -226,7 +226,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
           nodesToChange.clear();
           break;
         }
-        current = current->getFirstDependency(); // inspect next node
+        current = current->getFirstDependency();  // inspect next node
       }
       if (sortNode && !nodesToChange.empty()) {
         IndexNode::IndexVarsInfo uniqueVariables;
@@ -238,8 +238,11 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
           if (afData.parentNode == nullptr && afData.postfix.empty() && node.node != nullptr) {
             TRI_ASSERT(node.attrs.size() == 1);
             // we could add one redundant variable for each field only
-            if (uniqueVariables.try_emplace(afData.field, IndexNode::IndexVariable{afData.fieldNumber,
-                                            node.node->outVariable()}).second) {
+            if (uniqueVariables
+                    .try_emplace(afData.field,
+                                 IndexNode::IndexVariable{afData.fieldNumber,
+                                                          node.node->outVariable()})
+                    .second) {
               toUnlink.emplace(node.node);
             }
           }
@@ -254,9 +257,12 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
             // nullptr == node.node for index node with applied early pruning
             if ((attrAndField.afData.parentNode != nullptr ||
                  !attrAndField.afData.postfix.empty() || nullptr == node.node) &&
-                uniqueVariables.find(attrAndField.afData.field) == uniqueVariables.cend()) {
-              uniqueVariables.emplace(attrAndField.afData.field, IndexNode::IndexVariable{attrAndField.afData.fieldNumber,
-                ast->variables()->createTemporaryVariable()});
+                uniqueVariables.find(attrAndField.afData.field) ==
+                    uniqueVariables.cend()) {
+              uniqueVariables.emplace(
+                  attrAndField.afData.field,
+                  IndexNode::IndexVariable{attrAndField.afData.fieldNumber,
+                                           ast->variables()->createTemporaryVariable()});
             }
           }
         }
@@ -290,14 +296,14 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         indexNode->setLateMaterialized(localDocIdTmp, index->id(), uniqueVariables);
         // 2. We need to add materializer after limit node to do materialization
         // insert a materialize node
-        auto* materializeNode =
-          plan->registerNode(std::make_unique<materialize::MaterializeSingleNode>(
+        auto* materializeNode = plan->registerNode(std::make_unique<materialize::MaterializeSingleNode>(
             plan.get(), plan->nextId(), indexNode->collection(), *localDocIdTmp, *var));
         TRI_ASSERT(materializeNode);
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible
-        auto* materializeDependency = ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
+        auto* materializeDependency =
+            ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
         TRI_ASSERT(materializeDependency);
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);

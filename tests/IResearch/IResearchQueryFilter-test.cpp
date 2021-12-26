@@ -54,7 +54,8 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -98,10 +99,10 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
         "version": %u }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -152,8 +153,7 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res =
-          collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -211,14 +211,12 @@ TEST_P(IResearchQueryFilterTest, SearchAndFilter) {
   // FILTER must always follow SEARCH
   {
     std::string const query =
-      "FOR d IN testView FILTER d.seq == 1' SEARCH d.name == 'A' RETURN d";
+        "FOR d IN testView FILTER d.seq == 1' SEARCH d.name == 'A' RETURN d";
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_QUERY_PARSE));
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryFilterTest,
-  IResearchQueryFilterTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryFilterTest, IResearchQueryFilterTest,
+                        GetLinkVersions());

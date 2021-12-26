@@ -55,8 +55,8 @@ std::vector<size_t> const emptyAttributePositions;
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, arangodb::aql::Projections projections,
-    bool random, bool count, ReadOwnWrites readOwnWrites)
+    Expression* filter, arangodb::aql::Projections projections, bool random,
+    bool count, ReadOwnWrites readOwnWrites)
     : _query(query),
       _collection(collection),
       _outVariable(outVariable),
@@ -92,9 +92,13 @@ bool EnumerateCollectionExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-bool EnumerateCollectionExecutorInfos::getRandom() const noexcept { return _random; }
+bool EnumerateCollectionExecutorInfos::getRandom() const noexcept {
+  return _random;
+}
 
-bool EnumerateCollectionExecutorInfos::getCount() const noexcept { return _count; }
+bool EnumerateCollectionExecutorInfos::getCount() const noexcept {
+  return _count;
+}
 
 RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
   return _outputRegisterId;
@@ -104,18 +108,17 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
     : _trx(infos.getQuery().newTrxContext()),
       _infos(infos),
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
-                                        _infos.getProduceResult(), _infos.getQuery(), _trx,
-                                        _infos.getFilter(), _infos.getProjections(),
-                                        true, false),
+                                        _infos.getProduceResult(),
+                                        _infos.getQuery(), _trx, _infos.getFilter(),
+                                        _infos.getProjections(), true, false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
   _cursor = _trx.indexScan(_infos.getCollection()->name(),
-                           (_infos.getRandom()
-                             ? transaction::Methods::CursorType::ANY
-                             : transaction::Methods::CursorType::ALL),
+                           (_infos.getRandom() ? transaction::Methods::CursorType::ANY
+                                               : transaction::Methods::CursorType::ALL),
                            infos.canReadOwnWrites());
 
   if (_infos.getProduceResult()) {
@@ -130,7 +133,7 @@ EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
                                                   EnumerateCollectionStats& stats) {
   uint64_t actuallySkipped = 0;
-      
+
   TRI_ASSERT(!_infos.getCount());
 
   if (_infos.getFilter() == nullptr) {
@@ -207,7 +210,7 @@ void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& input
   if (_currentRow) {
     // moves one row forward
     inputRange.advanceDataRow();
-  } 
+  }
   std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
   if (!_currentRow) {
     return;

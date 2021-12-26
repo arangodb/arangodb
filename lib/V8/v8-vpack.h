@@ -32,8 +32,8 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
-}
+}  // namespace velocypack
+}  // namespace arangodb
 
 /// @brief converts a VPack value into a V8 object
 v8::Handle<v8::Value> TRI_VPackToV8(
@@ -46,4 +46,3 @@ v8::Handle<v8::Value> TRI_VPackToV8(
 void TRI_V8ToVPack(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
                    v8::Local<v8::Value> value, bool keepTopLevelOpen,
                    bool convertFunctionsToNull = false);
-

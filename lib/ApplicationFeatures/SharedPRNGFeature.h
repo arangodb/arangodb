@@ -37,9 +37,8 @@ class SharedPRNGFeature final : public application_features::ApplicationFeature 
   ~SharedPRNGFeature();
 
   void prepare() override final;
-  
+
   uint64_t rand() noexcept;
 };
 
 }  // namespace arangodb
-

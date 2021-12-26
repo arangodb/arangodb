@@ -53,15 +53,17 @@ using namespace arangodb;
 
 namespace {
 /// @brief custom comparer for failure points. this allows an implicit
-/// conversion from char const* to arangodb::velocypack::StringRef in order to avoid memory
-/// allocations for temporary string values
+/// conversion from char const* to arangodb::velocypack::StringRef in order to
+/// avoid memory allocations for temporary string values
 struct Comparer {
   using is_transparent = std::true_type;
   // implement comparison functions for various types
-  inline bool operator()(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) const noexcept {
+  inline bool operator()(arangodb::velocypack::StringRef const& lhs,
+                         std::string const& rhs) const noexcept {
     return lhs < arangodb::velocypack::StringRef(rhs);
   }
-  inline bool operator()(std::string const& lhs, arangodb::velocypack::StringRef const& rhs) const noexcept {
+  inline bool operator()(std::string const& lhs,
+                         arangodb::velocypack::StringRef const& rhs) const noexcept {
     return arangodb::velocypack::StringRef(lhs) < rhs;
   }
   inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
@@ -69,8 +71,8 @@ struct Comparer {
   }
 };
 
-/// @brief custom comparer for failure points. allows avoiding memory allocations
-/// for temporary string objects
+/// @brief custom comparer for failure points. allows avoiding memory
+/// allocations for temporary string objects
 Comparer const comparer;
 
 /// @brief a read-write lock for thread-safe access to the failure points set
@@ -122,16 +124,17 @@ void TRI_TerminateDebugging(char const* message) {
   }
 
 #endif
- 
+
   // intentional crash - no need for a backtrace here
   CrashHandler::disableBacktraces();
-  CrashHandler::crash(message);  
+  CrashHandler::crash(message);
 }
 
 /// @brief check whether we should fail at a specific failure point
 bool TRI_ShouldFailDebugging(char const* value) {
   READ_LOCKER(readLocker, ::failurePointsLock);
-  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
+  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) !=
+         ::failurePoints.end();
 }
 
 /// @brief add a failure point
@@ -171,7 +174,7 @@ void TRI_ClearFailurePointsDebugging() noexcept {
     numExisting = ::failurePoints.size();
     ::failurePoints.clear();
   }
-    
+
   if (numExisting > 0) {
     LOG_TOPIC("ea4e7", INFO, arangodb::Logger::FIXME)
         << "cleared " << numExisting << " failure point(s)";
@@ -191,7 +194,11 @@ void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder) {
 }
 #endif
 
-template<> char const conpar<true>::open = '{';
-template<> char const conpar<true>::close = '}';
-template<> char const conpar<false>::open = '[';
-template<> char const conpar<false>::close = ']';
+template <>
+char const conpar<true>::open = '{';
+template <>
+char const conpar<true>::close = '}';
+template <>
+char const conpar<false>::open = '[';
+template <>
+char const conpar<false>::close = ']';

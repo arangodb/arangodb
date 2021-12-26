@@ -25,9 +25,9 @@
 
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
-#include "Aql/QueryContext.h"
 #include "Transaction/Methods.h"
 
 #include <utility>
@@ -41,7 +41,8 @@ namespace {
 class OurLessThan {
  public:
   OurLessThan(arangodb::aql::QueryContext& query, std::vector<SortRegister>& sortRegisters) noexcept
-      : _resolver(query.resolver()), _vpackOptions(query.vpackOptions()),
+      : _resolver(query.resolver()),
+        _vpackOptions(query.vpackOptions()),
         _sortRegisters(sortRegisters) {}
 
   bool operator()(SortingGatherExecutor::ValueType const& a,
@@ -193,7 +194,8 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
       _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
-      _strategy = std::make_unique<MinElementSorting>(infos.query(), infos.sortRegister());
+      _strategy =
+          std::make_unique<MinElementSorting>(infos.query(), infos.sortRegister());
       break;
     case GatherNode::SortMode::Heap:
     case GatherNode::SortMode::Default:  // use heap by default
@@ -485,8 +487,8 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
   return constrainedSort() && rowsLeftToWrite() == 0;
 }
 
-[[nodiscard]] auto SortingGatherExecutor::calculateUpstreamCall(AqlCall const& clientCall) const
-    noexcept -> AqlCallList {
+[[nodiscard]] auto SortingGatherExecutor::calculateUpstreamCall(AqlCall const& clientCall) const noexcept
+    -> AqlCallList {
   auto upstreamCall = AqlCall{};
   if (constrainedSort()) {
     if (clientCall.hasSoftLimit()) {

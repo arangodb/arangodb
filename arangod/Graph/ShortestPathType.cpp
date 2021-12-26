@@ -41,7 +41,8 @@ constexpr char const* KPathsName = "K_PATHS";
   if (strcmp(value, KPathsName) == 0) {
     return Type::KPaths;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid shortest path type");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid shortest path type");
 }
 
 /// @brief return the type as a string
@@ -52,7 +53,8 @@ constexpr char const* KPathsName = "K_PATHS";
     case Type::KPaths:
       return KPathsName;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid shortest path type");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid shortest path type");
 }
 
 }  // namespace graph

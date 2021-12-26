@@ -37,9 +37,10 @@
 
 namespace arangodb {
 namespace velocypack {
-template<typename T> class Buffer;
+template <typename T>
+class Buffer;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace network {
 class ConnectionPool;
@@ -59,16 +60,16 @@ struct Response {
   Response& operator=(Response&& other) noexcept = default;
   Response(Response const& other) = delete;
   Response& operator=(Response const& other) = delete;
- 
+
   bool hasRequest() const noexcept { return _request != nullptr; }
   bool hasResponse() const noexcept { return _response != nullptr; }
-  
-  /// @brief return a reference to the request object. will throw an exception if
-  /// there is no valid request!
+
+  /// @brief return a reference to the request object. will throw an exception
+  /// if there is no valid request!
   arangodb::fuerte::Request& request() const;
-  
-  /// @brief return a reference to the response object. will throw an exception if
-  /// there is no valid response!
+
+  /// @brief return a reference to the response object. will throw an exception
+  /// if there is no valid response!
   arangodb::fuerte::Response& response() const;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -88,7 +89,7 @@ struct Response {
 
   // returns a slice of the payload if there was no error
   [[nodiscard]] velocypack::Slice slice() const;
-  
+
   [[nodiscard]] std::size_t payloadSize() const noexcept;
 
   fuerte::StatusCode statusCode() const;
@@ -102,7 +103,7 @@ struct Response {
 
   [[nodiscard]] std::string destinationShard() const;  /// @brief shardId or empty
   [[nodiscard]] std::string serverId() const;          /// @brief server ID
-  
+
  public:
   DestinationId destination;
   fuerte::Error error;
@@ -161,4 +162,3 @@ using Sender =
 
 }  // namespace network
 }  // namespace arangodb
-

@@ -54,9 +54,8 @@ struct TestView : public arangodb::LogicalView {
 
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
       : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder,
-      Serialization) const override {
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
+                                                Serialization) const override {
     builder.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
@@ -68,8 +67,7 @@ struct TestView : public arangodb::LogicalView {
     return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
-                                      bool /*isUserRequest*/,
-                                      bool /*partialUpdate*/) override {
+                                      bool /*isUserRequest*/, bool /*partialUpdate*/) override {
     _properties = arangodb::velocypack::Builder(properties);
     return arangodb::Result();
   }
@@ -80,7 +78,8 @@ struct TestView : public arangodb::LogicalView {
 
 struct ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice definition, bool /*isUserRequest*/) const override {
+                                  arangodb::velocypack::Slice definition,
+                                  bool /*isUserRequest*/) const override {
     view = vocbase.createView(definition);
 
     return arangodb::Result();
@@ -115,8 +114,8 @@ class LogicalViewTest
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ExecContext
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);  
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::create(...)
 

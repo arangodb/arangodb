@@ -37,19 +37,17 @@ namespace {
 using namespace arangodb;
 
 struct InvalidViewFactory : public arangodb::ViewFactory {
-  virtual Result create(
-      LogicalView::ptr&, TRI_vocbase_t& vocbase,
-      VPackSlice definition, bool /*isUserRequest*/) const override {
+  virtual Result create(LogicalView::ptr&, TRI_vocbase_t& vocbase,
+                        VPackSlice definition, bool /*isUserRequest*/) const override {
     std::string name;
     if (definition.isObject()) {
-      name = basics::VelocyPackHelper::getStringValue(
-          definition, StaticStrings::DataSourceName, "");
+      name = basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
+                                                      "");
     }
     events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string(
-            "invalid type provided to create view with definition: ") +
+        std::string("invalid type provided to create view with definition: ") +
             definition.toString());
   }
 
@@ -78,7 +76,6 @@ ViewTypesFeature::ViewTypesFeature(application_features::ApplicationServer& serv
 
 Result ViewTypesFeature::emplace(LogicalDataSource::Type const& type,
                                  ViewFactory const& factory) {
-
   // ensure new factories are not added at runtime since that would require
   // additional locks
   if (server().hasFeature<BootstrapFeature>()) {
@@ -90,11 +87,11 @@ Result ViewTypesFeature::emplace(LogicalDataSource::Type const& type,
     }
   }
 
-  if (!isEnabled()) { // should not be called
+  if (!isEnabled()) {  // should not be called
     TRI_ASSERT(false);
     return arangodb::Result();
   }
-  
+
   if (!_factories.try_emplace(&type, &factory).second) {
     return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("view factory previously registered during view factory "
                                                                                "registration for view type '") +

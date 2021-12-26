@@ -31,9 +31,8 @@
 namespace arangodb {
 
 std::array<char const*, arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies> RocksDBColumnFamilyManager::_internalNames =
-    {"default",       "Documents",      "PrimaryIndex",
-     "EdgeIndex",     "VPackIndex",     "GeoIndex",
-     "FulltextIndex", "ReplicatedLogs", "ZkdIndex"};
+    {"default",  "Documents",     "PrimaryIndex",   "EdgeIndex", "VPackIndex",
+     "GeoIndex", "FulltextIndex", "ReplicatedLogs", "ZkdIndex"};
 
 std::array<char const*, arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies> RocksDBColumnFamilyManager::_externalNames =
     {"definitions", "documents", "primary",         "edge", "vpack",

@@ -58,7 +58,7 @@ std::ostream& operator<<(std::ostream& ostream, CompareResult const& string);
 auto compareWithBox(byte_string_view cur, byte_string_view min, byte_string_view max,
                     std::size_t dimensions) -> std::vector<CompareResult>;
 void compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_string_view max,
-                    std::size_t dimensions, std::vector<CompareResult>& result);
+                        std::size_t dimensions, std::vector<CompareResult>& result);
 auto testInBox(byte_string_view cur, byte_string_view min, byte_string_view max,
                std::size_t dimensions) -> bool;
 

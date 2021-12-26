@@ -57,8 +57,8 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
                       value.slice().typeName());
   }
 
-  // not necessary to check if key exists in object, since AqlValue::get() will return a
-  // null-result below in case key does not exist.
+  // not necessary to check if key exists in object, since AqlValue::get() will
+  // return a null-result below in case key does not exist.
 
   // Extract key from `value`, and make sure it is a string
   bool mustDestroyKey;
@@ -67,7 +67,8 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
 
   if (!keyEntry.isString()) {
     return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-                  std::string{"Expected _key to be a string attribute in document."}};
+                  std::string{
+                      "Expected _key to be a string attribute in document."}};
   }
 
   // Key found and assigned, note rev is empty by assertion
@@ -147,7 +148,6 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos const&
 
 void ModificationExecutorHelpers::throwOperationResultException(
     ModificationExecutorInfos const& infos, OperationResult const& operationResult) {
-
   // A "higher level error" happened (such as the transaction being aborted,
   // replication being refused, etc ), and we do not have errorCounter or
   // similar so we throw.

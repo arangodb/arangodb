@@ -171,9 +171,8 @@ class IndexExecutor {
  private:
   struct CursorReader {
    public:
-    CursorReader(transaction::Methods& trx,
-                 IndexExecutorInfos const& infos, AstNode const* condition,
-                 std::shared_ptr<Index> const& index,
+    CursorReader(transaction::Methods& trx, IndexExecutorInfos const& infos,
+                 AstNode const* condition, std::shared_ptr<Index> const& index,
                  DocumentProducingFunctionContext& context, bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
     size_t skipIndex(size_t toSkip);
@@ -223,7 +222,7 @@ class IndexExecutor {
   IndexExecutor(IndexExecutor const&) = delete;
   IndexExecutor(Fetcher& fetcher, Infos&);
   ~IndexExecutor();
-  
+
   /**
    * @brief This Executor in some cases knows how many rows it will produce and most by itself
    */
@@ -272,4 +271,3 @@ class IndexExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

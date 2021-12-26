@@ -43,18 +43,15 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-MutexExecutorInfos::MutexExecutorInfos(
-    std::vector<std::string> clientIds)
+MutexExecutorInfos::MutexExecutorInfos(std::vector<std::string> clientIds)
     : ClientsExecutorInfos(std::move(clientIds)) {}
 
-
 MutexExecutor::MutexExecutor(MutexExecutorInfos const& infos)
-  : _infos(infos), _numClient(0) {}
+    : _infos(infos), _numClient(0) {}
 
 auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
                                     std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
-
   TRI_IF_FAILURE("MutexExecutor::distributeBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

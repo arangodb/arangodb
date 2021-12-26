@@ -43,12 +43,14 @@ static_assert((::ReaderMask & ::QueuedWriterMask) == 0,
 static_assert((::QueuedWriterMask & ::WriteLock) == 0,
               "::QueuedWriterMask and ::WriteLock conflict");
 
-static_assert((::ReaderMask & ::ReaderIncrement) != 0 && (::ReaderMask & (::ReaderIncrement >> 1)) == 0,
+static_assert((::ReaderMask & ::ReaderIncrement) != 0 &&
+                  (::ReaderMask & (::ReaderIncrement >> 1)) == 0,
               "::ReaderIncrement must be first bit in ::ReaderMask");
-static_assert((::QueuedWriterMask & ::QueuedWriterIncrement) != 0 &&
-                  (::QueuedWriterMask & (::QueuedWriterIncrement >> 1)) == 0,
-              "::QueuedWriterIncrement must be first bit in ::QueuedWriterMask");
-}
+static_assert(
+    (::QueuedWriterMask & ::QueuedWriterIncrement) != 0 &&
+        (::QueuedWriterMask & (::QueuedWriterIncrement >> 1)) == 0,
+    "::QueuedWriterIncrement must be first bit in ::QueuedWriterMask");
+}  // namespace
 
 namespace arangodb::basics {
 
@@ -128,7 +130,7 @@ bool ReadWriteSpinLock::lockWrite(std::size_t maxAttempts) noexcept {
   }
 
   // Undo the counting of us as queued writer:
-   _state.fetch_sub(::QueuedWriterIncrement, std::memory_order_release);
+  _state.fetch_sub(::QueuedWriterIncrement, std::memory_order_release);
 
   return false;
 }
@@ -199,4 +201,4 @@ bool ReadWriteSpinLock::isLockedWrite() const noexcept {
   return _state.load(std::memory_order_relaxed) & ::WriteLock;
 }
 
-}
+}  // namespace arangodb::basics

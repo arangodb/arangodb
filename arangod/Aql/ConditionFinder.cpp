@@ -31,7 +31,6 @@
 #include "Aql/SortNode.h"
 #include "Basics/tryEmplaceHelper.h"
 
-
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
@@ -127,7 +126,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto [filtering, sorting] = condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto [filtering, sorting] =
+          condition->findIndexes(node, usedIndexes, sortCondition.get());
 
       if (filtering || sorting) {
         bool descending = false;
@@ -154,19 +154,19 @@ bool ConditionFinder::before(ExecutionNode* en) {
         }
 
         // We keep this node's change
-        _changes.try_emplace(
-            node->id(),
-            arangodb::lazyConstruct([&]{
-              IndexNode* idx = new IndexNode(_plan, _plan->nextId(), node->collection(),
-                                             node->outVariable(), usedIndexes, std::move(condition), opts);
-              // if the enumerate collection node had the counting flag
-              // set, we can copy it over to the index node as well
-              idx->copyCountFlag(node);
-              // copy over the read-own-writes flag from EnumerateCollectionNode to IndexNode
-              idx->setCanReadOwnWrites(node->canReadOwnWrites());
-              return idx;
-            })
-        );
+        _changes.try_emplace(node->id(), arangodb::lazyConstruct([&] {
+                               IndexNode* idx =
+                                   new IndexNode(_plan, _plan->nextId(),
+                                                 node->collection(),
+                                                 node->outVariable(), usedIndexes,
+                                                 std::move(condition), opts);
+                               // if the enumerate collection node had the counting flag
+                               // set, we can copy it over to the index node as well
+                               idx->copyCountFlag(node);
+                               // copy over the read-own-writes flag from EnumerateCollectionNode to IndexNode
+                               idx->setCanReadOwnWrites(node->canReadOwnWrites());
+                               return idx;
+                             }));
       }
       break;
     }
@@ -272,7 +272,4 @@ void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* out
 
 ConditionFinder::ConditionFinder(ExecutionPlan* plan,
                                  std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes)
-    : _plan(plan),
-      _variableDefinitions(),
-      _changes(changes),
-      _producesEmptyResult(false) {}
+    : _plan(plan), _variableDefinitions(), _changes(changes), _producesEmptyResult(false) {}

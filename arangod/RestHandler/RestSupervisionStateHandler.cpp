@@ -41,7 +41,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestSupervisionStateHandler::RestSupervisionStateHandler(application_features::ApplicationServer& server,
-                                                         GeneralRequest* request, GeneralResponse* response)
+                                                         GeneralRequest* request,
+                                                         GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestSupervisionStateHandler::execute() {
@@ -54,7 +55,7 @@ RestStatus RestSupervisionStateHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
+
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
     return RestStatus::DONE;

@@ -41,7 +41,7 @@ TEST(ProjectionsTest, buildEmpty) {
 
 TEST(ProjectionsTest, buildSingleKey) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("_key"),
+      AttributeNamePath("_key"),
   };
   Projections p(std::move(attributes));
 
@@ -55,7 +55,7 @@ TEST(ProjectionsTest, buildSingleKey) {
 
 TEST(ProjectionsTest, buildSingleId) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("_id"),
+      AttributeNamePath("_id"),
   };
   Projections p(std::move(attributes));
 
@@ -69,7 +69,7 @@ TEST(ProjectionsTest, buildSingleId) {
 
 TEST(ProjectionsTest, buildSingleFrom) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("_from"),
+      AttributeNamePath("_from"),
   };
   Projections p(std::move(attributes));
 
@@ -83,7 +83,7 @@ TEST(ProjectionsTest, buildSingleFrom) {
 
 TEST(ProjectionsTest, buildSingleTo) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("_to"),
+      AttributeNamePath("_to"),
   };
   Projections p(std::move(attributes));
 
@@ -97,7 +97,7 @@ TEST(ProjectionsTest, buildSingleTo) {
 
 TEST(ProjectionsTest, buildSingleOther) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("piff"),
+      AttributeNamePath("piff"),
   };
   Projections p(std::move(attributes));
 
@@ -111,9 +111,9 @@ TEST(ProjectionsTest, buildSingleOther) {
 
 TEST(ProjectionsTest, buildMulti) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("a"),
-    AttributeNamePath("b"),
-    AttributeNamePath("c"),
+      AttributeNamePath("a"),
+      AttributeNamePath("b"),
+      AttributeNamePath("c"),
   };
   Projections p(std::move(attributes));
 
@@ -133,9 +133,9 @@ TEST(ProjectionsTest, buildMulti) {
 
 TEST(ProjectionsTest, buildReverse) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("c"),
-    AttributeNamePath("b"),
-    AttributeNamePath("a"),
+      AttributeNamePath("c"),
+      AttributeNamePath("b"),
+      AttributeNamePath("a"),
   };
   Projections p(std::move(attributes));
 
@@ -155,9 +155,9 @@ TEST(ProjectionsTest, buildReverse) {
 
 TEST(ProjectionsTest, buildWithSystem) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("a"),
-    AttributeNamePath("_key"),
-    AttributeNamePath("_id"),
+      AttributeNamePath("a"),
+      AttributeNamePath("_key"),
+      AttributeNamePath("_id"),
   };
   Projections p(std::move(attributes));
 
@@ -176,9 +176,9 @@ TEST(ProjectionsTest, buildWithSystem) {
 
 TEST(ProjectionsTest, buildNested1) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath(std::vector<std::string>({"a", "b"})),
-    AttributeNamePath("_key"),
-    AttributeNamePath(std::vector<std::string>({"a", "z", "A"})),
+      AttributeNamePath(std::vector<std::string>({"a", "b"})),
+      AttributeNamePath("_key"),
+      AttributeNamePath(std::vector<std::string>({"a", "z", "A"})),
   };
   Projections p(std::move(attributes));
 
@@ -195,10 +195,10 @@ TEST(ProjectionsTest, buildNested1) {
 
 TEST(ProjectionsTest, buildNested2) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath(std::vector<std::string>({"b", "b"})),
-    AttributeNamePath("_key"),
-    AttributeNamePath(std::vector<std::string>({"a", "z", "A"})),
-    AttributeNamePath("A"),
+      AttributeNamePath(std::vector<std::string>({"b", "b"})),
+      AttributeNamePath("_key"),
+      AttributeNamePath(std::vector<std::string>({"a", "z", "A"})),
+      AttributeNamePath("A"),
   };
   Projections p(std::move(attributes));
 
@@ -216,8 +216,8 @@ TEST(ProjectionsTest, buildNested2) {
 
 TEST(ProjectionsTest, buildOverlapping1) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("a"),
-    AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
+      AttributeNamePath("a"),
+      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
   };
   Projections p(std::move(attributes));
 
@@ -228,8 +228,8 @@ TEST(ProjectionsTest, buildOverlapping1) {
 
 TEST(ProjectionsTest, buildOverlapping2) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-    AttributeNamePath("a"),
+      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
+      AttributeNamePath("a"),
   };
   Projections p(std::move(attributes));
 
@@ -240,8 +240,8 @@ TEST(ProjectionsTest, buildOverlapping2) {
 
 TEST(ProjectionsTest, buildOverlapping3) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-    AttributeNamePath(std::vector<std::string>({"a", "b"})),
+      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
+      AttributeNamePath(std::vector<std::string>({"a", "b"})),
   };
   Projections p(std::move(attributes));
 
@@ -252,10 +252,10 @@ TEST(ProjectionsTest, buildOverlapping3) {
 
 TEST(ProjectionsTest, buildOverlapping4) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-    AttributeNamePath("m"),
-    AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-    AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-    AttributeNamePath("b"),
+      AttributeNamePath("m"),
+      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
+      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
+      AttributeNamePath("b"),
   };
   Projections p(std::move(attributes));
 

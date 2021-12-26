@@ -89,4 +89,3 @@ inline void uintToPersistentBigEndian(std::string& p, T value) {
 
 }  // namespace rocksutils
 }  // namespace arangodb
-

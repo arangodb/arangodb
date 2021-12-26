@@ -47,9 +47,7 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
     explicit StateMachine(std::shared_ptr<streams::Stream<ValueType>> stream)
         : _stream(std::move(stream)) {}
 
-    void start() {
-      waitForStream(LogIndex{1});
-    }
+    void start() { waitForStream(LogIndex{1}); }
 
     void waitForStream(LogIndex next) {
       _stream->waitForIterator(next).thenValue([weak = this->weak_from_this()](auto&& iter) {
@@ -80,7 +78,7 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
     explicit StateCombiner(std::shared_ptr<Mux> const& demux)
         : _states(std::make_shared<StateMachine<Descriptors::id>>(
               demux->template getStreamById<Descriptors::id>())...) {
-          ((std::get<std::shared_ptr<StateMachine<Descriptors::id>>>(_states)->start()), ...);
+      ((std::get<std::shared_ptr<StateMachine<Descriptors::id>>>(_states)->start()), ...);
     }
   };
 
@@ -129,8 +127,8 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   constexpr auto lastIndex = LogIndex{num_threads * num_inserts_per_thread + 1};
 
   std::vector<std::thread> threads;
-  std::generate_n(std::back_inserter(threads), num_threads, [&]{
-    return std::thread([&, producer]{
+  std::generate_n(std::back_inserter(threads), num_threads, [&] {
+    return std::thread([&, producer] {
       auto index = LogIndex{0};
       for (std::size_t i = 0; i < num_inserts_per_thread; i++) {
         index = producer->insert((int)i);
@@ -139,9 +137,8 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
     });
   });
 
-  std::for_each(std::begin(threads), std::end(threads), [](std::thread& t) {
-    t.join();
-  });
+  std::for_each(std::begin(threads), std::end(threads),
+                [](std::thread& t) { t.join(); });
   asyncFollower->waitFor(lastIndex).wait();
   asyncFollower->stop();
 
@@ -160,8 +157,8 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
 
   MyTestSpecification::for_each_descriptor([&](auto p) {
     using Descriptor = decltype(p);
-    auto streamA = leaderInstance->_mux->getStreamByDescriptor<Descriptor >();
-    auto streamB = followerInstance->_demux->getStreamByDescriptor<Descriptor >();
+    auto streamA = leaderInstance->_mux->getStreamByDescriptor<Descriptor>();
+    auto streamB = followerInstance->_demux->getStreamByDescriptor<Descriptor>();
 
     auto iterA = streamA->waitForIterator(LogIndex{1}).get();
     auto iterB = streamB->waitForIterator(LogIndex{1}).get();

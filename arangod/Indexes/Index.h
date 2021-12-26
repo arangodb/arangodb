@@ -106,7 +106,7 @@ class Index {
     TRI_IDX_TYPE_NO_ACCESS_INDEX,
     TRI_IDX_TYPE_ZKD_INDEX
   };
-  
+
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering
   struct FilterCosts {
@@ -121,12 +121,12 @@ class Index {
 
     /// @brief estimated costs for this filter condition
     double estimatedCosts = 0.0;
-    
+
     static FilterCosts zeroCosts();
 
     static FilterCosts defaultCosts(size_t itemsInIndex, size_t numLookups = 1);
   };
-  
+
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage
   struct SortCosts {
@@ -135,12 +135,12 @@ class Index {
 
     /// @brief number of attributes of the sort clause covered by this index
     size_t coveredAttributes = 0;
-    
+
     /// @brief estimated costs for this sort clause
     double estimatedCosts = 0.0;
-    
+
     static SortCosts zeroCosts(size_t coveredAttributes);
-    
+
     static SortCosts defaultCosts(size_t itemsInIndex);
   };
 
@@ -157,7 +157,7 @@ class Index {
 
   /// @brief set the name, if it is currently unset
   void name(std::string const&);
-  
+
   /// @brief return the index fields
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
     return _fields;
@@ -224,7 +224,7 @@ class Index {
   inline bool hasExpansion() const { return _useExpansion; }
 
   /// @brief if index needs explicit reversal and wouldn`t be reverted by storage rollback
-  virtual bool needsReversal() const { return false; } 
+  virtual bool needsReversal() const { return false; }
 
   /// @brief whether or not the index covers all the attributes passed in.
   /// the function may modify the projections by setting the coveringIndexPosition value in it.
@@ -254,7 +254,6 @@ class Index {
   static IndexType type(std::string const& type);
 
  public:
-
   virtual char const* typeName() const = 0;
 
   static bool allowExpansion(IndexType type) {
@@ -271,8 +270,9 @@ class Index {
   static bool validateHandle(bool extendedNames, arangodb::velocypack::StringRef handle) noexcept;
 
   /// @brief validate an index handle (by name) (collection name + / + index name)
-  static bool validateHandleName(bool extendedNames, arangodb::velocypack::StringRef name) noexcept;
-  
+  static bool validateHandleName(bool extendedNames,
+                                 arangodb::velocypack::StringRef name) noexcept;
+
   /// @brief validate an index id (i.e. ^[0-9]+$)
   static bool validateId(std::string_view id);
 
@@ -285,12 +285,11 @@ class Index {
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
   static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
-                      velocypack::Slice const& rhs,
-                      std::string const& dbname);
+                      velocypack::Slice const& rhs, std::string const& dbname);
 
-  static void normalizeFilterCosts(arangodb::Index::FilterCosts& costs, 
-                                   arangodb::Index const* index, size_t itemsInIndex,
-                                   size_t invocations);
+  static void normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
+                                   arangodb::Index const* index,
+                                   size_t itemsInIndex, size_t invocations);
 
   virtual bool canBeDropped() const = 0;
 
@@ -385,18 +384,18 @@ class Index {
 
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this index
-  virtual FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                              arangodb::aql::AstNode const* node,
-                                              arangodb::aql::Variable const* reference, 
-                                              size_t itemsInIndex) const;
+  virtual FilterCosts supportsFilterCondition(
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference, size_t itemsInIndex) const;
 
   /// @brief whether or not the sort condition is supported by the index
   /// returns detailed information about the costs associated with using this index
   virtual SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                          arangodb::aql::Variable const* reference, 
+                                          arangodb::aql::Variable const* reference,
                                           size_t itemsInIndex) const;
 
-  /// @brief specialize the condition for use with this index. this will remove all 
+  /// @brief specialize the condition for use with this index. this will remove all
   /// elements from the condition that are not supported by the index.
   /// for example, if the condition is `doc.value1 == 38 && doc.value2 > 9`, but the index is
   /// only on `doc.value1`, this will return a new AstNode that points to just the condition
@@ -407,11 +406,9 @@ class Index {
                                                       arangodb::aql::Variable const* reference) const;
 
   /// @brief create a new index iterator for the (specialized) condition
-  virtual std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
-                                                              aql::AstNode const* node,
-                                                              aql::Variable const* reference,
-                                                              IndexIteratorOptions const& opts,
-                                                              ReadOwnWrites readOwnWrites);
+  virtual std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites);
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,
@@ -429,7 +426,7 @@ class Index {
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
-  
+
  protected:
   /// @brief return the name of the (sole) index attribute
   /// it is only allowed to call this method if the index contains a
@@ -473,21 +470,21 @@ class Index {
 };
 
 /// @brief simple struct that takes an AstNode of type comparison and
-/// splits it into the comparison operator, the attribute access and the 
+/// splits it into the comparison operator, the attribute access and the
 /// lookup value parts
 /// only works for conditions such as  a.b == 2   or   45 < a.xx.c
 /// the collection variable (a in the above examples) is passed in "variable"
 struct AttributeAccessParts {
   AttributeAccessParts(arangodb::aql::AstNode const* comparison,
                        arangodb::aql::Variable const* variable);
-  
+
   /// @brief comparison operation, e.g. NODE_TYPE_OPERATOR_BINARY_EQ
   arangodb::aql::AstNode const* comparison;
-  
+
   /// @brief attribute access node
   arangodb::aql::AstNode const* attribute;
-  
-  /// @brief lookup value 
+
+  /// @brief lookup value
   arangodb::aql::AstNode const* value;
 
   /// @brief operation type
@@ -498,4 +495,3 @@ struct AttributeAccessParts {
 
 std::ostream& operator<<(std::ostream&, arangodb::Index const*);
 std::ostream& operator<<(std::ostream&, arangodb::Index const&);
-

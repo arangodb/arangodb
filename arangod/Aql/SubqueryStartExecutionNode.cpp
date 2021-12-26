@@ -80,8 +80,8 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
   auto registerInfos = createRegisterInfos({}, {});
 
   // On purpose exclude the _subqueryOutVariable
-  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(&engine, this, registerInfos,
-                                                                     RegisterInfos{registerInfos});
+  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
+      &engine, this, registerInfos, RegisterInfos{registerInfos});
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,

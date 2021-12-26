@@ -46,11 +46,10 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--frontend.version-check",
                      "alert the user if new versions are available",
                      new BooleanParameter(&_versionCheck),
-                     arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle,
-                     arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                  arangodb::options::Flags::OnCoordinator,
+                                                  arangodb::options::Flags::OnSingle,
+                                                  arangodb::options::Flags::Hidden));
 }
 
 void FrontendFeature::prepare() {

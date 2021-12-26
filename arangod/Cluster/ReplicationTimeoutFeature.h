@@ -45,4 +45,3 @@ class ReplicationTimeoutFeature : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

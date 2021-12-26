@@ -44,4 +44,3 @@ bool operator==(HashSet<KeyT, HashT, EqT> const& left, HashSet<KeyT, HashT, EqT>
 }
 
 }  // namespace emilib
-

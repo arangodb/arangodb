@@ -36,8 +36,8 @@
 #include "Cache/PlainCache.h"
 #include "Random/RandomGenerator.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
+#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;

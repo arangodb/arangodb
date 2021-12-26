@@ -65,7 +65,7 @@ ConnectionStatistics::Item ConnectionStatistics::acquire() {
   ConnectionStatistics* statistics = nullptr;
 
   if (_freeList.pop(statistics)) {
-    return Item{ statistics };
+    return Item{statistics};
   }
 
   return Item{};

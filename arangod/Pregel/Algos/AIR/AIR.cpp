@@ -50,14 +50,13 @@
 
 #include <set>
 
-
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 namespace arangodb::pregel::algos::accumulators {
 
 ProgrammablePregelAlgorithm::ProgrammablePregelAlgorithm(application_features::ApplicationServer& server,
-                                       VPackSlice userParams)
+                                                         VPackSlice userParams)
     : Algorithm(server, pregel_algorithm_name) {
   parseUserParams(userParams);
 }
@@ -71,8 +70,9 @@ auto ProgrammablePregelAlgorithm::createComputation(WorkerConfig const* config) 
 }
 
 auto ProgrammablePregelAlgorithm::inputFormat() const -> graph_format* {
-  return new GraphFormat(_server, _options.resultField, _options.globalAccumulators,
-                         _options.vertexAccumulators, _options.customAccumulators, _options.dataAccess);
+  return new GraphFormat(_server, _options.resultField,
+                         _options.globalAccumulators, _options.vertexAccumulators,
+                         _options.customAccumulators, _options.dataAccess);
 }
 
 message_format* ProgrammablePregelAlgorithm::messageFormat() const {
@@ -97,7 +97,8 @@ VertexAccumulatorOptions const& ProgrammablePregelAlgorithm::options() const {
   return _options;
 }
 
-bool ProgrammablePregelAlgorithm::getBindParameter(std::string_view name, VPackBuilder& into) const {
+bool ProgrammablePregelAlgorithm::getBindParameter(std::string_view name,
+                                                   VPackBuilder& into) const {
   std::string nameStr(name);  // TODO remove this in c++20 (then this method will be noexcept)
   if (auto iter = options().bindings.find(nameStr); iter != std::end(options().bindings)) {
     into.add(iter->second.slice());

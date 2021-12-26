@@ -56,10 +56,8 @@ class SharedScatterExecutionBlockTest {
   std::vector<std::string> clientIds{"a", "b", "c"};
 
   SharedScatterExecutionBlockTest() {
-    auto engine =
-      std::make_unique<ExecutionEngine>(0, *fakedQuery,
-                                        itemBlockManager,
-                                        SerializationFormat::SHADOWROWS);
+    auto engine = std::make_unique<ExecutionEngine>(0, *fakedQuery, itemBlockManager,
+                                                    SerializationFormat::SHADOWROWS);
     /// TODO fakedQuery->setEngine(engine.release());
   }
 
@@ -87,9 +85,10 @@ class SharedScatterExecutionBlockTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   auto generateNodeDummy() -> ExecutionNode* {
-    auto dummy = std::make_unique<SingletonNode>(
-      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
-      ExecutionNodeId{_execNodes.size()});
+    auto dummy =
+        std::make_unique<SingletonNode>(const_cast<arangodb::aql::ExecutionPlan*>(
+                                            fakedQuery->plan()),
+                                        ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -97,9 +96,8 @@ class SharedScatterExecutionBlockTest {
 
   auto generateScatterNode() -> ScatterNode* {
     auto dummy = std::make_unique<ScatterNode>(
-            const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
-            ExecutionNodeId{_execNodes.size()},
-            ScatterNode::ScatterType::SHARD);
+        const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+        ExecutionNodeId{_execNodes.size()}, ScatterNode::ScatterType::SHARD);
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -125,8 +123,8 @@ class SharedScatterExecutionBlockTest {
                       size_t subqueryDepth = 0) -> WaitingExecutionBlockMock {
     // TODO add input splicing
 
-    return WaitingExecutionBlockMock{fakedQuery->rootEngine(), generateNodeDummy(),
-                                     std::move(blockDeque),
+    return WaitingExecutionBlockMock{fakedQuery->rootEngine(),
+                                     generateNodeDummy(), std::move(blockDeque),
                                      WaitingExecutionBlockMock::WaitingBehaviour::NEVER,
                                      subqueryDepth};
   }

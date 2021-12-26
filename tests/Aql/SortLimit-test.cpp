@@ -103,8 +103,9 @@ class SortLimitTest
                          std::string rules = "") {
     auto options = buildOptions(rules);
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
-                               nullptr, arangodb::aql::QueryOptions(options->slice()));
+    auto query =
+        arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), nullptr,
+                                     arangodb::aql::QueryOptions(options->slice()));
 
     auto result = query->explain();
     VPackSlice nodes = result.data->slice().get("nodes");
@@ -129,8 +130,9 @@ class SortLimitTest
                              size_t fullCount, std::string rules = "") {
     auto options = buildOptions(rules);
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString),
-                               nullptr, arangodb::aql::QueryOptions(options->slice()));
+    auto query =
+        arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), nullptr,
+                                     arangodb::aql::QueryOptions(options->slice()));
     arangodb::aql::QueryResult result;
 
     while (true) {

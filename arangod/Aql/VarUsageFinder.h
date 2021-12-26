@@ -28,8 +28,8 @@
 
 #include <Containers/Enumerate.h>
 
-#include <vector>
 #include <unordered_set>
+#include <vector>
 
 namespace arangodb::aql {
 
@@ -92,4 +92,3 @@ struct VarUsageFinderT final : public WalkerWorker<T, WalkerUniqueness::NonUniqu
 };
 
 }  // namespace arangodb::aql
-

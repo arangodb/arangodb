@@ -50,7 +50,7 @@ struct SyncCountInfo {
 
   // number of documents on leader
   uint64_t total;
-  // number of documents on follower(s). 
+  // number of documents on follower(s).
   // if there is more than one follower, then this contains the
   // minimum value from all followers
   uint64_t current;
@@ -61,12 +61,8 @@ struct SyncCountInfo {
   double followerPercent;
   std::vector<ServerID> followers;
 
-  SyncCountInfo() 
-    : insync(false), 
-      followersSyncing(0),
-      total(1), 
-      current(0),
-      followerPercent(-1.0) {}
+  SyncCountInfo()
+      : insync(false), followersSyncing(0), total(1), current(0), followerPercent(-1.0) {}
   ~SyncCountInfo() = default;
 };
 
@@ -136,9 +132,8 @@ static void ReportShardNoProgress(std::string const& shardId,
 static void ReportShardProgress(std::string const& shardId,
                                 std::vector<ServerID> const& respServers,
                                 std::unordered_map<ServerID, std::string> const& aliases,
-                                uint64_t total, uint64_t current, 
-                                double followerPercent, uint32_t followersSyncing,
-                                VPackBuilder& result) {
+                                uint64_t total, uint64_t current, double followerPercent,
+                                uint32_t followersSyncing, VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
   result.add(VPackValue(shardId));
   result.openObject();
@@ -261,7 +256,8 @@ static void ReportOffSync(LogicalCollection const* col, ShardMap const* shardIds
       } else {
         TRI_ASSERT(!c.insync);
         TRI_ASSERT(progress);
-        ReportShardProgress(s.first, s.second, aliases, c.total, c.current, c.followerPercent, c.followersSyncing, result);
+        ReportShardProgress(s.first, s.second, aliases, c.total, c.current,
+                            c.followerPercent, c.followersSyncing, result);
       }
     }
     result.close();
@@ -323,7 +319,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
-        
+
         serversToAsk.clear();
         auto curServers = cic->servers(s.first);
         auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
@@ -405,7 +401,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
               entry.total = response.getNumber<uint64_t>();
               entry.current = entry.total;  // << We use this to flip around min/max test
-              entry.followerPercent = -1.0; // negative values mean "unknown"
+              entry.followerPercent = -1.0;  // negative values mean "unknown"
               entry.followersSyncing = 0;
             }
 
@@ -442,7 +438,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                       << "distribution inaccurate";
                   continue;
                 }
-              
+
                 uint64_t other = answer.getNumber<uint64_t>();
                 followerTotal += other;
                 ++followerResponses;
@@ -460,11 +456,12 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                     entry.current = other;
                   }
                 }
-               
-                // check if the follower is actively working on replicating the shard.
-                // note: 3.7 will not provide the "syncing" attribute. it must there
-                // be treated as optional in 3.8.
-                if (VPackSlice syncing = slice.get("syncing"); syncing.isBoolean() && syncing.getBoolean()) {
+
+                // check if the follower is actively working on replicating the
+                // shard. note: 3.7 will not provide the "syncing" attribute. it
+                // must there be treated as optional in 3.8.
+                if (VPackSlice syncing = slice.get("syncing");
+                    syncing.isBoolean() && syncing.getBoolean()) {
                   ++entry.followersSyncing;
                 }
               }
@@ -473,10 +470,10 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               // the average percentage of follower docs / leader docs
 
               if (followerResponses > 0 && entry.total > 0) {
-                entry.followerPercent = std::min<double>(
-                    100.0, 
-                    100.0 * static_cast<double>(followerTotal) / static_cast<double>(followerResponses) / static_cast<double>(entry.total)
-                );
+                entry.followerPercent =
+                    std::min<double>(100.0, 100.0 * static_cast<double>(followerTotal) /
+                                                static_cast<double>(followerResponses) /
+                                                static_cast<double>(entry.total));
               }
             }
           }
@@ -492,7 +489,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 /// @brief fetch distribution for a single collection in db
 void ShardDistributionReporter::getCollectionDistributionForDatabase(
     std::string const& dbName, std::string const& colName, VPackBuilder& result) {
-  std::vector<std::shared_ptr<LogicalCollection>> cols{ _ci->getCollection(dbName, colName) };
+  std::vector<std::shared_ptr<LogicalCollection>> cols{_ci->getCollection(dbName, colName)};
   getCollectionDistribution(dbName, cols, result, true);
 }
 
@@ -505,9 +502,8 @@ void ShardDistributionReporter::getDistributionForDatabase(std::string const& db
 
 /// @brief internal helper function to fetch distributions
 void ShardDistributionReporter::getCollectionDistribution(
-    std::string const& dbName, std::vector<std::shared_ptr<LogicalCollection>> const& cols, 
+    std::string const& dbName, std::vector<std::shared_ptr<LogicalCollection>> const& cols,
     VPackBuilder& result, bool progress) {
-
   double endtime = TRI_microtime() + 2.0;  // We add two seconds
 
   auto aliases = _ci->getServerAliases();

@@ -77,17 +77,17 @@ class SupervisedScheduler final : public Scheduler {
   static_assert(HighPriorityQueue < NumberOfQueues);
   static_assert(MediumPriorityQueue < NumberOfQueues);
   static_assert(LowPriorityQueue < NumberOfQueues);
-  
+
   static_assert(HighPriorityQueue < MediumPriorityQueue);
   static_assert(MediumPriorityQueue < LowPriorityQueue);
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   double approximateQueueFillGrade() const override;
-  
+
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
   double unavailabilityQueueFillGrade() const override;
- 
+
   /// @brief get information about low prio queue:
   std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued() const;
 
@@ -115,12 +115,12 @@ class SupervisedScheduler final : public Scheduler {
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
   struct WorkerState {
-    uint64_t _queueRetryTime_us; // t1
-    uint64_t _sleepTimeout_ms;  // t2
+    uint64_t _queueRetryTime_us;  // t1
+    uint64_t _sleepTimeout_ms;    // t2
     std::atomic<bool> _stop, _working, _sleeping;
     // _ready = false means the Worker is not properly initialized
-    // _ready = true means it is initialized and can be used to dispatch tasks to
-    // _ready is protected by the Scheduler's condition variable & mutex
+    // _ready = true means it is initialized and can be used to dispatch tasks
+    // to _ready is protected by the Scheduler's condition variable & mutex
     bool _ready;
     std::atomic<clock::time_point> _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
@@ -158,11 +158,12 @@ class SupervisedScheduler final : public Scheduler {
   // Check if we are allowed to pull from a queue with the given index
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
   bool canPullFromQueue(uint64_t queueIdx) const noexcept;
-  
+
   void runWorker();
   void runSupervisor();
 
-  [[nodiscard]] bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item, bool bounded) override;
+  [[nodiscard]] bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item,
+                               bool bounded) override;
 
  private:
   NetworkFeature& _nf;
@@ -197,9 +198,9 @@ class SupervisedScheduler final : public Scheduler {
 
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
-  std::atomic<uint64_t> _numWorking;   // Number of threads actually working
-  std::atomic<uint64_t> _numAwake;     // Number of threads working or spinning
-                                       // (i.e. not sleeping)
+  std::atomic<uint64_t> _numWorking;  // Number of threads actually working
+  std::atomic<uint64_t> _numAwake;    // Number of threads working or spinning
+                                      // (i.e. not sleeping)
 
   // The following mutex protects the lists _workerStates and
   // _abandonedWorkerStates, whenever one accesses any of these two
@@ -223,14 +224,14 @@ class SupervisedScheduler final : public Scheduler {
   Gauge<uint64_t>& _metricsNumAwakeThreads;
   Gauge<uint64_t>& _metricsNumWorkingThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
-  
+
   Counter& _metricsHandlerTasksCreated;
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
   Counter& _metricsQueueTimeViolations;
   Gauge<uint64_t>& _ongoingLowPriorityGauge;
-  
+
   /// @brief amount of time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms].
   /// this metric is only updated probabilistically
@@ -240,4 +241,3 @@ class SupervisedScheduler final : public Scheduler {
 };
 
 }  // namespace arangodb
-

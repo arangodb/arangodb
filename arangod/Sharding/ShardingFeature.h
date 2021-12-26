@@ -60,4 +60,3 @@ class ShardingFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

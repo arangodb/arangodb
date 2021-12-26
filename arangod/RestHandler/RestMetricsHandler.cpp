@@ -125,12 +125,14 @@ RestStatus RestMetricsHandler::execute() {
             if (r.fail()) {
               self->generateError(r.combinedResult());
             } else {
-             // the response will not contain any velocypack.
-             // we need to forward the request with content-type text/plain.
+              // the response will not contain any velocypack.
+              // we need to forward the request with content-type text/plain.
               self->_response->setResponseCode(rest::ResponseCode::OK);
               self->_response->setContentType(rest::ContentType::TEXT);
               auto payload = r.response().stealPayload();
-              self->_response->addRawPayload(VPackStringRef(reinterpret_cast<char const*>(payload->data()), payload->size()));
+              self->_response->addRawPayload(
+                  VPackStringRef(reinterpret_cast<char const*>(payload->data()),
+                                 payload->size()));
             }
             return RestStatus::DONE;
           }));
@@ -156,6 +158,6 @@ RestStatus RestMetricsHandler::execute() {
   _response->setResponseCode(rest::ResponseCode::OK);
   _response->setContentType(rest::ContentType::TEXT);
   _response->addRawPayload(VPackStringRef(result));
-  
+
   return RestStatus::DONE;
 }

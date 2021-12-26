@@ -43,4 +43,3 @@ class EnsureIndex : public ActionBase {
 
 }  // namespace maintenance
 }  // namespace arangodb
-

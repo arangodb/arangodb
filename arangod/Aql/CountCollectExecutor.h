@@ -112,4 +112,3 @@ class CountCollectExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

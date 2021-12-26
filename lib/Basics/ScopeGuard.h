@@ -49,27 +49,31 @@ struct UniqueBool {
     }
     return false;
   }
+
  private:
   bool _value = false;
 };
 
-template<bool isDeleted>
+template <bool isDeleted>
 struct ConditionalDeletedMoveConstructor {
   ConditionalDeletedMoveConstructor() = default;
 };
-template<>
+template <>
 struct ConditionalDeletedMoveConstructor<true> {
   ConditionalDeletedMoveConstructor() = default;
   ConditionalDeletedMoveConstructor(ConditionalDeletedMoveConstructor&&) noexcept = delete;
 };
-}
+}  // namespace detail
 
-template<typename F, typename Func = std::decay_t<F>>
-struct ScopeGuard : private Func, private detail::UniqueBool,
-                    private detail::ConditionalDeletedMoveConstructor<!std::is_nothrow_move_constructible_v<Func>> {
+template <typename F, typename Func = std::decay_t<F>>
+struct ScopeGuard
+    : private Func,
+      private detail::UniqueBool,
+      private detail::ConditionalDeletedMoveConstructor<!std::is_nothrow_move_constructible_v<Func>> {
   static_assert(std::is_nothrow_invocable_r_v<void, F>);
 
-  [[nodiscard]] explicit ScopeGuard(F&& fn) : Func(std::forward<F>(fn)), UniqueBool(true) {}
+  [[nodiscard]] explicit ScopeGuard(F&& fn)
+      : Func(std::forward<F>(fn)), UniqueBool(true) {}
 
   ScopeGuard(ScopeGuard&&) noexcept = default;
   ScopeGuard& operator=(ScopeGuard&&) noexcept = default;
@@ -83,10 +87,12 @@ struct ScopeGuard : private Func, private detail::UniqueBool,
   }
 
   void cancel() noexcept { UniqueBool::reset(); }
-  [[nodiscard]] auto active() const noexcept -> bool { return UniqueBool::value(); }
+  [[nodiscard]] auto active() const noexcept -> bool {
+    return UniqueBool::value();
+  }
 };
 
-template<typename G>
+template <typename G>
 ScopeGuard(G&&) -> ScopeGuard<G>;
 
 // TODO can be deleted, because the deduction guide above allows to use
@@ -96,11 +102,8 @@ template <class T>
   return ScopeGuard<T>(std::forward<T>(f));
 }
 
-[[nodiscard]] inline auto scopeGuard(void (*func)()noexcept) {
-  return ScopeGuard([func]() noexcept {
-    func();
-  });
+[[nodiscard]] inline auto scopeGuard(void (*func)() noexcept) {
+  return ScopeGuard([func]() noexcept { func(); });
 }
 
 }  // namespace arangodb
-

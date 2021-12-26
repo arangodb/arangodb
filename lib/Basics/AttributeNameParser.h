@@ -119,7 +119,6 @@ void TRI_ParseAttributeString(std::string const& input,
 void TRI_ParseAttributeString(std::string_view input,
                               std::vector<AttributeName>& result, bool allowExpansion);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames back into a string
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +153,8 @@ struct hash<std::vector<arangodb::basics::AttributeName>> {
 
 template <>
 struct equal_to<std::vector<arangodb::basics::AttributeName>> {
-  bool operator()(std::vector<arangodb::basics::AttributeName> const& lhs, std::vector<arangodb::basics::AttributeName> const& rhs) const {
+  bool operator()(std::vector<arangodb::basics::AttributeName> const& lhs,
+                  std::vector<arangodb::basics::AttributeName> const& rhs) const {
     size_t const n = lhs.size();
     if (n != rhs.size()) {
       return false;
@@ -168,5 +168,4 @@ struct equal_to<std::vector<arangodb::basics::AttributeName>> {
   }
 };
 
-} // namespace std
-
+}  // namespace std

@@ -87,7 +87,8 @@ bool Traverser::VertexGetter::getVertex(arangodb::velocypack::StringRef vertex, 
   return _traverser->vertexMatchesConditions(vertex, depth);
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge,
+                                              arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data
   // if the vertex is found.
   arangodb::velocypack::StringRef s;
@@ -99,14 +100,15 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::travers
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef vertex,
+                                              size_t depth) {
   if (_returnedVertices.find(vertex) != _returnedVertices.end()) {
     // This vertex is not unique.
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
   }
 
-  if(!_traverser->vertexMatchesConditions(vertex, depth)) {
+  if (!_traverser->vertexMatchesConditions(vertex, depth)) {
     return false;
   }
 
@@ -165,9 +167,7 @@ void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const&
 }
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
-    : _trx(opts->trx()),
-      _done(true),
-      _opts(opts) {
+    : _trx(opts->trx()), _done(true), _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {

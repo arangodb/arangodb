@@ -59,8 +59,7 @@ struct read_ret_t {
 
   read_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
 
-  read_ret_t(bool a, std::string const& id,
-             std::vector<bool>&& suc, query_t&& res)
+  read_ret_t(bool a, std::string const& id, std::vector<bool>&& suc, query_t&& res)
       : accepted(a), redirect(id), success(std::move(suc)), result(std::move(res)) {}
 };
 
@@ -110,24 +109,18 @@ struct log_t {
   std::chrono::milliseconds timestamp;  // Timestamp
 
   /// @brief creates a log entry, fully copying it from the buffer
-  log_t(index_t idx, term_t t, buffer_t const& e,
-        std::string const& clientId,
+  log_t(index_t idx, term_t t, buffer_t const& e, std::string const& clientId,
         uint64_t const& m = 0)
       : index(idx),
         term(t),
         entry(std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
         clientId(clientId),
         timestamp(m) {}
-  
+
   /// @brief creates a log entry, taking over the buffer
-  log_t(index_t idx, term_t t, buffer_t&& e,
-        std::string const& clientId,
+  log_t(index_t idx, term_t t, buffer_t&& e, std::string const& clientId,
         uint64_t const& m = 0)
-      : index(idx),
-        term(t),
-        entry(std::move(e)),
-        clientId(clientId),
-        timestamp(m) {}
+      : index(idx), term(t), entry(std::move(e)), clientId(clientId), timestamp(m) {}
 
   void toVelocyPack(velocypack::Builder& builder) const {
     builder.openObject();
@@ -137,7 +130,7 @@ struct log_t {
     builder.add("query", VPackSlice(entry->data()));
     builder.add("clientId", VPackValue(clientId));
     builder.add("timestamp", VPackValue(timestamp.count()));
-    
+
     builder.close();
   }
 
@@ -162,4 +155,3 @@ inline std::ostream& operator<<(std::ostream& o, arangodb::consensus::log_t cons
     << " " << l.clientId << " " << l.timestamp.count();
   return o;
 }
-

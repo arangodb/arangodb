@@ -84,7 +84,7 @@ class ConnectionPool final {
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
   fuerte::EventLoopService& eventLoopService() { return _loop; }
-  
+
   /// @brief shutdown all connections
   void drainConnections();
 
@@ -93,7 +93,7 @@ class ConnectionPool final {
 
   /// @brief automatically prune connections
   void pruneConnections();
-  
+
   /// @brief cancel connections to this endpoint
   size_t cancelConnections(std::string const& endpoint);
 
@@ -103,7 +103,6 @@ class ConnectionPool final {
   Config const& config() const;
 
  protected:
-
   struct Context {
     Context(std::shared_ptr<fuerte::Connection>,
             std::chrono::steady_clock::time_point, std::size_t);
@@ -127,7 +126,7 @@ class ConnectionPool final {
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
   ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket, bool& isFromPool);
-  
+
  private:
   Config const _config;
 
@@ -143,7 +142,6 @@ class ConnectionPool final {
   Counter& _connectionsCreated;
 
   Histogram<log_scale_t<float>>& _leaseHistMSec;
-
 };
 
 class ConnectionPtr {
@@ -166,4 +164,3 @@ class ConnectionPtr {
 
 }  // namespace network
 }  // namespace arangodb
-

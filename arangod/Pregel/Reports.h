@@ -103,4 +103,3 @@ struct ReportManager {
   std::vector<Report> _reports;
 };
 }  // namespace arangodb::pregel
-

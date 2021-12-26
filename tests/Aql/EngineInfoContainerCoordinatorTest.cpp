@@ -89,71 +89,69 @@ TEST(EngineInfoContainerTest, it_should_be_able_to_add_more_snippets) {
 TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_snippet) {
   MapRemoteToSnippet queryIds;
   std::string const dbname = "TestDB";
-  
+
   mocks::MockAqlServer server;
 
   // ------------------------------
   // Section: Create Mock Instances
   // ------------------------------
-//  fakeit::Mock<ExecutionNode> singletonMock;
-//  ExecutionNode& sNode = singletonMock.get();
-//  fakeit::When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
-//
-//  fakeit::Mock<ExecutionEngine> mockEngine;
-//  // ExecutionEngine& myEngine = mockEngine.get();
-//
-//  fakeit::Mock<ExecutionBlock> rootBlockMock;
-//  ExecutionBlock& rootBlock = rootBlockMock.get();
-//
-//  fakeit::Mock<Query> mockQuery;
-//  Query& query = mockQuery.get();
-//
-//  fakeit::Mock<transaction::Methods> mockTrx;
-//   transaction::Methods& trx = mockTrx.get();
+  //  fakeit::Mock<ExecutionNode> singletonMock;
+  //  ExecutionNode& sNode = singletonMock.get();
+  //  fakeit::When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+  //
+  //  fakeit::Mock<ExecutionEngine> mockEngine;
+  //  // ExecutionEngine& myEngine = mockEngine.get();
+  //
+  //  fakeit::Mock<ExecutionBlock> rootBlockMock;
+  //  ExecutionBlock& rootBlock = rootBlockMock.get();
+  //
+  //  fakeit::Mock<Query> mockQuery;
+  //  Query& query = mockQuery.get();
+  //
+  //  fakeit::Mock<transaction::Methods> mockTrx;
+  //   transaction::Methods& trx = mockTrx.get();
 
   // ------------------------------
   // Section: Mock Functions
   // ------------------------------
-/*
-  fakeit::When(OverloadedMethod(mockQuery, void(ExecutionEngine * ))).Do(
-    [](ExecutionEngine *eng) -> void {
-      // We expect that the snippet injects a new engine into our
-      // query.
-      // However we have to return a mocked engine later
-      ASSERT_NE(eng, nullptr);
-      // Throw it away
-      delete eng;
-    }
-  );
-  //fakeit::When(Method(mockQuery, trx)).Return(&trx);
-  /// fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-  fakeit::When(Method(mockEngine, createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
-  fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&rootBlock);
- */
+  /*
+    fakeit::When(OverloadedMethod(mockQuery, void(ExecutionEngine * ))).Do(
+      [](ExecutionEngine *eng) -> void {
+        // We expect that the snippet injects a new engine into our
+        // query.
+        // However we have to return a mocked engine later
+        ASSERT_NE(eng, nullptr);
+        // Throw it away
+        delete eng;
+      }
+    );
+    //fakeit::When(Method(mockQuery, trx)).Return(&trx);
+    /// fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
+    fakeit::When(Method(mockEngine, createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
+    fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&rootBlock);
+   */
 
   // ------------------------------
   // Section: Run the test
   // ------------------------------
-  
+
   auto oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(ServerState::RoleEnum::ROLE_COORDINATOR);
-  auto guard = scopeGuard([=]() noexcept {
-    ServerState::instance()->setRole(oldRole);
-  });
-  
+  auto guard =
+      scopeGuard([=]() noexcept { ServerState::instance()->setRole(oldRole); });
+
   // simon: we only use this query for the API
   auto q = server.createFakeQuery("RETURN 1");
   ASSERT_EQ(q->rootEngine()->blocksForTesting().size(), 3);
-  
+
   ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2].get();
   ASSERT_EQ(block->getPlanNode()->getType(), ExecutionNode::RETURN);
-  
+
   ASSERT_EQ(q->snippets().size(), 1);
-  
+
   // The last engine should not be stored
   // It is not added to the registry
   ASSERT_TRUE(queryIds.empty());
-  
 }
 
 #if 0

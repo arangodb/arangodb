@@ -281,7 +281,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   if (coll) {
     result = WrapCollection(isolate, coll);
   }

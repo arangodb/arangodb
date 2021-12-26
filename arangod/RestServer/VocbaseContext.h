@@ -45,22 +45,20 @@ class VocbaseContext final : public arangodb::ExecContext {
 
   /// @brief upgrade to internal read-only user
   void forceReadOnly();
-  
+
 #ifdef USE_ENTERPRISE
   virtual std::string clientAddress() const override {
     return _request.connectionInfo().fullClient();
   }
-  virtual std::string requestUrl() const override {
-    return _request.fullUrl();
-  }
+  virtual std::string requestUrl() const override { return _request.fullUrl(); }
   virtual std::string authMethod() const override;
 #endif
-  
+
   /// @brief tells you if this execution was canceled
   virtual bool isCanceled() const override {
     return _canceled.load(std::memory_order_relaxed);
   }
-  
+
   /// cancel execution
   void cancel() { _canceled.store(true, std::memory_order_relaxed); }
 
@@ -69,7 +67,7 @@ class VocbaseContext final : public arangodb::ExecContext {
   GeneralRequest const& _request;
 #endif
   TRI_vocbase_t& _vocbase;
-  
+
   /// should be used to indicate a canceled request / thread
   std::atomic<bool> _canceled;
 
@@ -80,4 +78,3 @@ class VocbaseContext final : public arangodb::ExecContext {
 };
 
 }  // namespace arangodb
-

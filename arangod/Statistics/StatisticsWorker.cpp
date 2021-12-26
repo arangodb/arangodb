@@ -96,7 +96,6 @@ using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
     : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
-
   _bytesSentDistribution.openArray();
 
   for (auto const& val : BytesSentDistributionCuts) {
@@ -159,9 +158,10 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                            arangodb::aql::QueryString(::garbageCollectionQuery),
-                                            _bindVars);
+  auto query =
+      arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
+                                   arangodb::aql::QueryString(::garbageCollectionQuery),
+                                   _bindVars);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -284,9 +284,10 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   bindVars->close();
 
-  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                            arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery : ::filteredLastEntryQuery),
-                                            _bindVars);
+  auto query = arangodb::aql::Query::create(
+      transaction::StandaloneContext::Create(_vocbase),
+      arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery : ::filteredLastEntryQuery),
+      _bindVars);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -313,10 +314,10 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
-  auto query = arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                            arangodb::aql::QueryString(
-                                               _clusterId.empty() ? ::fifteenMinuteQuery : ::filteredFifteenMinuteQuery),
-                                            _bindVars);
+  auto query = arangodb::aql::Query::create(
+      transaction::StandaloneContext::Create(_vocbase),
+      arangodb::aql::QueryString(_clusterId.empty() ? ::fifteenMinuteQuery : ::filteredFifteenMinuteQuery),
+      _bindVars);
 
   query->queryOptions().cache = false;
   query->queryOptions().skipAudit = true;
@@ -414,12 +415,14 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
             ::extractNumber(http, "requestsTotalPerSecond");
         httpRequestsAsyncPerSecond +=
             ::extractNumber(http, "requestsAsyncPerSecond");
-        httpRequestsGetPerSecond += ::extractNumber(http, "requestsGetPerSecond");
+        httpRequestsGetPerSecond +=
+            ::extractNumber(http, "requestsGetPerSecond");
         httpRequestsHeadPerSecond +=
             ::extractNumber(http, "requestsHeadPerSecond");
         httpRequestsPostPerSecond +=
             ::extractNumber(http, "requestsPostPerSecond");
-        httpRequestsPutPerSecond += ::extractNumber(http, "requestsPutPerSecond");
+        httpRequestsPutPerSecond +=
+            ::extractNumber(http, "requestsPutPerSecond");
         httpRequestsPatchPerSecond +=
             ::extractNumber(http, "requestsPatchPerSecond");
         httpRequestsDeletePerSecond +=
@@ -435,7 +438,8 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       try {
         VPackSlice client = values.get("client");
         clientHttpConnections += ::extractNumber(client, "httpConnections");
-        clientBytesSentPerSecond += ::extractNumber(client, "bytesSentPerSecond");
+        clientBytesSentPerSecond +=
+            ::extractNumber(client, "bytesSentPerSecond");
         clientBytesReceivedPerSecond +=
             ::extractNumber(client, "bytesReceivedPerSecond");
         clientAvgTotalTime += ::extractNumber(client, "avgTotalTime");
@@ -556,8 +560,8 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
   builder.close();
 }
 
-void StatisticsWorker::computePerSeconds(VPackBuilder& result, VPackSlice current,
-                                         VPackSlice prev) {
+void StatisticsWorker::computePerSeconds(VPackBuilder& result,
+                                         VPackSlice current, VPackSlice prev) {
   result.clear();
   result.openObject();
 
@@ -788,8 +792,8 @@ void StatisticsWorker::computePerSeconds(VPackBuilder& result, VPackSlice curren
   result.close();
 }
 
-void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder, VPackSlice now,
-                                             VPackSlice last,
+void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder,
+                                             VPackSlice now, VPackSlice last,
                                              VPackBuilder const& cuts) const {
   uint32_t n = static_cast<uint32_t>(cuts.slice().length() + 1);
   double count = 0;
@@ -853,10 +857,10 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double now) 
   builder.add("majorPageFaults", VPackValue(info._majorPageFaults));
   if (info._scClkTck != 0) {
     // prevent division by zero
-    builder.add("userTime", VPackValue(
-                  static_cast<double>(info._userTime) / static_cast<double>(info._scClkTck)));
-    builder.add("systemTime", VPackValue(
-                  static_cast<double>(info._systemTime) / static_cast<double>(info._scClkTck)));
+    builder.add("userTime", VPackValue(static_cast<double>(info._userTime) /
+                                       static_cast<double>(info._scClkTck)));
+    builder.add("systemTime", VPackValue(static_cast<double>(info._systemTime) /
+                                         static_cast<double>(info._scClkTck)));
   }
   builder.add("numberOfThreads", VPackValue(info._numberThreads));
   builder.add("residentSize", VPackValue(rss));
@@ -894,7 +898,8 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double now) 
   using rest::RequestType;
   builder.add("http", VPackValue(VPackValueType::Object));
   builder.add("requestsTotal", VPackValue(connectionStats.totalRequests.get()));
-  builder.add("requestsSuperuser", VPackValue(connectionStats.totalRequestsSuperuser.get()));
+  builder.add("requestsSuperuser",
+              VPackValue(connectionStats.totalRequestsSuperuser.get()));
   builder.add("requestsUser", VPackValue(connectionStats.totalRequestsUser.get()));
   builder.add("requestsAsync", VPackValue(connectionStats.asyncRequests.get()));
   builder.add("requestsGet",
@@ -908,11 +913,14 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double now) 
   builder.add("requestsPatch",
               VPackValue(connectionStats.methodRequests[(int)RequestType::PATCH].get()));
   builder.add("requestsDelete",
-              VPackValue(connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()));
+              VPackValue(
+                  connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()));
   builder.add("requestsOptions",
-              VPackValue(connectionStats.methodRequests[(int)RequestType::OPTIONS].get()));
+              VPackValue(
+                  connectionStats.methodRequests[(int)RequestType::OPTIONS].get()));
   builder.add("requestsOther",
-              VPackValue(connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()));
+              VPackValue(
+                  connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()));
   builder.close();
 
   // _serverStatistics()
@@ -920,11 +928,17 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double now) 
   builder.add("uptime", VPackValue(serverInfo.uptime()));
   builder.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
   builder.add("transactions", VPackValue(VPackValueType::Object));
-  builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted.load()));
-  builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted.load()));
-  builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted.load()));
-  builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits.load()));
-  builder.add("readOnly", VPackValue(serverInfo._transactionsStatistics._readTransactions.load()));
+  builder.add("started",
+              VPackValue(serverInfo._transactionsStatistics._transactionsStarted.load()));
+  builder.add("aborted",
+              VPackValue(serverInfo._transactionsStatistics._transactionsAborted.load()));
+  builder.add("committed",
+              VPackValue(
+                  serverInfo._transactionsStatistics._transactionsCommitted.load()));
+  builder.add("intermediateCommits",
+              VPackValue(serverInfo._transactionsStatistics._intermediateCommits.load()));
+  builder.add("readOnly",
+              VPackValue(serverInfo._transactionsStatistics._readTransactions.load()));
   builder.close();
 
   // export v8 statistics
@@ -996,8 +1010,9 @@ void StatisticsWorker::saveSlice(VPackSlice slice, std::string const& collection
   Result res = trx.begin();
 
   if (!res.ok()) {
-    LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS) << "could not start transaction on "
-                                        << collection << ": " << res.errorMessage();
+    LOG_TOPIC("ecdb9", WARN, Logger::STATISTICS)
+        << "could not start transaction on " << collection << ": "
+        << res.errorMessage();
     return;
   }
 
@@ -1008,8 +1023,8 @@ void StatisticsWorker::saveSlice(VPackSlice slice, std::string const& collection
   // result stays valid!
   res = trx.finish(result.result);
   if (res.fail()) {
-    LOG_TOPIC("82af5", WARN, Logger::STATISTICS) << "could not commit stats to " << collection
-                                        << ": " << res.errorMessage();
+    LOG_TOPIC("82af5", WARN, Logger::STATISTICS)
+        << "could not commit stats to " << collection << ": " << res.errorMessage();
   }
 }
 
@@ -1022,10 +1037,10 @@ void StatisticsWorker::beginShutdown() {
 }
 
 void StatisticsWorker::run() {
-  // statistics queries don't work on DB servers, so we should not 
-  // run the StatisticsWorker on DB servers! 
+  // statistics queries don't work on DB servers, so we should not
+  // run the StatisticsWorker on DB servers!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
-  
+
   while (ServerState::isMaintenance()) {
     if (isStopping()) {
       // startup aborted

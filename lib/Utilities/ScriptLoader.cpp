@@ -160,7 +160,8 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
 #ifdef _WIN32
     std::vector<std::string> parts = basics::StringUtils::split(_directory, ';');
 #else
-    std::vector<std::string> parts = basics::StringUtils::split(_directory, ":;");
+    std::vector<std::string> parts =
+        basics::StringUtils::split(_directory, ":;");
 #endif
 
     for (size_t i = 0; i < parts.size(); ++i) {

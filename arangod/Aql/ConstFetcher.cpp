@@ -63,7 +63,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   // to is one after the last data row to be returned
 
   if (_blockForPassThrough->hasShadowRows()) {
-    auto [shadowRowsBegin, shadowRowsEnd] = _blockForPassThrough->getShadowRowIndexesFrom(_rowIndex);
+    auto [shadowRowsBegin, shadowRowsEnd] =
+        _blockForPassThrough->getShadowRowIndexesFrom(_rowIndex);
     if (shadowRowsBegin != shadowRowsEnd) {
       size_t fromShadowRow = *shadowRowsBegin;
       size_t toShadowRow = *shadowRowsBegin + 1;
@@ -162,7 +163,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     _skipped.reset();
     skipped.didSkip(call.getSkipCount());
     return {ExecutionState::DONE, skipped,
-            DataRange{ExecutorState::DONE, call.getSkipCount(), std::move(_blockForPassThrough), 0}};
+            DataRange{ExecutorState::DONE, call.getSkipCount(),
+                      std::move(_blockForPassThrough), 0}};
   }
 
   SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;
@@ -195,7 +197,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
 
   // Slowest path need to slice, this unfortunately requires copy of data
   resultBlock = resultBlock->slice(sliceIndexes);
-  return {resState, skipped, DataRange{rangeState, call.getSkipCount(), std::move(resultBlock), 0}};
+  return {resState, skipped,
+          DataRange{rangeState, call.getSkipCount(), std::move(resultBlock), 0}};
 }
 
 void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) {
@@ -207,7 +210,7 @@ void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) 
   _blockForPassThrough = std::move(block);
   _rowIndex = 0;
 }
-  
+
 void ConstFetcher::setDistributeId(std::string const&) {
   // This is not implemented for this fetcher
   TRI_ASSERT(false);
@@ -225,8 +228,9 @@ auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
   return _currentBlock->numRows() - _rowIndex;
 }
 
-auto ConstFetcher::canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
-    noexcept -> bool {
+auto ConstFetcher::canUseFullBlock(
+    arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const noexcept
+    -> bool {
   TRI_ASSERT(!ranges.empty());
   if (ranges.front().first != 0) {
     // We do not start at the first index.

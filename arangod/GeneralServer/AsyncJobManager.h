@@ -114,4 +114,3 @@ class AsyncJobManager {
 };
 }  // namespace rest
 }  // namespace arangodb
-

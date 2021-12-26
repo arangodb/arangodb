@@ -61,7 +61,7 @@ class ClusterEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
-  
+
   HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
@@ -137,9 +137,8 @@ class ClusterEngine final : public StorageEngine {
   Result firstTick(uint64_t& tick) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
-  Result lastLogger(TRI_vocbase_t& vocbase,
-                    uint64_t tickStart, uint64_t tickEnd,
-                    velocypack::Builder& builder) override {
+  Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
+                    uint64_t tickEnd, velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   WalAccess const* walAccess() const override {
@@ -173,8 +172,7 @@ class ClusterEngine final : public StorageEngine {
   TRI_voc_tick_t recoveryTick() override;
 
  public:
-  void createCollection(TRI_vocbase_t& vocbase,
-                        LogicalCollection const& collection) override;
+  void createCollection(TRI_vocbase_t& vocbase, LogicalCollection const& collection) override;
 
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
@@ -238,4 +236,3 @@ class ClusterEngine final : public StorageEngine {
 };
 
 }  // namespace arangodb
-

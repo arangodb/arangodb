@@ -44,4 +44,3 @@ class ScriptFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

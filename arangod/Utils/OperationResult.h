@@ -24,8 +24,8 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/debugging.h"
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
 #include "Utils/OperationOptions.h"
 
 #include <velocypack/Buffer.h>
@@ -110,4 +110,3 @@ struct OperationResult final {
 };
 
 }  // namespace arangodb
-

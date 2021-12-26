@@ -206,7 +206,7 @@ class AgencyCommHelper {
 
 class AgencyPrecondition {
  public:
-  enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY};
+  enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY };
 
  public:
   AgencyPrecondition();
@@ -257,7 +257,8 @@ class AgencyOperation {
 
   // Note that this constructor does not copy the Slice, so it has to stay valid
   // at least as long as the AgencyOperation might be used!
-  AgencyOperation(std::string const& key, AgencyValueOperationType opType, velocypack::Slice value);
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType,
+                  velocypack::Slice value);
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   std::shared_ptr<velocypack::Builder> value);
@@ -464,9 +465,7 @@ struct AgencyWriteTransaction : public AgencyTransaction {
     return AgencyTransaction::TypeUrl[1];
   }
 
-  inline std::string getClientId() const override final {
-    return clientId;
-  }
+  inline std::string getClientId() const override final { return clientId; }
 
   bool validate(AgencyCommResult const& result) const override final;
   char const* typeName() const override { return "AgencyWriteTransaction"; }
@@ -563,8 +562,8 @@ struct AgencyReadTransaction : public AgencyTransaction {
 class AgencyComm {
  private:
   static std::string const AGENCY_URL_PREFIX;
-  static uint64_t const INITIAL_SLEEP_TIME = 5000; // microseconds
-  static uint64_t const MAX_SLEEP_TIME = 50000; // microseconds
+  static uint64_t const INITIAL_SLEEP_TIME = 5000;  // microseconds
+  static uint64_t const MAX_SLEEP_TIME = 50000;     // microseconds
 
  public:
   explicit AgencyComm(application_features::ApplicationServer&);
@@ -587,7 +586,7 @@ class AgencyComm {
   AgencyCommResult setValue(std::string const&, arangodb::velocypack::Slice const&, double);
 
   AgencyCommResult setTransient(std::string const& key,
-                                arangodb::velocypack::Slice const& slice, 
+                                arangodb::velocypack::Slice const& slice,
                                 uint64_t ttl, double timeout);
 
   bool exists(std::string const&);

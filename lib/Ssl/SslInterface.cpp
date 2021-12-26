@@ -29,7 +29,6 @@
 #include "Basics/memory.h"
 #include "Random/UniformCharacter.h"
 
-#include <cstring>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -37,6 +36,7 @@
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
+#include <cstring>
 #include <iostream>
 
 #ifdef OPENSSL_NO_SSL2  // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
@@ -319,8 +319,7 @@ int sslRand(int32_t* value) {
   return 0;
 }
 
-
-int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY *pkey, std::string const& msg,
+int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY* pkey, std::string const& msg,
                 std::string& sign, std::string& error) {
   size_t signLength;
   if (EVP_DigestSignInit(ctx, nullptr, EVP_sha256(), nullptr, pkey) == 0) {
@@ -328,25 +327,24 @@ int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY *pkey, std::string const& msg,
     return 1;
   }
   if (EVP_DigestSignUpdate(ctx, msg.c_str(), msg.size()) == 0) {
-    error.append("EVP_DigestSignUpdate failed: ").append( ERR_error_string(ERR_get_error(), nullptr));
+    error.append("EVP_DigestSignUpdate failed: ").append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
   if (EVP_DigestSignFinal(ctx, nullptr, &signLength) == 0) {
-    error.append("EVP_DigestSignFinal failed: ").append( ERR_error_string(ERR_get_error(), nullptr));
+    error.append("EVP_DigestSignFinal failed: ").append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
   sign.resize(signLength);
-  if (EVP_DigestSignFinal(ctx, (unsigned char*) sign.data(), &signLength) == 0) {
+  if (EVP_DigestSignFinal(ctx, (unsigned char*)sign.data(), &signLength) == 0) {
     error.append("EVP_DigestSignFinal failed, return code: ")
-      .append(ERR_error_string(ERR_get_error(), nullptr));
+        .append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
   return 0;
 }
 
-int rsaPrivSign(std::string const& pem , std::string const& msg,
+int rsaPrivSign(std::string const& pem, std::string const& msg,
                 std::string& sign, std::string& error) {
-
   BIO* keybio = BIO_new_mem_buf(pem.c_str(), -1);
   RSA* rsa;
   rsa = RSA_new();
@@ -367,16 +365,13 @@ int rsaPrivSign(std::string const& pem , std::string const& msg,
   });
 
   auto* ctx = EVP_MD_CTX_new();
-  auto cleanupContext = scopeGuard([&]() noexcept {
-    EVP_MD_CTX_free(ctx);
-  });
+  auto cleanupContext = scopeGuard([&]() noexcept { EVP_MD_CTX_free(ctx); });
   if (ctx == nullptr) {
     error.append("EVP_MD_CTX_create failed,: ").append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
 
   return rsaPrivSign(ctx, pKey, msg, sign, error);
-
 }
 
 }  // namespace SslInterface

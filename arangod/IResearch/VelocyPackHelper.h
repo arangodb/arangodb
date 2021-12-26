@@ -47,17 +47,16 @@ namespace iresearch {
 uint8_t const COMPACT_ARRAY = 0x13;
 uint8_t const COMPACT_OBJECT = 0x14;
 
-template<typename Char>
+template <typename Char>
 irs::basic_string_ref<Char> ref(VPackSlice slice) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 
-  return irs::basic_string_ref<Char>(
-    reinterpret_cast<Char const*>(slice.begin()),
-    slice.byteSize());
+  return irs::basic_string_ref<Char>(reinterpret_cast<Char const*>(slice.begin()),
+                                     slice.byteSize());
 }
 
-template<typename Char>
+template <typename Char>
 VPackSlice slice(irs::basic_string_ref<Char> const& ref) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
@@ -65,7 +64,7 @@ VPackSlice slice(irs::basic_string_ref<Char> const& ref) {
   return VPackSlice(reinterpret_cast<uint8_t const*>(ref.c_str()));
 }
 
-template<typename Char>
+template <typename Char>
 VPackSlice slice(std::basic_string<Char> const& ref) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
@@ -76,35 +75,35 @@ VPackSlice slice(std::basic_string<Char> const& ref) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON arrays)
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::Builder& addBytesRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::bytes_ref const& value // value
+arangodb::velocypack::Builder& addBytesRef(  // add a value
+    arangodb::velocypack::Builder& builder,  // builder
+    irs::bytes_ref const& value              // value
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON objects)
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::Builder& addBytesRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::string_ref const& key, // key
-  irs::bytes_ref const& value // value
+arangodb::velocypack::Builder& addBytesRef(  // add a value
+    arangodb::velocypack::Builder& builder,  // builder
+    irs::string_ref const& key,              // key
+    irs::bytes_ref const& value              // value
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON arrays)
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::Builder& addStringRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::string_ref const& value // value
+arangodb::velocypack::Builder& addStringRef(  // add a value
+    arangodb::velocypack::Builder& builder,   // builder
+    irs::string_ref const& value              // value
 );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps bytes ref with VPackValuePair
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
-  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
-  return arangodb::velocypack::ValuePair( // value pair
-    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::Binary // args
+  TRI_ASSERT(!ref.null());  // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair(  // value pair
+      ref.c_str(), ref.size(), arangodb::velocypack::ValueType::Binary  // args
   );
 }
 
@@ -112,19 +111,19 @@ inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
 /// @brief wraps string ref with VPackValuePair
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
-  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
-  return arangodb::velocypack::ValuePair( // value pair
-    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::String // args
+  TRI_ASSERT(!ref.null());  // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair(  // value pair
+      ref.c_str(), ref.size(), arangodb::velocypack::ValueType::String  // args
   );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON objects)
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::velocypack::Builder& addStringRef( // add a value
-  arangodb::velocypack::Builder& builder, // builder
-  irs::string_ref const& key, // key
-  irs::string_ref const& value // value
+arangodb::velocypack::Builder& addStringRef(  // add a value
+    arangodb::velocypack::Builder& builder,   // builder
+    irs::string_ref const& key,               // key
+    irs::string_ref const& value              // value
 );
 
 inline bool isArrayOrObject(VPackSlice const& slice) {
@@ -276,9 +275,8 @@ inline bool getString(irs::string_ref& buf, arangodb::velocypack::Slice const& s
 /// @brief look for the specified attribute path inside an Object
 /// @return a value denoted by 'fallback' if not found
 //////////////////////////////////////////////////////////////////////////////
-template<typename T>
-VPackSlice get(VPackSlice slice,
-               const T& attributePath,
+template <typename T>
+VPackSlice get(VPackSlice slice, const T& attributePath,
                VPackSlice fallback = VPackSlice::nullSlice()) {
   if (attributePath.empty()) {
     return fallback;
@@ -365,4 +363,3 @@ class Iterator {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

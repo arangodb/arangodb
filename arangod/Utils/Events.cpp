@@ -58,7 +58,8 @@ void DeleteDocument(std::string const& db, std::string const& collection,
 void ReadDocument(std::string const& db, std::string const& collection,
                   VPackSlice const& document, OperationOptions const& options, ErrorCode) {}
 void ReplaceDocument(std::string const& db, std::string const& collection,
-                     VPackSlice const& document, OperationOptions const& options, ErrorCode) {}
+                     VPackSlice const& document,
+                     OperationOptions const& options, ErrorCode) {}
 void ModifyDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, OperationOptions const& options,
                     ErrorCode code) {}

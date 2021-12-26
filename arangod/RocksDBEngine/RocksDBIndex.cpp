@@ -232,8 +232,8 @@ Result RocksDBIndex::drop() {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  size_t numDocs =
-      rocksutils::countKeyRange(engine.db(), this->getBounds(), nullptr, prefixSameAsStart);
+  size_t numDocs = rocksutils::countKeyRange(engine.db(), this->getBounds(),
+                                             nullptr, prefixSameAsStart);
   if (numDocs > 0) {
     std::string errorMsg(
         "deletion check in index drop failed - not all documents in the index "
@@ -253,14 +253,13 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*
     createCache();
     TRI_ASSERT(_cache.get() != nullptr);
   }
-}  
-  
+}
+
 /// performs a preflight check for an insert operation, not carrying out any
 /// modifications to the index.
 /// the default implementation does nothing. indexes can override this and
 /// perform useful checks (uniqueness checks etc.) here
-Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/, 
-                                 RocksDBMethods* /*methods*/,
+Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/, RocksDBMethods* /*methods*/,
                                  LocalDocumentId const& /*documentId*/,
                                  arangodb::velocypack::Slice /*doc*/,
                                  OperationOptions const& /*options*/) {
@@ -272,8 +271,7 @@ Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/,
 /// modifications to the index.
 /// the default implementation does nothing. indexes can override this and
 /// perform useful checks (uniqueness checks etc.) here
-Result RocksDBIndex::checkReplace(transaction::Methods& /*trx*/, 
-                                  RocksDBMethods* /*methods*/,
+Result RocksDBIndex::checkReplace(transaction::Methods& /*trx*/, RocksDBMethods* /*methods*/,
                                   LocalDocumentId const& /*documentId*/,
                                   arangodb::velocypack::Slice /*doc*/,
                                   OperationOptions const& /*options*/) {
@@ -282,21 +280,18 @@ Result RocksDBIndex::checkReplace(transaction::Methods& /*trx*/,
 }
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
-                            LocalDocumentId const& oldDocumentId,
-                            velocypack::Slice oldDoc,
-                            LocalDocumentId const& newDocumentId,
-                            velocypack::Slice newDoc,
-                            OperationOptions const& options,
-                            bool performChecks) {
+                            LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
+                            LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+                            OperationOptions const& options, bool performChecks) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
-  
+
   /// only if the insert needs to see the changes of the update, enable indexing:
   IndexingEnabler enabler(mthd, mthd->isIndexingDisabled() && hasExpansion() && unique());
-  
+
   TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
-  
+
   Result res = remove(trx, mthd, oldDocumentId, oldDoc);
   if (!res.ok()) {
     return res;
@@ -345,11 +340,9 @@ void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
     }
   }
 }
-  
+
 /// @brief get index estimator, optional
-RocksDBCuckooIndexEstimatorType* RocksDBIndex::estimator() { 
-  return nullptr; 
-}
+RocksDBCuckooIndexEstimatorType* RocksDBIndex::estimator() { return nullptr; }
 
 void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) {}
 

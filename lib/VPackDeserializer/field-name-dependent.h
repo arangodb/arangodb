@@ -83,7 +83,7 @@ template <typename R>
 struct field_name_dependent_executor<R> {
   using unpack_result = result<R, deserialize_error>;
   template <typename C>
-  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, C &&)
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type s, C&&)
       -> unpack_result {
     using namespace std::string_literals;
     return unpack_result{deserialize_error{"format not recognized"}};

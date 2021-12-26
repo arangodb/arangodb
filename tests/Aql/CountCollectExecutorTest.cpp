@@ -49,8 +49,8 @@ class CountCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<CountCollectParamType, false> {
  protected:
   auto MakeCountCollectRegisterInfos(RegisterCount outReg) -> RegisterInfos {
-    return RegisterInfos({}, RegIdSet{static_cast<RegisterId::value_t>(outReg)}, outReg, outReg + 1,
-                         RegIdFlatSet{}, RegIdFlatSetStack{{}, {}});
+    return RegisterInfos({}, RegIdSet{static_cast<RegisterId::value_t>(outReg)}, outReg,
+                         outReg + 1, RegIdFlatSet{}, RegIdFlatSetStack{{}, {}});
   }
 
   auto MakeCountCollectExecutorInfos(RegisterId outReg) -> CountCollectExecutorInfos {
@@ -88,7 +88,8 @@ class CountCollectExecutorTest
   }
 
   auto MakeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
-    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
+    auto const outputRegister =
+        RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
     auto inputRegisterSet = RegIdSet{};
     for (RegisterId::value_t r = 0; r <= inputRegister.value(); ++r) {
       inputRegisterSet.emplace(r);
@@ -104,7 +105,8 @@ class CountCollectExecutorTest
   }
 
   auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
-    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
+    auto const outputRegister =
+        RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
 
     return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister, outputRegister);
   }

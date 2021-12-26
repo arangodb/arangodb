@@ -122,7 +122,8 @@ stats::Descriptions::Descriptions(application_features::ApplicationServer& serve
                              "Statistics about the connections."});
   _groups.emplace_back(Group{stats::GroupType::ClientUser,
                              "Client User Connection Statistics",
-                             "Statistics about the connections, only user traffic (ignoring superuser JWT traffic)."});
+                             "Statistics about the connections, only user "
+                             "traffic (ignoring superuser JWT traffic)."});
   _groups.emplace_back(Group{stats::GroupType::Http, "HTTP Request Statistics",
                              "Statistics about the HTTP requests."});
   _groups.emplace_back(Group{stats::GroupType::Server, "Server Statistics",
@@ -260,14 +261,14 @@ stats::Descriptions::Descriptions(application_features::ApplicationServer& serve
 
   // Only user traffic:
 
-  _figures.emplace_back(
-      Figure{stats::GroupType::ClientUser,
-             "httpConnections",
-             "Client Connections",
-             "The number of connections that are currently open (only user traffic).",
-             stats::FigureType::Current,
-             stats::Unit::Number,
-             {}});
+  _figures.emplace_back(Figure{
+      stats::GroupType::ClientUser,
+      "httpConnections",
+      "Client Connections",
+      "The number of connections that are currently open (only user traffic).",
+      stats::FigureType::Current,
+      stats::Unit::Number,
+      {}});
 
   _figures.emplace_back(
       Figure{stats::GroupType::ClientUser, "totalTime", "Total Time",
@@ -290,23 +291,20 @@ stats::Descriptions::Descriptions(application_features::ApplicationServer& serve
              // cuts: internal.requestTimeDistribution,
              stats::Unit::Seconds, _requestTimeCuts});
 
-  _figures.emplace_back(Figure{stats::GroupType::ClientUser, "bytesSent",
-                               "Bytes Sent",
-                               "Bytes sents for a request (only user traffic).",
-                               stats::FigureType::Distribution,
-                               // cuts: internal.bytesSentDistribution,
-                               stats::Unit::Bytes, _bytesSendCuts});
-
-  _figures.emplace_back(Figure{stats::GroupType::ClientUser, "bytesReceived",
-                               "Bytes Received",
-                               "Bytes received for a request (only user traffic).",
-                               stats::FigureType::Distribution,
-                               // cuts: internal.bytesReceivedDistribution,
-                               stats::Unit::Bytes, _bytesReceivedCuts});
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "bytesSent", "Bytes Sent",
+             "Bytes sents for a request (only user traffic).", stats::FigureType::Distribution,
+             // cuts: internal.bytesSentDistribution,
+             stats::Unit::Bytes, _bytesSendCuts});
 
   _figures.emplace_back(
-      Figure{stats::GroupType::ClientUser, "connectionTime",
-             "Connection Time",
+      Figure{stats::GroupType::ClientUser, "bytesReceived", "Bytes Received",
+             "Bytes received for a request (only user traffic).", stats::FigureType::Distribution,
+             // cuts: internal.bytesReceivedDistribution,
+             stats::Unit::Bytes, _bytesReceivedCuts});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "connectionTime", "Connection Time",
              "Total connection time of a client (only user traffic).",
              stats::FigureType::Distribution,
              // cuts: internal.connectionTimeDistribution,
@@ -319,22 +317,24 @@ stats::Descriptions::Descriptions(application_features::ApplicationServer& serve
                                stats::FigureType::Accumulated,
                                stats::Unit::Number,
                                {}});
-  
-  _figures.emplace_back(Figure{stats::GroupType::Http,
-                               "requestsSuperuser",
-                               "Total superuser requests",
-                               "Total number of HTTP requests executed by superuser/JWT.",
-                               stats::FigureType::Accumulated,
-                               stats::Unit::Number,
-                               {}});
-  
-  _figures.emplace_back(Figure{stats::GroupType::Http,
-                               "requestsUser",
-                               "Total user requests",
-                               "Total number of HTTP requests executed by clients.",
-                               stats::FigureType::Accumulated,
-                               stats::Unit::Number,
-                               {}});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::Http,
+             "requestsSuperuser",
+             "Total superuser requests",
+             "Total number of HTTP requests executed by superuser/JWT.",
+             stats::FigureType::Accumulated,
+             stats::Unit::Number,
+             {}});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::Http,
+             "requestsUser",
+             "Total user requests",
+             "Total number of HTTP requests executed by clients.",
+             stats::FigureType::Accumulated,
+             stats::Unit::Number,
+             {}});
 
   _figures.emplace_back(
       Figure{stats::GroupType::Http,
@@ -440,8 +440,10 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("transactions", VPackValue(VPackValueType::Object));
   b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted.load()));
   b.add("aborted", VPackValue(info._transactionsStatistics._transactionsAborted.load()));
-  b.add("committed", VPackValue(info._transactionsStatistics._transactionsCommitted.load()));
-  b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits.load()));
+  b.add("committed",
+        VPackValue(info._transactionsStatistics._transactionsCommitted.load()));
+  b.add("intermediateCommits",
+        VPackValue(info._transactionsStatistics._intermediateCommits.load()));
   b.add("readOnly", VPackValue(info._transactionsStatistics._readTransactions.load()));
   b.close();
 
@@ -494,7 +496,8 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
   b.close();
 }
 
-void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatisticsSource source) const {
+void stats::Descriptions::clientStatistics(velocypack::Builder& b,
+                                           RequestStatisticsSource source) const {
   // FIXME why are httpConnections in here ?
   ConnectionStatistics::Snapshot connectionStats;
   ConnectionStatistics::getSnapshot(connectionStats);
@@ -522,10 +525,14 @@ void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {
   b.add("requestsSuperuser", VPackValue(stats.totalRequestsSuperuser.get()));
   b.add("requestsUser", VPackValue(stats.totalRequestsUser.get()));
   b.add("requestsAsync", VPackValue(stats.asyncRequests.get()));
-  b.add("requestsGet", VPackValue(stats.methodRequests[(int)rest::RequestType::GET].get()));
-  b.add("requestsHead", VPackValue(stats.methodRequests[(int)rest::RequestType::HEAD].get()));
-  b.add("requestsPost", VPackValue(stats.methodRequests[(int)rest::RequestType::POST].get()));
-  b.add("requestsPut", VPackValue(stats.methodRequests[(int)rest::RequestType::PUT].get()));
+  b.add("requestsGet",
+        VPackValue(stats.methodRequests[(int)rest::RequestType::GET].get()));
+  b.add("requestsHead",
+        VPackValue(stats.methodRequests[(int)rest::RequestType::HEAD].get()));
+  b.add("requestsPost",
+        VPackValue(stats.methodRequests[(int)rest::RequestType::POST].get()));
+  b.add("requestsPut",
+        VPackValue(stats.methodRequests[(int)rest::RequestType::PUT].get()));
   b.add("requestsPatch",
         VPackValue(stats.methodRequests[(int)rest::RequestType::PATCH].get()));
   b.add("requestsDelete",

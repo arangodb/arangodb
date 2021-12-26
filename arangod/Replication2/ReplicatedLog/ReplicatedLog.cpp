@@ -77,8 +77,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     }
 
     auto [logCore, deferred] = std::move(*_participant).resign();
-    LOG_CTX("23d7b", DEBUG, _logContext)
-        << "becoming leader in term " << newTerm;
+    LOG_CTX("23d7b", DEBUG, _logContext) << "becoming leader in term " << newTerm;
     auto leader = LogLeader::construct(config, std::move(logCore), follower,
                                        std::move(id), newTerm, _logContext, _metrics);
     _participant = std::static_pointer_cast<ILogParticipant>(leader);

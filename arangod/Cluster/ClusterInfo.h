@@ -57,13 +57,13 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace replication2::agency {
 struct LogPlanSpecification;
 struct CollectionGroupId;
 struct CollectionGroup;
-}
+}  // namespace replication2::agency
 
 class ClusterInfo;
 class LogicalCollection;
@@ -75,7 +75,8 @@ struct ClusterCollectionCreationInfo;
 class CollectionWatcher : public std::enable_shared_from_this<CollectionWatcher> {
  public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection);
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry,
+                    LogicalCollection const& collection);
   ~CollectionWatcher();
 
   bool isPresent() {
@@ -139,13 +140,17 @@ class CollectionInfoCurrent {
   /// @brief returns the error flag for a shardID
   //////////////////////////////////////////////////////////////////////////////
 
-  bool error(ShardID const& shardID) const { return getFlag(StaticStrings::Error, shardID); }
+  bool error(ShardID const& shardID) const {
+    return getFlag(StaticStrings::Error, shardID);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the error flag for all shardIDs
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<ShardID, bool> error() const { return getFlag(StaticStrings::Error); }
+  std::unordered_map<ShardID, bool> error() const {
+    return getFlag(StaticStrings::Error);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the errorNum for one shardID
@@ -155,8 +160,8 @@ class CollectionInfoCurrent {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
       VPackSlice slice = it->second->slice();
-      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          slice, StaticStrings::ErrorNum, 0);
+      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice, StaticStrings::ErrorNum,
+                                                                      0);
     }
     return 0;
   }
@@ -169,9 +174,8 @@ class CollectionInfoCurrent {
     std::unordered_map<ShardID, int> m;
 
     for (auto const& it : _vpacks) {
-      int s =
-          arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(),
-                                                                   StaticStrings::ErrorNum, 0);
+      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          it.second->slice(), StaticStrings::ErrorNum, 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -301,6 +305,7 @@ class AnalyzerModificationTransaction {
   Result start();
   Result commit();
   Result abort();
+
  private:
   void revertCounter();
 
@@ -309,13 +314,13 @@ class AnalyzerModificationTransaction {
 
   // database for operation
   // need to copy as may be temp value provided to constructor
-  DatabaseID  _database;
+  DatabaseID _database;
 
   // rollback operations counter
-  bool _rollbackCounter{ false };
+  bool _rollbackCounter{false};
 
   // rollback revision in Plan
-  bool _rollbackRevision{ false };
+  bool _rollbackRevision{false};
 
   // cleanup or normal analyzer insert/remove
   bool _cleanupTransaction;
@@ -324,7 +329,7 @@ class AnalyzerModificationTransaction {
   // e.g. revision will be current upon successful commit of
   // this transaction. For cleanup transaction this equals to current revision
   // as cleanup just cleans the mess and reverts revision back to normal
-  AnalyzersRevision::Revision _buildingRevision{ AnalyzersRevision::LATEST };
+  AnalyzersRevision::Revision _buildingRevision{AnalyzersRevision::LATEST};
 
   // pending operation sount. Positive number means some operations are ongoing
   // zero means system idle
@@ -353,9 +358,8 @@ class ClusterInfo final {
 
   class SyncerThread final : public arangodb::Thread {
    public:
-    explicit SyncerThread(
-      application_features::ApplicationServer&, std::string const& section,
-      std::function<void()> const&, AgencyCallbackRegistry*);
+    explicit SyncerThread(application_features::ApplicationServer&, std::string const& section,
+                          std::function<void()> const&, AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
     void beginShutdown() override;
@@ -410,7 +414,8 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer& server, AgencyCallbackRegistry* agencyCallbackRegistry,
+  explicit ClusterInfo(application_features::ApplicationServer& server,
+                       AgencyCallbackRegistry* agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -424,7 +429,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
-  
+
   /// @brief cancel all pending wait-for-syncer operations
   void drainSyncers();
 
@@ -492,11 +497,11 @@ class ClusterInfo final {
   [[nodiscard]] futures::Future<Result> waitForPlanVersion(uint64_t planVersion);
 
   /**
-  * @brief Fetch the current Plan version and wait for the cache to catch up to
-  *        it, if necessary.
-  * @param The timeout is for fetching the Plan version only. Waiting for the
-  *        Plan version afterwards will never timeout.
-  */
+   * @brief Fetch the current Plan version and wait for the cache to catch up to
+   *        it, if necessary.
+   * @param The timeout is for fetching the Plan version only. Waiting for the
+   *        Plan version afterwards will never timeout.
+   */
   [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(network::Timeout);
 
   /**
@@ -590,7 +595,7 @@ class ClusterInfo final {
   /// @param forceLoadPlan always reload plan
   //////////////////////////////////////////////////////////////////////////////
   AnalyzersRevision::Ptr getAnalyzersRevision(DatabaseID const& databaseID,
-                                                          bool forceLoadPlan = false);
+                                              bool forceLoadPlan = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reads analyzers revisions needed for querying specified database.
@@ -598,21 +603,20 @@ class ClusterInfo final {
   /// @param databaseID database to query
   /// @return extracted revisions
   //////////////////////////////////////////////////////////////////////////////
-  QueryAnalyzerRevisions getQueryAnalyzersRevision(
-      DatabaseID const& databaseID);
+  QueryAnalyzerRevisions getQueryAnalyzersRevision(DatabaseID const& databaseID);
 
-  /// @brief return shard statistics for the specified database, 
+  /// @brief return shard statistics for the specified database,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsForDatabase(DatabaseID const& dbName,
                                        std::string const& restrictServer,
                                        arangodb::velocypack::Builder& builder) const;
-  
+
   /// @brief return shard statistics for all databases, totals,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsGlobal(std::string const& restrictServer,
                                   arangodb::velocypack::Builder& builder) const;
-  
-  /// @brief return shard statistics, separate for each database, 
+
+  /// @brief return shard statistics, separate for each database,
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
                                           arangodb::velocypack::Builder& builder) const;
@@ -663,7 +667,7 @@ class ClusterInfo final {
       std::string const& name,     // database name
       double timeout               // request timeout
   );
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -743,14 +747,12 @@ class ClusterInfo final {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief start creating or deleting an analyzer in coordinator,
-  /// the return value is an ArangoDB error code and building revision number if succeeded,
-  /// AnalyzersRevision::LATEST on error
-  /// and the errorMsg is set accordingly. One possible error
-  /// is a timeout.
+  /// the return value is an ArangoDB error code and building revision number if
+  /// succeeded, AnalyzersRevision::LATEST on error and the errorMsg is set
+  /// accordingly. One possible error is a timeout.
   /// @note should not be called directly - use AnalyzerModificationTransaction
   //////////////////////////////////////////////////////////////////////////////
-  std::pair<Result, AnalyzersRevision::Revision>  startModifyingAnalyzerCoordinator(
-      DatabaseID const& databaseID);
+  std::pair<Result, AnalyzersRevision::Revision> startModifyingAnalyzerCoordinator(DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finish creating or deleting an analyzer in coordinator,
@@ -772,11 +774,9 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinator(        // create index
-      LogicalCollection const& collection,
-      arangodb::velocypack::Slice const& slice, bool create,
-      arangodb::velocypack::Builder& resultBuilder,
-      double timeout);
+  Result ensureIndexCoordinator(  // create index
+      LogicalCollection const& collection, arangodb::velocypack::Slice const& slice,
+      bool create, arangodb::velocypack::Builder& resultBuilder, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
@@ -885,7 +885,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   ServerID getCoordinatorByShortID(ServerShortID const& shortId);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate current coordinators
   //////////////////////////////////////////////////////////////////////////////
@@ -901,14 +901,14 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Plan" structure
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
-    getPlan(uint64_t& planIndex, std::unordered_set<std::string> const&);
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> getPlan(
+      uint64_t& planIndex, std::unordered_set<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
-    getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
+  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> getCurrent(
+      uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
   std::vector<std::string> getFailedServers() const;
 
@@ -918,14 +918,14 @@ class ClusterInfo final {
   void setServers(std::unordered_map<ServerID, std::string> servers);
 
   void setServerAliases(std::unordered_map<ServerID, std::string> aliases);
-  
+
   void setServerAdvertisedEndpoints(std::unordered_map<ServerID, std::string> advertisedEndpoints);
-  
+
   void setServerTimestamps(std::unordered_map<ServerID, std::string> timestamps);
 #endif
-  
+
   bool serverExists(ServerID const& serverId) const noexcept;
-  
+
   bool serverAliasExists(std::string const& alias) const noexcept;
 
   std::unordered_map<ServerID, std::string> getServers();
@@ -968,8 +968,8 @@ class ClusterInfo final {
    * @param  timeout  Timeout to wait for in seconds
    * @return          Operation's result
    */
-  arangodb::Result agencyHotBackupLock(
-    std::string const& uuid, double const& timeout, bool& supervisionOff);
+  arangodb::Result agencyHotBackupLock(std::string const& uuid,
+                                       double const& timeout, bool& supervisionOff);
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
@@ -977,8 +977,8 @@ class ClusterInfo final {
    * @param  timeout  Timeout to wait for in seconds
    * @return          Operation's result
    */
-  arangodb::Result agencyHotBackupUnlock(
-    std::string const& uuid, double const& timeout, const bool& supervisionOff);
+  arangodb::Result agencyHotBackupUnlock(std::string const& uuid, double const& timeout,
+                                         const bool& supervisionOff);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
@@ -995,22 +995,20 @@ class ClusterInfo final {
 
  private:
   /// @brief worker function for dropIndexCoordinator
-  Result dropIndexCoordinatorInner(
-      std::string const& databaseName, 
-      std::string const& collectionID,
-      IndexId iid,                   
-      double endTime);
+  Result dropIndexCoordinatorInner(std::string const& databaseName,
+                                   std::string const& collectionID, IndexId iid,
+                                   double endTime);
 
-  /// @brief helper function to build a new LogicalCollection object from the velocypack
-  /// input
+  /// @brief helper function to build a new LogicalCollection object from the
+  /// velocypack input
   static std::shared_ptr<LogicalCollection> createCollectionObject(
       arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
 
   /// @brief create a new collecion object from the data, using the cache if possible
-  CollectionWithHash buildCollection(
-    bool isBuilding, AllCollections::const_iterator existingCollections,
-    std::string const& collectionId, arangodb::velocypack::Slice data,
-    TRI_vocbase_t& vocbase, uint64_t planVersion) const;
+  CollectionWithHash buildCollection(bool isBuilding, AllCollections::const_iterator existingCollections,
+                                     std::string const& collectionId,
+                                     arangodb::velocypack::Slice data,
+                                     TRI_vocbase_t& vocbase, uint64_t planVersion) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -1026,18 +1024,16 @@ class ClusterInfo final {
 
   void loadCurrent();
 
-  void buildIsBuildingSlice(CreateDatabaseInfo const& database,
-                              VPackBuilder& builder);
+  void buildIsBuildingSlice(CreateDatabaseInfo const& database, VPackBuilder& builder);
 
-  void buildFinalSlice(CreateDatabaseInfo const& database,
-                         VPackBuilder& builder);
+  void buildFinalSlice(CreateDatabaseInfo const& database, VPackBuilder& builder);
 
-  Result waitForDatabaseInCurrent(
-    CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx);
+  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database,
+                                  AgencyWriteTransaction const& trx);
   void loadClusterId();
 
-  void triggerWaiting(
-    std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm, uint64_t commitIndex);
+  void triggerWaiting(std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
+                      uint64_t commitIndex);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the poll interval
@@ -1054,9 +1050,8 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-  Result ensureIndexCoordinatorInner(   // create index
-      LogicalCollection const& collection,
-      std::string const& idString,
+  Result ensureIndexCoordinatorInner(  // create index
+      LogicalCollection const& collection, std::string const& idString,
       arangodb::velocypack::Slice const& slice, bool create,
       arangodb::velocypack::Builder& resultBuilder,
       double timeout  // request timeout
@@ -1106,7 +1101,7 @@ class ClusterInfo final {
 
   cluster::RebootTracker _rebootTracker;
 
-  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// @brief error code sent to all remaining promises of the syncers at shutdown.
   /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
   ErrorCode const _syncerShutdownCode;
 
@@ -1114,7 +1109,7 @@ class ClusterInfo final {
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAdvertisedEndpoints;  // from Current/ServersRegistered
-  std::unordered_map<ServerID, std::string> _serverTimestamps;      // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string> _serverTimestamps;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
   // Current/ServersKnown:
@@ -1141,13 +1136,13 @@ class ClusterInfo final {
 
   ProtectionData _planProt;
 
-  uint64_t _planVersion;     // This is the version in the Plan which underlies
-                             // the data in _plannedCollections and _shards
-  uint64_t _planIndex;       // This is the Raft index, which corresponds to the above plan version
+  uint64_t _planVersion;  // This is the version in the Plan which underlies
+                          // the data in _plannedCollections and _shards
+  uint64_t _planIndex;  // This is the Raft index, which corresponds to the above plan version
   uint64_t _currentVersion;  // This is the version in Current which underlies
                              // the data in _currentDatabases,
                              // _currentCollections and _shardsIds
-  uint64_t _currentIndex;    // This is the Raft index, which corresponds to the above current version
+  uint64_t _currentIndex;  // This is the Raft index, which corresponds to the above current version
   std::unordered_map<DatabaseID, std::unordered_map<ServerID, VPackSlice>> _currentDatabases;  // from Current/Databases
   ProtectionData _currentProt;
 
@@ -1175,7 +1170,7 @@ class ClusterInfo final {
                               // execution
 
   // database ID => analyzers revision
-  std::unordered_map<DatabaseID, AnalyzersRevision::Ptr> _dbAnalyzersRevision; // from Plan/Analyzers
+  std::unordered_map<DatabaseID, AnalyzersRevision::Ptr> _dbAnalyzersRevision;  // from Plan/Analyzers
 
   std::atomic<std::thread::id> _planLoader;  // thread id that is loading plan
 
@@ -1245,7 +1240,6 @@ class ClusterInfo final {
 
   /// @brief total time for loadCurrent runtime
   Counter& _lcTotal;
-
 };
 
 namespace cluster {
@@ -1258,4 +1252,3 @@ futures::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout)
 }  // namespace cluster
 
 }  // end namespace arangodb
-

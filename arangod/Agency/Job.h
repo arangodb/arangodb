@@ -48,7 +48,8 @@ namespace consensus {
 class Node;
 
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
-const std::vector<std::string> jobStatus {"ToDo", "Pending", "Finished", "Failed"};
+const std::vector<std::string> jobStatus{"ToDo", "Pending", "Finished",
+                                         "Failed"};
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
                                     "/Target/Finished/", "/Target/Failed/"});
 extern std::string const mapUniqueToShortID;
@@ -111,9 +112,10 @@ struct Job {
         }
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC("5ac04", WARN, Logger::AGENCY) << "Exception caught in create() or "
-                                         "start() method: "
-                                      << e.what();
+      LOG_TOPIC("5ac04", WARN, Logger::AGENCY)
+          << "Exception caught in create() or "
+             "start() method: "
+          << e.what();
       finish("", "", false, e.what());
     }
   }
@@ -139,17 +141,19 @@ struct Job {
   /// @brief Get a random server, which is not blocked, in good condition and
   ///        excluding "exclude" vector
   static std::string randomIdleAvailableServer(Node const& snap,
-                                                   std::vector<std::string> const& exclude);
+                                               std::vector<std::string> const& exclude);
   static std::string randomIdleAvailableServer(Node const& snap,
                                                velocypack::Slice const& exclude);
 
   static size_t countGoodOrBadServersInList(Node const& snap,
                                             velocypack::Slice const& serverList);
-  static size_t countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList);
-  static size_t countGoodOrBadServersInList(Node const& snap, std::unordered_set<std::string> const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap,
+                                            std::vector<std::string> const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap,
+                                            std::unordered_set<std::string> const& serverList);
 
-
-  static bool isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray);
+  static bool isInServerList(Node const& snap, std::string const& prefix,
+                             std::string const& server, bool isArray);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(const arangodb::consensus::Node&);
@@ -160,28 +164,23 @@ struct Job {
   static std::vector<shard_t> clones(Node const& snap, std::string const& db,
                                      std::string const& col, std::string const& shrd);
 
-  static std::string findNonblockedCommonHealthyInSyncFollower(Node const& snap,
-                                                               std::string const& db,
-                                                               std::string const& col,
-                                                               std::string const& shrd,
-                                                               std::string const& serverToAvoid);
+  static std::string findNonblockedCommonHealthyInSyncFollower(
+      Node const& snap, std::string const& db, std::string const& col,
+      std::string const& shrd, std::string const& serverToAvoid);
 
   /// @brief The shard must be one of a collection without
-  /// `distributeShardsLike`. This returns all servers which 
+  /// `distributeShardsLike`. This returns all servers which
   /// are in sync for this shard and for all of its clones, including
   /// the leader.
-  static std::vector<std::string> findAllInSyncReplicas(
-      Node const& snap,
-      std::string const& db,
-      std::vector<Job::shard_t> const& shardsLikeMe);
+  static std::vector<std::string> findAllInSyncReplicas(Node const& snap,
+                                                        std::string const& db,
+                                                        std::vector<Job::shard_t> const& shardsLikeMe);
 
   /// @brief The shard must be one of a collection without
-  /// `distributeShardsLike`. This returns all servers which 
+  /// `distributeShardsLike`. This returns all servers which
   /// are in `failoverCandidates` for this shard or for any of its clones.
   static std::unordered_set<std::string> findAllFailoverCandidates(
-      Node const& snap,
-      std::string const& db,
-      std::vector<Job::shard_t> const& shardsLikeMe);
+      Node const& snap, std::string const& db, std::vector<Job::shard_t> const& shardsLikeMe);
 
   JOB_STATUS _status;
   Node const& _snapshot;
@@ -217,13 +216,13 @@ struct Job {
   static void addBlockShard(velocypack::Builder& trx, std::string const& shard,
                             std::string const& jobId);
   static void addReadLockServer(velocypack::Builder& trx, std::string const& server,
-                               std::string const& jobId);
-  static void addWriteLockServer(velocypack::Builder& trx, std::string const& server,
                                 std::string const& jobId);
-  static void addReadUnlockServer(velocypack::Builder& trx, std::string const& server,
+  static void addWriteLockServer(velocypack::Builder& trx, std::string const& server,
                                  std::string const& jobId);
-  static void addWriteUnlockServer(velocypack::Builder& trx, std::string const& server,
+  static void addReadUnlockServer(velocypack::Builder& trx, std::string const& server,
                                   std::string const& jobId);
+  static void addWriteUnlockServer(velocypack::Builder& trx, std::string const& server,
+                                   std::string const& jobId);
   static void addReleaseServer(velocypack::Builder& trx, std::string const& server);
   static void addReleaseShard(velocypack::Builder& trx, std::string const& shard);
   static void addPreconditionServerNotBlocked(velocypack::Builder& pre,
@@ -237,17 +236,17 @@ struct Job {
   static void addPreconditionShardNotBlocked(velocypack::Builder& pre,
                                              std::string const& shard);
   static void addPreconditionServerReadLockable(velocypack::Builder& pre,
-                                               std::string const& server,
-                                               std::string const& jobId);
-  static void addPreconditionServerReadLocked(velocypack::Builder& pre,
-                                             std::string const& server,
-                                             std::string const& jobId);
-  static void addPreconditionServerWriteLockable(velocypack::Builder& pre,
                                                 std::string const& server,
                                                 std::string const& jobId);
-  static void addPreconditionServerWriteLocked(velocypack::Builder& pre,
+  static void addPreconditionServerReadLocked(velocypack::Builder& pre,
                                               std::string const& server,
                                               std::string const& jobId);
+  static void addPreconditionServerWriteLockable(velocypack::Builder& pre,
+                                                 std::string const& server,
+                                                 std::string const& jobId);
+  static void addPreconditionServerWriteLocked(velocypack::Builder& pre,
+                                               std::string const& server,
+                                               std::string const& jobId);
   static void addPreconditionUnchanged(velocypack::Builder& pre, std::string const& key,
                                        velocypack::Slice value);
   static void addPreconditionJobStillInPending(velocypack::Builder& pre,
@@ -334,7 +333,7 @@ inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agen
 
   // This is for now disabled to speed up things. We wait after a full
   // Supervision run, which is good enough.
-  //if (ret.maxind > 0) {
+  // if (ret.maxind > 0) {
   // _agent->waitFor(ret.maxind);
   //
 
@@ -373,4 +372,3 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
 
 }  // namespace consensus
 }  // namespace arangodb
-

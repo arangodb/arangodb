@@ -37,7 +37,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 struct Collection;
 class ExecutionPlan;
@@ -115,8 +115,8 @@ class CollectionAccessingNode {
 
   /// @brief Get the CollectionAccess of which *this* collection access is a
   /// satellite of, if any.
-  /// This will make a recursive lookup, so if A isSatelliteOf B, and B isSatelliteOf C,
-  /// A.getSatelliteOf() will return C.
+  /// This will make a recursive lookup, so if A isSatelliteOf B, and B
+  /// isSatelliteOf C, A.getSatelliteOf() will return C.
   auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
       -> ExecutionNode*;
 
@@ -136,4 +136,3 @@ class CollectionAccessingNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

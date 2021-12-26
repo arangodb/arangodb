@@ -42,10 +42,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <fstream>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fstream>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -290,7 +290,6 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
   file.open(arangodb::basics::toWString(*filename));
 #endif
 
-
   auto builder = std::make_shared<VPackBuilder>();
   VPackParser parser(builder);
 
@@ -316,7 +315,7 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
       try {
         parser.parse(ptr, end - ptr);
-        object = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr); 
+        object = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr);
       } catch (std::exception const& ex) {
         TRI_V8_THROW_SYNTAX_ERROR(ex.what());
       }

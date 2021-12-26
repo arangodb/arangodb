@@ -218,7 +218,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
 
       if (parentModification) {
         auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
-        
+
         if (!::parentIsReturnOrConstCalc(mod)) {
           continue;
         }
@@ -226,7 +226,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
         if (mod->collection() != indexNode->collection()) {
           continue;
         }
-        
+
         auto parentType = parentModification->getType();
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
@@ -308,7 +308,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
     Variable const* update = nullptr;
     Variable const* keyVar = nullptr;
     std::string key;
-        
+
     if (depType == EN::REMOVE) {
       keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
     } else if (depType == EN::INSERT) {
@@ -320,7 +320,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
         keyVar = updateReplaceNode->inKeyVariable();
       }
     }
-    
+
     auto isArrayInput = [&](Variable const* variable) {
       if (variable == nullptr) {
         return false;
@@ -421,8 +421,9 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
 namespace arangodb {
 namespace aql {
 
-void substituteClusterSingleDocumentOperationsRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule) {
+void substituteClusterSingleDocumentOperationsRule(Optimizer* opt,
+                                                   std::unique_ptr<ExecutionPlan> plan,
+                                                   OptimizerRule const& rule) {
   bool modified = false;
 
   for (auto const& fun : {&::substituteClusterSingleDocumentOperationsIndex,
@@ -436,5 +437,5 @@ void substituteClusterSingleDocumentOperationsRule(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb

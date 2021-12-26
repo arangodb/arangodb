@@ -47,8 +47,9 @@ class ClientFeature final : public HttpEndpointProvider {
   constexpr static size_t const DEFAULT_RETRIES = 2;
   constexpr static double const LONG_TIMEOUT = 86400.0;
 
-  ClientFeature(application_features::ApplicationServer& server, bool allowJwtSecret,
-                size_t maxNumEndpoints = 1, double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
+  ClientFeature(application_features::ApplicationServer& server,
+                bool allowJwtSecret, size_t maxNumEndpoints = 1,
+                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -56,4 +56,3 @@ class SystemDatabaseFeature final : public application_features::ApplicationFeat
 };
 
 }  // namespace arangodb
-

@@ -49,4 +49,3 @@ class TraceEntry {
 
 }  // namespace graph
 }  // namespace arangodb
-

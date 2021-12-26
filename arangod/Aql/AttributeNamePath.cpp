@@ -34,17 +34,13 @@ namespace aql {
 AttributeNamePath::AttributeNamePath(std::string attribute) {
   path.emplace_back(std::move(attribute));
 }
-  
-AttributeNamePath::AttributeNamePath(std::vector<std::string> p) 
-    : path(std::move(p)) {}
-  
-bool AttributeNamePath::empty() const noexcept {
-  return path.empty();
-}
 
-size_t AttributeNamePath::size() const noexcept {
-  return path.size();
-}
+AttributeNamePath::AttributeNamePath(std::vector<std::string> p)
+    : path(std::move(p)) {}
+
+bool AttributeNamePath::empty() const noexcept { return path.empty(); }
+
+size_t AttributeNamePath::size() const noexcept { return path.size(); }
 
 AttributeNamePath::Type AttributeNamePath::type() const noexcept {
   TRI_ASSERT(!empty());
@@ -106,19 +102,17 @@ bool AttributeNamePath::operator<(AttributeNamePath const& other) const noexcept
   return (size() < other.size());
 }
 
-std::vector<std::string> const& AttributeNamePath::get() const noexcept { 
-  return path; 
+std::vector<std::string> const& AttributeNamePath::get() const noexcept {
+  return path;
 }
 
-void AttributeNamePath::clear() noexcept {
-  path.clear();
-}
+void AttributeNamePath::clear() noexcept { path.clear(); }
 
 AttributeNamePath& AttributeNamePath::reverse() {
   std::reverse(path.begin(), path.end());
   return *this;
 }
-  
+
 /// @brief shorten the attributes in the path to the specified length
 AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
   if (length >= size()) {
@@ -141,5 +135,5 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
   return numEqual;
 }
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb

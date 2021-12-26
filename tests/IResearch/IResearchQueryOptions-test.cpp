@@ -54,7 +54,8 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -92,10 +93,14 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
     auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
-      "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
-      "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
-    "}}");
+        "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " },"
+        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " }"
+        "}}");
     EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
@@ -144,14 +149,12 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         {
           insertedDocs.emplace_back();
-          auto const res =
-              collections[0]->insert(&trx, doc, insertedDocs.back(), opt);
+          auto const res = collections[0]->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
         {
           insertedDocs.emplace_back();
-          auto const res =
-              collections[1]->insert(&trx, doc, insertedDocs.back(), opt);
+          auto const res = collections[1]->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
         ++i;
@@ -304,8 +307,7 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
 
     // check node estimation
     {
-      auto explanationResult =
-          arangodb::tests::explainQuery(vocbase, query);
+      auto explanationResult = arangodb::tests::explainQuery(vocbase, query);
       ASSERT_TRUE(explanationResult.result.ok());
       auto const explanationSlice = explanationResult.data->slice();
       ASSERT_TRUE(explanationSlice.isObject());
@@ -320,8 +322,9 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         }
       }
       ASSERT_TRUE(viewNode.isObject());
-      ASSERT_EQ(insertedDocs.size()/2 + 1., viewNode.get("estimatedCost").getDouble());
-      ASSERT_EQ(insertedDocs.size()/2, viewNode.get("estimatedNrItems").getNumber<size_t>());
+      ASSERT_EQ(insertedDocs.size() / 2 + 1., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size() / 2,
+                viewNode.get("estimatedNrItems").getNumber<size_t>());
     }
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -465,8 +468,7 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
 
     // check node estimation
     {
-      auto explanationResult =
-          arangodb::tests::explainQuery(vocbase, query);
+      auto explanationResult = arangodb::tests::explainQuery(vocbase, query);
       ASSERT_TRUE(explanationResult.result.ok());
       auto const explanationSlice = explanationResult.data->slice();
       ASSERT_TRUE(explanationSlice.isObject());
@@ -714,7 +716,8 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -744,10 +747,14 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
     auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
-        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
-        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
-    "}}");
+        "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " },"
+        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " }"
+        "}}");
     EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
@@ -795,8 +802,7 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -933,7 +939,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
         \"storedValues\": [{\"fields\":[\"str\"]}, {\"fields\":[\"value\"]}, {\"fields\":[\"_id\"]}] \
       }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -963,10 +970,14 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
     auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\" : {"
-       "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " },"
-       "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " + versionStr + " }"
-    "}}");
+        "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " },"
+        "\"collection_2\" : { \"includeAllFields\" : true, \"version\": " +
+        versionStr +
+        " }"
+        "}}");
     EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
 
     arangodb::velocypack::Builder builder;
@@ -980,7 +991,7 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
+    EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
@@ -991,19 +1002,23 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   {
     arangodb::OperationOptions opt;
     static std::vector<std::string> const EMPTY;
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                       EMPTY, EMPTY, EMPTY,
+                                       arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collection_1
     {
       auto builder = VPackParser::fromJson(
           "["
-            "{\"_key\": \"c0\", \"str\": \"cat\", \"foo\": \"foo0\", \"value\": 0},"
-            "{\"_key\": \"c1\", \"str\": \"cat\", \"foo\": \"foo1\", \"value\": 1},"
-            "{\"_key\": \"c2\", \"str\": \"cat\", \"foo\": \"foo2\", \"value\": 2},"
-            "{\"_key\": \"c3\", \"str\": \"cat\", \"foo\": \"foo3\", \"value\": 3}"
+          "{\"_key\": \"c0\", \"str\": \"cat\", \"foo\": \"foo0\", \"value\": "
+          "0},"
+          "{\"_key\": \"c1\", \"str\": \"cat\", \"foo\": \"foo1\", \"value\": "
+          "1},"
+          "{\"_key\": \"c2\", \"str\": \"cat\", \"foo\": \"foo2\", \"value\": "
+          "2},"
+          "{\"_key\": \"c3\", \"str\": \"cat\", \"foo\": \"foo3\", \"value\": "
+          "3}"
           "]");
 
       auto root = builder->slice();
@@ -1011,8 +1026,7 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res =
-            logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res = logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -1021,10 +1035,14 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
     {
       auto builder = VPackParser::fromJson(
           "["
-            "{\"_key\": \"c_0\", \"str\": \"cat\", \"foo\": \"foo_0\", \"value\": 10},"
-            "{\"_key\": \"c_1\", \"str\": \"cat\", \"foo\": \"foo_1\", \"value\": 11},"
-            "{\"_key\": \"c_2\", \"str\": \"cat\", \"foo\": \"foo_2\", \"value\": 12},"
-            "{\"_key\": \"c_3\", \"str\": \"cat\", \"foo\": \"foo_3\", \"value\": 13}"
+          "{\"_key\": \"c_0\", \"str\": \"cat\", \"foo\": \"foo_0\", "
+          "\"value\": 10},"
+          "{\"_key\": \"c_1\", \"str\": \"cat\", \"foo\": \"foo_1\", "
+          "\"value\": 11},"
+          "{\"_key\": \"c_2\", \"str\": \"cat\", \"foo\": \"foo_2\", "
+          "\"value\": 12},"
+          "{\"_key\": \"c_3\", \"str\": \"cat\", \"foo\": \"foo_3\", "
+          "\"value\": 13}"
           "]");
 
       auto root = builder->slice();
@@ -1032,8 +1050,7 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res =
-            logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res = logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -1041,10 +1058,12 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(trx.commit().ok());
 
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view)
-                ->commit().ok());
+                    ->commit()
+                    .ok());
 
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view)
-                ->commit().ok());
+                    ->commit()
+                    .ok());
   }
 
   // -----------------------------------------------------------------------------
@@ -1054,7 +1073,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   // wrong option type is specified
   {
     std::string const query =
-        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: null }"
+        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: "
+        "null }"
         " SORT d._id"
         " RETURN d.value";
 
@@ -1065,7 +1085,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   // wrong option type is specified
   {
     std::string const query =
-        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: 1 }"
+        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: "
+        "1 }"
         " SORT d._id"
         " RETURN d.value";
 
@@ -1076,7 +1097,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   // wrong option type is specified
   {
     std::string const query =
-        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: 'true' }"
+        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: "
+        "'true' }"
         " SORT d._id"
         " RETURN d.value";
 
@@ -1087,7 +1109,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   // wrong option type is specified
   {
     std::string const query =
-        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: [] }"
+        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: "
+        "[] }"
         " SORT d._id"
         " RETURN d.value";
 
@@ -1098,7 +1121,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   // wrong option type is specified
   {
     std::string const query =
-        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: {} }"
+        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: "
+        "{} }"
         " SORT d._id"
         " RETURN d.value";
 
@@ -1109,21 +1133,27 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   // do not materialize
   {
     std::string const queryString =
-        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: true }"
+        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: "
+        "true }"
         " RETURN d.value";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
     auto found = false;
     for (auto const node : nodes) {
-      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringRef() == "EnumerateViewNode") {
-        EXPECT_TRUE(node.hasKey("noMaterialization") && node.get("noMaterialization").isBool() && node.get("noMaterialization").getBool());
+      if (node.hasKey("type") && node.get("type").isString() &&
+          node.get("type").stringRef() == "EnumerateViewNode") {
+        EXPECT_TRUE(node.hasKey("noMaterialization") &&
+                    node.get("noMaterialization").isBool() &&
+                    node.get("noMaterialization").getBool());
         found = true;
         break;
       }
@@ -1143,20 +1173,24 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   // materialize
   {
     std::string const queryString =
-        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: false }"
+        "FOR d IN testView SEARCH d.str == 'cat' OPTIONS { noMaterialization: "
+        "false }"
         " RETURN d.value";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
+                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
     auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
     auto found = false;
     for (auto const node : nodes) {
-      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringRef() == "EnumerateViewNode") {
+      if (node.hasKey("type") && node.get("type").isString() &&
+          node.get("type").stringRef() == "EnumerateViewNode") {
         EXPECT_FALSE(node.hasKey("noMaterialization"));
         found = true;
         break;
@@ -1175,7 +1209,5 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryOptionsTest,
-  IResearchQueryOptionsTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryOptionsTest, IResearchQueryOptionsTest,
+                        GetLinkVersions());

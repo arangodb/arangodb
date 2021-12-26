@@ -60,11 +60,11 @@ TimeZoneFeature::~TimeZoneFeature() = default;
 void TimeZoneFeature::prepareTimeZoneData(std::string const& binaryPath,
                                           std::string const& binaryExecutionPath,
                                           std::string const& binaryName) {
-
   std::string tz_path;
   if (!TRI_GETENV("TZ_DATA", tz_path)) {
     tz_path.clear();
-    std::string test_exe = FileUtils::buildFilename(binaryExecutionPath, "tzdata");
+    std::string test_exe =
+        FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
     if (FileUtils::isDirectory(test_exe)) {
       FileUtils::makePathAbsolute(test_exe);

@@ -54,10 +54,10 @@ struct RocksDBMetadata final {
 
   /// @brief collection count
   struct DocCount {
-    rocksdb::SequenceNumber _committedSeq; /// safe sequence number for recovery
-    uint64_t _added; /// number of added documents
-    uint64_t _removed; /// number of removed documents
-    RevisionId _revisionId;  /// @brief last used revision id
+    rocksdb::SequenceNumber _committedSeq;  /// safe sequence number for recovery
+    uint64_t _added;                        /// number of added documents
+    uint64_t _removed;                      /// number of removed documents
+    RevisionId _revisionId;                 /// @brief last used revision id
 
     DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed, RevisionId rid)
         : _committedSeq(sq), _added(added), _removed(removed), _revisionId(rid) {}
@@ -127,7 +127,7 @@ struct RocksDBMetadata final {
 
   /// @brief deserialize collection metadata, only called on startup
   arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
-  
+
   void loadInitialNumberDocuments();
 
   uint64_t numberDocuments() const noexcept {
@@ -179,7 +179,7 @@ struct RocksDBMetadata final {
   std::map<rocksdb::SequenceNumber, Adjustment> _bufferedAdjs;
   /// @brief internal buffer for adjustments
   std::map<rocksdb::SequenceNumber, Adjustment> _stagedAdjs;
-  
+
   // below values are updated immediately, but are not serialized
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<RevisionId> _revisionId;

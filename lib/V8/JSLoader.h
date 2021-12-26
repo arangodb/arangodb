@@ -59,4 +59,3 @@ class JSLoader : public ScriptLoader {
                               std::string const& name, velocypack::Builder* builder);
 };
 }  // namespace arangodb
-

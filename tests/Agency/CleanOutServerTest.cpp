@@ -22,8 +22,8 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
 #include "fakeit.hpp"
+#include "gtest/gtest.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -604,7 +604,7 @@ TEST_F(CleanOutServerTest, test_cancel_pending_job) {
         builder->add(VPackValue(JOBID));
         builder->add(VPackValue(VPackValueType::Object));
         for (auto const& jobIt : VPackObjectIterator(job.slice())) {
-            builder->add(jobIt.key.copyString(), jobIt.value);
+          builder->add(jobIt.key.copyString(), jobIt.value);
         }
         builder->add("abort", VPackValue(true));
         builder->close();
@@ -660,7 +660,6 @@ TEST_F(CleanOutServerTest, test_cancel_pending_job) {
   Job& spyCleanOutServer = spy.get();
   spyCleanOutServer.run(aborts);
   Verify(Method(spy, abort));
-
 }
 
 TEST_F(CleanOutServerTest, test_cancel_todo_job) {
@@ -682,7 +681,7 @@ TEST_F(CleanOutServerTest, test_cancel_todo_job) {
         builder->add(VPackValue(JOBID));
         builder->add(VPackValue(VPackValueType::Object));
         for (auto const& jobIt : VPackObjectIterator(job.slice())) {
-            builder->add(jobIt.key.copyString(), jobIt.value);
+          builder->add(jobIt.key.copyString(), jobIt.value);
         }
         builder->add("abort", VPackValue(true));
         builder->close();
@@ -715,7 +714,6 @@ TEST_F(CleanOutServerTest, test_cancel_todo_job) {
   Job& spyCleanOutServer = spy.get();
   spyCleanOutServer.run(aborts);
   Verify(Method(spy, abort));
-
 }
 
 TEST_F(CleanOutServerTest, when_there_are_still_subjobs_it_should_wait) {

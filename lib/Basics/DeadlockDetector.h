@@ -326,4 +326,3 @@ class DeadlockDetector {
 
 }  // namespace basics
 }  // namespace arangodb
-

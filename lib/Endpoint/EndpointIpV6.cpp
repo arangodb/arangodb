@@ -32,6 +32,4 @@ EndpointIpV6::EndpointIpV6(EndpointType type, TransportType transport,
                            std::string const& host, uint16_t const port)
     : EndpointIp(DomainType::IPV6, type, transport, encryption, listenBacklog,
                  reuseAddress, host, port) {}
-bool EndpointIpV6::isBroadcastBind() const {
-  return host() == "::";
-}
+bool EndpointIpV6::isBroadcastBind() const { return host() == "::"; }

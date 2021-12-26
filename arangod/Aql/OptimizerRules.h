@@ -41,7 +41,8 @@ class SubqueryNode;
 class QueryContext;
 struct Collection;
 /// Helper
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context);
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
+                                 char const* context);
 
 void insertDistributeInputCalculation(ExecutionPlan& plan);
 
@@ -166,8 +167,7 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 
 #ifdef USE_ENTERPRISE
 ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
-                                                          ExecutionNode* node,
-                                                          bool& wasModified);
+                                            ExecutionNode* node, bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -179,7 +179,7 @@ void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 
 /// @brief remove distribute/gather and remote nodes if possible
 void removeDistributeNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                             OptimizerRule const&);
+                               OptimizerRule const&);
 
 void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
@@ -292,8 +292,8 @@ void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule
 /// @brief parallelize Gather nodes (cluster-only)
 void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
-/// @brief allows execution nodes to asynchronously prefetch the next batch from their
-/// upstream node.
+/// @brief allows execution nodes to asynchronously prefetch the next batch from
+/// their upstream node.
 void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 //// @brief splice in subqueries
@@ -327,9 +327,8 @@ auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> Distri
 auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNode*;
 
 //// @brief enclose a node in DISTRIBUTE/GATHER
-auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, SubqueryNode* snode)
-    -> DistributeNode*;
+auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at,
+                                   SubqueryNode* snode) -> DistributeNode*;
 
 }  // namespace aql
 }  // namespace arangodb
-

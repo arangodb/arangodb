@@ -50,7 +50,7 @@ SimpleHttpResult::SimpleHttpResult()
       _chunked(false),
       _deflated(false),
       _haveSentRequestFully(false),
-      _requestResultType(UNKNOWN), 
+      _requestResultType(UNKNOWN),
       _resultBody(false) {
   _resultBody.ensureNullTerminated();
 }

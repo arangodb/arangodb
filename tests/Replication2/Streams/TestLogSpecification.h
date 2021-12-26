@@ -30,14 +30,16 @@
 #include <Replication2/Streams/LogMultiplexer.h>
 #include <Replication2/Streams/StreamSpecification.h>
 
+#include <Mocks/LogLevels.h>
 #include <Replication2/Mocks/FakeReplicatedLog.h>
 #include <Replication2/Mocks/PersistedLog.h>
 #include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
-#include <Mocks/LogLevels.h>
 
 namespace arangodb::replication2::test {
 
-struct LogMultiplexerTestBase : ::testing::Test, public ::arangodb::tests::LogSuppressor<Logger::REPLICATION2, LogLevel::ERR> {
+struct LogMultiplexerTestBase
+    : ::testing::Test,
+      public ::arangodb::tests::LogSuppressor<Logger::REPLICATION2, LogLevel::ERR> {
   static auto createReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
     return createReplicatedLogImpl<replicated_log::ReplicatedLog, test::MockLog>(id);

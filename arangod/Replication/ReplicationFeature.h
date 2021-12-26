@@ -115,12 +115,12 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// @brief request timeout for replication requests
   double _requestTimeout;
 
-  /// @brief whether or not the user-defined connect timeout is forced to be used
-  /// this is true only if the user set the connect timeout at startup
+  /// @brief whether or not the user-defined connect timeout is forced to be
+  /// used this is true only if the user set the connect timeout at startup
   bool _forceConnectTimeout;
 
-  /// @brief whether or not the user-defined request timeout is forced to be used
-  /// this is true only if the user set the request timeout at startup
+  /// @brief whether or not the user-defined request timeout is forced to be
+  /// used this is true only if the user set the request timeout at startup
   bool _forceRequestTimeout;
 
   bool _replicationApplierAutoStart;
@@ -130,7 +130,7 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
   /// Use the revision-based replication protocol
   bool _syncByRevision;
-  
+
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;
 
@@ -149,4 +149,3 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 };
 
 }  // namespace arangodb
-

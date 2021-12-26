@@ -91,8 +91,7 @@ bool FailedServer::start(bool& aborts) {
     return true;
   };
 
-  auto dbserverLock =
-      _snapshot.hasAsSlice(blockedServersPrefix + _server);
+  auto dbserverLock = _snapshot.hasAsSlice(blockedServersPrefix + _server);
   if (dbserverLock) {
     auto s = *dbserverLock;
     if (s.isArray()) {
@@ -150,7 +149,8 @@ bool FailedServer::start(bool& aborts) {
       VPackObjectBuilder oper(transactions.get());
       // Add pending
 
-      auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").value().get();
+      auto const& databases =
+          _snapshot.hasAsChildren("/Plan/Collections").value().get();
       // auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
 
       size_t sub = 0;
@@ -165,7 +165,8 @@ bool FailedServer::start(bool& aborts) {
           auto const& replicationFactorPair =
               collection.hasAsNode(StaticStrings::ReplicationFactor);
           if (replicationFactorPair) {
-            VPackSlice const replicationFactor = replicationFactorPair.value().get().slice();
+            VPackSlice const replicationFactor =
+                replicationFactorPair.value().get().slice();
             uint64_t number = 1;
             bool isSatellite = false;
 

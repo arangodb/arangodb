@@ -61,7 +61,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
   TRI_vocbase_t& vocbase;
   CollectionNameResolver const& resolver;
 };
-}
+}  // namespace
 
 /// @brief create the context
 transaction::Context::Context(TRI_vocbase_t& vocbase)
@@ -78,19 +78,18 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
 transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id.isSet()) {
-    transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                  _transaction.isReadOnlyTransaction,
-                                                                  _transaction.isFollowerTransaction);
+    transaction::ManagerFeature::manager()->unregisterTransaction(
+        _transaction.id, _transaction.isReadOnlyTransaction, _transaction.isFollowerTransaction);
   }
 
   // call the actual cleanup routine which frees all
   // hogged resources
   cleanup();
 }
-  
+
 /// @brief destroys objects owned by the context,
 /// this can be called multiple times.
-/// currently called by dtor and by unit test mocks. 
+/// currently called by dtor and by unit test mocks.
 /// we cannot move this into the dtor (where it was before) because
 /// the mocked objects in unittests do not seem to call it and effectively leak.
 void transaction::Context::cleanup() noexcept {
@@ -139,7 +138,7 @@ std::string* transaction::Context::leaseString() {
     // create a new string and return it
     return new std::string();
   }
-  
+
   // re-use an existing string
   std::string* s = _strings.back();
   s->clear();
@@ -228,8 +227,9 @@ TransactionId transaction::Context::generateId() const {
 
 std::shared_ptr<transaction::Context> transaction::Context::clone() const {
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "transaction::Context::clone() is not implemented");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "transaction::Context::clone() is not implemented");
 }
 
 /*static*/ TransactionId transaction::Context::makeTransactionId() {

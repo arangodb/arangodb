@@ -171,7 +171,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString, std::string const& highString,
                         std::vector<std::string> const& markers) {
-
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   LogicalCollection* coll = trx->documentCollection();
@@ -190,8 +189,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
   }
 
-  LOG_TOPIC("295ed", TRACE, Logger::REPLICATION) << "syncing chunk. low: '" << lowString
-                                        << "', high: '" << highString << "'";
+  LOG_TOPIC("295ed", TRACE, Logger::REPLICATION)
+      << "syncing chunk. low: '" << lowString << "', high: '" << highString << "'";
 
   // no match
   // must transfer keys for non-matching range
@@ -200,7 +199,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   {
     std::string const url =
         baseUrl + "/" + keysId + "?type=keys&chunk=" + std::to_string(chunkId) +
-        "&chunkSize=" + std::to_string(chunkSize) + "&low=" + basics::StringUtils::encodeURIComponent(lowString);
+        "&chunkSize=" + std::to_string(chunkSize) +
+        "&low=" + basics::StringUtils::encodeURIComponent(lowString);
 
     syncer.setProgress(std::string("fetching keys chunk ") +
                        std::to_string(chunkId) + " from " + url);
@@ -258,7 +258,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                       " Chunk: " + std::to_string(chunkId));
   }
   TRI_ASSERT(numKeys > 0);
-  
+
   // this will be very verbose, so intentionally not active
   // LOG_TOPIC("3c002", TRACE, Logger::REPLICATION) << "received chunk: " << responseBody.toJson();
 
@@ -380,7 +380,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     // nothing to do
     return Result();
   }
-  
+
   // determine number of unique indexes. we may need it later
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
@@ -390,14 +390,13 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     return numUnique;
   }();
 
-
   keyBuilder->clear();
   keyBuilder->openArray(false);
   for (auto const& it : toFetch) {
     keyBuilder->add(VPackValue(it));
   }
   keyBuilder->close();
-  
+
   std::string const keyJsonString(keyBuilder->slice().toJson());
   // this will be very verbose, so intentionally not active
   // LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
@@ -410,7 +409,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     {
       std::string const url =
           baseUrl + "/" + keysId + "?type=docs&chunk=" + std::to_string(chunkId) +
-          "&chunkSize=" + std::to_string(chunkSize) + "&low=" + basics::StringUtils::encodeURIComponent(lowString) +
+          "&chunkSize=" + std::to_string(chunkSize) +
+          "&low=" + basics::StringUtils::encodeURIComponent(lowString) +
           "&offset=" + std::to_string(offsetInChunk);
 
       syncer.setProgress(std::string("fetching documents chunk ") +
@@ -452,7 +452,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         "got invalid response from leader at ",
                         syncer._state.leader.endpoint, ": ", r.errorMessage()));
     }
-  
+
     // this will be very verbose, so intentionally not active
     // LOG_TOPIC("e7ddf", TRACE, Logger::REPLICATION)
     //     << "received documents chunk: " << slice.toJson();
@@ -465,7 +465,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         syncer._state.leader.endpoint +
                         ": response is no array");
     }
-      
+
     syncer.setProgress(std::string("applying documents chunk ") +
                        std::to_string(chunkId) + " (" + std::to_string(toFetch.size()) +
                        " keys) for collection '" + collectionName + "'");
@@ -523,10 +523,13 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       std::pair<LocalDocumentId, RevisionId> lookupResult;
       // We must see our own writes, because we may have to remove conflicting documents
       // (that we just inserted) as documents may be replicated in unexpected order.
-      bool mustInsert = physical->lookupKey(trx, keySlice.stringRef(), lookupResult, ReadOwnWrites::yes).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        
+      bool mustInsert =
+          physical
+              ->lookupKey(trx, keySlice.stringRef(), lookupResult, ReadOwnWrites::yes)
+              .is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+
       TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
-     
+
       // there exists the problem of secondary unique index violations when we insert
       // documents here.
       // we may need as many retries as there are unique indexes here.
@@ -544,24 +547,23 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
           }
         } else {
           res = physical->replace(trx, it, mdr, options, previous);
-          // do NOT count up stats.numDocsInserted, as this will influence the 
+          // do NOT count up stats.numDocsInserted, as this will influence the
           // persisted document count later!!
         }
-        
+
         options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
         // this will be very verbose, so intentionally not active
         // LOG_TOPIC("8cbd1", TRACE, Logger::REPLICATION)
         //    << "handled document key '" << keySlice.copyString() << "', mustInsert: " << mustInsert << ", res: " << res.errorMessage();
- 
+
         if (res.ok()) {
           // all good, we can exit the retry loop now!
           break;
         }
-       
-        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
-          res.errorMessage() <= keySlice.stringView()) {
 
+        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+            res.errorMessage() <= keySlice.stringView()) {
           auto errorNumber = res.errorNumber();
           res.reset(errorNumber,
                     basics::StringUtils::concatT(TRI_errno_string(errorNumber),
@@ -570,7 +572,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         }
 
         // unique constraint violation!
-            
+
         // remove conflict and retry
         // errorMessage() is this case contains the conflicting key
         auto inner = removeConflict(res.errorMessage());
@@ -580,7 +582,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       }
     }
     stats.waitedForInsertions += TRI_microtime() - t;
-      
+
     if (foundLength >= toFetch.size()) {
       break;
     }
@@ -604,13 +606,15 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
+    syncer._batch.extend(syncer._state.connection, syncer._progress,
+                         syncer._state.syncerId);
   }
 
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
 
-  ReplicationMetricsFeature::InitialSyncStats stats(syncer.vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
+  ReplicationMetricsFeature::InitialSyncStats stats(
+      syncer.vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
 
   std::unique_ptr<httpclient::SimpleHttpResult> response;
 
@@ -698,14 +702,15 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     auto startTrx = [&]() -> Result {
       trx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(syncer.vocbase()),
-            *col, AccessMode::Type::EXCLUSIVE);
+          transaction::StandaloneContext::Create(syncer.vocbase()), *col,
+          AccessMode::Type::EXCLUSIVE);
       return trx->begin();
     };
 
     Result res = startTrx();
     if (!res.ok()) {
-      return Result(res.errorNumber(),basics::StringUtils::concatT(
+      return Result(res.errorNumber(),
+                    basics::StringUtils::concatT(
                         "unable to start transaction: ", res.errorMessage()));
     }
 
@@ -725,11 +730,13 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     auto resetChunk = [&]() -> void {
       if (!syncer._state.isChildSyncer) {
-        syncer._batch.extend(syncer._state.connection, syncer._progress, syncer._state.syncerId);
+        syncer._batch.extend(syncer._state.connection, syncer._progress,
+                             syncer._state.syncerId);
       }
 
-      syncer.setProgress(std::string("processing keys chunk ") + std::to_string(currentChunkId) +
-          " of " + std::to_string(numChunks) + " for collection '" + col->name() + "'");
+      syncer.setProgress(std::string("processing keys chunk ") +
+                         std::to_string(currentChunkId) + " of " + std::to_string(numChunks) +
+                         " for collection '" + col->name() + "'");
 
       // read remote chunk
       TRI_ASSERT(chunkSlice.isArray());
@@ -862,11 +869,13 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
             // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(rocksValue);  // we want probably to do this instead
-            physical->read(trx.get(), documentId,
-                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
-                             docRev = RevisionId::fromSlice(doc);
-                             return true;
-                           }, ReadOwnWrites::yes);
+            physical->read(
+                trx.get(), documentId,
+                [&docRev](LocalDocumentId const&, VPackSlice doc) {
+                  docRev = RevisionId::fromSlice(doc);
+                  return true;
+                },
+                ReadOwnWrites::yes);
           }
           compareChunk(docKey, docRev);
           return true;
@@ -875,8 +884,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     // we might have missed chunks, if the keys don't exist at all locally
     while (currentChunkId < numChunks) {
-      Result res = syncChunkRocksDB(syncer, trx.get(), stats, keysId, currentChunkId,
-                                    lowKey, highKey, markers);
+      Result res = syncChunkRocksDB(syncer, trx.get(), stats, keysId,
+                                    currentChunkId, lowKey, highKey, markers);
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -932,7 +941,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       return res;
     }
   }
-  
+
   syncer.setProgress(
       std::string("incremental sync statistics for collection '") + col->name() +
       "': keys requests: " + std::to_string(stats.numKeysRequests) +
@@ -945,8 +954,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       " s, waited for keys: " + std::to_string(stats.waitedForKeys) +
       " s, waited for docs: " + std::to_string(stats.waitedForDocs) +
       " s, waited for insertions: " + std::to_string(stats.waitedForInsertions) +
-      " s, total time: " + std::to_string(TRI_microtime() - startTime) +
-      " s");
+      " s, total time: " + std::to_string(TRI_microtime() - startTime) + " s");
 
   return Result();
 }

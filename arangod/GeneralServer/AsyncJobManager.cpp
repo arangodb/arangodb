@@ -63,7 +63,7 @@ AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
 AsyncJobResult::~AsyncJobResult() = default;
 
 AsyncJobManager::AsyncJobManager()
-  : _lock(), _jobs(), _softShutdownOngoing(false) {}
+    : _lock(), _jobs(), _softShutdownOngoing(false) {}
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
@@ -192,7 +192,7 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
   if (handler != nullptr) {
     handler->cancel();
   }
-  
+
   // simon: handlers running async tasks use shared_ptr to keep alive
   it->second.second._handler = nullptr;
 
@@ -296,7 +296,7 @@ void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
 
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
-        "Soft shutdown ongoing.");
+                                   "Soft shutdown ongoing.");
   }
 
   _jobs.try_emplace(jobId, std::move(user), std::move(ajr));

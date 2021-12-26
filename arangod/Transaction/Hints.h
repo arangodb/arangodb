@@ -78,4 +78,3 @@ class Hints {
 
 }  // namespace transaction
 }  // namespace arangodb
-

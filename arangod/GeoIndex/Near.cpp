@@ -76,8 +76,8 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
 
 template <typename CMP>
 NearUtils<CMP>::~NearUtils() {
-  // LOG_TOPIC("5d2f1", ERR, Logger::FIXME) << "Scans: " << _numScans << " Found: " <<
-  // _found << " Rejections: " << _rejection;
+  // LOG_TOPIC("5d2f1", ERR, Logger::FIXME) << "Scans: " << _numScans << "
+  // Found: " << _found << " Rejections: " << _rejection;
 }
 
 template <typename CMP>
@@ -160,7 +160,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   // TRI_ASSERT(!_params.ascending || _innerAngle != _maxAngle);
   TRI_ASSERT(_deltaAngle >=
              S1ChordAngle::Radians(S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2)));
-  
+
   std::vector<geo::Interval> intervals;
 
   if (_numScans == 0) {
@@ -172,7 +172,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   _numScans++;
 
   TRI_ASSERT(_innerAngle <= _outerAngle && _outerAngle <= _maxAngle);
-  
+
   TRI_ASSERT(_innerAngle != _outerAngle);
   std::vector<S2CellId> cover;
   if (_innerAngle == _minAngle) {
@@ -250,10 +250,9 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid, S2Point const& center) {
   if (!isFilterIntersects()) {
     if ((isAscending() && angle < _innerAngle) || (isDescending() && angle > _outerAngle) ||
         angle > _maxAngle || angle < _minAngle) {
-      /*LOG_TOPIC("8cc01", ERR, Logger::FIXME) << "Rejecting doc with center " <<
-      center.toString();
-      LOG_TOPIC("38f63", ERR, Logger::FIXME) << "Dist: " << (rad *
-      geo::kEarthRadiusInMeters);*/
+      /*LOG_TOPIC("8cc01", ERR, Logger::FIXME) << "Rejecting doc with center "
+      << center.toString(); LOG_TOPIC("38f63", ERR, Logger::FIXME) << "Dist: "
+      << (rad * geo::kEarthRadiusInMeters);*/
       _rejection++;
       return;
     }

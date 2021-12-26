@@ -116,7 +116,8 @@ struct PRMasterContext : public MasterContext {
   }
 
   void preApplication() override {
-    LOG_TOPIC("e0598", DEBUG, Logger::PREGEL) << "Using threshold " << _threshold << " for pagerank";
+    LOG_TOPIC("e0598", DEBUG, Logger::PREGEL)
+        << "Using threshold " << _threshold << " for pagerank";
   }
 
   bool postGlobalSuperstep() override {

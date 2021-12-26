@@ -103,7 +103,8 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC("19066", FATAL, arangodb::Logger::FIXME) << "failed to get global context.";
+    LOG_TOPIC("19066", FATAL, arangodb::Logger::FIXME)
+        << "failed to get global context.";
     FATAL_ERROR_EXIT();
   }
 
@@ -125,9 +126,11 @@ void DatabasePathFeature::prepare() {
       tempPathCopy = basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
 
       if (directoryCopy == tempPathCopy) {
-        LOG_TOPIC("fd70b", FATAL, arangodb::Logger::FIXME) 
-          << "database directory '" << directoryCopy << "' is identical to the temporary directory. "
-          << "This can cause follow-up problems, including data loss. Please review your setup!";
+        LOG_TOPIC("fd70b", FATAL, arangodb::Logger::FIXME)
+            << "database directory '" << directoryCopy
+            << "' is identical to the temporary directory. "
+            << "This can cause follow-up problems, including data loss. Please "
+               "review your setup!";
         FATAL_ERROR_EXIT();
       }
     }
@@ -203,7 +206,8 @@ void DatabasePathFeature::start() {
     std::string systemErrorStr;
     long errorNo;
 
-    auto const res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
+    auto const res =
+        TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("24783", INFO, arangodb::Logger::FIXME)

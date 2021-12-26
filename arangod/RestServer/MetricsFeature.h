@@ -31,29 +31,41 @@
 #include "RestServer/Metrics.h"
 #include "Statistics/ServerStatistics.h"
 
-#define DECLARE_COUNTER(x, help)                \
+#define DECLARE_COUNTER(x, help)                    \
   struct x : arangodb::metrics::CounterBuilder<x> { \
-    x() { _name = #x; _help = help; } \
-    }
+    x() {                                           \
+      _name = #x;                                   \
+      _help = help;                                 \
+    }                                               \
+  }
 
-#define DECLARE_GAUGE(x, type, help)    \
+#define DECLARE_GAUGE(x, type, help)                    \
   struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    x() { _name = #x; _help = help; } \
-    }
-    
+    x() {                                               \
+      _name = #x;                                       \
+      _help = help;                                     \
+    }                                                   \
+  }
+
 #define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
 
-#define DECLARE_HISTOGRAM(x, scale, help)                   \
+#define DECLARE_HISTOGRAM(x, scale, help)                    \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
-    x() { _name = #x; _help = help; } \
-    }
+    x() {                                                    \
+      _name = #x;                                            \
+      _help = help;                                          \
+    }                                                        \
+  }
 
 // The following is only needed in 3.8 for the case of duplicate
 // metrics which will be removed in a future version:
-#define DECLARE_LEGACY_COUNTER(x, help)                \
+#define DECLARE_LEGACY_COUNTER(x, help)             \
   struct x : arangodb::metrics::CounterBuilder<x> { \
-    x() { _name = #x; _help = help; } \
-    }
+    x() {                                           \
+      _name = #x;                                   \
+      _help = help;                                 \
+    }                                               \
+  }
 
 namespace arangodb {
 struct metrics_key;
@@ -142,7 +154,8 @@ struct HistogramBuilder : GenericBuilder<Derived> {
   using metric_t = ::Histogram<decltype(Scale::scale())>;
 
   std::shared_ptr<::Metric> build() const override {
-    return std::make_shared<metric_t>(Scale::scale(), this->name(), this->_help, this->_labels);
+    return std::make_shared<metric_t>(Scale::scale(), this->name(), this->_help,
+                                      this->_labels);
   }
 
   char const* type() const override { return "histogram"; }
@@ -181,10 +194,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
  private:
   auto doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric>;
 
-
   registry_type _registry;
 
-  mutable std::unordered_map<std::string,std::string> _globalLabels;
+  mutable std::unordered_map<std::string, std::string> _globalLabels;
   mutable std::string _globalLabelsStr;
 
   mutable std::recursive_mutex _lock;
@@ -200,4 +212,3 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

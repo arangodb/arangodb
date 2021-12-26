@@ -75,8 +75,7 @@ namespace arangodb {
 SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), 
-      _scheduler(nullptr) {
+    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 #ifdef TRI_HAVE_GETRLIMIT
@@ -104,27 +103,32 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                      new UInt64Parameter(&_nrMinimalThreads),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-    // max / min number of threads
+  // max / min number of threads
 
   // Concurrency throttling:
-  options->addOption("--server.ongoing-low-priority-multiplier",
-                     "controls the number of low prio requests that can be "
-                     "ongoing at a given point in time, relative to the "
-                     "maximum number of request handling threads",
-                     new DoubleParameter(&_ongoingLowPriorityMultiplier),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::DefaultNoComponents, 
-                                                         arangodb::options::Flags::OnSingle, 
-                                                         arangodb::options::Flags::OnCoordinator, 
-                                                         arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30800);
+  options
+      ->addOption("--server.ongoing-low-priority-multiplier",
+                  "controls the number of low prio requests that can be "
+                  "ongoing at a given point in time, relative to the "
+                  "maximum number of request handling threads",
+                  new DoubleParameter(&_ongoingLowPriorityMultiplier),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::DefaultNoComponents,
+                                                      arangodb::options::Flags::OnSingle,
+                                                      arangodb::options::Flags::OnCoordinator,
+                                                      arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30800);
 
   options->addOption("--server.maximal-queue-size",
                      "size of the priority 3 fifo", new UInt64Parameter(&_fifo3Size));
 
-  options->addOption("--server.unavailability-queue-fill-grade",
-                     "queue fill grade from which onwards the server is considered unavailable because of overload (ratio, use a value of 0 to disable it)", 
-                     new DoubleParameter(&_unavailabilityQueueFillGrade))
-                     .setIntroducedIn(30610).setIntroducedIn(30706);
+  options
+      ->addOption("--server.unavailability-queue-fill-grade",
+                  "queue fill grade from which onwards the server is "
+                  "considered unavailable because of overload (ratio, use a "
+                  "value of 0 to disable it)",
+                  new DoubleParameter(&_unavailabilityQueueFillGrade))
+      .setIntroducedIn(30610)
+      .setIntroducedIn(30706);
 
   options->addOption(
       "--server.scheduler-queue-size",
@@ -132,10 +136,11 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
       new UInt64Parameter(&_queueSize),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--server.prio2-size", "size of the priority 2 fifo",
-                     new UInt64Parameter(&_fifo2Size),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30800);
+  options
+      ->addOption("--server.prio2-size", "size of the priority 2 fifo",
+                  new UInt64Parameter(&_fifo2Size),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30800);
 
   options->addOption("--server.prio1-size", "size of the priority 1 fifo",
                      new UInt64Parameter(&_fifo1Size),
@@ -155,7 +160,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
       << "Detected number of processors: " << N;
 
   TRI_ASSERT(N > 0);
-  if (options->processingResult().touched("server.maximal-threads") && 
+  if (options->processingResult().touched("server.maximal-threads") &&
       _nrMaximalThreads > 8 * N) {
     LOG_TOPIC("0a92a", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
@@ -177,7 +182,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
         << ") is less than 1.0, setting to default (4.0)";
     _ongoingLowPriorityMultiplier = 4.0;
   }
-  
+
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC("48e02", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
@@ -185,8 +190,7 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> 
     _nrMaximalThreads = _nrMinimalThreads;
   }
 
-  if (_unavailabilityQueueFillGrade < 0.0 ||
-      _unavailabilityQueueFillGrade > 1.0) {
+  if (_unavailabilityQueueFillGrade < 0.0 || _unavailabilityQueueFillGrade > 1.0) {
     LOG_TOPIC("055a1", FATAL, arangodb::Logger::THREADS)
         << "invalid value for --server.unavailability-queue-fill-grade";
     FATAL_ERROR_EXIT();
@@ -218,10 +222,10 @@ void SchedulerFeature::prepare() {
   // on a DB server we intentionally disable throttling of incoming requests.
   // this is because coordinators are the gatekeepers, and they should
   // perform all the throttling.
-  uint64_t ongoingLowPriorityLimit = 
-      ServerState::instance()->isDBServer() ? 
-         0 : 
-         static_cast<uint64_t>(_ongoingLowPriorityMultiplier * _nrMaximalThreads);
+  uint64_t ongoingLowPriorityLimit =
+      ServerState::instance()->isDBServer()
+          ? 0
+          : static_cast<uint64_t>(_ongoingLowPriorityMultiplier * _nrMaximalThreads);
 
 // wait for windows fix or implement operator new
 #if (_MSC_VER >= 1)
@@ -388,7 +392,8 @@ extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
     static std::atomic<bool> seen{false};
 
     if (!seen.exchange(true)) {
-      std::string sender = info ? std::to_string(info->si_pid) : std::string("unknown");
+      std::string sender =
+          info ? std::to_string(info->si_pid) : std::string("unknown");
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
           << signals::name(signal) << " received (sender pid " << sender
           << "), beginning shut down sequence";
@@ -403,9 +408,10 @@ extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
   }
 }
 
-extern "C" void c_hangup_handler(int signal, siginfo_t * info, void *) {
+extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
   if (signal == SIGHUP) {
-    std::string sender = info ? std::to_string(info->si_pid) : std::string("unknown");
+    std::string sender =
+        info ? std::to_string(info->si_pid) : std::string("unknown");
     LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
         << "hangup received, about to reopen logfile (sender pid " << sender << ")";
     LogAppender::reopen();

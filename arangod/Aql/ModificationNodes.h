@@ -46,8 +46,8 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 
   /// @brief constructor with a vocbase and a collection and options
  protected:
-  ModificationNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-                   ModificationOptions const& options,
+  ModificationNode(ExecutionPlan* plan, ExecutionNodeId id,
+                   Collection const* collection, ModificationOptions const& options,
                    Variable const* outVariableOld, Variable const* outVariableNew)
       : ExecutionNode(plan, id),
         CollectionAccessingNode(collection),
@@ -153,9 +153,9 @@ class RemoveNode : public ModificationNode {
   friend class ExecutionBlock;
 
  public:
-  RemoveNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-             ModificationOptions const& options, Variable const* inVariable,
-             Variable const* outVariableOld)
+  RemoveNode(ExecutionPlan* plan, ExecutionNodeId id,
+             Collection const* collection, ModificationOptions const& options,
+             Variable const* inVariable, Variable const* outVariableOld)
       : ModificationNode(plan, id, collection, options, outVariableOld, nullptr),
         _inVariable(inVariable) {
     TRI_ASSERT(_inVariable != nullptr);
@@ -174,7 +174,7 @@ class RemoveNode : public ModificationNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -223,7 +223,7 @@ class InsertNode : public ModificationNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -249,8 +249,8 @@ class UpdateReplaceNode : public ModificationNode {
   friend class ExecutionBlock;
 
  public:
-  UpdateReplaceNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-                    ModificationOptions const& options,
+  UpdateReplaceNode(ExecutionPlan* plan, ExecutionNodeId id,
+                    Collection const* collection, ModificationOptions const& options,
                     Variable const* inDocVariable, Variable const* inKeyVariable,
                     Variable const* outVariableOld, Variable const* outVariableNew)
       : ModificationNode(plan, id, collection, options, outVariableOld, outVariableNew),
@@ -270,7 +270,7 @@ class UpdateReplaceNode : public ModificationNode {
       vars.emplace(_inKeyVariable);
     }
   }
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief set the input key variable
@@ -301,10 +301,10 @@ class UpdateNode : public UpdateReplaceNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  UpdateNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-             ModificationOptions const& options, Variable const* inDocVariable,
-             Variable const* inKeyVariable, Variable const* outVariableOld,
-             Variable const* outVariableNew)
+  UpdateNode(ExecutionPlan* plan, ExecutionNodeId id,
+             Collection const* collection, ModificationOptions const& options,
+             Variable const* inDocVariable, Variable const* inKeyVariable,
+             Variable const* outVariableOld, Variable const* outVariableNew)
       : UpdateReplaceNode(plan, id, collection, options, inDocVariable,
                           inKeyVariable, outVariableOld, outVariableNew) {}
 
@@ -330,10 +330,10 @@ class ReplaceNode : public UpdateReplaceNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  ReplaceNode(ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
-              ModificationOptions const& options, Variable const* inDocVariable,
-              Variable const* inKeyVariable, Variable const* outVariableOld,
-              Variable const* outVariableNew)
+  ReplaceNode(ExecutionPlan* plan, ExecutionNodeId id,
+              Collection const* collection, ModificationOptions const& options,
+              Variable const* inDocVariable, Variable const* inKeyVariable,
+              Variable const* outVariableOld, Variable const* outVariableNew)
       : UpdateReplaceNode(plan, id, collection, options, inDocVariable,
                           inKeyVariable, outVariableOld, outVariableNew) {}
 
@@ -388,7 +388,7 @@ class UpsertNode : public ModificationNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -430,4 +430,3 @@ class UpsertNode : public ModificationNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

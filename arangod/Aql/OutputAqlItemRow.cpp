@@ -118,7 +118,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType&
   if constexpr (std::is_same_v<std::decay_t<ValueType>, AqlValueGuard>) {
     block().setValue(_baseIndex, registerId, value.value());
     value.steal();
-  } else if constexpr ( // all inlined values
+  } else if constexpr (  // all inlined values
       std::is_same_v<std::decay_t<ValueType>, AqlValueHintDouble> ||
       std::is_same_v<std::decay_t<ValueType>, AqlValueHintInt> ||
       std::is_same_v<std::decay_t<ValueType>, AqlValueHintUInt> ||
@@ -367,7 +367,7 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   // We can only add shadow rows if source and this are different blocks
   TRI_ASSERT(!sourceRow.internalBlockIs(_block, _baseIndex));
 #endif
-  block().makeShadowRow(_baseIndex, 0); 
+  block().makeShadowRow(_baseIndex, 0);
   doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, AdaptRowDepth::IncreaseDepth>(sourceRow, true);
 }
 
@@ -446,7 +446,7 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   }
   auto constexpr delta = depthDelta(adaptRowDepth);
   size_t const rowDepth = baseRowDepth + delta;
-    
+
   auto const roffset = rowDepth + 1;
   TRI_ASSERT(roffset <= registersToKeep().size());
   auto idx = registersToKeep().size() - roffset;
@@ -545,7 +545,7 @@ template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintInt c
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintInt const&);
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintUInt const>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintUInt const&);
-template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintZero const >(
+template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintZero const>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintZero const&);
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNone const>(
     RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNone const&);

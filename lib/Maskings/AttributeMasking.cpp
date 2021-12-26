@@ -25,8 +25,8 @@
 
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
-#include "Maskings/RandomStringMask.h"
 #include "Maskings/RandomMask.h"
+#include "Maskings/RandomStringMask.h"
 
 using namespace arangodb;
 using namespace arangodb::maskings;
@@ -84,9 +84,9 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
   auto const& it = _maskings.find(type);
 
   if (it == _maskings.end()) {
-    return ParseResult<AttributeMasking>(
-        ParseResult<AttributeMasking>::UNKNOWN_TYPE,
-        "unknown attribute masking type '" + type + "'");
+    return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::UNKNOWN_TYPE,
+                                         "unknown attribute masking type '" +
+                                             type + "'");
   }
 
   return it->second(ap.result, maskings, def);

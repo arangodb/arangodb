@@ -38,9 +38,7 @@ using namespace arangodb::aql;
 
 /// @brief create a profile
 QueryProfile::QueryProfile(Query* query)
-    : _query(query), 
-      _lastStamp(query->startTime()), 
-      _tracked(false) {
+    : _query(query), _lastStamp(query->startTime()), _tracked(false) {
   for (auto& it : _timers) {
     it = 0.0;  // reset timers
   }
@@ -48,9 +46,7 @@ QueryProfile::QueryProfile(Query* query)
 }
 
 /// @brief destroy a profile
-QueryProfile::~QueryProfile() {
-  unregisterFromQueryList();
-}
+QueryProfile::~QueryProfile() { unregisterFromQueryList(); }
 
 void QueryProfile::registerInQueryList() {
   TRI_ASSERT(!_tracked);

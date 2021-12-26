@@ -80,4 +80,3 @@ class ImportFeature final : public application_features::ApplicationFeature,
 };
 
 }  // namespace arangodb
-

@@ -125,7 +125,7 @@ struct ProgressInfo {
 
 struct LeaderInfo {
  private:
-  LeaderInfo() = default; // used only internally
+  LeaderInfo() = default;  // used only internally
 
  public:
   std::string endpoint;
@@ -133,7 +133,7 @@ struct LeaderInfo {
   ServerId serverId{0};
   int majorVersion{0};
   int minorVersion{0};
-  TRI_voc_tick_t lastLogTick{0}; // only used during initialSync
+  TRI_voc_tick_t lastLogTick{0};  // only used during initialSync
 
   explicit LeaderInfo(ReplicationApplierConfiguration const& applierConfig);
 
@@ -160,9 +160,9 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection& connection, ProgressInfo& progress, LeaderInfo& leader,
-               SyncerId const& syncerId, char const* context, 
-               std::string const& patchCount = "");
+  Result start(Connection& connection, ProgressInfo& progress,
+               LeaderInfo& leader, SyncerId const& syncerId,
+               char const* context, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
   Result extend(Connection& connection, ProgressInfo& progress, SyncerId syncerId);
@@ -187,4 +187,3 @@ Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);
 
 }  // namespace replutils
 }  // namespace arangodb
-

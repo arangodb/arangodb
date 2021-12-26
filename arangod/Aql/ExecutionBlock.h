@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Aql/ExecutionState.h"
 #include "Aql/ExecutionNodeStats.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Result.h"
@@ -110,16 +110,16 @@ class ExecutionBlock {
   ///          * DONE: Here is some data, and there will be no further data available.
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
-  virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) = 0;
-  
+  virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
+      AqlCallStack const& stack) = 0;
+
   virtual void collectExecStats(ExecutionStats&) const;
   [[nodiscard]] bool isInSplicedSubquery() const noexcept;
-  
+
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;
-  
+
  protected:
-  
   // Trace the start of a execute call
   void traceExecuteBegin(AqlCallStack const& stack,
                          std::string const& clientId = "");
@@ -146,9 +146,9 @@ class ExecutionBlock {
   ///        used in initializeCursor .
   ///        Needs to be set to .end() everytime we modify _dependencies
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
-  
+
   ExecutionNodeStats _execNodeStats;
-  
+
   /// @brief profiling level
   ProfileLevel _profileLevel;
 
@@ -158,4 +158,3 @@ class ExecutionBlock {
 
 }  // namespace aql
 }  // namespace arangodb
-

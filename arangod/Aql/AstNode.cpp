@@ -266,7 +266,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
     lhs = Ast::resolveConstAttributeAccess(lhs, isValid);
   }
   VPackValueType const lType = isValid ? getNodeCompareType(lhs) : VPackValueType::Null;
-  
+
   isValid = true;
   if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     rhs = Ast::resolveConstAttributeAccess(rhs, isValid);
@@ -387,10 +387,9 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
       // add the second Slice to the same Builder
       rhs->toVelocyPackValue(builder);
 
-      return basics::VelocyPackHelper::compare(
-          builder.slice() /*lhs*/, 
-          VPackSlice(builder.start() + split) /*rhs*/, 
-          compareUtf8);
+      return basics::VelocyPackHelper::compare(builder.slice() /*lhs*/,
+                                               VPackSlice(builder.start() + split) /*rhs*/,
+                                               compareUtf8);
     }
 
     default: {
@@ -768,9 +767,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
 }
 
 /// @brief destroy the node
-AstNode::~AstNode() {
-  freeComputedValue();
-}
+AstNode::~AstNode() { freeComputedValue(); }
 
 /// @brief return the string value of a node, as an std::string
 std::string AstNode::getString() const {
@@ -895,7 +892,7 @@ void AstNode::dump(int indent) const { toStream(std::cout, indent); }
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
 VPackSlice AstNode::computeValue(VPackBuilder* builder) const {
-  TRI_ASSERT(isConstant() || isStringValue()); // only strings could be mutable
+  TRI_ASSERT(isConstant() || isStringValue());  // only strings could be mutable
   if (_computedValue == nullptr) {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
 
@@ -1051,7 +1048,7 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
       TRI_ASSERT(value != nullptr);
       return value->valueHasVelocyPackRepresentation();
     }
-    default: 
+    default:
       return false;
   }
 }
@@ -1655,14 +1652,14 @@ bool AstNode::willUseV8() const {
     // check if the called function is one of them
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
-    
+
     if (func->hasV8Implementation()) {
       TRI_ASSERT(!func->hasCxxImplementation());
       // a function without a C++ implementation
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
     }
-    
+
     if (func->name == "CALL" || func->name == "APPLY") {
       // CALL and APPLY can call arbitrary other functions...
       if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
@@ -1675,14 +1672,13 @@ bool AstNode::willUseV8() const {
         }
         // fallthrough intentional
       } else {
-        // we are unsure about what function will be called by 
+        // we are unsure about what function will be called by
         // CALL and APPLY. We cannot rule out user-defined functions,
         // so we assume the worst case here
         setFlag(DETERMINED_V8, VALUE_V8);
         return true;
       }
     }
-
   }
 
   size_t const n = numMembers();
@@ -1814,10 +1810,10 @@ bool AstNode::canRunOnDBServer(bool isOneShard) const {
   if (type == NODE_TYPE_FCALL) {
     // built-in function
     auto func = static_cast<Function*>(getData());
-  
+
     // currently being able to run on a DB server in cluster always includes being able to run
     // on a DB server in OneShard mode. this may change at some point in the future.
-    TRI_ASSERT(!func->hasFlag(Function::Flags::CanRunOnDBServerCluster) || 
+    TRI_ASSERT(!func->hasFlag(Function::Flags::CanRunOnDBServerCluster) ||
                func->hasFlag(Function::Flags::CanRunOnDBServerOneShard));
 
     if ((isOneShard && func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)) ||
@@ -2712,9 +2708,9 @@ bool AstNode::hasFlag(AstNodeFlagType flag) const noexcept {
   return ((flags & static_cast<decltype(flags)>(flag)) != 0);
 }
 
-void AstNode::clearFlags() noexcept { 
+void AstNode::clearFlags() noexcept {
   // clear all flags but this one
-  flags &= AstNodeFlagType::FLAG_INTERNAL_CONST; 
+  flags &= AstNodeFlagType::FLAG_INTERNAL_CONST;
 }
 
 void AstNode::setFlag(AstNodeFlagType flag) const noexcept { flags |= flag; }
@@ -2723,7 +2719,9 @@ void AstNode::setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const
   flags |= (typeFlag | valueFlag);
 }
 
-void AstNode::removeFlag(AstNodeFlagType flag) const noexcept { flags &= ~flag; }
+void AstNode::removeFlag(AstNodeFlagType flag) const noexcept {
+  flags &= ~flag;
+}
 
 bool AstNode::isSorted() const noexcept {
   return ((flags & (DETERMINED_SORTED | VALUE_SORTED)) == (DETERMINED_SORTED | VALUE_SORTED));
@@ -2979,9 +2977,7 @@ void AstNode::setData(void* v) {
   value.value._data = v;
 }
 
-void AstNode::setData(void const* v) {
-  setData(const_cast<void*>(v));
-}
+void AstNode::setData(void const* v) { setData(const_cast<void*>(v)); }
 
 void AstNode::freeComputedValue() noexcept {
   if (_computedValue != nullptr && !hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST)) {

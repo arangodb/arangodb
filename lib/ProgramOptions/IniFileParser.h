@@ -59,4 +59,3 @@ class IniFileParser {
 };
 }  // namespace options
 }  // namespace arangodb
-

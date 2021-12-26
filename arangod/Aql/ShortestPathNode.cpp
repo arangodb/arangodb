@@ -97,10 +97,10 @@ static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNod
 }
 }  // namespace
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-                                   AstNode const* direction, AstNode const* start,
-                                   AstNode const* target, AstNode const* graph,
-                                   std::unique_ptr<BaseOptions> options)
+ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                   TRI_vocbase_t* vocbase, AstNode const* direction,
+                                   AstNode const* start, AstNode const* target,
+                                   AstNode const* graph, std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
@@ -144,8 +144,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_
 ShortestPathNode::ShortestPathNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     std::vector<Collection*> const& edgeColls,
-    std::vector<Collection*> const& vertexColls,
-    TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> const& directions,
+    std::vector<Collection*> const& vertexColls, TRI_edge_direction_e defaultDirection,
+    std::vector<TRI_edge_direction_e> const& directions,
     Variable const* inStartVariable, std::string const& startVertexId,
     Variable const* inTargetVariable, std::string const& targetVertexId,
     std::unique_ptr<BaseOptions> options, graph::Graph const* graph)
@@ -280,7 +280,8 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     outputRegisters.emplace(it->second.registerId);
   }
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
+  auto registerInfos =
+      createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
@@ -351,10 +352,10 @@ void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPath
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
 }
-  
+
 void ShortestPathNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
   if (_inStartVariable != nullptr) {
-   _inStartVariable = Variable::replace(_inStartVariable, replacements);
+    _inStartVariable = Variable::replace(_inStartVariable, replacements);
   }
 
   if (_inTargetVariable != nullptr) {

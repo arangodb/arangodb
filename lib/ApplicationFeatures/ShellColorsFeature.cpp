@@ -134,7 +134,7 @@ bool ShellColorsFeature::prepareConsole() {
   if (!SetConsoleMode(hStdout, handleMode)) {
     return false;
   }
-  
+
   // Set the codepage for the console output to UTF-8 so that unicode characters
   // are displayed correctly.
   SetConsoleOutputCP(CP_UTF8);

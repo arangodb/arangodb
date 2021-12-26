@@ -133,4 +133,3 @@ class EnumerateListExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

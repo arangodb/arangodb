@@ -58,7 +58,7 @@ RestStatus MaintenanceRestHandler::execute() {
       getAction();
       break;
 
-    // administrative commands for hot restore 
+    // administrative commands for hot restore
     case rest::RequestType::POST:
       return postAction();
       break;
@@ -87,9 +87,10 @@ RestStatus MaintenanceRestHandler::postAction() {
   if (!parseSuccess) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
-  
-  LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE) << "parsed post action " << body.toJson();
-  
+
+  LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE)
+      << "parsed post action " << body.toJson();
+
   std::stringstream es;
 
   if (body.isObject()) {
@@ -101,21 +102,20 @@ RestStatus MaintenanceRestHandler::postAction() {
         if (body.get("duration").isNumber()) {
           dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
           if (dur.count() <= 0 || dur.count() > 300) {
-            es << "invalid mainenance pause duration: " << dur.count()
-                  << " seconds";
+            es << "invalid mainenance pause duration: " << dur.count() << " seconds";
           }
           // Pause maintenance
           LOG_TOPIC("1ee7a", DEBUG, Logger::MAINTENANCE)
-            << "Maintenance is paused for " << dur.count() << " seconds";
+              << "Maintenance is paused for " << dur.count() << " seconds";
           server().getFeature<MaintenanceFeature>().pause(dur);
         }
       } else if (ex == "proceed") {
         LOG_TOPIC("6c38a", DEBUG, Logger::MAINTENANCE)
-          << "Maintenance is prceeded "  << dur.count() << " seconds";
+            << "Maintenance is prceeded " << dur.count() << " seconds";
         server().getFeature<MaintenanceFeature>().proceed();
       } else {
         es << "invalid POST command";
-          }
+      }
     } else {
       es << "invalid POST object";
     }
@@ -133,12 +133,11 @@ RestStatus MaintenanceRestHandler::postAction() {
     }
     generateResult(rest::ResponseCode::OK, ok.slice());
   } else {
-    LOG_TOPIC("9faa1", ERR, Logger::MAINTENANCE) << es.str(); 
+    LOG_TOPIC("9faa1", ERR, Logger::MAINTENANCE) << es.str();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, es.str());
   }
 
   return RestStatus::DONE;
-
 }
 
 void MaintenanceRestHandler::putAction() {
@@ -218,7 +217,9 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
     }  // else
   }    // for
 
-  _actionDesc = std::make_shared<maintenance::ActionDescription>(std::move(desc), priority, forced, std::move(prop));
+  _actionDesc =
+      std::make_shared<maintenance::ActionDescription>(std::move(desc), priority,
+                                                       forced, std::move(prop));
 
   return good;
 

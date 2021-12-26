@@ -88,4 +88,3 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<Scatter
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -77,7 +77,7 @@ class IResearchViewSort {
     _directions.emplace_back(direction);
   }
 
-  template<typename Visitor>
+  template <typename Visitor>
   bool visit(Visitor visitor) const {
     for (size_t i = 0, size = this->size(); i < size; ++i) {
       if (!visitor(_fields[i], _directions[i])) {
@@ -112,8 +112,7 @@ class IResearchViewSort {
  private:
   std::vector<std::vector<basics::AttributeName>> _fields;
   std::vector<bool> _directions;
-}; // IResearchViewSort
+};  // IResearchViewSort
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

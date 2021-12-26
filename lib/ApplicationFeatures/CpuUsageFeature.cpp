@@ -56,9 +56,9 @@ struct CpuUsageFeature::SnapshotProvider {
   FILE* _statFile;
 };
 
-CpuUsageFeature::SnapshotProvider::SnapshotProvider(): _statFile(nullptr) {
-  // we are opening the /proc/stat file only once during the lifetime of the process,
-  // in order to avoid frequent open/close calls
+CpuUsageFeature::SnapshotProvider::SnapshotProvider() : _statFile(nullptr) {
+  // we are opening the /proc/stat file only once during the lifetime of the
+  // process, in order to avoid frequent open/close calls
   _statFile = fopen("/proc/stat", "r");
 }
 
@@ -72,12 +72,12 @@ bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result
   constexpr size_t bufferSize = 4096;
 
   // none of the following methods will throw an exception
-  rewind(_statFile);    
-  fflush(_statFile); 
+  rewind(_statFile);
+  fflush(_statFile);
 
   char buffer[bufferSize];
   buffer[0] = '\0';
- 
+
   size_t nread = readStatFile(&buffer[0], bufferSize);
   // expect a minimum size
   if (nread < 32 || memcmp(&buffer[0], "cpu ", 4) != 0) {
@@ -122,9 +122,9 @@ bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result
 
   auto toUInt64 = [](FILETIME const& value) {
     ULARGE_INTEGER result;
-    result.LowPart  = value.dwLowDateTime;
+    result.LowPart = value.dwLowDateTime;
     result.HighPart = value.dwHighDateTime;
-    return result.QuadPart ;
+    return result.QuadPart;
   };
 
   result.idle = toUInt64(idleTime);
@@ -139,7 +139,7 @@ struct CpuUsageFeature::SnapshotProvider {
   bool canTakeSnapshot() const noexcept { return false; }
 
   bool tryTakeSnapshot(CpuUsageSnapshot&) noexcept {
-    TRI_ASSERT(false); // should never be called!
+    TRI_ASSERT(false);  // should never be called!
     return false;
   }
 };
@@ -166,11 +166,11 @@ void CpuUsageFeature::prepare() {
 
 CpuUsageSnapshot CpuUsageFeature::snapshot() {
   CpuUsageSnapshot lastSnapshot, lastDelta;
-  
+
   if (!isEnabled()) {
     return lastDelta;
   }
-  
+
   // whether or not a concurrent thread is currently updating our
   // snapshot. if this is the case, we will simply return the old
   // snapshot
@@ -216,4 +216,4 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
   }
 }
 
-}
+}  // namespace arangodb

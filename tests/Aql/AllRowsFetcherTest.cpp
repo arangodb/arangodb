@@ -56,7 +56,8 @@ class AllRowsFetcherTest : public ::testing::Test {
   arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   RegIdSet inputRegisters{};
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, inputRegisters, 1};
+  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{
+      monitor, inputRegisters, 1};
 };
 
 TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {

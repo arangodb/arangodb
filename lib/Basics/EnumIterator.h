@@ -67,4 +67,3 @@ class EnumIterator {
 };
 
 }  // namespace arangodb
-

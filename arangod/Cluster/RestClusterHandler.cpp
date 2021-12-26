@@ -72,7 +72,8 @@ RestStatus RestClusterHandler::execute() {
   }
 
   generateError(
-    Result(TRI_ERROR_HTTP_NOT_FOUND, "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
+      Result(TRI_ERROR_HTTP_NOT_FOUND,
+             "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
 
   return RestStatus::DONE;
 }
@@ -105,12 +106,12 @@ void RestClusterHandler::handleAgencyDump() {
   if (res.ok()) {
     generateResult(rest::ResponseCode::OK, body->slice());
   } else {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res.errorNumber(), res.errorMessage());
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, res.errorNumber(),
+                  res.errorMessage());
   }
 }
 
 void RestClusterHandler::handleAgencyCache() {
-
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl;
@@ -130,11 +131,9 @@ void RestClusterHandler::handleAgencyCache() {
   auto acb = ac.dump();
 
   generateResult(rest::ResponseCode::OK, acb->slice());
-
 }
 
 void RestClusterHandler::handleClusterInfo() {
-
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl;
@@ -177,8 +176,9 @@ void RestClusterHandler::handleCommandEndpoints() {
     std::string const healthPath = "Supervision/Health";
 
     auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb, idx] = cache.read(std::vector<std::string>{
-        AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)});
+    auto [acb, idx] =
+        cache.read(std::vector<std::string>{AgencyCommHelper::path(healthPath),
+                                            AgencyCommHelper::path(leaderPath)});
     auto result = acb->slice();
 
     if (!result.isArray()) {

@@ -67,8 +67,7 @@ UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::operator++() {
   return next();
 }
 
-bool UpsertModifier::OutputIterator::operator!=(UpsertModifier::OutputIterator const& other) const
-    noexcept {
+bool UpsertModifier::OutputIterator::operator!=(UpsertModifier::OutputIterator const& other) const noexcept {
   return _operationsIterator != other._operationsIterator;
 }
 
@@ -131,7 +130,7 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() co
 
 ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
   std::lock_guard<std::mutex> guard(_resultStateMutex);
-  return _resultState; 
+  return _resultState;
 }
 
 void UpsertModifier::reset() {
@@ -277,23 +276,22 @@ ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
 
   auto toInsert = _insertAccumulator.closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
-    _insertResults =
-        trx.insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+    _insertResults = trx.insert(_infos._aqlCollection->name(), toInsert, _infos._options);
     throwOperationResultException(_infos, _insertResults);
   }
 
   auto toUpdate = _updateAccumulator.closeAndGetContents();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     if (_infos._isReplace) {
-      _updateResults = trx.replace(_infos._aqlCollection->name(),
-                                   toUpdate, _infos._options);
+      _updateResults =
+          trx.replace(_infos._aqlCollection->name(), toUpdate, _infos._options);
     } else {
-      _updateResults = trx.update(_infos._aqlCollection->name(),
-                                  toUpdate, _infos._options);
+      _updateResults =
+          trx.update(_infos._aqlCollection->name(), toUpdate, _infos._options);
     }
     throwOperationResultException(_infos, _updateResults);
   }
-  
+
   _resultState = ModificationExecutorResultState::HaveResult;
 
   return ExecutionState::DONE;

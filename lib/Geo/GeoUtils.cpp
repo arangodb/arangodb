@@ -23,9 +23,9 @@
 
 #include "GeoUtils.h"
 
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
 
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>

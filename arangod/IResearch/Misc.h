@@ -53,4 +53,3 @@ struct adjacencyChecker {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

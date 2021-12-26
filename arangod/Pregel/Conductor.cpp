@@ -57,9 +57,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-#define LOG_PREGEL(logId, level)          \
-  LOG_TOPIC(logId, level, Logger::PREGEL) \
-  << "[job " << _executionNumber << "] " 
+#define LOG_PREGEL(logId, level) \
+  LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[8] = {
     "none",     "running",  "storing",    "done",
@@ -116,20 +115,18 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                                                      _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
-  
+
   // time-to-live for finished/failed Pregel jobs before garbage collection.
   // default timeout is 10 minutes for each conductor
   uint64_t ttl = 600;
   _ttl = std::chrono::seconds(VelocyPackHelper::getNumericValue(config, "ttl", ttl));
 
-  LOG_PREGEL("00f5f", INFO)
-      << "Starting " << _algorithm->name() 
-      << " in database '" << vocbase.name()
-      << "', ttl: " << _ttl.count() << "s"
-      << ", async: " << (_asyncMode ? "yes" : "no")
-      << ", memory mapping: " << (_useMemoryMaps ? "yes" : "no")
-      << ", store: " << (_storeResults ? "yes" : "no")
-      << ", config: " << _userParams.slice().toJson();
+  LOG_PREGEL("00f5f", INFO) << "Starting " << _algorithm->name() << " in database '"
+                            << vocbase.name() << "', ttl: " << _ttl.count() << "s"
+                            << ", async: " << (_asyncMode ? "yes" : "no")
+                            << ", memory mapping: " << (_useMemoryMaps ? "yes" : "no")
+                            << ", store: " << (_storeResults ? "yes" : "no")
+                            << ", config: " << _userParams.slice().toJson();
 }
 
 Conductor::~Conductor() {
@@ -152,13 +149,11 @@ void Conductor::start() {
   _globalSuperstep = 0;
   updateState(ExecutionState::RUNNING);
 
-  LOG_PREGEL("3a255", DEBUG)
-      << "Telling workers to load the data";
+  LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
-    LOG_PREGEL("30171", ERR)
-        << "Not all DBServers started the execution";
+    LOG_PREGEL("30171", ERR) << "Not all DBServers started the execution";
   }
 }
 
@@ -222,8 +217,7 @@ bool Conductor::_startGlobalStep() {
     _masterContext->postGlobalSuperstepMessage(messagesFromWorkers.slice());
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
-      LOG_PREGEL("0aa8e", DEBUG)
-          << "Master context ended execution";
+      LOG_PREGEL("0aa8e", DEBUG) << "Master context ended execution";
     }
     if (proceed) {
       switch (_masterContext->postGlobalSuperstep(done)) {
@@ -254,8 +248,7 @@ bool Conductor::_startGlobalStep() {
     } else {  // just stop the timer
       updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE);
       _endTimeSecs = TRI_microtime();
-      LOG_PREGEL("9e82c", INFO)
-          << "Done, execution took: " << totalRuntimeSecs() << " s";
+      LOG_PREGEL("9e82c", INFO) << "Done, execution took: " << totalRuntimeSecs() << " s";
     }
     return false;
   }
@@ -297,8 +290,7 @@ bool Conductor::_startGlobalStep() {
   auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::IN_ERROR);
-    LOG_PREGEL("f34bb", ERR)
-        << "Conductor could not start GSS " << _globalSuperstep;
+    LOG_PREGEL("f34bb", ERR) << "Conductor could not start GSS " << _globalSuperstep;
     // the recovery mechanisms should take care od this
   } else {
     LOG_PREGEL("411a5", DEBUG) << "Conductor started new gss " << _globalSuperstep;
@@ -382,9 +374,8 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     return response;
   }
 
-  LOG_PREGEL("39385", DEBUG)
-      << "Finished gss " << _globalSuperstep << " in "
-      << (TRI_microtime() - _stepStartTimeSecs) << "s";
+  LOG_PREGEL("39385", DEBUG) << "Finished gss " << _globalSuperstep << " in "
+                             << (TRI_microtime() - _stepStartTimeSecs) << "s";
   //_statistics.debugOutput();
   _globalSuperstep++;
 
@@ -447,8 +438,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     res = _sendToAllDBServers(Utils::continueRecoveryPath, b);
 
   } else {
-    LOG_PREGEL("6ecf2", INFO)
-        << "Recovery finished. Proceeding normally";
+    LOG_PREGEL("6ecf2", INFO) << "Recovery finished. Proceeding normally";
 
     // build the message, works for all cases
     VPackBuilder b;
@@ -491,8 +481,7 @@ void Conductor::startRecovery() {
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
     return;  // maybe we are already in recovery mode
   } else if (_algorithm->supportsCompensation() == false) {
-    LOG_PREGEL("12e0e", ERR)
-        << "Algorithm does not support recovery";
+    LOG_PREGEL("12e0e", ERR) << "Algorithm does not support recovery";
     cancelNoLock();
     return;
   }
@@ -586,7 +575,8 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID> const> servers = ci.getResponsibleServer(shard);
+      std::shared_ptr<std::vector<ServerID> const> servers =
+          ci.getResponsibleServer(shard);
       if (servers->size() > 0) {
         serverMap[(*servers)[0]][lc->name()].push_back(shard);
       }
@@ -709,7 +699,8 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
             "a worker with this execution number already exists.");
       }
 
-      auto created = AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice(), _feature);
+      auto created =
+          AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice(), _feature);
 
       TRI_ASSERT(created.get() != nullptr);
       _feature.addWorker(std::move(created), _executionNumber);
@@ -724,8 +715,8 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice ad
       reqOpts.database = _vocbaseGuard.database().name();
 
       responses.emplace_back(network::sendRequestRetry(pool, "server:" + server,
-                                                  fuerte::RestVerb::Post, path,
-                                                  std::move(buffer), reqOpts));
+                                                       fuerte::RestVerb::Post, path,
+                                                       std::move(buffer), reqOpts));
 
       LOG_PREGEL("6ae66", DEBUG) << "Initializing Server " << server;
     }
@@ -816,7 +807,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     _storeTimeSecs = TRI_microtime() - _finalizationStartTimeSecs;
   }
 
-  LOG_PREGEL("063b5", INFO) 
+  LOG_PREGEL("063b5", INFO)
       << "Done. We did " << _globalSuperstep << " rounds"
       << ". Startup time: " << _computationStartTimeSecs - _startTimeSecs << "s"
       << ", computation time: " << compTime << "s"
@@ -843,10 +834,8 @@ bool Conductor::canBeGarbageCollected() const {
   TRY_MUTEX_LOCKER(guard, _callbackMutex);
 
   if (guard.isLocked()) {
-    if (_state == ExecutionState::CANCELED || 
-        _state == ExecutionState::DONE || 
-        _state == ExecutionState::IN_ERROR || 
-        _state == ExecutionState::FATAL_ERROR) {
+    if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
+        _state == ExecutionState::IN_ERROR || _state == ExecutionState::FATAL_ERROR) {
       return (_expires != std::chrono::system_clock::time_point{} &&
               _expires <= std::chrono::system_clock::now());
     }
@@ -899,7 +888,8 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
   result.add("startupTime", VPackValue(_computationStartTimeSecs - _startTimeSecs));
-  result.add("computationTime", VPackValue(_finalizationStartTimeSecs - _computationStartTimeSecs));
+  result.add("computationTime",
+             VPackValue(_finalizationStartTimeSecs - _computationStartTimeSecs));
   if (_storeTimeSecs > 0.0) {
     result.add("storageTime", VPackValue(_storeTimeSecs));
   }
@@ -970,8 +960,9 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder c
   std::vector<futures::Future<network::Response>> responses;
 
   for (auto const& server : _dbServers) {
-    responses.emplace_back(network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Post,
-                                                base + path, buffer, reqOpts));
+    responses.emplace_back(network::sendRequestRetry(pool, "server:" + server,
+                                                     fuerte::RestVerb::Post,
+                                                     base + path, buffer, reqOpts));
   }
 
   size_t nrGood = 0;
@@ -1027,10 +1018,8 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
 
 void Conductor::updateState(ExecutionState state) {
   _state = state;
-  if (_state == ExecutionState::CANCELED || 
-      _state == ExecutionState::DONE || 
-      _state == ExecutionState::IN_ERROR || 
-      _state == ExecutionState::FATAL_ERROR) {
+  if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
+      _state == ExecutionState::IN_ERROR || _state == ExecutionState::FATAL_ERROR) {
     _expires = std::chrono::system_clock::now() + _ttl;
   }
 }

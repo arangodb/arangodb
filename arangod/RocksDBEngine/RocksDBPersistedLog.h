@@ -61,8 +61,8 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   struct Lane {
     Lane() = delete;
 
-    struct WaitForSync{};
-    struct DontWaitForSync{};
+    struct WaitForSync {};
+    struct DontWaitForSync {};
     explicit Lane(WaitForSync) : _waitForSync(true) {}
     explicit Lane(DontWaitForSync) : _waitForSync(false) {}
 
@@ -88,7 +88,8 @@ class RocksDBPersistedLog : public replication2::replicated_log::PersistedLog,
   RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
                       std::shared_ptr<RocksDBLogPersistor> persistor);
 
-  auto insert(replication2::replicated_log::PersistedLogIterator& iter, WriteOptions const&) -> Result override;
+  auto insert(replication2::replicated_log::PersistedLogIterator& iter,
+              WriteOptions const&) -> Result override;
   auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)

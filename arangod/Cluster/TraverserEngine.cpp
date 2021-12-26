@@ -60,9 +60,9 @@ static const std::string VARIABLES = "variables";
 static const std::string VERTICES = "vertices";
 
 #ifndef USE_ENTERPRISE
-/*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
-    TRI_vocbase_t& vocbase, aql::QueryContext& query,
-    VPackSlice info) {
+/*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(TRI_vocbase_t& vocbase,
+                                                               aql::QueryContext& query,
+                                                               VPackSlice info) {
   VPackSlice type = info.get(std::vector<std::string>({OPTIONS, TYPE}));
 
   if (!type.isString()) {
@@ -82,11 +82,8 @@ static const std::string VERTICES = "vertices";
 }
 #endif
 
-BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
-                       aql::QueryContext& query,
-                       VPackSlice info)
-    : _engineId(TRI_NewTickServer()),
-      _query(query), _trx(nullptr) {
+BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query, VPackSlice info)
+    : _engineId(TRI_NewTickServer()), _query(query), _trx(nullptr) {
   VPackSlice shardsSlice = info.get(SHARDS);
 
   if (shardsSlice.isNone() || !shardsSlice.isObject()) {
@@ -117,7 +114,8 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     TRI_ASSERT(shardList.isArray());
     for (VPackSlice const shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
-      _query.collections().add(shard.copyString(), AccessMode::Type::READ, aql::Collection::Hint::Shard);
+      _query.collections().add(shard.copyString(), AccessMode::Type::READ,
+                               aql::Collection::Hint::Shard);
     }
   }
 
@@ -137,18 +135,19 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
 
 #ifdef USE_ENTERPRISE
   if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
-    _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
+    _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(),
+                                                  _query.queryOptions().transactionOptions);
   } else {
-    _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
+    _trx = new transaction::Methods(_query.newTrxContext(),
+                                    _query.queryOptions().transactionOptions);
   }
 #else
-  _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
+  _trx = new transaction::Methods(_query.newTrxContext(),
+                                  _query.queryOptions().transactionOptions);
 #endif
 }
 
-BaseEngine::~BaseEngine() {
-  delete _trx;
-}
+BaseEngine::~BaseEngine() { delete _trx; }
 
 std::shared_ptr<transaction::Context> BaseEngine::context() const {
   return _trx->transactionContext();
@@ -159,8 +158,8 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder, bool ne
   TRI_ASSERT(vertex.isString() || vertex.isArray());
 
   size_t read = 0;
-  bool shouldProduceVertices = this->produceVertices(); 
-  
+  bool shouldProduceVertices = this->produceVertices();
+
   auto workOnOneDocument = [&](VPackSlice v) {
     if (v.isNull()) {
       return;
@@ -187,13 +186,14 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder, bool ne
     if (shouldProduceVertices) {
       arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
       for (std::string const& shard : shards->second) {
-        Result res = _trx->documentFastPathLocal(shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
-          // FOUND short circuit.
-          read++;
-          builder.add(v);
-          builder.add(doc);
-          return true;
-        });
+        Result res = _trx->documentFastPathLocal(shard, vertex,
+                                                 [&](LocalDocumentId const&, VPackSlice doc) {
+                                                   // FOUND short circuit.
+                                                   read++;
+                                                   builder.add(v);
+                                                   builder.add(doc);
+                                                   return true;
+                                                 });
         if (res.ok()) {
           break;
         }
@@ -204,9 +204,9 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder, bool ne
       }
     }
   };
-  
+
   builder.openObject();
-  
+
   if (nestedOutput) {
     builder.add(VPackValue("vertices"));
 
@@ -234,13 +234,13 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder, bool ne
 }
 
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
-                                         aql::QueryContext& query,
-                                         VPackSlice info)
+                                         aql::QueryContext& query, VPackSlice info)
     : BaseEngine(vocbase, query, info), _variables(query.ast()->variables()) {}
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
-graph::EdgeCursor* BaseTraverserEngine::getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth) {
+graph::EdgeCursor* BaseTraverserEngine::getCursor(arangodb::velocypack::StringRef nextVertex,
+                                                  uint64_t currentDepth) {
   if (currentDepth >= _cursors.size()) {
     _cursors.emplace_back(_opts->buildCursor(currentDepth));
   }
@@ -262,7 +262,8 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
       if (edge.isNull()) {
         return;
       }
-      if (_opts->evaluateEdgeExpression(edge, arangodb::velocypack::StringRef(vertex), depth, cursorId)) {
+      if (_opts->evaluateEdgeExpression(edge, arangodb::velocypack::StringRef(vertex),
+                                        depth, cursorId)) {
         builder.add(edge);
       }
     });
@@ -308,7 +309,7 @@ void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
       }
       auto varId =
           arangodb::basics::VelocyPackHelper::getNumericValue<aql::VariableId>(pair.at(0),
-                                                                          "id", 0);
+                                                                               "id", 0);
       aql::Variable* var = variables()->getVariable(varId);
       TRI_ASSERT(var != nullptr);
       aql::AqlValue val(pair.at(1).start());
@@ -318,11 +319,9 @@ void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
   }
 }
 
-ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
-                                       aql::QueryContext& query,
+ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                                        arangodb::velocypack::Slice info)
     : BaseEngine(vocbase, query, info) {
-
   VPackSlice optsSlice = info.get(OPTIONS);
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -341,7 +340,7 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   _opts.reset(new ShortestPathOptions(_query, optsSlice, edgesSlice));
   // We create the cache, but we do not need any engines.
   _opts->activateCache(false, nullptr);
-  
+
   _forwardCursor = _opts->buildCursor(false);
   _backwardCursor = _opts->buildCursor(true);
 }
@@ -373,7 +372,8 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder
   builder.close();
 }
 
-void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward, arangodb::velocypack::StringRef v) {
+void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward,
+                                     arangodb::velocypack::StringRef v) {
   graph::EdgeCursor* cursor = backward ? _backwardCursor.get() : _forwardCursor.get();
   cursor->rearm(v, 0);
 
@@ -388,8 +388,7 @@ void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward, arang
   });
 }
 
-TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
-                                 aql::QueryContext& query,
+TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                                  arangodb::velocypack::Slice info)
     : BaseTraverserEngine(vocbase, query, info) {
   VPackSlice optsSlice = info.get(OPTIONS);

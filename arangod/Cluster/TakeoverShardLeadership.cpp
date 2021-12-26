@@ -72,8 +72,7 @@ std::string stripServerPrefix(std::string const& destination) {
 
 TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
                                                  ActionDescription const& desc)
-    : ActionBase(feature, desc),
-      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+    : ActionBase(feature, desc), ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -82,7 +81,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-  
+
   if (!ShardDefinition::isValid()) {
     error << "database and shard must be specified. ";
   }
@@ -163,15 +162,14 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
 }
 
 static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
-                             std::string const& localLeader,
-                             std::string const& databaseName,
+                             std::string const& localLeader, std::string const& databaseName,
                              MaintenanceFeature& feature) {
   auto& followers = collection.followers();
 
   if (!localLeader.empty()) {  // We were not leader, assume leadership
     LOG_TOPIC("5632f", DEBUG, Logger::MAINTENANCE)
-    << "handling leadership of shard '" << databaseName << "/"
-    << collection.name() << ": becoming leader";
+        << "handling leadership of shard '" << databaseName << "/"
+        << collection.name() << ": becoming leader";
 
     auto& clusterFeature = collection.vocbase().server().getFeature<ClusterFeature>();
     auto& ci = clusterFeature.clusterInfo();
@@ -208,8 +206,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     ci.waitForCurrentVersion(currVersion).get();
 
     auto currentInfo =
-        ci.getCollectionCurrent(databaseName,
-                                std::to_string(collection.planId().id()));
+        ci.getCollectionCurrent(databaseName, std::to_string(collection.planId().id()));
     if (currentInfo == nullptr) {
       // Collection has been dropped. we cannot continue here.
       return;
@@ -227,8 +224,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
         oldLeader = oldLeader.substr(1);
 
         // Update all follower and tell them that we are the leader now
-        NetworkFeature& nf =
-            collection.vocbase().server().getFeature<NetworkFeature>();
+        NetworkFeature& nf = collection.vocbase().server().getFeature<NetworkFeature>();
         network::ConnectionPool* pool = nf.pool();
         sendLeaderChangeRequests(pool, currentServers, realInsyncFollowers,
                                  databaseName, collection, oldLeader);
@@ -266,8 +262,7 @@ bool TakeoverShardLeadership::first() {
       // resignation case is not handled here, since then
       // ourselves does not appear in shards[shard] but only
       // "_" + ourselves.
-      handleLeadership(planIndex, *coll, localLeader, vocbase.name(),
-                       feature());
+      handleLeadership(planIndex, *coll, localLeader, vocbase.name(), feature());
     } else {
       std::stringstream error;
       error << "TakeoverShardLeadership: failed to lookup local collection "
@@ -287,8 +282,7 @@ bool TakeoverShardLeadership::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+    _feature.storeShardError(database, collection, shard, _description.get(SERVER_ID), res);
   }
 
   return false;

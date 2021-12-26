@@ -189,9 +189,7 @@ class GraphNode : public ExecutionNode {
   void injectVertexCollection(aql::Collection& other);
 
   std::vector<aql::Collection const*> collections() const;
-  void resetCollectionToShard() {
-    _collectionToShard.clear();
-  }
+  void resetCollectionToShard() { _collectionToShard.clear(); }
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
     // NOTE: Do not replace this by emplace or insert.
     // This is also used to overwrite the existing entry.
@@ -206,15 +204,11 @@ class GraphNode : public ExecutionNode {
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection
   // is implemented in constructors.
-  void setIsSmart(bool target) {
-    _isSmart = target;
-  }
+  void setIsSmart(bool target) { _isSmart = target; }
 
-  void setIsDisjoint(bool target) {
-    _isDisjoint = target;
-  }
+  void setIsDisjoint(bool target) { _isDisjoint = target; }
 #endif
- protected:  
+ protected:
   void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
 
   void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone, bool withProperties) const;

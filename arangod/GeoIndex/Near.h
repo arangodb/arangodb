@@ -221,4 +221,3 @@ class NearUtils {
 
 }  // namespace geo_index
 }  // namespace arangodb
-

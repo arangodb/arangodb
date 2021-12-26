@@ -102,4 +102,3 @@ Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop);
 }  // namespace geojson
 }  // namespace geo
 }  // namespace arangodb
-

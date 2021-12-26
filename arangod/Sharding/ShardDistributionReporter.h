@@ -45,10 +45,9 @@ class ShardDistributionReporter {
   ShardDistributionReporter(ClusterInfo* ci, network::Sender sender);
 
   ~ShardDistributionReporter();
-  
+
   /// @brief helper function to create an instance of the ShardDistributionReporter
   static std::shared_ptr<ShardDistributionReporter> instance(application_features::ApplicationServer&);
-
 
   /// @brief fetch distribution for a single collections in db
   void getCollectionDistributionForDatabase(std::string const& dbName,
@@ -61,11 +60,9 @@ class ShardDistributionReporter {
 
  private:
   /// @brief internal helper function to fetch distributions
-  void getCollectionDistribution(
-      std::string const& dbName, 
-      std::vector<std::shared_ptr<LogicalCollection>> const& cols, 
-      arangodb::velocypack::Builder& result,
-      bool progress);
+  void getCollectionDistribution(std::string const& dbName,
+                                 std::vector<std::shared_ptr<LogicalCollection>> const& cols,
+                                 arangodb::velocypack::Builder& result, bool progress);
 
   bool testAllShardsInSync(std::string const& dbName, LogicalCollection const* col,
                            std::unordered_map<std::string, std::vector<std::string>> const* allShards);
@@ -81,4 +78,3 @@ class ShardDistributionReporter {
 };
 }  // namespace cluster
 }  // namespace arangodb
-

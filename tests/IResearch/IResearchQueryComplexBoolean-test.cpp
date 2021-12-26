@@ -39,35 +39,31 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class IResearchQueryComplexBooleanTest : public IResearchQueryTest {};
 
 }  // namespace
 
 TEST_P(IResearchQueryComplexBooleanTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
   // create collection0
   {
-    auto createJson = VPackParser::fromJson(
-        "{ \"name\": \"testCollection0\" }");
+    auto createJson =
+        VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        VPackParser::fromJson(
-            "{ \"seq\": -6, \"value\": null }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -5, \"value\": true }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -4, \"value\": \"abc\" }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -3, \"value\": 3.14 }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+        VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
+        VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
+        VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+        VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
+        VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
         VPackParser::fromJson(
             "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
@@ -90,8 +86,8 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
 
   // create collection1
   {
-    auto createJson = VPackParser::fromJson(
-        "{ \"name\": \"testCollection1\" }");
+    auto createJson =
+        VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
 
@@ -144,10 +140,10 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
         "version": %u }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
@@ -361,7 +357,5 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryComplexBooleanTest,
-  IResearchQueryComplexBooleanTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryComplexBooleanTest,
+                        IResearchQueryComplexBooleanTest, GetLinkVersions());

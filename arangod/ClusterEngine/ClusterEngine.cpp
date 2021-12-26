@@ -70,9 +70,7 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
 
 ClusterEngine::~ClusterEngine() = default;
 
-void ClusterEngine::setActualEngine(StorageEngine* e) {
-  _actualEngine = e;
-}
+void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&
@@ -88,9 +86,7 @@ bool ClusterEngine::isMock() const {
 #endif
 }
 
-HealthData ClusterEngine::healthCheck() {
-  return {};
-}
+HealthData ClusterEngine::healthCheck() { return {}; }
 
 ClusterEngineType ClusterEngine::engineType() const {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -310,9 +306,9 @@ auto ClusterEngine::createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-auto ClusterEngine::dropReplicatedLog(TRI_vocbase_t&,
-                                      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&)
-    -> Result {
+auto ClusterEngine::dropReplicatedLog(
+    TRI_vocbase_t&,
+    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&) -> Result {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 

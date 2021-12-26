@@ -149,4 +149,3 @@ struct Upgrade {
 
 }  // namespace methods
 }  // namespace arangodb
-

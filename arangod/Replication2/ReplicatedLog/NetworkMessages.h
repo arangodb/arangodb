@@ -22,12 +22,11 @@
 
 #pragma once
 
-
 #include <Basics/ErrorCode.h>
 #include <Containers/ImmerMemoryPolicy.h>
 
-#include <string>
 #include <ostream>
+#include <string>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -60,6 +59,7 @@ struct MessageId : implement_compare<MessageId> {
   friend auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
+
  private:
   std::uint64_t value;
 };
@@ -85,9 +85,12 @@ struct AppendEntriesResult {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 
-  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict) noexcept -> AppendEntriesResult;
-  static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason) noexcept -> AppendEntriesResult;
-  static auto withPersistenceError(LogTerm, MessageId, Result const&) noexcept -> AppendEntriesResult;
+  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict) noexcept
+      -> AppendEntriesResult;
+  static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason) noexcept
+      -> AppendEntriesResult;
+  static auto withPersistenceError(LogTerm, MessageId, Result const&) noexcept
+      -> AppendEntriesResult;
   static auto withOk(LogTerm, MessageId) noexcept -> AppendEntriesResult;
 };
 
@@ -129,4 +132,4 @@ struct velocypack::Extractor<replication2::replicated_log::MessageId> {
     return replication2::replicated_log::MessageId{slice.getNumericValue<uint64_t>()};
   }
 };
-}
+}  // namespace arangodb

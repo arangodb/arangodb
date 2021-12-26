@@ -74,4 +74,3 @@ bool isElCheapo(transaction::Methods const& trx);
 bool isElCheapo(TransactionState const& state);
 }  // namespace ClusterTrxMethods
 }  // namespace arangodb
-

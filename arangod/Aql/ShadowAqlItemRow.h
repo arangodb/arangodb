@@ -139,4 +139,3 @@ class ShadowAqlItemRow {
 
 }  // namespace aql
 }  // namespace arangodb
-

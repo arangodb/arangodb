@@ -30,8 +30,8 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/Timing.h"
 #include "Aql/Query.h"
+#include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -45,7 +45,7 @@ using namespace arangodb::aql;
 
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
-  << "[query#" << this->_engine->getQuery().id() << "] "
+      << "[query#" << this->_engine->getQuery().id() << "] "
 
 namespace {
 
@@ -144,7 +144,7 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string co
       _execNodeStats.runtime -= currentSteadyClockValue();
       TRI_ASSERT(_execNodeStats.runtime < 0.0);
     }
-    
+
     if (_profileLevel >= ProfileLevel::TraceOne) {
       auto const node = getPlanNode();
       auto const queryId = this->_engine->getQuery().id();
@@ -158,8 +158,7 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack, std::string co
 }
 
 void ExecutionBlock::traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
-                                     std::string const& clientId)  {
-
+                                     std::string const& clientId) {
   if (_profileLevel >= ProfileLevel::Blocks) {
     auto const& [state, skipped, block] = result;
     auto const items = block != nullptr ? block->numRows() : 0;
@@ -216,6 +215,7 @@ auto ExecutionBlock::printTypeInfo() const -> std::string const {
 auto ExecutionBlock::printBlockInfo() const -> std::string const {
   std::stringstream stream;
   ExecutionNode const* node = getPlanNode();
-  stream << printTypeInfo() << " this=" << (uintptr_t)this << " id=" << node->id().id();
+  stream << printTypeInfo() << " this=" << (uintptr_t)this
+         << " id=" << node->id().id();
   return stream.str();
 }

@@ -82,9 +82,7 @@ class VertexContext {
 
   inline WorkerContext const* context() const { return _context; }
 
-  V* mutableVertexData() {
-    return &(_vertexEntry->data());
-  }
+  V* mutableVertexData() { return &(_vertexEntry->data()); }
 
   V const& vertexData() const { return _vertexEntry->data(); }
 

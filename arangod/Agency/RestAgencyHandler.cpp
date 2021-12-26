@@ -150,14 +150,12 @@ RestStatus RestAgencyHandler::handleTransient() {
   return RestStatus::DONE;
 }
 
-
 /// Poll from agency starting with start.
 /// The result is of shape
 /// { accepted:bool, result: { firstIndex, commitIndex, logs:[{index, log}] } }
 /// if !accepted, lost leadership
 /// else respond
-RestStatus RestAgencyHandler::pollIndex(
-  index_t const& start, double const& timeout) {
+RestStatus RestAgencyHandler::pollIndex(index_t const& start, double const& timeout) {
   auto pollResult = _agent->poll(start, timeout);
 
   if (std::get<1>(pollResult)) {
@@ -231,38 +229,37 @@ RestStatus RestAgencyHandler::pollIndex(
   } else {
     auto const& leader = std::get<2>(pollResult);
     if (leader == NO_LEADER) {
-      generateError(
-        rest::ResponseCode::SERVICE_UNAVAILABLE,
-        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                    TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
     } else {
       redirectRequest(leader);
     }
     return RestStatus::DONE;
   }
-
 }
 
 namespace {
-template <class T> static bool readValue(GeneralRequest const& req, char const* name, T& val) {
+template <class T>
+static bool readValue(GeneralRequest const& req, char const* name, T& val) {
   bool found = true;
   std::string const& val_str = req.value(name, found);
 
   if (!found) {
-    LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
-      << "Query string " << name << " missing.";
+    LOG_TOPIC("f4732", DEBUG, Logger::AGENCY) << "Query string " << name << " missing.";
     return false;
   } else {
     if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
       LOG_TOPIC("f4237", WARN, Logger::AGENCY)
-        << "Conversion of query string " << name  << " with " << val_str << " to " << typeid(T).name() << " failed";
+          << "Conversion of query string " << name << " with " << val_str
+          << " to " << typeid(T).name() << " failed";
       return false;
     }
   }
   return true;
-}}
+}
+}  // namespace
 
 RestStatus RestAgencyHandler::handlePoll() {
-
   // GET only
   if (_request->requestType() != rest::RequestType::GET) {
     return reportMethodNotAllowed();
@@ -273,8 +270,8 @@ RestStatus RestAgencyHandler::handlePoll() {
   auto const& leaderId = _agent->leaderID();
   if (!_agent->leading()) {  // Redirect to leader
     if (leaderId == NO_LEADER) {
-      return reportMessage(
-        rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                           "No leader");
     } else {
       TRI_ASSERT(leaderId != _agent->id());
       redirectRequest(leaderId);
@@ -290,35 +287,32 @@ RestStatus RestAgencyHandler::handlePoll() {
   readValue(*_request, "timeout", timeout);
 
   return pollIndex(index, timeout);
-
 }
 
-
 RestStatus RestAgencyHandler::handleStores() {
-
   if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
     {
       VPackObjectBuilder b(&body);
       {
         _agent->executeLockedRead([&]() {
-            body.add(VPackValue("spearhead"));
-            {
-              VPackArrayBuilder bb(&body);
-              _agent->spearhead().dumpToBuilder(body);
-            }
-            body.add(VPackValue("read_db"));
-            {
-              VPackArrayBuilder bb(&body);
-              _agent->readDB().dumpToBuilder(body);
-            }
+          body.add(VPackValue("spearhead"));
+          {
+            VPackArrayBuilder bb(&body);
+            _agent->spearhead().dumpToBuilder(body);
+          }
+          body.add(VPackValue("read_db"));
+          {
+            VPackArrayBuilder bb(&body);
+            _agent->readDB().dumpToBuilder(body);
+          }
         });
         _agent->executeTransientLocked([&]() {
-            body.add(VPackValue("transient"));
-            {
-              VPackArrayBuilder bb(&body);
-              _agent->transient().dumpToBuilder(body);
-            }
+          body.add(VPackValue("transient"));
+          {
+            VPackArrayBuilder bb(&body);
+            _agent->transient().dumpToBuilder(body);
+          }
         });
       }
     }
@@ -354,7 +348,6 @@ RestStatus RestAgencyHandler::handleStore() {
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
-
   using namespace std::chrono;
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
@@ -446,7 +439,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
           _agent->commitHist().count(
-            duration<float, std::milli>(high_resolution_clock::now() - start).count());
+              duration<float, std::milli>(high_resolution_clock::now() - start).count());
         }
       }
     }
@@ -693,8 +686,7 @@ RestStatus RestAgencyHandler::handleConfig() {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
       return RestStatus::DONE;
     }
-  }
-  else if (_request->requestType() == rest::RequestType::PUT) {
+  } else if (_request->requestType() == rest::RequestType::PUT) {
     try {
       _agent->updateSomeConfigValues(_request->toVelocyPackBuilderPtr()->slice());
     } catch (std::exception const& e) {
@@ -705,7 +697,8 @@ RestStatus RestAgencyHandler::handleConfig() {
 
   // Respond with configuration
   auto last = _agent->lastCommitted();
-  LOG_TOPIC("55412", DEBUG, Logger::AGENCY) << "handleConfig after lastCommitted";
+  LOG_TOPIC("55412", DEBUG, Logger::AGENCY)
+      << "handleConfig after lastCommitted";
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -713,14 +706,16 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("leaderId", Value(_agent->leaderID()));
     body.add("commitIndex", Value(last));
     _agent->lastAckedAgo(body);
-    LOG_TOPIC("ddeae", DEBUG, Logger::AGENCY) << "handleConfig after lastAckedAgo";
+    LOG_TOPIC("ddeae", DEBUG, Logger::AGENCY)
+        << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
     body.add("engine",
              VPackValue(server().getFeature<EngineSelectorFeature>().engineName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
-  LOG_TOPIC("76543", DEBUG, Logger::AGENCY) << "handleConfig after before generateResult";
+  LOG_TOPIC("76543", DEBUG, Logger::AGENCY)
+      << "handleConfig after before generateResult";
   generateResult(rest::ResponseCode::OK, body.slice());
 
   LOG_TOPIC("77891", DEBUG, Logger::AGENCY) << "handleConfig after before done";

@@ -55,7 +55,7 @@ RestStatus RestTtlHandler::execute() {
       return handleStatistics();
     }
   }
-   
+
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
   return RestStatus::DONE;
 }
@@ -83,7 +83,7 @@ RestStatus RestTtlHandler::handleProperties() {
       // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
-    
+
     VPackBuilder builder;
     Result result =
         methods::Ttl::setProperties(_vocbase.server().getFeature<TtlFeature>(), body, builder);
@@ -96,7 +96,7 @@ RestStatus RestTtlHandler::handleProperties() {
 
     return RestStatus::DONE;
   }
- 
+
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
@@ -117,7 +117,7 @@ RestStatus RestTtlHandler::handleStatistics() {
 
     return RestStatus::DONE;
   }
- 
+
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }

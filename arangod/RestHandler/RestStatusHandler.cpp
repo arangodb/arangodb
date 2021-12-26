@@ -40,17 +40,17 @@
 #include "Agency/Agent.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/files.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -219,13 +219,15 @@ RestStatus RestStatusHandler::executeOverview() {
     if (role == ServerState::ROLE_COORDINATOR) {
       AgencyCache& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
       auto [b, i] = agencyCache.get("arango/Plan");
-    
-      VPackSlice planSlice = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
+
+      VPackSlice planSlice = b->slice().get(
+          std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
 
       if (planSlice.isObject()) {
         if (planSlice.hasKey("Coordinators")) {
-          auto coordinators =  planSlice.get("Coordinators");
-          buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
+          auto coordinators = planSlice.get("Coordinators");
+          buffer.appendHex(
+              static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
           buffer.appendText("-");
         }
         if (planSlice.hasKey("DBServers")) {
@@ -299,7 +301,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   } else {
     char const* f = fileName.c_str();
     try {
-      mallctl("prof.dump", NULL, NULL, &f, sizeof(const char *));
+      mallctl("prof.dump", NULL, NULL, &f, sizeof(const char*));
       std::string const content = FileUtils::slurp(fileName);
       TRI_UnlinkFile(f);
 
@@ -314,7 +316,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   }
 #else
   generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-		"memory profiles not enabled at compile time");
+                "memory profiles not enabled at compile time");
 #endif
 
   return RestStatus::DONE;

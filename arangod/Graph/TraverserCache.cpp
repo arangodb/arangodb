@@ -105,7 +105,8 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr, ReadOwnWrites::no)) {
+  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr,
+                                        ReadOwnWrites::no)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "

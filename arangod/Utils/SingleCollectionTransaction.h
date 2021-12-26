@@ -88,4 +88,3 @@ class SingleCollectionTransaction final : public transaction::Methods {
 };
 
 }  // namespace arangodb
-

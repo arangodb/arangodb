@@ -92,7 +92,8 @@ class OutCache {
     _sendCountNextGSS = 0;
     _removeContainedMessages();
   }
-  virtual void appendMessage(PregelShard shard, velocypack::StringRef const& key, M const& data) = 0;
+  virtual void appendMessage(PregelShard shard, velocypack::StringRef const& key,
+                             M const& data) = 0;
   virtual void flushMessages() = 0;
 };
 

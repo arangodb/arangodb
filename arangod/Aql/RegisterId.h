@@ -128,4 +128,3 @@ struct equal_to<arangodb::aql::RegisterId> {
   }
 };
 }  // namespace std
-

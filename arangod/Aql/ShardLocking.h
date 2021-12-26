@@ -152,4 +152,3 @@ class ShardLocking {
 
 }  // namespace aql
 }  // namespace arangodb
-

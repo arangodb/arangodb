@@ -73,7 +73,6 @@ struct factory_slice_parameter {
       ::arangodb::velocypack::deserializer::slice_type::nullSlice();
 };
 
-
 template <char const N[], typename T>
 struct factory_optional_value_parameter {
   using value_type = std::optional<T>;
@@ -96,10 +95,11 @@ struct factory_optional_deserialized_parameter {
 };
 
 template <const char N[], bool required>
-using factory_builder_parameter = factory_deserialized_parameter<N, values::vpack_builder_deserializer, required>;
+using factory_builder_parameter =
+    factory_deserialized_parameter<N, values::vpack_builder_deserializer, required>;
 template <const char N[]>
-using factory_optional_builder_parameter = factory_optional_deserialized_parameter<N, values::vpack_builder_deserializer>;
-
+using factory_optional_builder_parameter =
+    factory_optional_deserialized_parameter<N, values::vpack_builder_deserializer>;
 
 template <const char N[], typename D, typename default_v = values::default_constructed_value<typename D::constructed_type>>
 struct factory_deserialized_default {
@@ -175,7 +175,7 @@ struct parameter_executor<factory_optional_value_parameter<N, T>, H> {
 
   template <typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
-                     typename H::state_type hints, C &&) -> result_type {
+                     typename H::state_type hints, C&&) -> result_type {
     using namespace std::string_literals;
 
     auto value_slice = s.get(N);
@@ -206,7 +206,7 @@ struct parameter_executor<factory_deserialized_parameter<N, D, required>, H> {
     auto value_slice = s.get(N);
     if (!value_slice.isNone()) {
       return ::arangodb::velocypack::deserializer::deserialize<D, hints::hint_list_empty, C>(
-          value_slice, {}, std::forward<C>(c))
+                 value_slice, {}, std::forward<C>(c))
           .map([](typename D::constructed_type&& t) {
             return std::make_pair(std::move(t), true);
           })
@@ -238,7 +238,7 @@ struct parameter_executor<factory_optional_deserialized_parameter<N, D>, H> {
     auto value_slice = s.get(N);
     if (!value_slice.isNone()) {
       return ::arangodb::velocypack::deserializer::deserialize<D, hints::hint_list_empty, C>(
-          value_slice, {}, std::forward<C>(c))
+                 value_slice, {}, std::forward<C>(c))
           .map([](typename D::constructed_type&& t) {
             return std::make_pair(value_type{std::move(t)}, true);
           })
@@ -260,7 +260,7 @@ struct parameter_executor<factory_slice_parameter<N, required>, H> {
 
   template <typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
-                     typename H::state_type hints, C &&) -> result_type {
+                     typename H::state_type hints, C&&) -> result_type {
     auto value_slice = s.get(N);
     if (!value_slice.isNone()) {
       return result_type{std::make_pair(value_slice, true)};
@@ -313,7 +313,7 @@ struct parameter_executor<expected_value<N, V>, H> {
 
   template <typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
-                     typename H::state_type hints, C &&) -> result_type {
+                     typename H::state_type hints, C&&) -> result_type {
     if constexpr (!hints::hint_list_contains_v<hints::has_field_with_value<N, V>, H>) {
       auto value_slice = s.get(N);
       if (!values::value_comparator<V>::compare(value_slice)) {
@@ -365,8 +365,9 @@ struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H, FullList> {
               t, s, hints, std::forward<C>(ctx));
         }
       }
-      return unpack_result{std::move(result).error().wrap(
-          "during read of "s + std::to_string(I) + "th parameters value (" + P::name + ")")};
+      return unpack_result{
+          std::move(result).error().wrap("during read of "s + std::to_string(I) +
+                                         "th parameters value (" + P::name + ")")};
     } else {
       auto result = executor::unpack(s, hints, std::forward<C>(ctx));
       if (result) {
@@ -384,8 +385,7 @@ struct parameter_list_executor<I, K, parameter_list<>, H, FullList> {
 
   template <typename T, typename C>
   static auto unpack(T& t, ::arangodb::velocypack::deserializer::slice_type s,
-                     typename H::state_type hints, C &&) -> unpack_result {
-
+                     typename H::state_type hints, C&&) -> unpack_result {
     if constexpr (!hints::hint_has_ignore_unknown<H>) {
       if (s.length() != K) {
         for (auto&& pair : ObjectIterator(s)) {

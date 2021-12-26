@@ -155,7 +155,8 @@ bool TRI_DetachThread(TRI_thread_t* thread) {
 
   if (res == 0) {
     DWORD result = GetLastError();
-    LOG_TOPIC("333c2", ERR, arangodb::Logger::THREADS) << "cannot detach thread: " << result;
+    LOG_TOPIC("333c2", ERR, arangodb::Logger::THREADS)
+        << "cannot detach thread: " << result;
     return false;
   }
 

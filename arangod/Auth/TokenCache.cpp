@@ -48,16 +48,14 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
-  
+
 namespace {
 velocypack::StringRef const hs256String("HS256");
 velocypack::StringRef const jwtString("JWT");
-}
+}  // namespace
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
-    : _userManager(um),
-      _jwtCache(16384),
-      _authTimeout(timeout) {}
+    : _userManager(um), _jwtCache(16384), _authTimeout(timeout) {}
 
 auth::TokenCache::~TokenCache() {
   // properly clear structs while using the appropriate locks
@@ -115,7 +113,8 @@ void auth::TokenCache::invalidateBasicCache() {
 // private
 auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string const& secret) {
   if (_userManager == nullptr) {  // server does not support users
-    LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
+    LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION)
+        << "Basic auth not supported";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -188,7 +187,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
       // would have thrown if not found
       if (entry->expired()) {
         _jwtCache.remove(jwt);
-        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
+        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION)
+            << "JWT Token expired";
         return auth::TokenCache::Entry::Unauthenticated();
       }
       if (_userManager != nullptr) {
@@ -279,7 +279,7 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   if (!algSlice.isEqualString(::hs256String)) {
     return false;
   }
-  
+
   if (!typSlice.isEqualString(::jwtString)) {
     return false;
   }
@@ -303,12 +303,14 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
 
   VPackSlice const issSlice = bodySlice.get("iss");
   if (!issSlice.isString()) {
-    LOG_TOPIC("ce204", TRACE, arangodb::Logger::AUTHENTICATION) << "missing iss value";
+    LOG_TOPIC("ce204", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "missing iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   if (!issSlice.isEqualString(velocypack::StringRef("arangodb"))) {
-    LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION) << "invalid iss value";
+    LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "invalid iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -334,19 +336,19 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
   if (!paths.isNone()) {
     if (!paths.isArray()) {
       LOG_TOPIC("89898", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "allowed_paths must be an array";
+          << "allowed_paths must be an array";
       return auth::TokenCache::Entry::Unauthenticated();
     }
     if (paths.length() == 0) {
       LOG_TOPIC("89893", TRACE, arangodb::Logger::AUTHENTICATION)
-        << "allowed_paths may not be empty";
+          << "allowed_paths may not be empty";
       return auth::TokenCache::Entry::Unauthenticated();
     }
     for (auto const& path : VPackArrayIterator(paths)) {
       if (!path.isString()) {
         LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
-          << "allowed_paths may only contain strings";
-      return auth::TokenCache::Entry::Unauthenticated();
+            << "allowed_paths may only contain strings";
+        return auth::TokenCache::Entry::Unauthenticated();
       }
       authResult._allowedPaths.push_back(path.copyString());
     }
@@ -382,8 +384,8 @@ bool auth::TokenCache::validateJwtHMAC256Signature(std::string const& message,
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
 
   READ_LOCKER(guard, _jwtSecretLock);
-  return verifyHMAC(_jwtActiveSecret.c_str(), _jwtActiveSecret.length(), message.c_str(),
-                    message.length(), decodedSignature.c_str(),
+  return verifyHMAC(_jwtActiveSecret.c_str(), _jwtActiveSecret.length(),
+                    message.c_str(), message.length(), decodedSignature.c_str(),
                     decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }
 #endif

@@ -40,8 +40,8 @@
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
+#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
@@ -53,9 +53,7 @@ struct ThreadGuard {
 
   ThreadGuard(std::unique_ptr<std::thread> thread)
       : thread(std::move(thread)) {}
-  ~ThreadGuard() {
-    join();
-  }
+  ~ThreadGuard() { join(); }
 
   void join() {
     if (thread != nullptr) {
@@ -223,7 +221,7 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
       }
     }
   };
-  
+
   ThreadGuard rebalancerThread(std::make_unique<std::thread>(rebalanceWorker));
 
   std::uint64_t chunkSize = 4 * 1024 * 1024;

@@ -38,8 +38,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
-#include "Geo/Utils.h"
 #include "Geo/ShapeContainer.h"
+#include "Geo/Utils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -61,18 +61,18 @@ Index::Index(VPackSlice const& info,
     auto& loc = fields[0];
     _location.reserve(loc.size());
     std::transform(loc.begin(), loc.end(), std::back_inserter(_location),
-                   [](auto const& a) { return a.name; } );
+                   [](auto const& a) { return a.name; });
   } else if (fields.size() == 2) {
     _variant = Variant::INDIVIDUAL_LAT_LON;
     auto& lat = fields[0];
     _latitude.reserve(lat.size());
     std::transform(lat.begin(), lat.end(), std::back_inserter(_latitude),
-                   [](auto const& a) { return a.name; } );
+                   [](auto const& a) { return a.name; });
 
     auto& lon = fields[1];
     _longitude.reserve(lon.size());
     std::transform(lon.begin(), lon.end(), std::back_inserter(_longitude),
-                   [](auto const& a) { return a.name; } );
+                   [](auto const& a) { return a.name; });
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -83,7 +83,6 @@ Index::Index(VPackSlice const& info,
 /// @brief Parse document and return cells for indexing
 Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
                          S2Point& centroid) const {
-
   if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
@@ -303,12 +302,10 @@ void Index::parseCondition(aql::AstNode const* node, aql::Variable const* refere
   } else {
     handleNode(node, reference, params);
   }
-  
+
   // allow for GEO_DISTANCE(g, d.geometry) <= 0
-  if (params.filterType == geo::FilterType::NONE &&
-      params.minDistance == 0 &&
-      params.maxDistance == 0 &&
-      params.maxInclusive) {
+  if (params.filterType == geo::FilterType::NONE && params.minDistance == 0 &&
+      params.maxDistance == 0 && params.maxInclusive) {
     params.maxDistance = geo::kRadEps * geo::kEarthRadiusInMeters;
   }
 }

@@ -24,8 +24,8 @@
 #include "InitDatabaseFeature.h"
 
 #ifdef _WIN32
-#include <io.h>
 #include <fcntl.h>
+#include <io.h>
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
@@ -73,13 +73,13 @@ void InitDatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options
   options->addOption("--database.init-database", "initializes an empty database",
                      new BooleanParameter(&_initDatabase),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                  arangodb::options::Flags::Command));
+                                                         arangodb::options::Flags::Command));
 
   options->addOption("--database.restore-admin",
                      "resets the admin users and sets a new password",
                      new BooleanParameter(&_restoreAdmin),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                  arangodb::options::Flags::Command));
+                                                         arangodb::options::Flags::Command));
 
   options->addOption("--database.password", "initial password of root user",
                      new StringParameter(&_password),
@@ -118,8 +118,8 @@ void InitDatabaseFeature::prepare() {
 
   if (!_seenPassword) {
     while (true) {
-      std::string password1 =
-          readPassword("Please enter a new password for the ArangoDB root user");
+      std::string password1 = readPassword(
+          "Please enter a new password for the ArangoDB root user");
 
       if (!password1.empty()) {
         std::string password2 = readPassword("Repeat password");

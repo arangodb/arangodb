@@ -53,4 +53,3 @@ struct ActiveFailoverJob final : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

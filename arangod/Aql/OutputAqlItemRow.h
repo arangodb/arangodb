@@ -340,4 +340,3 @@ class OutputAqlItemRow {
   RegIdFlatSet const& _registersToClear;
 };
 }  // namespace arangodb::aql
-

@@ -64,7 +64,5 @@ struct AqlValueGroupEqual {
   velocypack::Options const* _vpackOptions;
 };
 
-
 }  // namespace aql
 }  // namespace arangodb
-

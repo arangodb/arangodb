@@ -83,7 +83,7 @@ TEST(PromiseTest, ctorPostconditionValid) {
     auto p1 = (CREATION_EXPR); \
     ASSERT_TRUE(p1.valid());   \
     auto p2 = std::move(p1);   \
-    ASSERT_FALSE(p1.valid()); \
+    ASSERT_FALSE(p1.valid());  \
     ASSERT_TRUE(p2.valid());   \
   } while (false)
 
@@ -102,10 +102,10 @@ TEST(PromiseTest, ctorPostconditionInvali) {
 #define DOIT(CREATION_EXPR)    \
   do {                         \
     auto p1 = (CREATION_EXPR); \
-    ASSERT_FALSE(p1.valid()); \
+    ASSERT_FALSE(p1.valid());  \
     auto p2 = std::move(p1);   \
-    ASSERT_FALSE(p1.valid()); \
-    ASSERT_FALSE(p2.valid()); \
+    ASSERT_FALSE(p1.valid());  \
+    ASSERT_FALSE(p2.valid());  \
   } while (false)
 
   DOIT(makeInvalid());
@@ -152,11 +152,11 @@ TEST(PromiseTest, hasPreconditionValid) {
   // Ops that require validity; precondition: valid();
   // throw PromiseInvalid if !valid()
 
-#define DOIT(STMT)        \
-  do {                    \
-    auto p = makeValid(); \
-    STMT;                 \
-    ::copy(std::move(p)); \
+#define DOIT(STMT)          \
+  do {                      \
+    auto p = makeValid();   \
+    STMT;                   \
+    ::copy(std::move(p));   \
     EXPECT_ANY_THROW(STMT); \
   } while (false)
 
@@ -196,10 +196,10 @@ TEST(PromiseTest, hasPostconditionValid) {
 TEST(PromiseTest, hasPostconditionInvalid) {
   // Ops that consume *this -- postcondition: !valid()
 
-#define DOIT(CTOR, STMT)      \
-  do {                        \
-    auto p = (CTOR);          \
-    STMT;                     \
+#define DOIT(CTOR, STMT)     \
+  do {                       \
+    auto p = (CTOR);         \
+    STMT;                    \
     ASSERT_FALSE(p.valid()); \
   } while (false)
 

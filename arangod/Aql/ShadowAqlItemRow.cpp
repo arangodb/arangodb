@@ -43,9 +43,7 @@ RegisterCount ShadowAqlItemRow::getNumRegisters() const noexcept {
 
 bool ShadowAqlItemRow::isRelevant() const noexcept { return getDepth() == 0; }
 
-bool ShadowAqlItemRow::isInitialized() const {
-  return _block != nullptr;
-}
+bool ShadowAqlItemRow::isInitialized() const { return _block != nullptr; }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const {
@@ -88,7 +86,7 @@ AqlItemBlock const& ShadowAqlItemRow::block() const noexcept {
 }
 
 bool ShadowAqlItemRow::isSameBlockAndIndex(ShadowAqlItemRow const& other) const noexcept {
-    return this->_block == other._block && this->_baseIndex == other._baseIndex;
+  return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

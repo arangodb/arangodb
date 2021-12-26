@@ -353,7 +353,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       BaseProviderOptions forwardProviderOptions(opts->tmpVar(), std::move(usedIndexes),
                                                  opts->getExpressionCtx(),
                                                  opts->collectionToShard());
-      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), std::move(reversedUsedIndexes),
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(),
+                                                  std::move(reversedUsedIndexes),
                                                   opts->getExpressionCtx(),
                                                   opts->collectionToShard());
 
@@ -382,9 +383,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>;
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>{
-                opts->query(), std::move(forwardProviderOptions), opts->query().resourceMonitor()},
+                opts->query(), std::move(forwardProviderOptions),
+                opts->query().resourceMonitor()},
             ProviderTracer<SingleServerProvider<SingleServerProviderStep>>{
-                opts->query(), std::move(backwardProviderOptions), opts->query().resourceMonitor()},
+                opts->query(), std::move(backwardProviderOptions),
+                opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
 

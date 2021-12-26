@@ -150,7 +150,8 @@ TEST_F(FailedServerTest, creating_a_job_should_create_a_job_in_todo) {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
   auto builder = agency.toBuilder();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER).create();
+  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
+      .create();
   Verify(Method(mockAgent, write));
 }
 
@@ -213,7 +214,8 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER).create();
+  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
+      .create();
 
   Verify(Method(mockAgent, write));
 }
@@ -277,7 +279,8 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER).create();
+  FailedServer(agency.getOrCreate(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
+      .create();
 }
 
 TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_snapshot) {

@@ -26,8 +26,8 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/application-exit.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -40,8 +40,7 @@ using namespace arangodb::consensus;
 
 namespace {
 void handleGossipResponse(arangodb::network::Response const& r,
-                          arangodb::consensus::Agent* agent,
-                          size_t version) {
+                          arangodb::consensus::Agent* agent, size_t version) {
   using namespace arangodb;
   std::string newLocation;
 
@@ -71,22 +70,25 @@ void handleGossipResponse(arangodb::network::Response const& r,
             FATAL_ERROR_EXIT();
           }
 
-          LOG_TOPIC("4c822", DEBUG, Logger::AGENCY) << "Got redirect to " << newLocation
-                                           << ". Adding peer to gossip peers";
+          LOG_TOPIC("4c822", DEBUG, Logger::AGENCY)
+              << "Got redirect to " << newLocation << ". Adding peer to gossip peers";
           bool added = agent->addGossipPeer(newLocation);
           if (added) {
-            LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY) << "Added " << newLocation << " to gossip peers";
+            LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY)
+                << "Added " << newLocation << " to gossip peers";
           } else {
-            LOG_TOPIC("4fcf3", DEBUG, Logger::AGENCY) << "Endpoint " << newLocation << " already known";
+            LOG_TOPIC("4fcf3", DEBUG, Logger::AGENCY)
+                << "Endpoint " << newLocation << " already known";
           }
         } else {
-          LOG_TOPIC("1886b", ERR, Logger::AGENCY) << "Redirect lacks 'Location' header";
+          LOG_TOPIC("1886b", ERR, Logger::AGENCY)
+              << "Redirect lacks 'Location' header";
         }
         break;
 
       default:
-        LOG_TOPIC("bed89", ERR, Logger::AGENCY) << "Got error " << r.statusCode()
-        << " from gossip endpoint";
+        LOG_TOPIC("bed89", ERR, Logger::AGENCY)
+            << "Got error " << r.statusCode() << " from gossip endpoint";
         std::this_thread::sleep_for(std::chrono::seconds(40));
         break;
     }
@@ -95,15 +97,13 @@ void handleGossipResponse(arangodb::network::Response const& r,
   LOG_TOPIC("e2ef9", DEBUG, Logger::AGENCY)
       << "Got error from gossip message, status:" << fuerte::to_string(r.error);
 }
-}
+}  // namespace
 
 Inception::Inception(Agent& agent)
     : Thread(agent.server(), "Inception"), _agent(agent) {}
 
 // Shutdown if not already
-Inception::~Inception() {
-  shutdown();
-}
+Inception::~Inception() { shutdown(); }
 
 /// Gossip to others
 /// - Get snapshot of gossip peers and agent pool
@@ -113,11 +113,9 @@ void Inception::gossip() {
   if (this->isStopping() || _agent.isStopping()) {
     return;
   }
-  
-  
+
   auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
-
 
   LOG_TOPIC("7b6f3", INFO, Logger::AGENCY) << "Entering gossip phase ...";
   using namespace std::chrono;
@@ -125,7 +123,7 @@ void Inception::gossip() {
   auto startTime = steady_clock::now();
   seconds timeout(3600);
   long waitInterval = 250000;
-  
+
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(1);
 
@@ -166,10 +164,10 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts).thenValue([=](network::Response r) {
-          ::handleGossipResponse(r, &_agent, version);
-        });
+        network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer, reqOpts)
+            .thenValue([=](network::Response r) {
+              ::handleGossipResponse(r, &_agent, version);
+            });
       }
     }
 
@@ -177,7 +175,7 @@ void Inception::gossip() {
       _agent.activateAgency();
       return;
     }
-    
+
     // pool entries
     bool complete = true;
     for (auto const& pair : config.pool()) {
@@ -196,10 +194,10 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts).thenValue([=](network::Response r) {
-          ::handleGossipResponse(r, &_agent, version);
-        });
+        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path, buffer, reqOpts)
+            .thenValue([=](network::Response r) {
+              ::handleGossipResponse(r, &_agent, version);
+            });
       }
     }
 
@@ -217,7 +215,8 @@ void Inception::gossip() {
     // Timed out? :(
     if ((steady_clock::now() - startTime) > timeout) {
       if (config.poolComplete()) {
-        LOG_TOPIC("28033", DEBUG, Logger::AGENCY) << "Stopping active gossipping!";
+        LOG_TOPIC("28033", DEBUG, Logger::AGENCY)
+            << "Stopping active gossipping!";
       } else {
         LOG_TOPIC("5d169", ERR, Logger::AGENCY)
             << "Failed to find complete pool of agents. Giving up!";
@@ -242,7 +241,8 @@ bool Inception::restartingActiveAgent() {
     return false;
   }
 
-  LOG_TOPIC("d7476", INFO, Logger::AGENCY) << "Restarting agent from persistence ...";
+  LOG_TOPIC("d7476", INFO, Logger::AGENCY)
+      << "Restarting agent from persistence ...";
 
   using namespace std::chrono;
 
@@ -260,14 +260,14 @@ bool Inception::restartingActiveAgent() {
     VPackObjectBuilder b(&greeting);
     greeting.add(clientId, VPackValue(clientEp));
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(2);
-  reqOpts.skipScheduler = true; // hack to speed up future.get()
+  reqOpts.skipScheduler = true;  // hack to speed up future.get()
 
   seconds const timeout(3600);
   long waitInterval(500000);
-  
+
   auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
@@ -292,12 +292,12 @@ bool Inception::restartingActiveAgent() {
       if (this->isStopping() || _agent.isStopping()) {
         return false;
       }
-      
-      auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                                         greetBuffer, reqOpts).get();
-      
+
+      auto comres =
+          network::sendRequest(cp, p, fuerte::RestVerb::Post, path, greetBuffer, reqOpts)
+              .get();
+
       if (comres.ok() && comres.statusCode() == fuerte::StatusOK) {
-        
         VPackSlice const theirConfig = comres.slice();
 
         if (!theirConfig.isObject()) {
@@ -320,20 +320,21 @@ bool Inception::restartingActiveAgent() {
     for (auto const& i : informed) {
       active.erase(std::remove(active.begin(), active.end(), i), active.end());
     }
-    
+
     for (auto& p : pool) {
       if (p.first != myConfig.id() && p.first != "") {
         if (this->isStopping() || _agent.isStopping()) {
           return false;
         }
-        
-        auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post, path,
-                                           greetBuffer, reqOpts).get();
-        
+
+        auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post,
+                                           path, greetBuffer, reqOpts)
+                          .get();
+
         if (comres.ok()) {
           try {
             VPackSlice theirConfig = comres.slice();
-          
+
             auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
             auto const& tcc = theirConfig.get("configuration");
             auto const& theirId = tcc.get("id").copyString();
@@ -356,10 +357,11 @@ bool Inception::restartingActiveAgent() {
                 if (this->isStopping() || _agent.isStopping()) {
                   return false;
                 }
-                
-                comres = network::sendRequest(cp, theirLeaderEp, fuerte::RestVerb::Post, path,
-                                              greetBuffer, reqOpts).get();
-                
+
+                comres = network::sendRequest(cp, theirLeaderEp, fuerte::RestVerb::Post,
+                                              path, greetBuffer, reqOpts)
+                             .get();
+
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.
                 if (comres.fail()) {

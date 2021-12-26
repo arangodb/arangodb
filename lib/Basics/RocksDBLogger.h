@@ -56,4 +56,3 @@ class RocksDBLogger final : public rocksdb::Logger {
 };
 
 }  // namespace arangodb
-

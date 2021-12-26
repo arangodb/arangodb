@@ -24,8 +24,8 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
 #include "../Mocks/Servers.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "AgencyMock.h"
 #include "common.h"
 
@@ -57,10 +57,10 @@
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchViewCoordinator.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
@@ -94,7 +94,6 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
   }
 
   ~IResearchLinkCoordinatorTest() = default;
-
 };
 
 // -----------------------------------------------------------------------------
@@ -106,7 +105,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   feature.validateOptions(server.server().options());
   feature.collectOptions(server.server().options());
 
-  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1}); // Hack.
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -118,10 +117,13 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"name\": \"testCollection\", \"replicationFactor\":1, \"shards\":{} }");
+        "{ \"id\": \"1\", \"name\": \"testCollection\", "
+        "\"replicationFactor\":1, \"shards\":{} }");
 
-    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                               collectionJson->slice(), 0.0, false, nullptr).ok());
+    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
+                                               1, false, collectionJson->slice(),
+                                               0.0, false, nullptr)
+                    .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((nullptr != logicalCollection));
@@ -156,10 +158,11 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto linkJson = arangodb::velocypack::Parser::fromJson(
         "{ \"id\" : \"42\", \"type\": \"arangosearch\", \"view\": \"42\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
+        "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
+        "}");
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(arangodb::LogicalView::create(
-      logicalView, *vocbase, viewJson->slice(), true).ok());
+    ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice(), true)
+                    .ok());
 
     ASSERT_TRUE(logicalView);
     auto const viewId = std::to_string(logicalView->planId().id());
@@ -170,15 +173,15 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                  .setValue(currentCollectionPath, value->slice(), 0.0)
-                  .successful());
+                      .setValue(currentCollectionPath, value->slice(), 0.0)
+                      .successful());
     }
 
     // unable to create index without timeout
     VPackBuilder outputDefinition;
-    EXPECT_TRUE(
-      arangodb::methods::Indexes::ensureIndex(
-        logicalCollection.get(), linkJson->slice(), true, outputDefinition).ok());
+    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+                                                        linkJson->slice(), true, outputDefinition)
+                    .ok());
 
     // get new version from plan
     auto updatedCollection0 =
@@ -307,13 +310,14 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   // ensure jSON is still valid after unload()
   {
     auto linkJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\":\"42\", \"type\": \"arangosearch\", \"view\": \"42\", \"version\":1 }");
+        "{ \"id\":\"42\", \"type\": \"arangosearch\", \"view\": \"42\", "
+        "\"version\":1 }");
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
         "}");
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(arangodb::LogicalView::create(
-      logicalView, *vocbase, viewJson->slice(), true).ok());
+    ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice(), true)
+                    .ok());
     ASSERT_TRUE(logicalView);
     auto const viewId = std::to_string(logicalView->planId().id());
     EXPECT_TRUE("42" == viewId);
@@ -423,5 +427,4 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     }
   }
-
 }

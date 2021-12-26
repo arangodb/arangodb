@@ -23,21 +23,20 @@
 
 #include "Parser.h"
 
-#include "Basics/Common.h"
-#include "Basics/ScopeGuard.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
+#include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 
 #include <sstream>
 
 using namespace arangodb::aql;
 
 /// @brief create the parser
-Parser::Parser(QueryContext& query,
-               Ast& ast, QueryString& qs)
+Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
     : _query(query),
       _ast(ast),
       _queryString(qs),
@@ -126,7 +125,7 @@ QueryResult Parser::parseWithDetails() {
   result.bindParameters = _ast.bindParameters();
   auto builder = std::make_shared<VPackBuilder>();
   _ast.toVelocyPack(*builder, false);
-  result.data = std::move(builder); 
+  result.data = std::move(builder);
 
   return result;
 }
@@ -145,7 +144,8 @@ void Parser::registerParseError(ErrorCode errorCode, char const* format,
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(ErrorCode errorCode, std::string_view data, int line, int column) {
+void Parser::registerParseError(ErrorCode errorCode, std::string_view data,
+                                int line, int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data.data() != nullptr);
 
@@ -231,7 +231,7 @@ void Parser::pushObjectElement(AstNode* attributeName, AstNode* node) {
 /// @brief push a temporary value on the parser's stack
 void Parser::pushStack(void* value) {
   TRI_ASSERT(value != nullptr);
-  _stack.emplace_back(value); 
+  _stack.emplace_back(value);
 }
 
 /// @brief pop a temporary value from the parser's stack

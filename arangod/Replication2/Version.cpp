@@ -22,8 +22,8 @@
 
 #include "Version.h"
 
-#include <Basics/ResultT.h>
 #include <Basics/Exceptions.h>
+#include <Basics/ResultT.h>
 #include <Basics/StringUtils.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Slice.h>

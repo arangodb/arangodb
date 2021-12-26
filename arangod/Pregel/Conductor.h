@@ -78,10 +78,10 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::vector<CollectionID> _edgeCollections;
   std::vector<ServerID> _dbServers;
   std::vector<ShardID> _allShards;  // persistent shard list
-  
+
   // maps from vertex collection name to a list of edge collections that this
-  // vertex collection is restricted to. only use for a collection if there is at least
-  // one entry for the collection!
+  // vertex collection is restricted to. only use for a collection if there is
+  // at least one entry for the collection!
   std::unordered_map<CollectionID, std::vector<CollectionID>> _edgeCollectionRestrictions;
 
   // initialized on startup
@@ -111,7 +111,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   double _finalizationStartTimeSecs = 0.0;
   double _storeTimeSecs = 0.0;
   double _endTimeSecs = 0.0;
-  double _stepStartTimeSecs = 0.0; // start time of current gss
+  double _stepStartTimeSecs = 0.0;  // start time of current gss
   Scheduler::WorkHandle _workHandle;
 
   bool _startGlobalStep();
@@ -151,7 +151,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   }
 
   bool canBeGarbageCollected() const;
-  
+
   uint64_t executionNumber() const { return _executionNumber; }
 
  private:

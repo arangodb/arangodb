@@ -40,7 +40,7 @@ struct MessageFormat {
   virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
 };
 
-template<typename T>
+template <typename T>
 struct IntegerMessageFormat : public MessageFormat<T> {
   static_assert(std::is_integral<T>::value, "");
   IntegerMessageFormat() {}

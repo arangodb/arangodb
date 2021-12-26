@@ -42,9 +42,7 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature&, TtlStatistics& out);
 Result getTtlPropertiesFromAllDBServers(ClusterFeature&, arangodb::velocypack::Builder& out);
 
 /// @brief set TTL properties on all DBservers
-Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
-                                      arangodb::velocypack::Slice properties,
+Result setTtlPropertiesOnAllDBServers(ClusterFeature&, arangodb::velocypack::Slice properties,
                                       arangodb::velocypack::Builder& out);
 
 }  // namespace arangodb
-

@@ -27,8 +27,8 @@
 
 namespace arangodb {
 
-// this feature is responsible for performing a cluster upgrade. 
-// it is only doing something in a coordinator, and only if the server was started 
+// this feature is responsible for performing a cluster upgrade.
+// it is only doing something in a coordinator, and only if the server was started
 // with the option `--database.auto-upgrade true`. The feature is late in the
 // startup sequence, so it can use the full cluster functionality when run.
 // after the feature has executed the upgrade, it will shut down the server.
@@ -39,7 +39,7 @@ class ClusterUpgradeFeature final : public application_features::ApplicationFeat
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  
+
   void setBootstrapVersion();
 
  private:
@@ -51,4 +51,3 @@ class ClusterUpgradeFeature final : public application_features::ApplicationFeat
 };
 
 }  // namespace arangodb
-

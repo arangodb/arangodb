@@ -46,7 +46,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void unprepare() override final;
 
   double keepAliveTimeout() const noexcept;
-  bool proxyCheck() const noexcept ;
+  bool proxyCheck() const noexcept;
   bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> trustedProxies() const;
   bool allowMethodOverride() const noexcept;
@@ -71,16 +71,11 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
     _requestBodySizeVst.count(bodySize);
   }
 
-  void countHttp2Connection() {
-    _http2Connections.count();
-  }
+  void countHttp2Connection() { _http2Connections.count(); }
 
-  void countVstConnection() {
-    _vstConnections.count();
-  }
+  void countVstConnection() { _vstConnections.count(); }
 
  private:
-
   void buildServers();
   void defineHandlers();
 
@@ -108,4 +103,3 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
 };
 
 }  // namespace arangodb
-

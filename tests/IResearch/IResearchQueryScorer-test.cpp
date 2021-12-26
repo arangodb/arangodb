@@ -58,12 +58,13 @@ TEST_P(IResearchQueryScorerTest, test) {
   static std::vector<std::string> const EMPTY;
 
   auto createJson = arangodb::velocypack::Parser::fromJson(
-  "{ \
+      "{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
@@ -112,10 +113,10 @@ TEST_P(IResearchQueryScorerTest, test) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -445,7 +446,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     }
     EXPECT_TRUE(expectedDocs.empty());
   }
-  
+
   // FIXME
   // inline subqueries aren't supported, e.g. the query below will be transformed into
   //
@@ -460,15 +461,17 @@ TEST_P(IResearchQueryScorerTest, test) {
         "RETURN { d, 'score' : customscorer(d, (FOR j IN testView SEARCH "
         "j.name == 'A' SORT BM25(j) RETURN j)[0].seq) }";
 
-    // need to turn off certain optimizations so that the independent subquery is not moved 
-    // out of the FOR loop
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query, nullptr, 
-        "{ \"optimizer\": { \"rules\": [\"-move-calculations-up\", \"-move-calculations-up-2\"]}}");
+    // need to turn off certain optimizations so that the independent subquery
+    // is not moved out of the FOR loop
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, query, nullptr,
+        "{ \"optimizer\": { \"rules\": [\"-move-calculations-up\", "
+        "\"-move-calculations-up-2\"]}}");
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_INTERNAL));
   }
 
-  // test that moves an unrelated subquery out of the loop (same case as above, but
-  // with the subquery moved)
+  // test that moves an unrelated subquery out of the loop (same case as above,
+  // but with the subquery moved)
   {
     std::map<size_t, irs::string_ref> expectedDocs{{0, "B"}};
 
@@ -482,14 +485,14 @@ TEST_P(IResearchQueryScorerTest, test) {
 
     auto result = queryResult.data->slice();
     EXPECT_TRUE(result.isArray());
-   
+
     arangodb::velocypack::ArrayIterator resultIt(result);
     ASSERT_EQ(1, resultIt.size());
 
     for (; resultIt.valid(); resultIt.next()) {
       auto const actualValue = resultIt.value();
       ASSERT_TRUE(actualValue.isObject());
-    
+
       auto actualScoreSlice = actualValue.get("score");
       ASSERT_TRUE(actualScoreSlice.isNumber());
       auto const actualScore = actualScoreSlice.getNumber<size_t>();
@@ -550,7 +553,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -652,7 +657,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -759,7 +766,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -865,7 +874,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -972,7 +983,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1079,7 +1092,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1195,7 +1210,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1302,7 +1319,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1385,7 +1404,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1469,7 +1490,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1584,7 +1607,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1667,7 +1692,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1745,7 +1772,9 @@ TEST_P(IResearchQueryScorerTest, test) {
                                                  arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
                                              }));
 
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     arangodb::aql::QueryString(queryString), nullptr);
 
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
     auto* plan = query->plan();
@@ -1762,10 +1791,9 @@ TEST_P(IResearchQueryScorerTest, test) {
             nodes.front());
     ASSERT_TRUE(viewNode);
     auto scorers = viewNode->scorers();
-    std::sort(
-        scorers.begin(), scorers.end(), [](auto const& lhs, auto const& rhs) noexcept {
-          return lhs.var->name < rhs.var->name;
-        });
+    std::sort(scorers.begin(), scorers.end(), [](auto const& lhs, auto const& rhs) noexcept {
+      return lhs.var->name < rhs.var->name;
+    });
 
     // check "tfidf(d)" scorer
     {
@@ -1834,7 +1862,5 @@ TEST_P(IResearchQueryScorerTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryScorerTest,
-  IResearchQueryScorerTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryScorerTest, IResearchQueryScorerTest,
+                        GetLinkVersions());

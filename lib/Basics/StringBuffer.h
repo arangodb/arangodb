@@ -116,7 +116,8 @@ ErrorCode TRI_CopyStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t co
 void TRI_EraseFrontStringBuffer(TRI_string_buffer_t*, size_t);
 
 /// @brief replaces characters
-ErrorCode TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self, char const* str, size_t len);
+ErrorCode TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self,
+                                        char const* str, size_t len);
 
 /// @brief appends character
 ErrorCode TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr);
@@ -577,4 +578,3 @@ class StringBuffer {
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::basics::StringBuffer const&);
-

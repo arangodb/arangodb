@@ -84,7 +84,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
+  using Index::toVelocyPack;  // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
   virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
                             std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
 
@@ -117,20 +117,16 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
     IndexFactory(application_features::ApplicationServer& server);
 
    public:
-    bool equal(velocypack::Slice lhs,
-               velocypack::Slice rhs,
+    bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
                std::string const& dbname) const override;
 
     std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                       velocypack::Slice definition,
-                                       IndexId id,
+                                       velocypack::Slice definition, IndexId id,
                                        bool isClusterConstructor) const override;
 
-    virtual Result normalize(
-        velocypack::Builder& normalized,
-        velocypack::Slice definition,
-        bool isCreation,
-        TRI_vocbase_t const& vocbase) const override;
+    virtual Result normalize(velocypack::Builder& normalized,
+                             velocypack::Slice definition, bool isCreation,
+                             TRI_vocbase_t const& vocbase) const override;
   };
 
   static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
@@ -138,4 +134,3 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
 
 }  // namespace iresearch
 }  // namespace arangodb
-

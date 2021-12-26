@@ -39,7 +39,8 @@ using namespace arangodb::pregel;
 
 RestPregelHandler::RestPregelHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response), _pregel(server.getFeature<PregelFeature>()) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _pregel(server.getFeature<PregelFeature>()) {}
 
 RestStatus RestPregelHandler::execute() {
   try {
@@ -80,7 +81,8 @@ RestStatus RestPregelHandler::execute() {
         << "Exception in pregel REST handler: " << ex.what();
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    LOG_TOPIC("e2ef6", ERR, Logger::PREGEL) << "Exception in pregel REST handler";
+    LOG_TOPIC("e2ef6", ERR, Logger::PREGEL)
+        << "Exception in pregel REST handler";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "error in pregel handler");
   }

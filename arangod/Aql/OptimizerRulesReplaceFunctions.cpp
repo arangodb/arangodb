@@ -179,7 +179,7 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
   // return reference to outVariable
   return ast->createNodeReference(subqueryOutVariable);
 }
-  
+
 bool isGeoIndex(arangodb::Index::IndexType type) {
   return type == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
          type == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
@@ -188,14 +188,14 @@ bool isGeoIndex(arangodb::Index::IndexType type) {
 
 std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* docRef,
                                                           NearOrWithinParams& params) {
-
   AstNode* accessNodeLat = docRef;
   AstNode* accessNodeLon = docRef;
   bool indexFound = false;
-  
+
   aql::Collection* coll = ast->query().collections().get(params.collection);
   if (!coll) {
-    coll = aql::addCollectionToQuery(ast->query(), params.collection, "NEAR OR WITHIN");
+    coll = aql::addCollectionToQuery(ast->query(), params.collection,
+                                     "NEAR OR WITHIN");
   }
 
   for (auto& idx : coll->indexes()) {
@@ -262,7 +262,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   // )
 
   //// enumerate collection
-  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, "NEAR OR WITHIN");
+  auto* aqlCollection =
+      aql::addCollectionToQuery(query, params.collection, "NEAR OR WITHIN");
 
   Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
   ExecutionNode* eEnumerate = plan->registerNode(
@@ -282,7 +283,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   argsArray->addMember(accessNodeLon);
   argsArray->addMember(params.latitude);
   argsArray->addMember(params.longitude);
-  auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray, true);
+  auto* funDist =
+      ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray, true);
 
   AstNode* expressionAst = funDist;
 
@@ -350,14 +352,13 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
     argsArrayMerge->addMember(docRef);
     argsArrayMerge->addMember(obj);
 
-    auto* funMerge =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"), argsArrayMerge, true);
+    auto* funMerge = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"),
+                                                 argsArrayMerge, true);
 
     Variable* calcMergeOutVariable = ast->variables()->createTemporaryVariable();
     auto calcMergeExpr = std::make_unique<Expression>(ast, funMerge);
-    ExecutionNode* eCalcMerge =
-        plan->registerNode(new CalculationNode(plan, plan->nextId(), std::move(calcMergeExpr),
-                                               calcMergeOutVariable));
+    ExecutionNode* eCalcMerge = plan->registerNode(
+        new CalculationNode(plan, plan->nextId(), std::move(calcMergeExpr), calcMergeOutVariable));
     plan->insertAfter(eSortOrFilter, eCalcMerge);
 
     //// wrap plan part into subquery
@@ -397,15 +398,16 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
 
   // check for suitable indexes
   std::string cname = coll->getString();
-  
-  aql::Collection* collection = aql::addCollectionToQuery(ast->query(), cname, "WITHIN_RECTANGLE");
+
+  aql::Collection* collection =
+      aql::addCollectionToQuery(ast->query(), cname, "WITHIN_RECTANGLE");
 
   if (coll->type != NODE_TYPE_COLLECTION) {
     auto const& resolver = ast->query().resolver();
     coll = ast->createNodeCollection(resolver, coll->getStringValue(),
                                      coll->getStringLength(), AccessMode::Type::READ);
   }
-  
+
   std::shared_ptr<arangodb::Index> index;
   for (auto& idx : collection->indexes()) {
     if (::isGeoIndex(idx->type())) {
@@ -509,12 +511,12 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   std::shared_ptr<arangodb::Index> index = nullptr;
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(params.attribute, field, false);
-  
+
   aql::Collection* coll = query.collections().get(params.collection);
   if (!coll) {
     coll = addCollectionToQuery(query, params.collection, "FULLTEXT");
   }
-  
+
   for (auto& idx : coll->indexes()) {
     if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       if (basics::AttributeName::isIdentical(idx->fields()[0], field,
@@ -531,7 +533,8 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   }
 
   // index part 2 - get remaining vars required for index creation
-  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, "FULLTEXT");
+  auto* aqlCollection =
+      aql::addCollectionToQuery(query, params.collection, "FULLTEXT");
   auto condition = std::make_unique<Condition>(ast);
   condition->andCombine(funAstNode);
   condition->normalize(plan);
@@ -579,7 +582,7 @@ void arangodb::aql::replaceNearWithinFulltextRule(Optimizer* opt,
           replacement = replaceFullText(astnode, node, plan.get());
           TRI_ASSERT(replacement);
         }
-      
+
         if (replacement) {
           modified = true;
           return replacement;

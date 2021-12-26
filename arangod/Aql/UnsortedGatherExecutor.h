@@ -113,4 +113,3 @@ class UnsortedGatherExecutor {
 };
 
 }  // namespace arangodb::aql
-

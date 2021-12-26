@@ -142,7 +142,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief request an unlock for a collection
   Result doUnlock(AccessMode::Type) override;
-  
+
   Result ensureCollection();
 
  private:
@@ -159,9 +159,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
-  
+
   bool _usageLocked;
   bool _exclusiveWrites;
 };
 }  // namespace arangodb
-

@@ -29,9 +29,9 @@
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Transaction/Methods.h"
 #include "Aql/RegisterInfos.h"
 #include "DocumentProducingHelper.h"
+#include "Transaction/Methods.h"
 
 #include <memory>
 #include <string>
@@ -66,8 +66,8 @@ class EnumerateCollectionExecutorInfos {
   EnumerateCollectionExecutorInfos(RegisterId outputRegister, aql::QueryContext& query,
                                    Collection const* collection, Variable const* outVariable,
                                    bool produceResult, Expression* filter,
-                                   arangodb::aql::Projections projections,
-                                   bool random, bool count, ReadOwnWrites readOwnWrites);
+                                   arangodb::aql::Projections projections, bool random,
+                                   bool count, ReadOwnWrites readOwnWrites);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
@@ -85,6 +85,7 @@ class EnumerateCollectionExecutorInfos {
   RegisterId getOutputRegisterId() const;
 
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
+
  private:
   aql::QueryContext& _query;
   Collection const* _collection;
@@ -126,7 +127,7 @@ class EnumerateCollectionExecutor {
    * @return bool done in case we do not have any input and upstreamState is done
    */
   void initializeNewRow(AqlItemBlockInputRange& inputRange);
-  
+
   /**
    * @brief This Executor in some cases knows how many rows it will produce and most by itself
    */
@@ -168,4 +169,3 @@ class EnumerateCollectionExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -42,8 +42,7 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 DropCollection::DropCollection(MaintenanceFeature& feature, ActionDescription const& d)
-    : ActionBase(feature, d),
-      ShardDefinition(d.get(DATABASE), d.get(SHARD)) {
+    : ActionBase(feature, d), ShardDefinition(d.get(DATABASE), d.get(SHARD)) {
   std::stringstream error;
 
   if (!ShardDefinition::isValid()) {
@@ -78,7 +77,7 @@ bool DropCollection::first() {
       if (found.ok()) {
         TRI_ASSERT(coll);
         LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
-          << "Dropping local collection " + shard;
+            << "Dropping local collection " + shard;
         result(Collections::drop(*coll, false, 2.5));
 
         // it is safe here to clear our replication failure statistics even
@@ -89,7 +88,8 @@ bool DropCollection::first() {
         std::stringstream error;
 
         error << "failed to lookup local collection " << database << "/" << shard;
-        LOG_TOPIC("02722", ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
+        LOG_TOPIC("02722", ERR, Logger::MAINTENANCE)
+            << "DropCollection: " << error.str();
         result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
 
         return false;

@@ -43,32 +43,31 @@ char const* const Variable::NAME_CURRENT = "$CURRENT";
 
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
-    : id(id), 
-      name(std::move(name)), 
-      isDataFromCollection(isDataFromCollection) {}
+    : id(id), name(std::move(name)), isDataFromCollection(isDataFromCollection) {}
 
 Variable::Variable(arangodb::velocypack::Slice const& slice)
-    : id(arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice, "id")),
-      name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
-      isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false)),
+    : id(arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice,
+                                                                                 "id")),
+      name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
+                                                                      "name")),
+      isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(
+          slice, "isDataFromCollection", false)),
       _constantValue(slice.get("constantValue")) {}
 
 /// @brief destroy the variable
-Variable::~Variable() {
-  _constantValue.destroy();
+Variable::~Variable() { _constantValue.destroy(); }
+
+Variable* Variable::clone() const {
+  return new Variable(name, id, isDataFromCollection);
 }
-  
-Variable* Variable::clone() const { 
-  return new Variable(name, id, isDataFromCollection); 
-}
-  
+
 bool Variable::isUserDefined() const {
   TRI_ASSERT(!name.empty());
   char const c = name[0];
   // variables starting with a number are not user-defined
   return (c < '0' || c > '9');
 }
-  
+
 bool Variable::needsRegister() const {
   TRI_ASSERT(!name.empty());
   // variables starting with a number are not user-defined

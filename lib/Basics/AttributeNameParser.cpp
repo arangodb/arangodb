@@ -40,11 +40,13 @@ using AttributeName = arangodb::basics::AttributeName;
 arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name)
     : AttributeName(name, false) {}
 
-arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name, bool expand)
+arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name,
+                                               bool expand)
     : name(name.toString()), shouldExpand(expand) {}
 
 uint64_t arangodb::basics::AttributeName::hash(uint64_t seed) const {
-  return fasthash64(name.data(), name.size(), seed) ^ (shouldExpand ? 0xec59a4d : 0x4040ec59a4d40);
+  return fasthash64(name.data(), name.size(), seed) ^
+         (shouldExpand ? 0xec59a4d : 0x4040ec59a4d40);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +125,8 @@ void arangodb::basics::TRI_ParseAttributeString(std::string const& input,
 void arangodb::basics::TRI_ParseAttributeString(std::string_view input,
                                                 std::vector<AttributeName>& result,
                                                 bool allowExpansion) {
-  TRI_ParseAttributeString(arangodb::velocypack::StringRef(input.data(), input.size()), result, allowExpansion);
+  TRI_ParseAttributeString(arangodb::velocypack::StringRef(input.data(), input.size()),
+                           result, allowExpansion);
 }
 
 void arangodb::basics::TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,
@@ -187,7 +190,7 @@ void arangodb::basics::TRI_AttributeNamesToString(std::vector<AttributeName> con
 
 bool arangodb::basics::TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input) {
   return std::any_of(input.begin(), input.end(), [](AttributeName const& value) {
-    return value.shouldExpand; 
+    return value.shouldExpand;
   });
 }
 

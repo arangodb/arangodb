@@ -198,12 +198,10 @@ void SharedAqlItemBlockPtr::swap(SharedAqlItemBlockPtr& other) noexcept {
 }
 
 void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
-  if (_aqlItemBlock != nullptr &&
-      _aqlItemBlock->decrRefCount() == 0) {
+  if (_aqlItemBlock != nullptr && _aqlItemBlock->decrRefCount() == 0) {
     returnBlock();
   }
 }
 
 }  // namespace aql
 }  // namespace arangodb
-

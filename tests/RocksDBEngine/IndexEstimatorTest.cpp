@@ -24,9 +24,9 @@
 #include "Basics/Common.h"
 #include "gtest/gtest.h"
 
-#include "RocksDBEngine/RocksDBMetadata.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBMetadata.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
 #include <velocypack/StringRef.h>
@@ -142,7 +142,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
   std::string serialization;
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-    
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test basic insertion buffering
@@ -170,7 +170,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     serialization.clear();
     ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(iteration + 1))) ==
-            est.computeEstimate());
+                est.computeEstimate());
   }
 
   // test basic removal buffering
@@ -189,7 +189,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     serialization.clear();
     ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(10 - iteration))) ==
-            est.computeEstimate());
+                est.computeEstimate());
 
     meta.removeBlocker(TransactionId{iteration});
 
@@ -199,7 +199,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
     expected = currentSeq;
     ASSERT_EQ(est.appliedSeq(), expected);
     ASSERT_TRUE((1.0 / std::max(1.0, static_cast<double>(10 - (iteration + 1)))) ==
-            est.computeEstimate());
+                est.computeEstimate());
     ASSERT_EQ(est.appliedSeq(), expected);
   }
 }
@@ -209,7 +209,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
   std::string serialization;
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-  
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test buffering with multiple blockers, but remove blockers in order
@@ -240,7 +240,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
   std::string serialization;
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-  
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test buffering where we keep around one old blocker
@@ -278,7 +278,7 @@ TEST_F(IndexEstimatorTest, test_truncate_logic) {
   rocksdb::SequenceNumber expected(0);
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-  
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test buffering where we keep around one old blocker
@@ -322,7 +322,7 @@ TEST_F(IndexEstimatorTest, test_truncate_logic_2) {
   rocksdb::SequenceNumber currentSeq(0);
   RocksDBCuckooIndexEstimatorType est(2048);
   RocksDBMetadata meta;
-  
+
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
 
   // test buffering where we keep around one old blocker
@@ -363,10 +363,10 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
     }
 
     est->setAppliedSeq(seq);
-    
+
     return est;
   };
-  
+
   auto validateSerializedValue = [&](auto& est, std::string const& serialization) {
     arangodb::velocypack::StringRef ref(serialization);
     RocksDBCuckooIndexEstimatorType copy(ref);
@@ -396,7 +396,7 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
     EXPECT_EQ(est.computeEstimate(), copy.computeEstimate());
   };
 
-  { 
+  {
     // uncompressed
     auto est = buildEstimator();
 
@@ -409,7 +409,7 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
     validateSerializedValue(*est, serialization);
   }
 
-  { 
+  {
     // compressed
     auto est = buildEstimator();
 
@@ -418,8 +418,7 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
     est->serialize(serialization, seq, format);
     ASSERT_EQ(10056, serialization.size());
     ASSERT_EQ(format, serialization[sizeof(uint64_t)]);
-    
+
     validateSerializedValue(*est, serialization);
   }
-
 }

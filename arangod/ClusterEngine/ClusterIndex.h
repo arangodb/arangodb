@@ -68,7 +68,8 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& =
+                                 arangodb::velocypack::StringRef()) const override;
 
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;
@@ -76,7 +77,7 @@ class ClusterIndex : public Index {
   void load() override {}
   void unload() override {}
   size_t memory() const override { return 0; }
-  
+
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
   bool hasCoveringIterator() const override;
@@ -84,13 +85,13 @@ class ClusterIndex : public Index {
   /// @brief Checks if this index is identical to the given definition
   bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
 
-  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                             arangodb::aql::AstNode const* node,
-                                             arangodb::aql::Variable const* reference, 
-                                             size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+      size_t itemsInIndex) const override;
 
   Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                         arangodb::aql::Variable const* reference, 
+                                         arangodb::aql::Variable const* reference,
                                          size_t itemsInIndex) const override;
 
   /// @brief specializes the condition for use with the index
@@ -112,4 +113,3 @@ class ClusterIndex : public Index {
   std::vector<std::vector<arangodb::basics::AttributeName>> _coveredFields;
 };
 }  // namespace arangodb
-

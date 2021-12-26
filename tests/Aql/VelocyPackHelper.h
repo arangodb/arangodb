@@ -50,7 +50,7 @@ void VPackToAqlItemBlock(velocypack::Slice data, arangodb::aql::RegisterCount nr
 
 // Convert a single VPackBuffer into an AqlItemBlock
 arangodb::aql::SharedAqlItemBlockPtr vPackBufferToAqlItemBlock(
-  arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer);
+    arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer);
 
 /**
  * @brief Convert a list of VPackBufferPtr to a vector of AqlItemBlocks.

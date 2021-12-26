@@ -52,9 +52,8 @@ struct TestView : public arangodb::LogicalView {
 
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
       : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder,
-      Serialization) const override {
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
+                                                Serialization) const override {
     builder.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
@@ -66,8 +65,7 @@ struct TestView : public arangodb::LogicalView {
     return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
-                                      bool isUserRequest,
-                                      bool /*partialUpdate*/) override {
+                                      bool isUserRequest, bool /*partialUpdate*/) override {
     EXPECT_TRUE(isUserRequest);
     _properties = arangodb::velocypack::Builder(properties);
     return arangodb::Result();
@@ -79,7 +77,8 @@ struct TestView : public arangodb::LogicalView {
 
 struct ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice definition, bool isUserRequest) const override {
+                                  arangodb::velocypack::Slice definition,
+                                  bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
     view = vocbase.createView(definition);
 
@@ -123,7 +122,8 @@ class RestViewHandlerTest
 TEST_F(RestViewHandlerTest, test_auth) {
   // test create
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -172,10 +172,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       EXPECT_TRUE(vocbase.views().empty());
     }
 
@@ -201,10 +202,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       EXPECT_TRUE(vocbase.views().empty());
     }
 
@@ -236,7 +238,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -258,7 +261,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -280,10 +283,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -310,10 +314,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -344,7 +349,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -370,7 +376,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -392,10 +398,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
       auto view1 = vocbase.lookupView("testView1");
@@ -424,10 +431,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
       auto view1 = vocbase.lookupView("testView1");
@@ -463,10 +471,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
       auto view1 = vocbase.lookupView("testView1");
@@ -504,7 +513,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -530,7 +540,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -552,10 +562,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -582,10 +593,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -619,10 +631,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_INTERNAL ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_INTERNAL ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
       slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
@@ -734,7 +747,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -756,7 +770,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-  
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -778,10 +792,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     }
 
     // not authorized (failed detailed toVelocyPack(...)) as per https://github.com/arangodb/backlog/issues/459
@@ -813,10 +828,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     }
 
     // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
@@ -881,7 +897,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
@@ -904,7 +921,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -926,10 +943,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     }
 
     // not authorized (failed detailed toVelocyPack(...))
@@ -961,10 +979,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     }
 
     // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
@@ -1031,7 +1050,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
         "{ \"name\": \"testView1\", \"type\": \"testViewType\" }");
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
     auto logicalView1 = vocbase.createView(createView1Json->slice());
     ASSERT_FALSE(!logicalView1);
     auto logicalView2 = vocbase.createView(createView2Json->slice());
@@ -1054,7 +1074,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -1076,10 +1096,11 @@ TEST_F(RestViewHandlerTest, test_auth) {
       EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                    slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                    true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                   slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                   TRI_ERROR_FORBIDDEN ==
-                       ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+      EXPECT_TRUE(
+          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+           TRI_ERROR_FORBIDDEN ==
+               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     }
 
     // not authorized (failed detailed toVelocyPack(...)) as per https://github.com/arangodb/backlog/issues/459

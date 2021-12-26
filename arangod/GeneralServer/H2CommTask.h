@@ -99,7 +99,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   /// handle stream request in arangodb
   void processStream(Stream& strm);
-  
+
   void processRequest(Stream& stream, std::unique_ptr<HttpRequest> req);
 
   /// should close connection
@@ -115,7 +115,6 @@ class H2CommTask final : public GeneralCommTask<T> {
   Stream* findStream(int32_t sid);
 
  private:
-
   /// @brief used to generate the full url for debugging
   std::string url(HttpRequest const* req) const;
 
@@ -130,8 +129,6 @@ class H2CommTask final : public GeneralCommTask<T> {
   std::atomic<unsigned> _numProcessing{0};
 
   std::atomic<bool> _signaledWrite{false};
-
 };
 }  // namespace rest
 }  // namespace arangodb
-

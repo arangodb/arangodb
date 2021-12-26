@@ -65,14 +65,14 @@ std::string_view GeneralRequest::translateMethod(RequestType method) {
     case RequestType::ILLEGAL:
       break;
   }
-      
+
   LOG_TOPIC("62a53", WARN, arangodb::Logger::FIXME)
-        << "illegal http request method encountered in switch";
+      << "illegal http request method encountered in switch";
 
   return {"UNKNOWN"};  // in order to please MSVC
 }
 
-namespace  {
+namespace {
 rest::RequestType translateMethod(VPackStringRef const& methodString) {
   if (methodString == "DELETE") {
     return RequestType::DELETE_REQ;
@@ -91,7 +91,7 @@ rest::RequestType translateMethod(VPackStringRef const& methodString) {
   }
   return RequestType::ILLEGAL;
 }
-}
+}  // namespace
 
 rest::RequestType GeneralRequest::translateMethod(VPackStringRef const& method) {
   auto ret = ::translateMethod(method);
@@ -227,7 +227,7 @@ std::string const& GeneralRequest::value(std::string const& key) const {
 }
 
 std::map<std::string, std::string> GeneralRequest::parameters() const {
-  std::map<std::string, std::string> parameters {};
+  std::map<std::string, std::string> parameters{};
   for (auto const& paramPair : values()) {
     parameters.try_emplace(paramPair.first, paramPair.second);
   }

@@ -65,7 +65,6 @@ struct QueryEntryCopy {
   QueryExecutionState::ValueType const state;
   std::optional<ErrorCode> resultCode;
   bool stream;
-
 };
 
 class QueryList {
@@ -225,7 +224,7 @@ class QueryList {
  private:
   std::string extractQueryString(Query const& query, size_t maxLength) const;
 
-  void killQuery(Query& query, size_t maxLength, bool silent); 
+  void killQuery(Query& query, size_t maxLength, bool silent);
 
   /// @brief default maximum number of slow queries to keep in list
   static constexpr size_t defaultMaxSlowQueries = 64;
@@ -257,7 +256,7 @@ class QueryList {
 
   /// @brief whether or not bind vars are also tracked with queries
   std::atomic<bool> _trackBindVars;
-  
+
   /// @brief whether or not data source names are also tracked with queries
   std::atomic<bool> _trackDataSources;
 
@@ -275,4 +274,3 @@ class QueryList {
 };
 }  // namespace aql
 }  // namespace arangodb
-

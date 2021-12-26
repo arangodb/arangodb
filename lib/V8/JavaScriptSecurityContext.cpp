@@ -47,9 +47,7 @@ char const* JavaScriptSecurityContext::typeName() const {
   return "unknown";
 }
 
-void JavaScriptSecurityContext::reset() {
-  _canUseDatabase = false;
-}
+void JavaScriptSecurityContext::reset() { _canUseDatabase = false; }
 
 bool JavaScriptSecurityContext::canDefineHttpAction() const {
   return _type == Type::Internal;
@@ -64,7 +62,8 @@ bool JavaScriptSecurityContext::canWriteFs() const {
 }
 
 bool JavaScriptSecurityContext::canControlProcesses() const {
-  return _type == Type::Internal || _type == Type::AdminScript || _type == Type::RestAdminScriptAction;
+  return _type == Type::Internal || _type == Type::AdminScript ||
+         _type == Type::RestAdminScriptAction;
 }
 
 /*static*/ JavaScriptSecurityContext JavaScriptSecurityContext::createRestrictedContext() {

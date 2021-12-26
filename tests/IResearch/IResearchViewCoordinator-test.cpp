@@ -22,8 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "../Mocks/StorageEngineMock.h"
 #include "../Mocks/Servers.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "AgencyMock.h"
 #include "common.h"
 #include "gtest/gtest.h"
@@ -60,10 +60,10 @@
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewCoordinator.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Random/RandomFeature.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -89,7 +89,6 @@
 
 class IResearchViewCoordinatorTest : public ::testing::Test {
  protected:
-
   arangodb::tests::mocks::MockCoordinator server;
 
   IResearchViewCoordinatorTest() : server() {
@@ -123,10 +122,10 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
       "\"collections\": [1,2,3] }");
 
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
+                  testDBInfo(server.server()));
   arangodb::LogicalView::ptr view;
-  ASSERT_TRUE(
-      (arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
+  ASSERT_TRUE((arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -164,7 +163,8 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
 
   ASSERT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
-                                            collectionJson0->slice(), 0.0, false, nullptr).ok());
+                                             collectionJson0->slice(), 0.0, false, nullptr)
+                  .ok());
 
   auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
@@ -226,8 +226,10 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   // view definition with LogicalView (for persistence)
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, testDBInfo(server.server()));
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
+        "}");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
+                          testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
         (arangodb::LogicalView::instantiate(view, vocbase, json->slice()).ok()));
@@ -250,7 +252,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+      EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                      .ok());
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -277,7 +280,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
+      EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties)
+                      .ok());
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -331,8 +335,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     arangodb::LogicalView::ptr logicalView;
     auto res = arangodb::iresearch::IResearchViewCoordinator::factory().create(
-        logicalView, *vocbase, viewCreateJson->slice(),
-        true);
+        logicalView, *vocbase, viewCreateJson->slice(), true);
     EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == res.errorNumber()));
     logicalView = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE((true == !logicalView));
@@ -360,8 +363,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
         });
     arangodb::LogicalView::ptr logicalView;
     auto res = arangodb::iresearch::IResearchViewCoordinator::factory().create(
-        logicalView, *vocbase, viewCreateJson->slice(),
-        true);
+        logicalView, *vocbase, viewCreateJson->slice(), true);
     EXPECT_TRUE((TRI_ERROR_BAD_PARAMETER == res.errorNumber()));
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -408,8 +410,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     arangodb::LogicalView::ptr logicalView;
     auto res = arangodb::iresearch::IResearchViewCoordinator::factory().create(
-        logicalView, *vocbase, viewCreateJson->slice(),
-        true);
+        logicalView, *vocbase, viewCreateJson->slice(), true);
     EXPECT_TRUE((TRI_ERROR_FORBIDDEN == res.errorNumber()));
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -454,8 +455,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     arangodb::LogicalView::ptr logicalView;
     EXPECT_TRUE((arangodb::iresearch::IResearchViewCoordinator::factory()
-                     .create(logicalView, *vocbase, viewCreateJson->slice(),
-                             true)
+                     .create(logicalView, *vocbase, viewCreateJson->slice(), true)
                      .ok()));
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -560,7 +560,8 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
   // create and drop view
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
+        "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
+        "}");
     auto viewId = std::to_string(42);
 
     EXPECT_TRUE(
@@ -644,8 +645,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
                       .setValue(path, value->slice(), 0.0)
                       .successful());
     }
-    ASSERT_TRUE(logicalView->properties(
-      viewUpdateJson->slice(), true, true).ok());
+    ASSERT_TRUE(logicalView->properties(viewUpdateJson->slice(), true, true).ok());
   }
   // check agency record
   {
@@ -653,8 +653,10 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     agencyRecord.openArray();
 
     server.getFeature<arangodb::ClusterFeature>().agencyCache().store().read(
-      arangodb::velocypack::Parser::fromJson(
-        "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")->slice(), agencyRecord);
+        arangodb::velocypack::Parser::fromJson(
+            "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")
+            ->slice(),
+        agencyRecord);
     agencyRecord.close();
 
     ASSERT_TRUE(agencyRecord.slice().isArray());
@@ -747,8 +749,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
                       .successful());
     }
 
-    EXPECT_TRUE((logicalView->properties(
-      viewUpdateJson->slice(), true, true).ok()));
+    EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
     logicalView = ci.getView(vocbase->name(), viewId);
@@ -976,11 +977,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
   {
     auto const collectionId = "100";
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": \"testCollection\", "
+        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
+        "\"testCollection\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                               collectionJson->slice(), 0.0, false, nullptr).ok());
+    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
+                                               1, false, collectionJson->slice(),
+                                               0.0, false, nullptr)
+                    .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_NE(nullptr, logicalCollection);
@@ -988,22 +992,24 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
   // new view definition with links
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }"
-  );
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
 
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-    "{  \"links\": { "
-    "    \"testCollection\": { "
-    "      \"id\":1, "
-    "      \"includeAllFields\":true, "
-    "      \"analyzers\": [\"inPlace\"], "
-    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-    "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
-    "    } "
-    "  } }");
+      "{  \"links\": { "
+      "    \"testCollection\": { "
+      "      \"id\":1, "
+      "      \"includeAllFields\":true, "
+      "      \"analyzers\": [\"inPlace\"], "
+      "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
+      "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
+      "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
+      "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
+      "    } "
+      "  } }");
 
   auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
-  EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
+  EXPECT_TRUE(
+      ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
   auto logicalView = ci.getView(vocbase->name(), viewId);
   ASSERT_NE(nullptr, logicalView);
 
@@ -1012,14 +1018,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
+        "} }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
                     .successful());
   }
 
-  ASSERT_TRUE(logicalView->properties(
-    viewUpdateJson->slice(), true, false).ok());
+  ASSERT_TRUE(logicalView->properties(viewUpdateJson->slice(), true, false).ok());
   logicalView = ci.getView(vocbase->name(), viewId);
   ASSERT_NE(nullptr, logicalView);
 
@@ -1034,9 +1040,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(4, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
   }
 
   // check serialization for properties
@@ -1052,13 +1060,18 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1068,9 +1081,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1079,7 +1094,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1088,7 +1104,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    { // links
+    {  // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
@@ -1098,10 +1114,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                  0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                  tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                  !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                  "none" == tmpSlice2.get("storeValues").copyString());
     }
   }
 
@@ -1118,17 +1138,22 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(18, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
     EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
 
-    { // consolidation policy
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1138,9 +1163,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1149,7 +1176,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1176,13 +1204,18 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1192,9 +1225,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1203,7 +1238,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1213,7 +1249,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    { // links
+    {  // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
@@ -1223,15 +1259,22 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                  0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                  tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                  !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                  "none" == tmpSlice2.get("storeValues").copyString());
       EXPECT_TRUE(tmpSlice2.get("version").isNumber());
       EXPECT_EQ(1, tmpSlice2.get("version").getNumber<uint32_t>());
-      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
-      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() && "lz4" == tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() && 0 == tmpSlice2.get("storedValues").length());
+      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
+                  "testCollection" == tmpSlice2.get("collectionName").copyString());
+      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
+                  "lz4" == tmpSlice2.get("primarySortCompression").copyString());
+      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
+                  0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
@@ -1240,10 +1283,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       tmpSlice2 = tmpSlice2.at(0);
       ASSERT_TRUE(tmpSlice2.isObject());
       EXPECT_EQ(4, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
-      EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
-      EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
-      EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+      EXPECT_TRUE(tmpSlice2.get("name").isString() &&
+                  "inPlace" == tmpSlice2.get("name").copyString());
+      EXPECT_TRUE(tmpSlice2.get("type").isString() &&
+                  "identity" == tmpSlice2.get("type").copyString());
+      EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
+                  0 == tmpSlice2.get("properties").length());
+      EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
+                  0 == tmpSlice2.get("features").length());
     }
   }
 }
@@ -1260,11 +1307,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
   {
     auto const collectionId = "100";
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": \"testCollection\", "
+        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
+        "\"testCollection\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                               collectionJson->slice(), 0.0, false, nullptr).ok());
+    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
+                                               1, false, collectionJson->slice(),
+                                               0.0, false, nullptr)
+                    .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_NE(nullptr, logicalCollection);
@@ -1272,23 +1322,25 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
 
   // new view definition with links
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }"
-  );
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
 
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-    "{  \"links\": { "
-    "    \"testCollection\": { "
-    "      \"id\":1, "
-    "      \"includeAllFields\":true, "
-    "      \"version\":0, "
-    "      \"analyzers\": [\"inPlace\"], "
-    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-    "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
-    "    } "
-    "  } }");
+      "{  \"links\": { "
+      "    \"testCollection\": { "
+      "      \"id\":1, "
+      "      \"includeAllFields\":true, "
+      "      \"version\":0, "
+      "      \"analyzers\": [\"inPlace\"], "
+      "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
+      "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
+      "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
+      "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
+      "    } "
+      "  } }");
 
   auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
-  EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
+  EXPECT_TRUE(
+      ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
   auto logicalView = ci.getView(vocbase->name(), viewId);
   ASSERT_NE(nullptr, logicalView);
 
@@ -1297,14 +1349,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
+        "} }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
                     .successful());
   }
 
-  ASSERT_TRUE(logicalView->properties(
-    viewUpdateJson->slice(), true, false).ok());
+  ASSERT_TRUE(logicalView->properties(viewUpdateJson->slice(), true, false).ok());
   logicalView = ci.getView(vocbase->name(), viewId);
   ASSERT_NE(nullptr, logicalView);
 
@@ -1319,9 +1371,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(4, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
   }
 
   // check serialization for properties
@@ -1337,13 +1391,18 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1353,9 +1412,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1364,7 +1425,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1373,7 +1435,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    { // links
+    {  // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
@@ -1383,10 +1445,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                  0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                  tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                  !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                  "none" == tmpSlice2.get("storeValues").copyString());
     }
   }
 
@@ -1403,17 +1469,22 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(18, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
     EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
 
-    { // consolidation policy
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1423,9 +1494,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1434,7 +1507,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1461,13 +1535,18 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1477,9 +1556,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1488,7 +1569,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1498,7 +1580,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    { // links
+    {  // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
@@ -1508,15 +1590,22 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                  0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                  tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                  !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                  "none" == tmpSlice2.get("storeValues").copyString());
       EXPECT_TRUE(tmpSlice2.get("version").isNumber());
       EXPECT_EQ(0, tmpSlice2.get("version").getNumber<uint32_t>());
-      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
-      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() && "lz4" == tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() && 0 == tmpSlice2.get("storedValues").length());
+      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
+                  "testCollection" == tmpSlice2.get("collectionName").copyString());
+      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
+                  "lz4" == tmpSlice2.get("primarySortCompression").copyString());
+      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
+                  0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
@@ -1525,10 +1614,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request_explicit_versi
       tmpSlice2 = tmpSlice2.at(0);
       ASSERT_TRUE(tmpSlice2.isObject());
       EXPECT_EQ(4, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
-      EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
-      EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
-      EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+      EXPECT_TRUE(tmpSlice2.get("name").isString() &&
+                  "inPlace" == tmpSlice2.get("name").copyString());
+      EXPECT_TRUE(tmpSlice2.get("type").isString() &&
+                  "identity" == tmpSlice2.get("type").copyString());
+      EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
+                  0 == tmpSlice2.get("properties").length());
+      EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
+                  0 == tmpSlice2.get("features").length());
     }
   }
 }
@@ -1545,11 +1638,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
   {
     auto const collectionId = "100";
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": \"testCollection\", "
+        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
+        "\"testCollection\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                               collectionJson->slice(), 0.0, false, nullptr).ok());
+    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
+                                               1, false, collectionJson->slice(),
+                                               0.0, false, nullptr)
+                    .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_NE(nullptr, logicalCollection);
@@ -1557,22 +1653,24 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
   // new view definition with links
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }"
-  );
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
 
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-    "{  \"links\": { "
-    "    \"testCollection\": { "
-    "      \"id\":1, "
-    "      \"includeAllFields\":true, "
-    "      \"analyzers\": [\"inPlace\"], "
-    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-    "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
-    "    } "
-    "  } }");
+      "{  \"links\": { "
+      "    \"testCollection\": { "
+      "      \"id\":1, "
+      "      \"includeAllFields\":true, "
+      "      \"analyzers\": [\"inPlace\"], "
+      "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
+      "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
+      "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
+      "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
+      "    } "
+      "  } }");
 
   auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
-  EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
+  EXPECT_TRUE(
+      ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
   auto logicalView = ci.getView(vocbase->name(), viewId);
   ASSERT_NE(nullptr, logicalView);
 
@@ -1581,7 +1679,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
+        "} }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
                     .successful());
@@ -1602,9 +1701,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(4, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
   }
 
   // check serialization for properties
@@ -1620,13 +1721,18 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1636,9 +1742,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1647,7 +1755,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1656,7 +1765,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    { // links
+    {  // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
@@ -1666,10 +1775,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                  0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                  tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                  !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                  "none" == tmpSlice2.get("storeValues").copyString());
     }
   }
 
@@ -1686,17 +1799,22 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(18, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
     EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
 
-    { // consolidation policy
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1706,9 +1824,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1717,7 +1837,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1744,13 +1865,18 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1760,9 +1886,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1771,7 +1899,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1781,7 +1910,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    { // links
+    {  // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
@@ -1791,15 +1920,22 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                  0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                  tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                  !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                  "none" == tmpSlice2.get("storeValues").copyString());
       EXPECT_TRUE(tmpSlice2.get("version").isNumber());
       EXPECT_EQ(0, tmpSlice2.get("version").getNumber<uint32_t>());
-      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
-      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() && "lz4" == tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() && 0 == tmpSlice2.get("storedValues").length());
+      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
+                  "testCollection" == tmpSlice2.get("collectionName").copyString());
+      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
+                  "lz4" == tmpSlice2.get("primarySortCompression").copyString());
+      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
+                  0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
@@ -1808,10 +1944,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       tmpSlice2 = tmpSlice2.at(0);
       ASSERT_TRUE(tmpSlice2.isObject());
       EXPECT_EQ(4, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
-      EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
-      EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
-      EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+      EXPECT_TRUE(tmpSlice2.get("name").isString() &&
+                  "inPlace" == tmpSlice2.get("name").copyString());
+      EXPECT_TRUE(tmpSlice2.get("type").isString() &&
+                  "identity" == tmpSlice2.get("type").copyString());
+      EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
+                  0 == tmpSlice2.get("properties").length());
+      EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
+                  0 == tmpSlice2.get("features").length());
     }
   }
 }
@@ -1828,11 +1968,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
   {
     auto const collectionId = "100";
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": \"testCollection\", "
+        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
+        "\"testCollection\", "
         "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                               collectionJson->slice(), 0.0, false, nullptr).ok());
+    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
+                                               1, false, collectionJson->slice(),
+                                               0.0, false, nullptr)
+                    .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_NE(nullptr, logicalCollection);
@@ -1840,23 +1983,25 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
 
   // new view definition with links
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }"
-  );
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
 
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-    "{  \"links\": { "
-    "    \"testCollection\": { "
-    "      \"id\":1, "
-    "      \"includeAllFields\":true, "
-    "      \"version\":1, "
-    "      \"analyzers\": [\"inPlace\"], "
-    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-    "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
-    "    } "
-    "  } }");
+      "{  \"links\": { "
+      "    \"testCollection\": { "
+      "      \"id\":1, "
+      "      \"includeAllFields\":true, "
+      "      \"version\":1, "
+      "      \"analyzers\": [\"inPlace\"], "
+      "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
+      "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
+      "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
+      "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
+      "    } "
+      "  } }");
 
   auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
-  EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
+  EXPECT_TRUE(
+      ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
   auto logicalView = ci.getView(vocbase->name(), viewId);
   ASSERT_NE(nullptr, logicalView);
 
@@ -1865,7 +2010,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
+        "} }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
                     .successful());
@@ -1886,9 +2032,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(4, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
   }
 
   // check serialization for properties
@@ -1904,13 +2052,18 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1920,9 +2073,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -1931,7 +2086,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1940,7 +2096,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    { // links
+    {  // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
@@ -1950,10 +2106,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                  0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                  tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                  !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                  "none" == tmpSlice2.get("storeValues").copyString());
     }
   }
 
@@ -1970,17 +2130,22 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(18, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
     EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
     EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
 
-    { // consolidation policy
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -1990,9 +2155,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -2001,7 +2168,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -2028,13 +2196,18 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -2044,9 +2217,11 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -2055,7 +2230,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -2065,7 +2241,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    { // links
+    {  // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
       EXPECT_EQ(1, tmpSlice.length());
@@ -2075,15 +2251,22 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                  0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                  tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                  !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                  "none" == tmpSlice2.get("storeValues").copyString());
       EXPECT_TRUE(tmpSlice2.get("version").isNumber());
       EXPECT_EQ(1, tmpSlice2.get("version").getNumber<uint32_t>());
-      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() && "testCollection" == tmpSlice2.get("collectionName").copyString());
-      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() && "lz4" == tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() && 0 == tmpSlice2.get("storedValues").length());
+      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
+                  "testCollection" == tmpSlice2.get("collectionName").copyString());
+      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
+                  "lz4" == tmpSlice2.get("primarySortCompression").copyString());
+      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
+                  0 == tmpSlice2.get("storedValues").length());
       EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
       tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
@@ -2092,10 +2275,14 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request_explicit_v
       tmpSlice2 = tmpSlice2.at(0);
       ASSERT_TRUE(tmpSlice2.isObject());
       EXPECT_EQ(4, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
-      EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
-      EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
-      EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+      EXPECT_TRUE(tmpSlice2.get("name").isString() &&
+                  "inPlace" == tmpSlice2.get("name").copyString());
+      EXPECT_TRUE(tmpSlice2.get("type").isString() &&
+                  "identity" == tmpSlice2.get("type").copyString());
+      EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
+                  0 == tmpSlice2.get("properties").length());
+      EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
+                  0 == tmpSlice2.get("features").length());
     }
   }
 }
@@ -2109,18 +2296,18 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
   // create view
   auto json = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", "
-    "\"type\": \"arangosearch\", "
-    "\"writebufferActive\": 25, "
-    "\"writebufferIdle\": 64, "
-    "\"locale\": \"C\", "
-    "\"version\": 1, "
-    "\"primarySortCompression\":\"none\","
-    "\"primarySort\": [ "
-    "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
-    "{ \"field\": \"another.field\", \"asc\": false } "
-    "]"
-    "}");
+      "{ \"name\": \"testView\", "
+      "\"type\": \"arangosearch\", "
+      "\"writebufferActive\": 25, "
+      "\"writebufferIdle\": 64, "
+      "\"locale\": \"C\", "
+      "\"version\": 1, "
+      "\"primarySortCompression\":\"none\","
+      "\"primarySort\": [ "
+      "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
+      "{ \"field\": \"another.field\", \"asc\": false } "
+      "]"
+      "}");
 
   auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
 
@@ -2128,7 +2315,8 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
   auto view = ci.getView(vocbase->name(), viewId);
   EXPECT_NE(nullptr, view);
-  EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  EXPECT_NE(nullptr,
+            std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   // check serialization for properties
   {
     VPackSlice tmpSlice, tmpSlice2;
@@ -2142,13 +2330,15 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 25 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(2, tmpSlice.length());
@@ -2193,15 +2383,20 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(18, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
     EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
 
-    { // consolidation policy
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -2211,9 +2406,11 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -2222,7 +2419,8 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(2, tmpSlice.length());
@@ -2264,12 +2462,17 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    { // consolidation policy
+    EXPECT_TRUE(slice.get("type").isString() &&
+                "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
+                1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
       EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
@@ -2279,9 +2482,11 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
       tmpSlice2 = tmpSlice.get("segmentsMax");
       EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() &&
+                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
     }
@@ -2290,7 +2495,8 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     tmpSlice = slice.get("writebufferIdle");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(2, tmpSlice.length());
@@ -2371,7 +2577,8 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     VPackBuilder builder;
 
     builder.openObject();
-    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
     EXPECT_TRUE(1 == meta._version);
@@ -2418,8 +2625,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     decltype(view) fullyUpdatedView;
 
     // update properties
-    EXPECT_TRUE(view->properties(
-      newProperties->slice(), true, false).ok());
+    EXPECT_TRUE(view->properties(newProperties->slice(), true, false).ok());
     EXPECT_EQ(planVersion, arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version hasn't been changed as nothing to update
     planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
@@ -2445,8 +2651,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     decltype(view) fullyUpdatedView;
 
     // update properties
-    EXPECT_TRUE(view->properties(
-      newProperties->slice(), true, false).ok());
+    EXPECT_TRUE(view->properties(newProperties->slice(), true, false).ok());
     EXPECT_LT(planVersion, arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
@@ -2470,7 +2675,9 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
       builder.clear();
       builder.openObject();
-      EXPECT_TRUE(fullyUpdatedView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
+      EXPECT_TRUE(fullyUpdatedView
+                      ->properties(builder, arangodb::LogicalDataSource::Serialization::Properties)
+                      .ok());
       builder.close();
       EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
       EXPECT_TRUE(1 == meta._version);
@@ -2577,9 +2784,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
       "}");
   arangodb::LogicalView::ptr view;
-  ASSERT_TRUE(arangodb::LogicalView::create(
-    view, *vocbase, viewJson->slice(),
-    true).ok());
+  ASSERT_TRUE(
+      arangodb::LogicalView::create(view, *vocbase, viewJson->slice(), true).ok());
   ASSERT_TRUE(view);
   auto const viewId = std::to_string(view->planId().id());
   EXPECT_TRUE("42" == viewId);
@@ -2618,13 +2824,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
       "  \"testCollection3\" : { \"id\": \"3\" } "
       "} }");
-  EXPECT_TRUE(view->properties(
-    linksJson->slice(), true, true).ok());  // add links
+  EXPECT_TRUE(view->properties(linksJson->slice(), true, true).ok());  // add links
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -2650,7 +2855,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2896,8 +3102,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
-  EXPECT_TRUE(view->properties(
-    linksJson->slice(), true, true).ok());  // same properties -> should not affect plan version
+  EXPECT_TRUE(view->properties(linksJson->slice(), true, true).ok());  // same properties -> should not affect plan version
   EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
   // remove testCollection2 link
@@ -2914,13 +3119,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       "{ \"links\": {"
       "  \"2\" : null "
       "} }");
-  EXPECT_TRUE(view->properties(
-    updateJson->slice(), true, true).ok());
+  EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -2945,7 +3149,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -3243,9 +3448,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
       "}");
   arangodb::LogicalView::ptr view;
-  ASSERT_TRUE((arangodb::LogicalView::create(
-    view, *vocbase, viewJson->slice(),
-    true).ok()));
+  ASSERT_TRUE(
+      (arangodb::LogicalView::create(view, *vocbase, viewJson->slice(), true).ok()));
   ASSERT_TRUE(view);
   auto const viewId = std::to_string(view->planId().id());
   EXPECT_TRUE("42" == viewId);
@@ -3275,13 +3479,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       "}, "
       "  \"testCollection3\" : { \"id\": \"3\" } "
       "} }");
-  EXPECT_TRUE(view->properties(
-    linksJson->slice(), true, true).ok());  // add links
+  EXPECT_TRUE(view->properties(linksJson->slice(), true, true).ok());  // add links
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -3306,7 +3509,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -3474,8 +3678,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
-  EXPECT_TRUE(view->properties(
-    linksJson->slice(), true, true).ok());  // same properties -> should not affect plan version
+  EXPECT_TRUE(view->properties(linksJson->slice(), true, true).ok());  // same properties -> should not affect plan version
   EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
   // remove testCollection2 link
@@ -3497,8 +3700,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -3524,7 +3727,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -3775,8 +3979,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   // partial update - empty delta
   {
     auto const updateJson = arangodb::velocypack::Parser::fromJson("{ }");
-    EXPECT_TRUE(view->properties(
-      updateJson->slice(), true, true).ok());  // empty properties -> should not affect plan version
+    EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());  // empty properties -> should not affect plan version
     EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
   }
 
@@ -3847,8 +4050,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection1));
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(arangodb::LogicalView::create(
-      logicalView, *vocbase, viewJson->slice(), true).ok());
+    ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice(), true)
+                    .ok());
     ASSERT_TRUE((false == !logicalView));
 
     EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
@@ -3957,7 +4160,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
       "}");
   arangodb::LogicalView::ptr view;
-  ASSERT_TRUE((arangodb::LogicalView::create(view, *vocbase, viewJson->slice(), true).ok()));
+  ASSERT_TRUE(
+      (arangodb::LogicalView::create(view, *vocbase, viewJson->slice(), true).ok()));
   ASSERT_TRUE(view);
   auto const viewId = std::to_string(view->planId().id());
   EXPECT_TRUE("42" == viewId);
@@ -3991,8 +4195,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -4017,7 +4221,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -4224,8 +4429,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -4249,7 +4454,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -4369,8 +4575,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -4394,7 +4600,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -4608,7 +4815,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
       "}");
   arangodb::LogicalView::ptr view;
-  ASSERT_TRUE(arangodb::LogicalView::create(view, *vocbase, viewJson->slice(), true).ok());
+  ASSERT_TRUE(
+      arangodb::LogicalView::create(view, *vocbase, viewJson->slice(), true).ok());
   ASSERT_TRUE(view);
   auto const viewId = std::to_string(view->planId().id());
   EXPECT_TRUE("42" == viewId);
@@ -4651,8 +4859,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -4678,7 +4886,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -4961,8 +5170,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
   planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
-  view = ci.getView(vocbase->name(), viewId);   // get new version of the view
-  EXPECT_TRUE(view != oldView);                 // different objects
+  view = ci.getView(vocbase->name(), viewId);  // get new version of the view
+  EXPECT_TRUE(view != oldView);                // different objects
   ASSERT_TRUE(nullptr != view);
   ASSERT_TRUE(nullptr !=
               std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -4983,7 +5192,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     VPackBuilder info;
     info.openObject();
-    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                    .ok());
     info.close();
 
     auto const properties = info.slice();
@@ -5071,8 +5281,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
         "{ \"name\": \"testView\", \"id\": \"42\", \"type\": "
         "\"arangosearch\" }");
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(
-        (arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice(), true).ok()));
+    ASSERT_TRUE((arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice(), true)
+                     .ok()));
     auto view =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(logicalView);
     ASSERT_TRUE(view);
@@ -5098,8 +5308,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
 
     auto oldView = view;
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
-        ci.getView(vocbase->name(), viewId));   // get new version of the view
-    EXPECT_TRUE(view != oldView);               // different objects
+        ci.getView(vocbase->name(), viewId));  // get new version of the view
+    EXPECT_TRUE(view != oldView);              // different objects
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -5123,7 +5333,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       VPackBuilder info;
       info.openObject();
-      EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+      EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                      .ok());
       info.close();
 
       auto const properties = info.slice();
@@ -5240,8 +5451,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
     oldView = view;
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
-        ci.getView(vocbase->name(), viewId));   // get new version of the view
-    EXPECT_TRUE(view != oldView);               // different objects
+        ci.getView(vocbase->name(), viewId));  // get new version of the view
+    EXPECT_TRUE(view != oldView);              // different objects
     ASSERT_TRUE(nullptr != view);
     ASSERT_TRUE(nullptr !=
                 std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -5260,7 +5471,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       VPackBuilder info;
       info.openObject();
-      EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
+      EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties)
+                      .ok());
       info.close();
 
       auto const properties = info.slice();
@@ -5301,8 +5513,9 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection1));
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(arangodb::LogicalView::create(
-      logicalView, *vocbase, viewCreateJson->slice(), true).ok());
+    ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase,
+                                              viewCreateJson->slice(), true)
+                    .ok());
     ASSERT_TRUE((false == !logicalView));
     auto const viewId = std::to_string(logicalView->planId().id());
 
@@ -5377,7 +5590,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView
+                    ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                    .ok());  // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -5433,7 +5648,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView
+                    ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                    .ok());  // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -5539,7 +5756,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView
+                      ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                      .ok());  // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -5567,7 +5786,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView
+                      ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                      .ok());  // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -6133,7 +6354,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView
+                    ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                    .ok());  // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -6190,7 +6413,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView
+                    ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                    .ok());  // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -6289,13 +6514,15 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
 
       EXPECT_EQ(TRI_ERROR_FORBIDDEN,
-                  logicalView->properties(viewUpdateJson->slice(), true, true).errorNumber());
+                logicalView->properties(viewUpdateJson->slice(), true, true).errorNumber());
       logicalView = ci.getView(vocbase->name(), viewId);
       ASSERT_TRUE((false == !logicalView));
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView
+                      ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                      .ok());  // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -6323,7 +6550,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView
+                      ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                      .ok());  // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -6884,11 +7113,13 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // dummy query
-    auto query = arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                               arangodb::aql::QueryString("RETURN 1"), nullptr);
+    auto query =
+        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(*vocbase),
+                                     arangodb::aql::QueryString("RETURN 1"), nullptr);
     query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-    arangodb::aql::SingletonNode singleton(query->plan(), arangodb::aql::ExecutionNodeId{0});
+    arangodb::aql::SingletonNode singleton(query->plan(),
+                                           arangodb::aql::ExecutionNodeId{0});
 
     arangodb::aql::Variable const outVariable("variable", 0, false);
 

@@ -40,4 +40,3 @@ class RestTtlHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus handleProperties();
 };
 }  // namespace arangodb
-

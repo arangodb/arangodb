@@ -71,4 +71,3 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 };
 
 }  // namespace arangodb
-

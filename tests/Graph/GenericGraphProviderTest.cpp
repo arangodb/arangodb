@@ -109,7 +109,8 @@ class GraphProviderTest : public ::testing::Test {
       auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
 
       std::vector<IndexAccessor> usedIndexes{};
-      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, std::nullopt, 0});
+      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0,
+                                             nullptr, std::nullopt, 0});
 
       _expressionContext =
           std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx.get(), *query,
@@ -139,7 +140,7 @@ class GraphProviderTest : public ::testing::Test {
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
                                        arangodb::aql::Collection::Hint::Shard);
-        } catch(...) {
+        } catch (...) {
         }
         fakeQuery->prepareQuery(SerializationFormat::SHADOWROWS);
         auto ast = fakeQuery->ast();

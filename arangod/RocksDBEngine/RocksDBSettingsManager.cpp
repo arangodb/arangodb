@@ -87,7 +87,8 @@ arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBa
       batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
                 key.string(), value);
   if (!s.ok()) {
-    LOG_TOPIC("140ec", WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
+    LOG_TOPIC("140ec", WARN, Logger::ENGINES)
+        << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
   }
 
@@ -177,7 +178,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto mappings = _engine.collectionMappings();
 
   // reserve 1MB of scratch space to work with
-  _scratch.reserve(10485760);  
+  _scratch.reserve(10485760);
 
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
@@ -198,11 +199,12 @@ Result RocksDBSettingsManager::sync(bool force) {
     if (!coll) {
       continue;
     }
-    auto sg2 = arangodb::scopeGuard([&]() noexcept { vocbase->releaseCollection(coll.get()); });
+    auto sg2 = arangodb::scopeGuard(
+        [&]() noexcept { vocbase->releaseCollection(coll.get()); });
 
     LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
         << "syncing metadata for collection '" << coll->name() << "'";
-  
+
     // clear our scratch buffer for this round
     _scratch.clear();
 
@@ -236,17 +238,20 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
 
   auto const lastSync = _lastSync.load();
-  
-  LOG_TOPIC("53e4c", TRACE, Logger::ENGINES) 
-      << "about to store lastSync. previous value: " << lastSync << ", current value: " << minSeqNr;
+
+  LOG_TOPIC("53e4c", TRACE, Logger::ENGINES)
+      << "about to store lastSync. previous value: " << lastSync
+      << ", current value: " << minSeqNr;
 
   if (minSeqNr < lastSync) {
     if (minSeqNr != 0) {
-      LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
-        "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+      LOG_TOPIC("1038e", ERR, Logger::ENGINES)
+          << "min tick is smaller than "
+             "safe delete tick (minSeqNr: "
+          << minSeqNr << ") < (lastSync = " << lastSync << ")";
       TRI_ASSERT(false);
     }
-    return Result(); // do not move backwards in time
+    return Result();  // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
@@ -255,9 +260,10 @@ Result RocksDBSettingsManager::sync(bool force) {
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written
   }
-  
+
   TRI_IF_FAILURE("TransactionChaos::randomSleep") {
-    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
 
   _tmpBuilder.clear();
@@ -293,7 +299,8 @@ void RocksDBSettingsManager::loadSettings() {
     // key may not be there, so don't fail when not found
     VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
     TRI_ASSERT(slice.isObject());
-    LOG_TOPIC("7458b", TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
+    LOG_TOPIC("7458b", TRACE, Logger::ENGINES)
+        << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
       try {
@@ -314,14 +321,16 @@ void RocksDBSettingsManager::loadSettings() {
         if (slice.hasKey("releasedTick")) {
           _initialReleasedTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("releasedTick"));
-          LOG_TOPIC("e13f4", TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
+          LOG_TOPIC("e13f4", TRACE, Logger::ENGINES)
+              << "using released tick: " << _initialReleasedTick;
           _engine.releaseTick(_initialReleasedTick);
         }
 
         if (slice.hasKey("lastSync")) {
           _lastSync =
               basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-          LOG_TOPIC("9e695", TRACE, Logger::ENGINES) << "last background settings sync: " << _lastSync;
+          LOG_TOPIC("9e695", TRACE, Logger::ENGINES)
+              << "last background settings sync: " << _lastSync;
         }
       } catch (...) {
         LOG_TOPIC("1b3de", WARN, Logger::ENGINES)

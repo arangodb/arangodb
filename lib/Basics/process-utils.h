@@ -177,23 +177,18 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClosePipe(ExternalProcess* process,
-                   bool read);
+void TRI_ClosePipe(ExternalProcess* process, bool read);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
-                               char* buffer,
-                               size_t bufferSize);
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process, char* buffer, size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_WritePipe(ExternalProcess const* process,
-                   char const* buffer,
-                   size_t bufferSize);
+bool TRI_WritePipe(ExternalProcess const* process, char const* buffer, size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
@@ -224,4 +219,3 @@ bool TRI_ContinueExternalProcess(ExternalId pid);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownProcess();
-

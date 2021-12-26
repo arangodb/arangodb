@@ -44,4 +44,3 @@ bool isUnsafeDivision(T l, T r);
 
 }  // namespace aql
 }  // namespace arangodb
-

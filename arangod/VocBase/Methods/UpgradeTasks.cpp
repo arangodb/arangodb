@@ -155,7 +155,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
         colToDistributeShardsLike = std::move(coll);
       }
     }
-    
+
     if (colToDistributeShardsLike == nullptr) {
       // otherwise, we will use UsersCollection for distributeShardsLike
       res = methods::Collections::createSystem(vocbase, options, StaticStrings::UsersCollection,
@@ -204,8 +204,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
 
     for (auto const& collection : testSystemCollections) {
       VPackBuilder options;
-      methods::Collections::createSystemCollectionProperties(collection, options,
-                                                             vocbase);
+      methods::Collections::createSystemCollectionProperties(collection, options, vocbase);
 
       testSystemCollectionsToCreate.emplace_back(
           CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
@@ -217,18 +216,19 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
                                             testSystemCollectionsToCreate, true, true,
                                             true, colToDistributeShardsLike, cols);
     // capture created collection vector
-    createdCollections.insert(std::end(createdCollections), std::begin(cols), std::end(cols));
+    createdCollections.insert(std::end(createdCollections), std::begin(cols),
+                              std::end(cols));
   }
 
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
-  
+
   for (auto const& cname : systemCollections) {
     std::shared_ptr<LogicalCollection> col;
     res = methods::Collections::lookup(vocbase, cname, col);
     if (col) {
       createdCollections.emplace_back(col);
     }
-    
+
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       // if not found, create it
       VPackBuilder options;
@@ -250,8 +250,8 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     if (res.fail()) {
       return res;
     }
-    createdCollections.insert(std::end(createdCollections),
-                              std::begin(cols), std::end(cols));
+    createdCollections.insert(std::end(createdCollections), std::begin(cols),
+                              std::end(cols));
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -306,8 +306,8 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
         return res;
       }
       // capture created collection vector
-      createdCollections.insert(std::end(createdCollections),
-                                std::begin(cols), std::end(cols));
+      createdCollections.insert(std::end(createdCollections), std::begin(cols),
+                                std::end(cols));
     }
   }
   return {TRI_ERROR_NO_ERROR};
@@ -328,7 +328,8 @@ static Result createIndex(std::string const& name, Index::IndexType type,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "Collection " + name + " not found");
   }
-  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse, false /*estimates*/);
+  return methods::Indexes::createIndex(colIt->get(), type, fields, unique,
+                                       sparse, false /*estimates*/);
 }
 
 Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
@@ -488,7 +489,8 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
 
   // find legacy analyzer collection
   std::shared_ptr<arangodb::LogicalCollection> col;
-  auto res = arangodb::methods::Collections::lookup(vocbase, StaticStrings::LegacyAnalyzersCollection, col);
+  auto res = arangodb::methods::Collections::lookup(vocbase, StaticStrings::LegacyAnalyzersCollection,
+                                                    col);
   if (col) {
     res = arangodb::methods::Collections::drop(*col, true, -1.0);  // -1.0 same as in RestCollectionHandler
     return res.ok();

@@ -51,4 +51,3 @@ using HashSet = emilib::HashSet<KeyT, HashT, EqT>;
 
 }  // namespace containers
 }  // namespace arangodb
-

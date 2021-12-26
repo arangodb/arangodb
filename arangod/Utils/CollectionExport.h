@@ -65,4 +65,3 @@ struct CollectionExport {
   }
 };
 }  // namespace arangodb
-

@@ -40,7 +40,7 @@ class SupervisedScheduler;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace cluster {
 
@@ -97,7 +97,7 @@ class RebootTracker {
 
   void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
   void queueCallback(DescriptedCallback callback);
- 
+
  private:
   mutable Mutex _mutex;
 
@@ -127,4 +127,3 @@ class RebootTracker {
 
 }  // namespace cluster
 }  // namespace arangodb
-

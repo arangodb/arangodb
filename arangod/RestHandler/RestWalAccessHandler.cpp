@@ -170,8 +170,9 @@ RestStatus RestWalAccessHandler::execute() {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    generateError(
+        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
     return RestStatus::DONE;
   }
 
@@ -267,17 +268,17 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   if (!parseFilter(filter)) {
     return;
   }
-  
+
   if (_request->parsedValue("trackOnly", false)) {
-    // only track this client as a future WAL tailer, so that we do not purge the
-    // WAL files it will need for tailing soon
+    // only track this client as a future WAL tailer, so that we do not purge
+    // the WAL files it will need for tailing soon
     server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
       vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
                                          replutils::BatchInfo::DefaultTimeoutForTailing);
     });
     generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     return;
-  } 
+  }
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
@@ -293,28 +294,26 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::map<TRI_voc_tick_t, std::unique_ptr<MyTypeHandler>> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t& vocbase) -> void {
-    auto it = handlers.try_emplace(
-      vocbase.id(),
-      arangodb::lazyConstruct([&]{
-       return std::make_unique<MyTypeHandler>(vocbase);
-      })
-    ).first;
+    auto it = handlers
+                  .try_emplace(vocbase.id(), arangodb::lazyConstruct([&] {
+                                 return std::make_unique<MyTypeHandler>(vocbase);
+                               }))
+                  .first;
     opts.customTypeHandler = it->second.get();
   };
 
   size_t length = 0;
 
   if (useVst) {
-    result = wal->tail(filter, chunkSize,
-                       [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
-                         length++;
+    result = wal->tail(filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
+      length++;
 
-                         if (vocbase != nullptr) {  // database drop has no vocbase
-                           prepOpts(*vocbase);
-                         }
+      if (vocbase != nullptr) {  // database drop has no vocbase
+        prepOpts(*vocbase);
+      }
 
-                         _response->addPayload(marker, &opts, true);
-                       });
+      _response->addPayload(marker, &opts, true);
+    });
   } else {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     TRI_ASSERT(httpResponse);
@@ -326,19 +325,18 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(filter, chunkSize,
-                       [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
-                         length++;
+    result = wal->tail(filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
+      length++;
 
-                         if (vocbase != nullptr) {  // database drop has no vocbase
-                           prepOpts(*vocbase);
-                         }
+      if (vocbase != nullptr) {  // database drop has no vocbase
+        prepOpts(*vocbase);
+      }
 
-                         dumper.dump(marker);
-                         buffer.appendChar('\n');
-                         // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
-                         // marker.toJson(&opts);
-                       });
+      dumper.dump(marker);
+      buffer.appendChar('\n');
+      // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
+      // marker.toJson(&opts);
+    });
   }
 
   if (result.fail()) {

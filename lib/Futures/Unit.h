@@ -69,4 +69,3 @@ using drop_unit_t = typename drop_unit<T>::type;
 
 }  // namespace futures
 }  // namespace arangodb
-

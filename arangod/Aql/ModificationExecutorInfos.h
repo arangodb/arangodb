@@ -65,9 +65,9 @@ struct IgnoreDocumentNotFound : BoolWrapper {
 };
 
 struct ModificationExecutorInfos {
-  ModificationExecutorInfos(ExecutionEngine* engine, 
-                            RegisterId input1RegisterId, RegisterId input2RegisterId,
-                            RegisterId input3RegisterId, RegisterId outputNewRegisterId,
+  ModificationExecutorInfos(ExecutionEngine* engine, RegisterId input1RegisterId,
+                            RegisterId input2RegisterId, RegisterId input3RegisterId,
+                            RegisterId outputNewRegisterId,
                             RegisterId outputOldRegisterId, RegisterId outputRegisterId,
                             arangodb::aql::QueryContext& query, OperationOptions options,
                             aql::Collection const* aqlCollection, ProducesResults producesResults,
@@ -109,4 +109,3 @@ struct ModificationExecutorInfos {
 
 }  // namespace aql
 }  // namespace arangodb
-

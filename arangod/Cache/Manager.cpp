@@ -62,18 +62,17 @@ const std::uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 const std::chrono::milliseconds Manager::rebalancingGracePeriod(10);
 
-Manager::Manager(SharedPRNGFeature& sharedPRNG, 
-                 PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats)
+Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
+                 std::uint64_t globalLimit, bool enableWindowedStats)
     : _sharedPRNG(sharedPRNG),
       _lock(),
       _shutdown(false),
       _shuttingDown(false),
       _resizing(false),
       _rebalancing(false),
-      _accessStats(sharedPRNG, 
-                   (globalLimit >= (1024 * 1024 * 1024))
-                       ? ((1024 * 1024) / sizeof(std::uint64_t))
-                       : (globalLimit / (1024 * sizeof(std::uint64_t)))),
+      _accessStats(sharedPRNG, (globalLimit >= (1024 * 1024 * 1024))
+                                   ? ((1024 * 1024) / sizeof(std::uint64_t))
+                                   : (globalLimit / (1024 * sizeof(std::uint64_t)))),
       _enableWindowedStats(enableWindowedStats),
       _findHits(),
       _findMisses(),
@@ -443,7 +442,9 @@ void Manager::reportHitStat(Stat stat) {
       }
       break;
     }
-    default: { break; }
+    default: {
+      break;
+    }
   }
 }
 
@@ -469,7 +470,9 @@ void Manager::prepareTask(Manager::TaskEnvironment environment) {
       break;
     }
     case TaskEnvironment::none:
-    default: { break; }
+    default: {
+      break;
+    }
   }
 }
 
@@ -491,7 +494,9 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
       break;
     }
     case TaskEnvironment::none:
-    default: { break; }
+    default: {
+      break;
+    }
   }
 
   _outstandingTasks--;
@@ -823,4 +828,4 @@ bool Manager::pastRebalancingGracePeriod() const {
   return ok;
 }
 
-}
+}  // namespace arangodb::cache

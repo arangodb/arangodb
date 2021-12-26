@@ -92,10 +92,8 @@ class ImportHelper {
   /// @brief imports a delimited file
   //////////////////////////////////////////////////////////////////////////////
 
-  bool importDelimited(std::string const& collectionName,
-                       std::string const& fileName, 
-                       std::string const& headersFile, 
-                       DelimitedImportType typeImport);
+  bool importDelimited(std::string const& collectionName, std::string const& fileName,
+                       std::string const& headersFile, DelimitedImportType typeImport);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief imports a file with JSON objects
@@ -164,7 +162,7 @@ class ImportHelper {
   void setTranslations(std::unordered_map<std::string, std::string> const& translations) {
     _translations = translations;
   }
-  
+
   void setDatatypes(std::unordered_map<std::string, std::string> const& datatypes) {
     _datatypes = datatypes;
   }
@@ -207,7 +205,6 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   void setSkipValidation(bool value) { _skipValidation = value; }
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of rows to skip
@@ -283,8 +280,12 @@ class ImportHelper {
 
   std::vector<std::string> getErrorMessages() { return _errorMessages; }
 
-  uint64_t getMaxUploadSize() { return (_maxUploadSize.load(std::memory_order_relaxed)); }
-  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize, std::memory_order_relaxed); }
+  uint64_t getMaxUploadSize() {
+    return (_maxUploadSize.load(std::memory_order_relaxed));
+  }
+  void setMaxUploadSize(uint64_t newSize) {
+    _maxUploadSize.store(newSize, std::memory_order_relaxed);
+  }
 
   uint64_t rotatePeriodByteCount() { return (_periodByteCount.exchange(0)); }
   void addPeriodByteCount(uint64_t add) { _periodByteCount.fetch_add(add); }
@@ -295,9 +296,8 @@ class ImportHelper {
 
  private:
   // read headers from separate file
-  bool readHeadersFile(std::string const& headersFile, 
-                       DelimitedImportType typeImport,
-                       char separator);
+  bool readHeadersFile(std::string const& headersFile,
+                       DelimitedImportType typeImport, char separator);
 
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
   static void ProcessCsvAdd(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);

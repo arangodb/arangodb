@@ -95,7 +95,7 @@ void ShortStringStorage::allocateBlock() {
     ResourceUsageScope scope(_resourceMonitor, _blockSize);
 
     _blocks.emplace_back(std::make_unique<char[]>(_blockSize));
-  
+
     // now we are responsible for memory usage tracking
     scope.steal();
   }

@@ -103,7 +103,9 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
     return std::move(*_follower).resign();
   }
 
-  auto waitFor(LogIndex index) -> WaitForFuture override { return _follower->waitFor(index); }
+  auto waitFor(LogIndex index) -> WaitForFuture override {
+    return _follower->waitFor(index);
+  }
 
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     return _follower->waitForIterator(index);

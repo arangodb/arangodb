@@ -58,4 +58,3 @@ struct HLLCounterCombiner : MessageCombiner<HLLCounter> {
 };
 }  // namespace pregel
 }  // namespace arangodb
-

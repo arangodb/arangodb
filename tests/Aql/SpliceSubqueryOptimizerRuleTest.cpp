@@ -27,10 +27,10 @@
 
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
-#include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionBlock.h"
 #include "Aql/SubqueryEndExecutionNode.h"
 #include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/WalkerWorker.h"
@@ -133,10 +133,12 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     ASSERT_NE(queryRegistry, nullptr) << "query string: " << querystring;
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(server.getSystemDatabase());
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        server.getSystemDatabase());
     auto const bindParamVpack = VPackParser::fromJson(bindParameters);
-    auto splicedQuery = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
-                                                     arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
+    auto splicedQuery = arangodb::aql::Query::create(
+        ctx, arangodb::aql::QueryString(querystring), bindParamVpack,
+        arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
     splicedQuery->prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
@@ -161,8 +163,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     EXPECT_EQ(expectedNumberOfSplicedSubqueries, splicedSubqueryEndNodes.size())
         << "query string: " << querystring;
 
-    EXPECT_EQ(splicedSubquerySingletonNodes.size(), 1)
-        << "query string: " << querystring;
+    EXPECT_EQ(splicedSubquerySingletonNodes.size(), 1) << "query string: " << querystring;
 
     // Make sure no nodes got lost (currently does not check SubqueryNodes,
     // SubqueryStartNode, SubqueryEndNode correctness)
@@ -473,13 +474,16 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
                                                               noCollections, opts);
   ASSERT_EQ(1, collection->numberDocuments(trx.get(), transaction::CountType::Normal));
   bool called = false;
-  auto result = collection->getPhysical()->read(trx.get(), arangodb::velocypack::StringRef{"myKey"}, [&](LocalDocumentId const&, VPackSlice document) {
-    called = true;
-    EXPECT_TRUE(document.isObject());
-    EXPECT_TRUE(document.get("_key").isString());
-    EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
-    return true;
-  }, arangodb::ReadOwnWrites::no);
+  auto result = collection->getPhysical()->read(
+      trx.get(), arangodb::velocypack::StringRef{"myKey"},
+      [&](LocalDocumentId const&, VPackSlice document) {
+        called = true;
+        EXPECT_TRUE(document.isObject());
+        EXPECT_TRUE(document.get("_key").isString());
+        EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
+        return true;
+      },
+      arangodb::ReadOwnWrites::no);
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
 }

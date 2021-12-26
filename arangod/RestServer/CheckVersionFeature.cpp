@@ -75,7 +75,7 @@ void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options
                      "checks the versions of the database and exit",
                      new BooleanParameter(&_checkVersion),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                  arangodb::options::Flags::Command));
+                                                         arangodb::options::Flags::Command));
 }
 
 void CheckVersionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -130,7 +130,8 @@ void CheckVersionFeature::checkVersion() {
   *_result = 1;
 
   // run version check
-  LOG_TOPIC("449fd", TRACE, arangodb::Logger::STARTUP) << "starting version check";
+  LOG_TOPIC("449fd", TRACE, arangodb::Logger::STARTUP)
+      << "starting version check";
 
   DatabasePathFeature& databasePathFeature = server().getFeature<DatabasePathFeature>();
 
@@ -171,7 +172,8 @@ void CheckVersionFeature::checkVersion() {
       }
     }
 
-    LOG_TOPIC("53cbb", DEBUG, Logger::STARTUP) << "version check return status " << res.status;
+    LOG_TOPIC("53cbb", DEBUG, Logger::STARTUP)
+        << "version check return status " << res.status;
     if (res.status < 0) {
       LOG_TOPIC("52f16", FATAL, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
@@ -196,7 +198,8 @@ void CheckVersionFeature::checkVersion() {
     }
   }
 
-  LOG_TOPIC("382bb", DEBUG, Logger::STARTUP) << "final result of version check: " << *_result;
+  LOG_TOPIC("382bb", DEBUG, Logger::STARTUP)
+      << "final result of version check: " << *_result;
 
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
@@ -211,7 +214,8 @@ void CheckVersionFeature::checkVersion() {
           << "Database version check failed: upgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_UPGRADE_REQUIRED);
     } else {
-      LOG_TOPIC("13e92", FATAL, Logger::FIXME) << "Database version check failed";
+      LOG_TOPIC("13e92", FATAL, Logger::FIXME)
+          << "Database version check failed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
     }
     FATAL_ERROR_EXIT_CODE(*_result);

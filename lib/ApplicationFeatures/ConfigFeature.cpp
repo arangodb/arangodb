@@ -78,7 +78,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--check-configuration", "check the configuration and exit",
                      new BooleanParameter(&_checkConfiguration),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                  arangodb::options::Flags::Command));
+                                                         arangodb::options::Flags::Command));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options, char const* binaryPath) {
@@ -109,7 +109,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   // always prefer an explicitly given config file
   if (!_file.empty()) {
     if (!FileUtils::exists(_file)) {
-      LOG_TOPIC("f21f9", FATAL, Logger::CONFIG) << "cannot read config file '" << _file << "'";
+      LOG_TOPIC("f21f9", FATAL, Logger::CONFIG)
+          << "cannot read config file '" << _file << "'";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
     }
 
@@ -125,7 +126,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
       }
     }
 
-    LOG_TOPIC("637c7", DEBUG, Logger::CONFIG) << "using user supplied config file '" << _file << "'";
+    LOG_TOPIC("637c7", DEBUG, Logger::CONFIG)
+        << "using user supplied config file '" << _file << "'";
 
     if (!parser.parse(_file, true)) {
       FATAL_ERROR_EXIT();

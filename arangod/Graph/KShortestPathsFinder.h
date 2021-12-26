@@ -84,7 +84,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
       _weight = 0;
       _branchpoint = 0;
     }
-    
+
     static constexpr size_t pathItemMemoryUsage() {
       return sizeof(typename decltype(_vertices)::value_type) +
              sizeof(typename decltype(_edges)::value_type) +
@@ -92,7 +92,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     }
 
     size_t memoryUsage() const noexcept {
-      return sizeof(Path) + 
+      return sizeof(Path) +
              _vertices.size() * sizeof(typename decltype(_vertices)::value_type) +
              _edges.size() * sizeof(typename decltype(_edges)::value_type) +
              _weights.size() * sizeof(typename decltype(_weights)::value_type);
@@ -178,20 +178,20 @@ class KShortestPathsFinder : public ShortestPathFinder {
     // from _center
     double _closest;
 
-    explicit Ball(Direction direction) 
-        : _direction(direction), _closest(0) {}
- 
-    void reset(VertexRef center) { 
-      _center = center; 
+    explicit Ball(Direction direction) : _direction(direction), _closest(0) {}
+
+    void reset(VertexRef center) {
+      _center = center;
       _frontier.clear();
       _frontier.insert(center, std::make_unique<DijkstraInfo>(center));
       _closest = 0;
     }
 
     VertexRef center() const { return _center; }
-    
+
     bool done(std::optional<double> const& currentBest) {
-      return _frontier.empty() || (currentBest.has_value() && currentBest.value() < _closest);
+      return _frontier.empty() ||
+             (currentBest.has_value() && currentBest.value() < _closest);
     }
   };
 
@@ -270,8 +270,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // Compute the first shortest path
   bool computeShortestPath(VertexRef const& start, VertexRef const& end,
                            VertexSet const& forbiddenVertices,
-                           EdgeSet const& forbiddenEdges, 
-                           Path& result);
+                           EdgeSet const& forbiddenEdges, Path& result);
   bool computeNextShortestPath(Path& result);
 
   void reconstructPath(Ball const& left, Ball const& right,
@@ -286,8 +285,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
                                     std::vector<Step>& steps);
 
   void advanceFrontier(Ball& source, Ball const& target,
-                       VertexSet const& forbiddenVertices,
-                       EdgeSet const& forbiddenEdges,
+                       VertexSet const& forbiddenVertices, EdgeSet const& forbiddenEdges,
                        VertexRef& join, std::optional<double>& currentBest);
 
   // return the size of a map entry plus some assumed overhead
@@ -300,7 +298,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   VertexRef _start;
   VertexRef _end;
-    
+
   Ball _left;
   Ball _right;
 

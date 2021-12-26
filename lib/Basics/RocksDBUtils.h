@@ -49,4 +49,3 @@ std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
 
 }  // namespace rocksutils
 }  // namespace arangodb
-

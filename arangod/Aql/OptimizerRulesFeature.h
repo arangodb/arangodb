@@ -41,8 +41,10 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
-  
-  std::vector<std::string> const& optimizerRules() const { return _optimizerRules; }
+
+  std::vector<std::string> const& optimizerRules() const {
+    return _optimizerRules;
+  }
 
   /// @brief whether or not certain write operations can be parallelized
   bool parallelizeGatherWrites() const { return _parallelizeGatherWrites; }
@@ -52,7 +54,7 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 
   /// @brief translate a single rule
   static velocypack::StringRef translateRule(int rule);
-  
+
   /// @brief translate a single rule
   static int translateRule(velocypack::StringRef name);
 
@@ -61,23 +63,22 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 
   /// @brief return a rule by its level
   static OptimizerRule& ruleByLevel(int level);
-  
+
   /// @brief return a rule by its index
   static OptimizerRule& ruleByIndex(int index);
-  
+
   /// @brief return the index of a rule
   static int ruleIndex(int level);
-  
+
   /// @brief register a rule, don't call this after prepare()
-  void registerRule(char const* name, RuleFunction func,
-                    OptimizerRule::RuleLevel level,
+  void registerRule(char const* name, RuleFunction func, OptimizerRule::RuleLevel level,
                     std::underlying_type<OptimizerRule::Flags>::type flags);
 
  private:
   void addRules();
   void addStorageEngineRules();
   void enableOrDisableRules();
-  
+
   std::vector<std::string> _optimizerRules;
 
   /// @brief if set to true, a gather node will be parallelized even for
@@ -88,7 +89,7 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _fixed = false;
 #endif
-  
+
   /// @brief the rules database
   static std::vector<OptimizerRule> _rules;
 
@@ -98,4 +99,3 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
 
 }  // namespace aql
 }  // namespace arangodb
-

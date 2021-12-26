@@ -105,12 +105,14 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         outVariable("name", 1, false),
         varUsedLater(false),
         engine(fakedQuery->rootEngine()),
-        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None),
+        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ,
+                      arangodb::aql::Collection::Hint::None),
         random(false),
         count(false),
         registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{}, {{}}),
-        executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable, varUsedLater,
-                      nullptr, projections, random, count, arangodb::ReadOwnWrites::no),
+        executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable,
+                      varUsedLater, nullptr, projections, random, count,
+                      arangodb::ReadOwnWrites::no),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -289,7 +291,8 @@ class EnumerateCollectionExecutorTestProduce
         outVariable("name", 1, false),
         varUsedLater(true),
         engine(fakedQuery.get()->rootEngine()),
-        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None),
+        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ,
+                      arangodb::aql::Collection::Hint::None),
         random(false),
         count(false),
         registerInfos({}, RegIdSet{1}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
@@ -315,9 +318,8 @@ class EnumerateCollectionExecutorTestProduce
         outputRegister, *fakedQuery,
         &aqlCollection, &outVariable,
         varUsedLater,   nullptr,
-        projections,    
-        random, count,
-        arangodb::ReadOwnWrites::no};
+        projections,    random,
+        count,          arangodb::ReadOwnWrites::no};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }

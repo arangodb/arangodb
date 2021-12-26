@@ -33,19 +33,19 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 
 namespace {
-constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
-constexpr size_t costPerVertexOrEdgeStringRefSlice = sizeof(velocypack::Slice) + sizeof(arangodb::velocypack::HashedStringRef);
+constexpr size_t costPerPersistedString =
+    sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
+constexpr size_t costPerVertexOrEdgeStringRefSlice =
+    sizeof(velocypack::Slice) + sizeof(arangodb::velocypack::HashedStringRef);
 constexpr size_t heapBlockSize = 4096;
-};
+};  // namespace
 
 RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor)
     : _resourceMonitor{resourceMonitor},
       _stringHeap(resourceMonitor, heapBlockSize), /* arbitrary block-size may be adjusted for performance */
       _datalake(resourceMonitor) {}
 
-RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() {
-  clear();
-}
+RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() { clear(); }
 
 void RefactoredClusterTraverserCache::clear() {
   _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
@@ -75,31 +75,32 @@ auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) cons
   return _edgeData.find(edgeKey) != _edgeData.end();
 }
 
-auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const -> VPackSlice {
+auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const
+    -> VPackSlice {
   if (!isVertexCached(vertex)) {
     return VPackSlice::nullSlice();
   }
   return _vertexData.at(vertex);
 }
 
-auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const
-    -> VPackSlice {
+auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const -> VPackSlice {
   if (!isEdgeCached(edge)) {
     return VPackSlice::nullSlice();
   }
   return _edgeData.at(edge);
 }
 
-auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) -> arangodb::velocypack::HashedStringRef {
+auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::HashedStringRef idString)
+    -> arangodb::velocypack::HashedStringRef {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;
   }
   auto res = _stringHeap.registerString(idString);
   ResourceUsageScope guard(_resourceMonitor, ::costPerPersistedString);
-   
+
   _persistedStrings.emplace(res);
-    
+
   // now make the TraverserCache responsible for memory tracking
   guard.steal();
   return res;
@@ -108,7 +109,7 @@ auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::Hashed
 auto RefactoredClusterTraverserCache::persistEdgeData(velocypack::Slice edgeSlice)
     -> std::pair<velocypack::Slice, bool> {
   arangodb::velocypack::HashedStringRef edgeIdRef(edgeSlice.get(StaticStrings::IdString));
-  
+
   ResourceUsageScope guard(_resourceMonitor, ::costPerVertexOrEdgeStringRefSlice);
 
   auto const [it, inserted] = _edgeData.try_emplace(edgeIdRef, edgeSlice);

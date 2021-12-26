@@ -34,7 +34,8 @@
 
 using namespace arangodb;
 
-RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db)
+RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(
+    RocksDBTransactionState* state, rocksdb::TransactionDB* db)
     : RocksDBTrxBaseMethods(state, db) {
   TRI_ASSERT(_state->isSingleOperation());
   TRI_ASSERT(!_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
@@ -43,16 +44,18 @@ RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(RocksDBTransa
 rocksdb::ReadOptions RocksDBSingleOperationTrxMethods::iteratorReadOptions() const {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call iteratorReadOptions for single operation methods");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "should not call iteratorReadOptions for single operation methods");
 }
 
 void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, RevisionId rid,
-                                         TRI_voc_document_operation_e operationType) {
+                                                        TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(_rocksTransaction != nullptr);
 
   // singleOp => no modifications yet
   TRI_ASSERT(_rocksTransaction->GetNumPuts() == 0 &&
-              _rocksTransaction->GetNumDeletes() == 0);
+             _rocksTransaction->GetNumDeletes() == 0);
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
@@ -92,8 +95,8 @@ void RocksDBSingleOperationTrxMethods::rollbackOperation(TRI_voc_document_operat
       --_numLogdata;
       break;
     }
-    default: { 
-      break; 
+    default: {
+      break;
     }
   }
 }
@@ -102,7 +105,9 @@ std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationTrxMethods::NewIterator
     rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "should not call NewIterator for single operation methods");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "should not call NewIterator for single operation methods");
 }
 
 bool RocksDBSingleOperationTrxMethods::iteratorMustCheckBounds(ReadOwnWrites) const {

@@ -21,7 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "v8-utils.h"
 
 #include "Basics/Common.h"
@@ -107,9 +106,9 @@
 #include "Utilities/NameValidator.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-deadline.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
-#include "V8/v8-deadline.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -179,7 +178,7 @@ static void CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
     TRI_GET_GLOBALS();
     if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
       LOG_TOPIC("532c3", ERR, arangodb::Logger::FIXME)
-        << "encountered out-of-memory error in context #" << v8g->_id;
+          << "encountered out-of-memory error in context #" << v8g->_id;
     }
 
     v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(isolate, message);
@@ -209,11 +208,14 @@ static void CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
         ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
               v8::Number::New(isolate, int(errorNumber)))
         .FromMaybe(false);
-    errorObject->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage).FromMaybe(false);
+    errorObject
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage)
+        .FromMaybe(false);
 
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
 
-    v8::Handle<v8::Object> ArangoError = ArangoErrorTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+    v8::Handle<v8::Object> ArangoError =
+        ArangoErrorTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
     if (!ArangoError.IsEmpty()) {
       errorObject->SetPrototype(TRI_IGETC, ArangoError).FromMaybe(false);  // Ignore error
@@ -226,21 +228,20 @@ static void CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads/execute a file into/in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
-                               bool execute) {
+static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename, bool execute) {
   v8::HandleScope handleScope(isolate);
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + filename);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + filename);
   }
 
   size_t length;
@@ -262,8 +263,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   v8::Handle<v8::String> name = TRI_V8_STRING(isolate, filename);
-  v8::Handle<v8::String> source =
-      TRI_V8_PAIR_STRING(isolate, content, (int)length);
+  v8::Handle<v8::String> source = TRI_V8_PAIR_STRING(isolate, content, (int)length);
 
   v8::TryCatch tryCatch(isolate);
 
@@ -440,18 +440,20 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
       v8::Handle<v8::Message> message = tryCatch.Message();
       if (!message.IsEmpty()) {
-        exceptionObj->Set(context,
-                          TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                          v8::Number::New(isolate,
-                                          message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);
-        exceptionObj->Set(context,
-                          TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                          v8::Number::New(isolate, message->GetStartColumn())).FromMaybe(false);
+        exceptionObj
+            ->Set(context, TRI_V8_ASCII_STRING(isolate, "lineNumber"),
+                  v8::Number::New(isolate, message->GetLineNumber(TRI_IGETC).FromMaybe(-1)))
+            .FromMaybe(false);
+        exceptionObj
+            ->Set(context, TRI_V8_ASCII_STRING(isolate, "columnNumber"),
+                  v8::Number::New(isolate, message->GetStartColumn()))
+            .FromMaybe(false);
       }
-      exceptionObj->Set(context,
-                        TRI_V8_ASCII_STRING(isolate, "fileName"),
-                        filename->ToString(TRI_IGETC).FromMaybe(
-                            TRI_V8_ASCII_STRING(isolate, "unknown"))).FromMaybe(false);
+      exceptionObj
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "fileName"),
+                filename->ToString(TRI_IGETC).FromMaybe(
+                    TRI_V8_ASCII_STRING(isolate, "unknown")))
+          .FromMaybe(false);
       tryCatch.ReThrow();
       return;
     } else {
@@ -504,8 +506,9 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -530,15 +533,18 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
       v8::Handle<v8::Message> message = tryCatch.Message();
       if (!message.IsEmpty()) {
-        exceptionObj->Set(context,
-                          TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                          v8::Number::New(isolate,
-                                          message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);
-        exceptionObj->Set(context,
-                          TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                          v8::Number::New(isolate, message->GetStartColumn())).FromMaybe(false);
+        exceptionObj
+            ->Set(context, TRI_V8_ASCII_STRING(isolate, "lineNumber"),
+                  v8::Number::New(isolate, message->GetLineNumber(TRI_IGETC).FromMaybe(-1)))
+            .FromMaybe(false);
+        exceptionObj
+            ->Set(context, TRI_V8_ASCII_STRING(isolate, "columnNumber"),
+                  v8::Number::New(isolate, message->GetStartColumn()))
+            .FromMaybe(false);
       }
-      exceptionObj->Set(context, TRI_V8_ASCII_STRING(isolate, "fileName"), args[0]).FromMaybe(false);
+      exceptionObj
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "fileName"), args[0])
+          .FromMaybe(false);
       tryCatch.ReThrow();
       return;
     } else {
@@ -848,21 +854,26 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // headers
     if (TRI_HasProperty(context, isolate, options, "headers")) {
-      v8::Local<v8::Object> v8Headers = v8::Local<v8::Object>::Cast(options->Get(context, TRI_V8_ASCII_STRING(isolate, "headers")).FromMaybe(v8::Local<v8::Value>()));
+      v8::Local<v8::Object> v8Headers = v8::Local<v8::Object>::Cast(
+          options->Get(context, TRI_V8_ASCII_STRING(isolate, "headers"))
+              .FromMaybe(v8::Local<v8::Value>()));
       if (v8Headers->IsObject()) {
-        v8::Handle<v8::Array> props = v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Handle<v8::Array>());
+        v8::Handle<v8::Array> props =
+            v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Handle<v8::Array>());
 
         for (uint32_t i = 0; i < props->Length(); i++) {
-          v8::Handle<v8::Value> key = props->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+          v8::Handle<v8::Value> key =
+              props->Get(context, i).FromMaybe(v8::Local<v8::Value>());
           headerFields[TRI_ObjectToString(isolate, key)] =
-            TRI_ObjectToString(context, isolate, v8Headers->Get(context, key));
+              TRI_ObjectToString(context, isolate, v8Headers->Get(context, key));
         }
       }
     }
 
     // timeout
     if (TRI_HasProperty(context, isolate, options, "timeout")) {
-      v8::MaybeLocal<v8::Value> tv = options->Get(context, TRI_V8_ASCII_STRING(isolate, "timeout"));
+      v8::MaybeLocal<v8::Value> tv =
+          options->Get(context, TRI_V8_ASCII_STRING(isolate, "timeout"));
       if (!tv.IsEmpty()) {
         v8::Local<v8::Value> v = tv.FromMaybe(v8::Local<v8::Value>());
         if (!v->IsNumber()) {
@@ -870,8 +881,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                          "invalid option value for timeout");
         }
 
-        timeout = TRI_ObjectToDouble(isolate, TRI_GetProperty(context, isolate,
-                                                              options, "timeout"));
+        timeout = TRI_ObjectToDouble(isolate, TRI_GetProperty(context, isolate, options,
+                                                              "timeout"));
       }
     }
     timeout = correctTimeoutToExecutionDeadlineS(timeout);
@@ -942,7 +953,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (!v8security.isAllowedToAccessPath(isolate, outfile, FSAccessType::WRITE)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
-          TRI_ERROR_FORBIDDEN, std::string("not allowed to modify files in this path: ") + outfile);
+          TRI_ERROR_FORBIDDEN,
+          std::string("not allowed to modify files in this path: ") + outfile);
     }
 
     if (TRI_ExistsFile(outfile.c_str())) {
@@ -953,18 +965,17 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int numRedirects = 0;
 
   while (numRedirects < maxRedirects) {
-
     auto [endpoint, relative, error] = getEndpoint(isolate, endpoints, url, lastEndpoint);
     if (!error.empty()) {
       TRI_V8_THROW_SYNTAX_ERROR(error.c_str());
     }
 
     LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
-      << "downloading file. endpoint: " << endpoint << ", relative URL: " << url;
+        << "downloading file. endpoint: " << endpoint << ", relative URL: " << url;
 
     if (!isLocalUrl && !v8security.isAllowedToConnectToEndpoint(isolate, endpoint, inputUrl)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                       "not allowed to connect to this URL: " + inputUrl);
+                                     "not allowed to connect to this URL: " + inputUrl);
     }
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
@@ -975,13 +986,14 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     if (ep.get()->isBroadcastBind()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     std::string("Cannot connect to INADDR_ANY or INADDR6_ANY ") + url);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          std::string("Cannot connect to INADDR_ANY or INADDR6_ANY ") + url);
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(v8g->_server, ep.get(), timeout,
-                                       timeout, 3, sslProtocol));
+        GeneralClientConnection::factory(v8g->_server, ep.get(), timeout,
+                                         timeout, 3, sslProtocol));
 
     if (connection == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1054,9 +1066,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> headers = v8::Object::New(isolate);
 
       for (auto const& it : responseHeaders) {
-        headers->Set(context,
-                     TRI_V8_STD_STRING(isolate, it.first),
-                     TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
+        headers
+            ->Set(context, TRI_V8_STD_STRING(isolate, it.first),
+                  TRI_V8_STD_STRING(isolate, it.second))
+            .FromMaybe(false);
       }
 
       result->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false);
@@ -1091,11 +1104,14 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
               V8Buffer* buffer = V8Buffer::New(isolate, body.data(), body.length());
               v8::Local<v8::Object> bufferObject =
                   v8::Local<v8::Object>::New(isolate, buffer->_handle);
-              result->Set(context, TRI_V8_ASCII_STRING(isolate, "body"), bufferObject).FromMaybe(false);
+              result
+                  ->Set(context, TRI_V8_ASCII_STRING(isolate, "body"), bufferObject)
+                  .FromMaybe(false);
             } else {
-              result->Set(context,
-                          TRI_V8_ASCII_STRING(isolate, "body"),
-                          TRI_V8_STD_STRING(isolate, sb)).FromMaybe(false);
+              result
+                  ->Set(context, TRI_V8_ASCII_STRING(isolate, "body"),
+                        TRI_V8_STD_STRING(isolate, sb))
+                  .FromMaybe(false);
             }
           }
 
@@ -1104,12 +1120,14 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
     }
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "code"),
-                v8::Number::New(isolate, returnCode)).FromMaybe(false);
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "message"),
-                TRI_V8_STD_STRING(isolate, returnMessage)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "code"),
+              v8::Number::New(isolate, returnCode))
+        .FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "message"),
+              TRI_V8_STD_STRING(isolate, returnMessage))
+        .FromMaybe(false);
 
     TRI_V8_RETURN(result);
   }
@@ -1160,12 +1178,15 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     context->Enter();
 
     // copy sandbox into context
-    v8::Handle<v8::Array> keys = sandbox->GetPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
+    v8::Handle<v8::Array> keys =
+        sandbox->GetPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
 
     for (uint32_t i = 0; i < keys->Length(); i++) {
       v8::Handle<v8::String> key =
-        TRI_ObjectToString(context, keys->Get(context, v8::Integer::New(isolate, i)).FromMaybe(v8::Handle<v8::Value>()));
-      v8::Handle<v8::Value> value = sandbox->Get(context, key).FromMaybe(v8::Local<v8::Value>());
+          TRI_ObjectToString(context, keys->Get(context, v8::Integer::New(isolate, i))
+                                          .FromMaybe(v8::Handle<v8::Value>()));
+      v8::Handle<v8::Value> value =
+          sandbox->Get(context, key).FromMaybe(v8::Local<v8::Value>());
 
       if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
         TRI_Utf8ValueNFC keyName(isolate, key);
@@ -1205,18 +1226,19 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Local<v8::Object> exceptionObj = tryCatch.Exception().As<v8::Object>();
         v8::Handle<v8::Message> message = tryCatch.Message();
         if (!message.IsEmpty()) {
-          exceptionObj->Set(context,
-                            TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                            v8::Number::New(isolate,
-                                            message->GetLineNumber(context).FromMaybe(-1))).FromMaybe(false);
-          exceptionObj->Set(context,
-                            TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                            v8::Number::New(isolate,
-                                            message->GetStartColumn(context).FromMaybe(-1))).FromMaybe(false);
+          exceptionObj
+              ->Set(context, TRI_V8_ASCII_STRING(isolate, "lineNumber"),
+                    v8::Number::New(isolate, message->GetLineNumber(context).FromMaybe(-1)))
+              .FromMaybe(false);
+          exceptionObj
+              ->Set(context, TRI_V8_ASCII_STRING(isolate, "columnNumber"),
+                    v8::Number::New(isolate, message->GetStartColumn(context).FromMaybe(-1)))
+              .FromMaybe(false);
         }
-        exceptionObj->Set(context,
-                          TRI_V8_ASCII_STRING(isolate, "fileName"),
-                          TRI_ObjectToString(context, filename)).FromMaybe(false);
+        exceptionObj
+            ->Set(context, TRI_V8_ASCII_STRING(isolate, "fileName"),
+                  TRI_ObjectToString(context, filename))
+            .FromMaybe(false);
         tryCatch.ReThrow();
         return;
       } else {
@@ -1249,12 +1271,15 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // copy result back into the sandbox
   if (useSandbox) {
-    v8::Handle<v8::Array> keys = context->Global()->GetPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
+    v8::Handle<v8::Array> keys =
+        context->Global()->GetPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
 
     for (uint32_t i = 0; i < keys->Length(); i++) {
       v8::Handle<v8::String> key =
-        TRI_ObjectToString(context, keys->Get(context, v8::Integer::New(isolate, i)).FromMaybe(v8::Local<v8::Value>()));
-      v8::Handle<v8::Value> value = context->Global()->Get(context, key).FromMaybe(v8::Handle<v8::Value>());
+          TRI_ObjectToString(context, keys->Get(context, v8::Integer::New(isolate, i))
+                                          .FromMaybe(v8::Local<v8::Value>()));
+      v8::Handle<v8::Value> value =
+          context->Global()->Get(context, key).FromMaybe(v8::Handle<v8::Value>());
 
       if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
         TRI_Utf8ValueNFC keyName(isolate, key);
@@ -1306,8 +1331,9 @@ static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   if (TRI_ExistsFile(*name)) {
@@ -1369,8 +1395,9 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + *name);
   }
 
   std::string err;
@@ -1407,8 +1434,9 @@ static void JS_SizeFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   if (!TRI_ExistsFile(*name) || TRI_IsDirectory(*name)) {
@@ -1467,8 +1495,9 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, path, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + path);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + path);
   }
 
   TRI_V8_RETURN(result);
@@ -1502,20 +1531,21 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
-  std::string dir = FileUtils::buildFilename(TRI_GetTempPath(),path,"");
+  std::string dir = FileUtils::buildFilename(TRI_GetTempPath(), path, "");
 
   if (create) {
     if (!v8security.isAllowedToAccessPath(isolate, dir, FSAccessType::WRITE)) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     std::string("not allowed to read files in this path: ") + dir);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_FORBIDDEN,
+          std::string("not allowed to read files in this path: ") + dir);
     }
   } else {
     if (!v8security.isAllowedToAccessPath(isolate, dir, FSAccessType::READ)) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     std::string("not allowed to read files in this path: ") + dir);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_FORBIDDEN,
+          std::string("not allowed to read files in this path: ") + dir);
     }
   }
-
 
   std::string result;
   long systemError;
@@ -1553,8 +1583,9 @@ static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   // return result
@@ -1589,8 +1620,9 @@ static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   // return result
@@ -1646,7 +1678,6 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_List
 ////////////////////////////////////////////////////////////////////////////////
@@ -1670,8 +1701,9 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   // constructed listing
@@ -1713,8 +1745,9 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   // constructed listing
@@ -1756,8 +1789,9 @@ static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + *name);
   }
 
   long systemError = 0;
@@ -1797,8 +1831,9 @@ static void JS_MakeDirectoryRecursive(v8::FunctionCallbackInfo<v8::Value> const&
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + *name);
   }
 
   long systemError = 0;
@@ -1852,17 +1887,20 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + filename);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + filename);
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, outPath, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + outPath);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + outPath);
   }
 
   std::string errMsg;
-  auto res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p, errMsg);
+  auto res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths,
+                           overwrite, p, errMsg);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
@@ -1903,19 +1941,23 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!v8security.isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-                    TRI_ERROR_FORBIDDEN, std::string("not allowed to read files in this path: ") + filename);
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + filename);
   }
   if (!v8security.isAllowedToAccessPath(isolate, dir, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-                    TRI_ERROR_FORBIDDEN, std::string("not allowed to read files in this path: ") + dir);
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + dir);
   }
   auto context = TRI_IGETC;
   for (uint32_t i = 0; i < files->Length(); ++i) {
-    v8::Handle<v8::Value> file = files->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
+    v8::Handle<v8::Value> file =
+        files->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
     if (file->IsString()) {
       if (!v8security.isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_FORBIDDEN, std::string("not allowed to read files in this path: ") + filename);
+            TRI_ERROR_FORBIDDEN,
+            std::string("not allowed to read files in this path: ") + filename);
       }
       filenames.emplace_back(TRI_ObjectToString(isolate, file));
     } else {
@@ -1937,8 +1979,9 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, filename, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + filename);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + filename);
   }
 
   res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
@@ -1975,8 +2018,9 @@ static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   uint32_t chksum = 0;
@@ -2026,8 +2070,9 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -2046,9 +2091,10 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto oldDirname = TRI_GetProperty(context, isolate, current, "__dirname");
   auto dirname = TRI_Dirname(TRI_ObjectToString(isolate, filename));
-  current->Set(context,
-               TRI_V8_ASCII_STRING(isolate, "__dirname"),
-               TRI_V8_STD_STRING(isolate, dirname)).FromMaybe(false);
+  current
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "__dirname"),
+            TRI_V8_STD_STRING(isolate, dirname))
+      .FromMaybe(false);
 
   v8::Handle<v8::Value> result;
   {
@@ -2064,12 +2110,16 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
       TRI_DeleteProperty(context, isolate, current, "__filename");
     } else {
-      current->Set(context, TRI_V8_ASCII_STRING(isolate, "__filename"), oldFilename).FromMaybe(false);
+      current
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "__filename"), oldFilename)
+          .FromMaybe(false);
     }
     if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
       TRI_DeleteProperty(context, isolate, current, "__dirname");
     } else {
-      current->Set(context, TRI_V8_ASCII_STRING(isolate, "__dirname"), oldDirname).FromMaybe(false);
+      current
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "__dirname"), oldDirname)
+          .FromMaybe(false);
     }
     if (result.IsEmpty()) {
       if (tryCatch.CanContinue()) {
@@ -2135,7 +2185,8 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string prefix;
   if (ls == "fatal") {
     prefix = "FATAL! ";
-  } else if (ls != "error" && ls != "warning" && ls != "warn" && ls != "info" && ls != "debug" && ls != "trace") {
+  } else if (ls != "error" && ls != "warning" && ls != "warn" && ls != "info" &&
+             ls != "debug" && ls != "trace") {
     // invalid log level
     prefix = ls + "!";
   }
@@ -2167,7 +2218,8 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto loglines = v8::Handle<v8::Array>::Cast(args[1]);
 
     for (uint32_t i = 0; i < loglines->Length(); ++i) {
-      v8::Handle<v8::Value> line = loglines->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
+      v8::Handle<v8::Value> line =
+          loglines->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
       TRI_Utf8ValueNFC message(isolate, line);
       if (line->IsString()) {
         logMessage(*message);
@@ -2453,8 +2505,9 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, filename, FSAccessType::READ)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + filename);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + filename);
   }
 
   int64_t mtime = 0;
@@ -2488,13 +2541,15 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, source, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + source);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + source);
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, destination, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + destination);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + destination);
   }
 
   bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
@@ -2562,13 +2617,15 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, source, FSAccessType::READ)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + source);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + source);
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, destination, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + destination);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + destination);
   }
 
   std::string systemErrorStr;
@@ -2615,13 +2672,15 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, source, FSAccessType::READ)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + source);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + source);
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, destination, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + destination);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + destination);
   }
 
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
@@ -2674,13 +2733,15 @@ static void JS_LinkFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, target, FSAccessType::READ)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + target);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + target);
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, linkpath, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + linkpath);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + linkpath);
   }
 
   std::string systemErrorStr;
@@ -2821,7 +2882,8 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessStatisticsToV8(v8::FunctionCallbackInfo<v8::Value> const& args, ProcessInfo const& info) {
+static void ProcessStatisticsToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                  ProcessInfo const& info) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -2835,21 +2897,38 @@ static void ProcessStatisticsToV8(v8::FunctionCallbackInfo<v8::Value> const& arg
   }
 
   auto context = TRI_IGETC;
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),
-              v8::Number::New(isolate, (double)info._minorPageFaults)).FromMaybe(false);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "majorPageFaults"),
-              v8::Number::New(isolate, (double)info._majorPageFaults)).FromMaybe(false);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "userTime"),
-              v8::Number::New(isolate, (double)info._userTime / (double)info._scClkTck)).FromMaybe(false);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "systemTime"),
-              v8::Number::New(isolate, (double)info._systemTime / (double)info._scClkTck)).FromMaybe(false);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "numberOfThreads"),
-              v8::Number::New(isolate, (double)info._numberThreads)).FromMaybe(false);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "residentSize"), v8::Number::New(isolate, rss)).FromMaybe(false);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "residentSizePercent"),
-              v8::Number::New(isolate, rssp)).FromMaybe(false);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "virtualSize"),
-              v8::Number::New(isolate, (double)info._virtualSize)).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),
+            v8::Number::New(isolate, (double)info._minorPageFaults))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "majorPageFaults"),
+            v8::Number::New(isolate, (double)info._majorPageFaults))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "userTime"),
+            v8::Number::New(isolate, (double)info._userTime / (double)info._scClkTck))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "systemTime"),
+            v8::Number::New(isolate, (double)info._systemTime / (double)info._scClkTck))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "numberOfThreads"),
+            v8::Number::New(isolate, (double)info._numberThreads))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "residentSize"),
+            v8::Number::New(isolate, rss))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "residentSizePercent"),
+            v8::Number::New(isolate, rssp))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "virtualSize"),
+            v8::Number::New(isolate, (double)info._virtualSize))
+      .FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2864,8 +2943,7 @@ static void JS_ProcessStatisticsExternal(v8::FunctionCallbackInfo<v8::Value> con
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "statisticsExternal(<external-identifier>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("statisticsExternal(<external-identifier>)");
   }
 
   TRI_GET_GLOBALS();
@@ -2971,8 +3049,9 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -3019,8 +3098,9 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (proc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "didn't find the process identified by <external-identifier> to read the pipe from.");
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "didn't find the process identified by <external-identifier> to read "
+        "the pipe from.");
   }
 
   char content[1024];
@@ -3059,8 +3139,9 @@ static void JS_WritePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (proc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "didn't find the process identified by <external-identifier> to write the pipe into.");
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "didn't find the process identified by <external-identifier> to write "
+        "the pipe into.");
   }
 
   std::string writeBuffer = TRI_ObjectToString(isolate, args[1]);
@@ -3093,8 +3174,9 @@ static void JS_ClosePipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (proc == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "didn't find the process identified by <external-identifier> to close the pipe for.");
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "didn't find the process identified by <external-identifier> to close "
+        "the pipe for.");
   }
 
   bool read = TRI_ObjectToBoolean(isolate, args[1]);
@@ -3124,8 +3206,9 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -3164,8 +3247,9 @@ static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   size_t length;
@@ -3181,7 +3265,6 @@ static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
-
 }
 
 #ifdef USE_ENTERPRISE
@@ -3213,13 +3296,15 @@ static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, *keyfile, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *keyfile);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *keyfile);
   }
 
   size_t length;
@@ -3236,7 +3321,6 @@ static void JS_ReadDecrypt(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
-
 }
 #endif
 
@@ -3262,8 +3346,9 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   std::string base64;
@@ -3310,8 +3395,9 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, utf8Name, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + utf8Name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + utf8Name);
   }
 
   std::ofstream file;
@@ -3383,8 +3469,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, utf8Name, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + utf8Name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + utf8Name);
   }
 
   bool flush = false;
@@ -3482,8 +3569,9 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + *name);
   }
 
   auto res = TRI_UnlinkFile(*name);
@@ -3519,8 +3607,9 @@ static void JS_RemoveDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) 
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + *name);
   }
 
   if (!TRI_IsDirectory(*name)) {
@@ -3564,8 +3653,9 @@ static void JS_RemoveRecursiveDirectory(v8::FunctionCallbackInfo<v8::Value> cons
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::WRITE)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to modify files in this path: ") + *name);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to modify files in this path: ") + *name);
   }
 
   if (!TRI_IsDirectory(*name)) {
@@ -3957,7 +4047,7 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract arguments
-  if (args.Length() != 2 || !args[0]->IsString()|| !args[1]->IsString()) {
+  if (args.Length() != 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("privsign(<private key pem>, <to sign>)");
   }
 
@@ -3974,7 +4064,8 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, error);
   }
 
-  v8::Handle<v8::String> signStr = TRI_V8_PAIR_STRING(isolate, sign.c_str(), (int)sign.size());
+  v8::Handle<v8::String> signStr =
+      TRI_V8_PAIR_STRING(isolate, sign.c_str(), (int)sign.size());
 
   TRI_V8_RETURN(signStr);
   TRI_V8_TRY_CATCH_END
@@ -4277,37 +4368,42 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   auto context = TRI_IGETC;
 
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "pid"),
-              v8::Number::New(isolate, external._pid)).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "pid"),
+            v8::Number::New(isolate, external._pid))
+      .FromMaybe(false);
 
   // Now report about possible stdin and stdout pipes:
 #ifndef _WIN32
   if (external._readPipe >= 0) {
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                v8::Number::New(isolate, external._readPipe)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "readPipe"),
+              v8::Number::New(isolate, external._readPipe))
+        .FromMaybe(false);
   }
   if (external._writePipe >= 0) {
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                v8::Number::New(isolate, external._writePipe)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "writePipe"),
+              v8::Number::New(isolate, external._writePipe))
+        .FromMaybe(false);
   }
 #else
   if (external._readPipe != INVALID_HANDLE_VALUE) {
     auto fn = getFileNameFromHandle(external._readPipe);
     if (fn.length() > 0) {
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                  TRI_V8_STD_STRING(isolate, fn)).FromMaybe(false);
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "readPipe"),
+                TRI_V8_STD_STRING(isolate, fn))
+          .FromMaybe(false);
     }
   }
   if (external._writePipe != INVALID_HANDLE_VALUE) {
     auto fn = getFileNameFromHandle(external._writePipe);
     if (fn.length() > 0) {
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                  TRI_V8_STD_STRING(isolate, fn)).FromMaybe(false);
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "writePipe"),
+                TRI_V8_STD_STRING(isolate, fn))
+          .FromMaybe(false);
     }
   }
 #endif
@@ -4322,24 +4418,28 @@ static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
   auto context = TRI_IGETC;
   convertPipeStatus(args, result, external);
 
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "status"),
-              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(
-                                               external_status._status))).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "status"),
+            TRI_V8_ASCII_STRING(isolate,
+                                convertProcessStatusToString(external_status._status)))
+      .FromMaybe(false);
 
   if (external_status._status == TRI_EXT_TERMINATED) {
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "exit"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus))).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "exit"),
+              v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus)))
+        .FromMaybe(false);
   } else if (external_status._status == TRI_EXT_ABORTED) {
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "signal"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus))).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "signal"),
+              v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus)))
+        .FromMaybe(false);
   }
   if (external_status._errorMessage.length() > 0) {
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, external_status._errorMessage)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+              TRI_V8_STD_STRING(isolate, external_status._errorMessage))
+        .FromMaybe(false);
   }
   TRI_V8_TRY_CATCH_END;
 }
@@ -4351,33 +4451,36 @@ static void convertProcessInfoToV8(v8::FunctionCallbackInfo<v8::Value> const& ar
   auto context = TRI_IGETC;
   convertPipeStatus(args, result, external_process);
 
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "status"),
-              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(
-                                               external_process._status))).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "status"),
+            TRI_V8_ASCII_STRING(isolate,
+                                convertProcessStatusToString(external_process._status)))
+      .FromMaybe(false);
 
   if (external_process._status == TRI_EXT_TERMINATED) {
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "exit"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external_process._exitStatus))).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "exit"),
+              v8::Integer::New(isolate, static_cast<int32_t>(external_process._exitStatus)))
+        .FromMaybe(false);
   } else if (external_process._status == TRI_EXT_ABORTED) {
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "signal"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external_process._exitStatus))).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "signal"),
+              v8::Integer::New(isolate, static_cast<int32_t>(external_process._exitStatus)))
+        .FromMaybe(false);
   }
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "executable"),
-              TRI_V8_STD_STRING(isolate, external_process._executable)).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "executable"),
+            TRI_V8_STD_STRING(isolate, external_process._executable))
+      .FromMaybe(false);
 
   v8::Handle<v8::Array> arguments =
       v8::Array::New(isolate, static_cast<int>(external_process._numberArguments));
   for (uint32_t i = 0; i < external_process._numberArguments; i++) {
-    arguments->Set(context,
-                   i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i])).FromMaybe(false);
+    arguments
+        ->Set(context, i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i]))
+        .FromMaybe(false);
   }
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "arguments"),
-              arguments).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "arguments"), arguments).FromMaybe(false);
   TRI_V8_TRY_CATCH_END;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -4430,7 +4533,8 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // extract the arguments
   if (5 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternal(<filename>[, <arguments> [,<usePipes> [,<env> [, <workingDirectory> ] ] ] ])");
+        "executeExternal(<filename>[, <arguments> [,<usePipes> [,<env> [, "
+        "<workingDirectory> ] ] ] ])");
   }
 
   TRI_GET_GLOBALS();
@@ -4449,8 +4553,9 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   std::vector<std::string> arguments;
@@ -4464,7 +4569,8 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
       uint32_t n = arr->Length();
 
       for (uint32_t i = 0; i < n; ++i) {
-        TRI_Utf8ValueNFC arg(isolate, arr->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
+        TRI_Utf8ValueNFC arg(isolate,
+                             arr->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
 
         if (*arg == nullptr) {
           arguments.push_back("");
@@ -4500,7 +4606,8 @@ static void JS_ExecuteExternal(v8::FunctionCallbackInfo<v8::Value> const& args) 
       uint32_t n = arr->Length();
 
       for (uint32_t i = 0; i < n; ++i) {
-        TRI_Utf8ValueNFC arg(isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
+        TRI_Utf8ValueNFC arg(isolate,
+                             arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
 
         if (*arg == nullptr) {
           additionalEnv.push_back("");
@@ -4580,23 +4687,27 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto context = TRI_IGETC;
 
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "status"),
-              TRI_V8_STRING(isolate, convertProcessStatusToString(external._status))).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "status"),
+            TRI_V8_STRING(isolate, convertProcessStatusToString(external._status)))
+      .FromMaybe(false);
 
   if (external._status == TRI_EXT_TERMINATED) {
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "exit"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus))).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "exit"),
+              v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus)))
+        .FromMaybe(false);
   } else if (external._status == TRI_EXT_ABORTED) {
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "signal"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus))).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "signal"),
+              v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus)))
+        .FromMaybe(false);
   }
   if (external._errorMessage.length() > 0) {
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, external._errorMessage)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+              TRI_V8_STD_STRING(isolate, external._errorMessage))
+        .FromMaybe(false);
   }
   // return the result
   TRI_V8_RETURN(result);
@@ -4615,7 +4726,8 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
   // extract the arguments
   if (6 < args.Length() || args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, <timeoutms> [, <env> [, <workingDirectory> ] ] ] ] ])");
+        "executeExternalAndWait(<filename>[, <arguments> [,<usePipes>, [, "
+        "<timeoutms> [, <env> [, <workingDirectory> ] ] ] ] ])");
   }
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
@@ -4634,8 +4746,9 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
   }
 
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to read files in this path: ") + *name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to read files in this path: ") + *name);
   }
 
   std::vector<std::string> arguments;
@@ -4649,7 +4762,8 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
       uint32_t const n = arr->Length();
 
       for (uint32_t i = 0; i < n; ++i) {
-        TRI_Utf8ValueNFC arg(isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
+        TRI_Utf8ValueNFC arg(isolate,
+                             arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
 
         if (*arg == nullptr) {
           arguments.push_back("");
@@ -4689,7 +4803,8 @@ static void JS_ExecuteExternalAndWait(v8::FunctionCallbackInfo<v8::Value> const&
       uint32_t n = arr->Length();
 
       for (uint32_t i = 0; i < n; ++i) {
-        TRI_Utf8ValueNFC arg(isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
+        TRI_Utf8ValueNFC arg(isolate,
+                             arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
 
         if (*arg == nullptr) {
           additionalEnv.push_back("");
@@ -4778,9 +4893,8 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
 #endif
   if (pid._pid == 0) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN,
-        "not allowed to kill 0");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to kill 0");
   }
 
   // return the result
@@ -4890,9 +5004,8 @@ static void JS_TestPort(v8::FunctionCallbackInfo<v8::Value> const& args) {
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToTestPorts(isolate)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN,
-        "not allowed to test ports");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to test ports");
   }
 
   std::string address = TRI_ObjectToString(isolate, args[0]);
@@ -5058,19 +5171,23 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> data = TRI_ToObject(context, args[0]);
 
     if (TRI_HasProperty(context, isolate, data, ErrorKey)) {
-      self->Set(context, ErrorKey, TRI_GetProperty(context, isolate, data, ErrorKey)).FromMaybe(false);
+      self->Set(context, ErrorKey, TRI_GetProperty(context, isolate, data, ErrorKey))
+          .FromMaybe(false);
     }
 
     if (TRI_HasProperty(context, isolate, data, CodeKey)) {
-      self->Set(context, CodeKey, TRI_GetProperty(context, isolate, data, CodeKey)).FromMaybe(false);
+      self->Set(context, CodeKey, TRI_GetProperty(context, isolate, data, CodeKey))
+          .FromMaybe(false);
     }
 
     if (TRI_HasProperty(context, isolate, data, ErrorNumKey)) {
-      self->Set(context, ErrorNumKey, TRI_GetProperty(context, isolate, data, ErrorNumKey)).FromMaybe(false);
+      self->Set(context, ErrorNumKey, TRI_GetProperty(context, isolate, data, ErrorNumKey))
+          .FromMaybe(false);
     }
 
     if (TRI_HasProperty(context, isolate, data, ErrorMessageKey)) {
-      self->Set(context, ErrorMessageKey, TRI_GetProperty(context, isolate, data, ErrorMessageKey)).FromMaybe(false);
+      self->Set(context, ErrorMessageKey, TRI_GetProperty(context, isolate, data, ErrorMessageKey))
+          .FromMaybe(false);
     }
   }
 
@@ -5319,14 +5436,14 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
       LOG_TOPIC("cb0bd", ERR, arangodb::Logger::FIXME) << "!" << l;
     }
     auto stacktraceV8 =
-      tryCatch->StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+        tryCatch->StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
     TRI_Utf8ValueNFC stacktrace(isolate, stacktraceV8);
 
     if (*stacktrace && stacktrace.length() > 0) {
-      LOG_TOPIC("cb0bf", DEBUG, arangodb::Logger::V8) << "!" <<
-        "stacktrace: " + std::string(*stacktrace) + "\n";
+      LOG_TOPIC("cb0bf", DEBUG, arangodb::Logger::V8)
+          << "!"
+          << "stacktrace: " + std::string(*stacktrace) + "\n";
     }
-
   }
 }
 
@@ -5382,8 +5499,8 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 
     v8::Handle<v8::String> printFuncName =
         TRI_V8_ASCII_STRING(isolate, "print");
-    v8::Handle<v8::Function> print =
-      v8::Handle<v8::Function>::Cast(context->Global()->Get(context, printFuncName).FromMaybe(v8::Local<v8::Value>()));
+    v8::Handle<v8::Function> print = v8::Handle<v8::Function>::Cast(
+        context->Global()->Get(context, printFuncName).FromMaybe(v8::Local<v8::Value>()));
 
     if (print->IsFunction()) {
       v8::Handle<v8::Value> arguments[] = {result};
@@ -5583,9 +5700,11 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
             ->ToObject(TRI_IGETC)
             .FromMaybe(v8::Local<v8::Object>());
     if (!cacheObject.IsEmpty()) {
-      v8::Handle<v8::Array> props = cacheObject->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
+      v8::Handle<v8::Array> props =
+          cacheObject->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
       for (uint32_t i = 0; i < props->Length(); i++) {
-        v8::Handle<v8::Value> key = props->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
+        v8::Handle<v8::Value> key =
+            props->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
         cacheObject->Delete(context, key).FromMaybe(false);  // Ignore errors.
       }
     }
@@ -5615,7 +5734,7 @@ static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 1 || ! args[0]->IsNumber()) {
+  if (args.Length() != 1 || !args[0]->IsNumber()) {
     TRI_V8_THROW_EXCEPTION_USAGE("errorNumberToHttpCode(<int>)");
   }
 
@@ -5635,13 +5754,14 @@ static void JS_IsAllowedDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 2 || ! args[0]->IsString() || ! args[1]->IsBoolean()) {
+  if (args.Length() != 2 || !args[0]->IsString() || !args[1]->IsBoolean()) {
     TRI_V8_THROW_EXCEPTION_USAGE("IsAllowedDatabaseName(<string>, <bool>)");
   }
 
   auto databaseName = TRI_ObjectToString(isolate, args[0]);
   bool isExtendedName = TRI_ObjectToBoolean(isolate, args[1]);
-  bool result = arangodb::DatabaseNameValidator::isAllowedName(true, isExtendedName, arangodb::velocypack::StringRef(databaseName));
+  bool result = arangodb::DatabaseNameValidator::isAllowedName(
+      true, isExtendedName, arangodb::velocypack::StringRef(databaseName));
 
   TRI_V8_RETURN_BOOL(result);
   TRI_V8_TRY_CATCH_END
@@ -5653,10 +5773,8 @@ static void JS_IsAllowedDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& 
 
 extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
-void TRI_InitV8Utils(v8::Isolate* isolate,
-                     v8::Handle<v8::Context> context,
-                     std::string const& startupPath,
-                     std::string const& modules) {
+void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                     std::string const& startupPath, std::string const& modules) {
   v8::HandleScope scope(isolate);
 
   // check the isolate
@@ -5674,16 +5792,20 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoError"));
 
   // ArangoError is a "sub-class" of Error
-  v8::Handle<v8::Function> ArangoErrorFunc = ft->GetFunction(TRI_IGETC).FromMaybe(v8::Handle<v8::Function>());
+  v8::Handle<v8::Function> ArangoErrorFunc =
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Handle<v8::Function>());
   v8::Handle<v8::Value> ErrorObject =
-    context->Global()->Get(context, TRI_V8_ASCII_STRING(isolate, "Error")).FromMaybe(v8::Handle<v8::Value>());
+      context->Global()
+          ->Get(context, TRI_V8_ASCII_STRING(isolate, "Error"))
+          .FromMaybe(v8::Handle<v8::Value>());
   v8::Handle<v8::Value> ErrorPrototype =
       ErrorObject->ToObject(context)
           .FromMaybe(v8::Local<v8::Object>())
-    ->Get(context, TRI_V8_ASCII_STRING(isolate, "prototype")).FromMaybe(v8::Handle<v8::Value>());
+          ->Get(context, TRI_V8_ASCII_STRING(isolate, "prototype"))
+          .FromMaybe(v8::Handle<v8::Value>());
 
-  ArangoErrorFunc->Get(context,
-                       TRI_V8_ASCII_STRING(isolate, "prototype")).FromMaybe(v8::Local<v8::Value>())
+  ArangoErrorFunc->Get(context, TRI_V8_ASCII_STRING(isolate, "prototype"))
+      .FromMaybe(v8::Local<v8::Value>())
       ->ToObject(context)
       .FromMaybe(v8::Local<v8::Object>())
       ->SetPrototype(context, ErrorPrototype)
@@ -5788,13 +5910,14 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_HMAC"), JS_HMAC);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_IP"), JS_IsIP);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist, true);
-
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_PROCESS_STATISTICS_EXTERNAL"),
-                               JS_ProcessStatisticsExternal);
+                                                   "SYS_SPLIT_WORDS_ICU"),
+                               JS_SplitWordlist, true);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_STATISTICS_EXTERNAL"),
+      JS_ProcessStatisticsExternal);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
@@ -5839,9 +5962,12 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_PID"), JS_GetPid);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READ"), JS_Read);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READPIPE"), JS_ReadPipe);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_WRITEPIPE"), JS_WritePipe);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLOSEPIPE"), JS_ClosePipe);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READPIPE"), JS_ReadPipe);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_WRITEPIPE"), JS_WritePipe);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CLOSEPIPE"), JS_ClosePipe);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ64"), JS_Read64);
@@ -5849,15 +5975,16 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ_BUFFER"),
                                JS_ReadBuffer);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_GZIP"),
-                               JS_ReadGzip);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_GZIP"), JS_ReadGzip);
 #ifdef USE_ENTERPRISE
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ_DECRYPT"),
                                JS_ReadDecrypt);
 #endif
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SHA1"), JS_Sha1);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RSAPRIVSIGN"), JS_RsaPrivSign);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_RSAPRIVSIGN"),
+                               JS_RsaPrivSign);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SHA224"), JS_Sha224);
   TRI_AddGlobalFunctionVocbase(isolate,
@@ -5896,10 +6023,13 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_ENTERPRISE"), JS_IsEnterprise);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ERROR_NUMBER_TO_HTTP_CODE"), JS_ErrorNumberToHttpCode);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ERROR_NUMBER_TO_HTTP_CODE"),
+      JS_ErrorNumberToHttpCode);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "IS_ALLOWED_DATABASE_NAME"), JS_IsAllowedDatabaseName);
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "IS_ALLOWED_DATABASE_NAME"),
+                               JS_IsAllowedDatabaseName);
   // .............................................................................
   // create the global variables
   // .............................................................................

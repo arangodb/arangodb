@@ -28,8 +28,8 @@
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
@@ -42,7 +42,6 @@ namespace methods {
 
 /// Common code for the db._database(),
 struct Databases {
-  
   static std::string normalizeName(std::string const& name);
 
   static std::vector<std::string> list(application_features::ApplicationServer& server,
@@ -63,4 +62,3 @@ struct Databases {
 };
 }  // namespace methods
 }  // namespace arangodb
-

@@ -25,15 +25,15 @@
 
 #include "Basics/Common.h"
 #include "Transaction/Context.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class TransactionState;
-  
+
 namespace transaction {
 
 /// Context that will manage the creation or acquisition of a
@@ -45,7 +45,7 @@ class SmartContext : public Context {
  public:
   SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
                std::shared_ptr<TransactionState> state);
-    
+
   /// @brief destroy the context
   ~SmartContext();
 
@@ -53,21 +53,17 @@ class SmartContext : public Context {
   arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
   /// @brief whether or not the transaction is embeddable
-  bool isEmbeddable() const override final {
-    return true;
-  }
-  
+  bool isEmbeddable() const override final { return true; }
+
   /// @brief locally persisted transaction ID
   TransactionId generateId() const override final;
-  
-  bool isStateSet() const noexcept {
-    return _state != nullptr;
-  }
-  
+
+  bool isStateSet() const noexcept { return _state != nullptr; }
+
   void setState(std::shared_ptr<arangodb::TransactionState> const& state) noexcept {
     _state = state;
   }
-  
+
  protected:
   /// @brief ID of the transaction to use
   TransactionId const _globalId;
@@ -75,27 +71,26 @@ class SmartContext : public Context {
 };
 
 struct TransactionContextSideUser {};
-  
+
 /// @brief Acquire a transaction from the Manager
 struct ManagedContext final : public SmartContext {
-  
   ManagedContext(TransactionId globalId, std::shared_ptr<TransactionState> state,
                  bool responsibleForCommit, bool cloned);
-  
+
   ManagedContext(TransactionId globalId, std::shared_ptr<TransactionState> state,
                  TransactionContextSideUser /*sideUser*/);
-  
+
   ~ManagedContext();
-  
+
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
                                                  bool& responsibleForCommit) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
-  
+
   std::shared_ptr<Context> clone() const override;
-  
+
  private:
   bool const _responsibleForCommit;
   bool const _cloned;
@@ -114,10 +109,9 @@ struct AQLStandaloneContext final : public SmartContext {
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
-  
+
   std::shared_ptr<Context> clone() const override;
 };
-  
+
 }  // namespace transaction
 }  // namespace arangodb
-

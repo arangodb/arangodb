@@ -39,8 +39,8 @@ namespace arangodb::aql {
 struct ModificationExecutorInfos;
 
 // TODO Remove this state, and use a variant as in SimpleModifier.
-//      It makes most sense to do this when implementing async upsert operations,
-//      so I'm leaving it for now.
+//      It makes most sense to do this when implementing async upsert
+//      operations, so I'm leaving it for now.
 enum class ModificationExecutorResultState {
   // State that is used when the Executor's modifier has not been
   // asked to produce a result.
@@ -54,7 +54,7 @@ enum class ModificationExecutorResultState {
   // State that is used when the Executor's modifier has produced
   // a result that is ready to consume.
   HaveResult,
-  };
+};
 
 class UpsertModifier {
  public:
@@ -146,7 +146,7 @@ class UpsertModifier {
   arangodb::velocypack::Builder _keyDocBuilder;
 
   size_t const _batchSize;
-  
+
   mutable std::mutex _resultStateMutex;
   ModificationExecutorResultState _resultState;
 };

@@ -62,7 +62,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
 
   VPackSlice userParams = params.get(Utils::userParametersKey);
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
-  
+
   size_t maxP = PregelFeature::availableParallelism();
   _parallelism = std::max<size_t>(1, std::min<size_t>(maxP / 4, 16));
   if (parallel.isInteger()) {
@@ -90,7 +90,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   // edges in the third edge shard. This should speed up the startup
   for (auto pair : VPackObjectIterator(vertexShardMap)) {
     CollectionID cname = pair.key.copyString();
-    
+
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
       ShardID shard = shardSlice.copyString();
@@ -106,7 +106,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   // Ordered list of edge shards for each collection
   for (auto pair : VPackObjectIterator(edgeShardMap)) {
     CollectionID cname = pair.key.copyString();
-    
+
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
       ShardID shard = shardSlice.copyString();
@@ -120,7 +120,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   if (edgeCollectionRestrictions.isObject()) {
     for (auto pair : VPackObjectIterator(edgeCollectionRestrictions)) {
       CollectionID cname = pair.key.copyString();
-    
+
       std::vector<ShardID> shards;
       for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
         shards.push_back(shardSlice.copyString());
@@ -129,7 +129,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
     }
   }
 }
-  
+
 std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(ShardID const& shard) const {
   auto it = _edgeCollectionRestrictions.find(shard);
   if (it != _edgeCollectionRestrictions.end()) {

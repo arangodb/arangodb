@@ -33,8 +33,8 @@ namespace arangodb::cache {
 const std::size_t CachedValue::_headerAllocSize = sizeof(CachedValue) + CachedValue::_padding;
 
 CachedValue* CachedValue::copy() const {
-  // cppcheck detects a memory leak here for "buf", but this is a false positive.
-  // cppcheck-suppress *
+  // cppcheck detects a memory leak here for "buf", but this is a false
+  // positive. cppcheck-suppress *
   std::uint8_t* buf = new std::uint8_t[size()];
   CachedValue* value = nullptr;
   try {
@@ -54,7 +54,7 @@ CachedValue* CachedValue::construct(void const* k, std::size_t kSize,
       kSize > maxKeySize || vSize > maxValueSize) {
     return nullptr;
   }
-  
+
   // cppcheck-suppress *
   std::uint8_t* buf = new std::uint8_t[_headerAllocSize + kSize + vSize];
   std::uint8_t* aligned = reinterpret_cast<std::uint8_t*>(

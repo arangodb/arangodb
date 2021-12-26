@@ -62,8 +62,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_created = _snapshot.hasAsString(path + "timeCreated");
 
-  if (tmp_database && tmp_collection && tmp_from &&
-      tmp_shard && tmp_creator && tmp_created) {
+  if (tmp_database && tmp_collection && tmp_from && tmp_shard && tmp_creator && tmp_created) {
     _database = tmp_database.value();
     _collection = tmp_collection.value();
     _from = tmp_from.value();
@@ -117,7 +116,7 @@ void FailedLeader::rollback() {
     payload = std::make_shared<Builder>();
     {
       VPackArrayBuilder a(payload.get());
-      { // opers
+      {  // opers
         VPackObjectBuilder b(payload.get());
         for (auto const& c : cs) {
           payload->add(planColPrefix + _database + "/" + c.collection +
@@ -130,7 +129,6 @@ void FailedLeader::rollback() {
         addPreconditionCollectionStillThere(*payload.get(), _database, _collection);
       }
     }
-
   }
 
   finish("", _shard, false, "Timed out.", payload);
@@ -163,14 +161,13 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   }
 
   if (b == nullptr) {
-    _jb->close(); // object
-    _jb->close(); // array
+    _jb->close();  // object
+    _jb->close();  // array
     write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     return (res.accepted && res.indices.size() == 1 && res.indices[0]);
   }
 
   return true;
-
 }
 
 bool FailedLeader::start(bool& aborts) {
@@ -191,7 +188,8 @@ bool FailedLeader::start(bool& aborts) {
 
   // Get healthy in Sync follower common to all prototype + clones
   auto commonHealthyInSync =
-      findNonblockedCommonHealthyInSyncFollower(_snapshot, _database, _collection, _shard, _from);
+      findNonblockedCommonHealthyInSyncFollower(_snapshot, _database,
+                                                _collection, _shard, _from);
   if (commonHealthyInSync.empty()) {
     return false;
   } else {
@@ -221,8 +219,9 @@ bool FailedLeader::start(bool& aborts) {
       if (jobIdNode) {
         jobIdNode->get().toBuilder(todo);
       } else {
-        LOG_TOPIC("96395", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("96395", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -246,8 +245,7 @@ bool FailedLeader::start(bool& aborts) {
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
   auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
-  auto failoverCands = Job::findAllFailoverCandidates(
-      _snapshot, _database, shardsLikeMe);
+  auto failoverCands = Job::findAllFailoverCandidates(_snapshot, _database, shardsLikeMe);
   std::vector<std::string> excludes;
   for (const auto& s : VPackArrayIterator(planned)) {
     if (s.isString()) {
@@ -295,9 +293,9 @@ bool FailedLeader::start(bool& aborts) {
         {
           VPackArrayBuilder servers(&ns);
           ns.add(VPackValue(_to));
-          // We prefer servers in sync and want to put them early in the new Plan
-          // (behind the leader). This helps so that RemoveFollower prefers others
-          // to remove.
+          // We prefer servers in sync and want to put them early in the new
+          // Plan (behind the leader). This helps so that RemoveFollower prefers
+          // others to remove.
           for (auto const& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
             if (s.size() > 0 && s[0] == '_') {
@@ -311,7 +309,8 @@ bool FailedLeader::start(bool& aborts) {
             // For some Reason Leader cannot report out-of-sync, and dies.
             // => F1 will be readded in shard, as an early follower, and is considered to be in sync, until
             // New Leader has updated sync information.
-            if (s != _from && s != _to && std::find(planv.begin(), planv.end(), s) != planv.end()) {
+            if (s != _from && s != _to &&
+                std::find(planv.begin(), planv.end(), s) != planv.end()) {
               ns.add(i);
               planv.erase(std::remove(planv.begin(), planv.end(), s), planv.end());
             }
@@ -341,19 +340,18 @@ bool FailedLeader::start(bool& aborts) {
         // Check that Current/servers and failoverCandidates are still as
         // we inspected them:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-            [this, &pending](Slice plan, Slice current,
-                             std::string& planPath,
-                             std::string& curPath) {
-              addPreconditionUnchanged(pending, curPath, current);
-              // take off "servers" from curPath and add
-              // "failoverCandidates":
-              std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
-              foCandsPath += StaticStrings::FailoverCandidates;
-              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
-              if (foCands) {
-                addPreconditionUnchanged(pending, foCandsPath, *foCands);
-              }
-            });
+                       [this, &pending](Slice plan, Slice current,
+                                        std::string& planPath, std::string& curPath) {
+                         addPreconditionUnchanged(pending, curPath, current);
+                         // take off "servers" from curPath and add
+                         // "failoverCandidates":
+                         std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+                         foCandsPath += StaticStrings::FailoverCandidates;
+                         auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+                         if (foCands) {
+                           addPreconditionUnchanged(pending, foCandsPath, *foCands);
+                         }
+                       });
         // Destination server should not be blocked by another job
         addPreconditionServerNotBlocked(pending, _to);
         // Shard to be handled is block by another job
@@ -370,7 +368,8 @@ bool FailedLeader::start(bool& aborts) {
       return false;
     } else if (jobId) {
       aborts = true;
-      JobContext(PENDING, *jobId, _snapshot, _agent).abort("failed leader requests abort");
+      JobContext(PENDING, *jobId, _snapshot, _agent)
+          .abort("failed leader requests abort");
       return false;
     }
   }
@@ -381,7 +380,8 @@ bool FailedLeader::start(bool& aborts) {
   trans_ret_t res = generalTransaction(_agent, pending);
 
   if (!res.accepted) {  // lost leadership
-    LOG_TOPIC("1f01f", INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    LOG_TOPIC("1f01f", INFO, Logger::SUPERVISION)
+        << "Leadership lost! Job " << _jobId << " handed off.";
     return false;
   }
 
@@ -437,8 +437,9 @@ bool FailedLeader::start(bool& aborts) {
     slice = result.get(
         std::vector<std::string>({agencyPrefix, "Supervision", "Shards", _shard}));
     if (!slice.isNone()) {
-      LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION) << "Shard  " << _shard << " meanwhile is blocked by job "
-                                           << slice.copyString();
+      LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION)
+          << "Shard  " << _shard << " meanwhile is blocked by job "
+          << slice.copyString();
     }
   }
 

@@ -65,4 +65,3 @@ class SubqueryStartNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

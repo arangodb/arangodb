@@ -43,11 +43,10 @@ using namespace arangodb::aql;
 namespace {
 arangodb::velocypack::StringRef const filterKey("filter");
 arangodb::velocypack::StringRef const producesResultKey("producesResult");
-}
+}  // namespace
 
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
-    : _outVariable(outVariable),
-      _count(false) {
+    : _outVariable(outVariable), _count(false) {
   TRI_ASSERT(_outVariable != nullptr);
 }
 
@@ -66,9 +65,12 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   }
 
   _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count", false);
-  _readOwnWrites = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "readOwnWrites", false) ? ReadOwnWrites::yes : ReadOwnWrites::no;
+  _readOwnWrites =
+      arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "readOwnWrites", false)
+          ? ReadOwnWrites::yes
+          : ReadOwnWrites::no;
 }
-  
+
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const {
   if (_filter != nullptr) {
     c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan->getAst(), true)));
@@ -83,7 +85,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   _outVariable->toVelocyPack(builder);
 
   _projections.toVelocyPack(builder);
-  
+
   if (_filter != nullptr) {
     builder.add(VPackValuePair(::filterKey.data(), ::filterKey.size(), VPackValueType::String));
     _filter->toVelocyPack(builder, flags);
@@ -95,7 +97,9 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
     TRI_ASSERT(_filter == nullptr);
     builder.add(::producesResultKey, VPackValue(false));
   } else {
-    builder.add(::producesResultKey, VPackValue(_filter != nullptr || dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
+    builder.add(::producesResultKey,
+                VPackValue(_filter != nullptr ||
+                           dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
   }
   builder.add("readOwnWrites", VPackValue(_readOwnWrites == ReadOwnWrites::yes));
 }
@@ -103,7 +107,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
 Variable const* DocumentProducingNode::outVariable() const {
   return _outVariable;
 }
-  
+
 /// @brief remember the condition to execute for early filtering
 void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
   _filter = std::move(filter);
@@ -122,5 +126,5 @@ void DocumentProducingNode::setProjections(arangodb::aql::Projections projection
 }
 
 bool DocumentProducingNode::doCount() const {
-  return _count && (_filter == nullptr); 
+  return _count && (_filter == nullptr);
 }

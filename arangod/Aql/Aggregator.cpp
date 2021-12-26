@@ -26,8 +26,8 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Functions.h"
-#include "Containers/FlatHashSet.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -176,8 +176,8 @@ struct AggregatorMin final : public Aggregator {
   void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
-    if (!cmpValue.isNull(true) && (value.isEmpty() || 
-                                   AqlValue::Compare(_vpackOptions, value, cmpValue, true) > 0)) {
+    if (!cmpValue.isNull(true) &&
+        (value.isEmpty() || AqlValue::Compare(_vpackOptions, value, cmpValue, true) > 0)) {
       // the value `null` itself will not be used in MIN() to compare lower than
       // e.g. value `false`
       value.destroy();
@@ -594,9 +594,7 @@ struct AggregatorUnique : public Aggregator {
         seen(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(_vpackOptions)) {}
 
-  ~AggregatorUnique() {
-    reset();
-  }
+  ~AggregatorUnique() { reset(); }
 
   // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
@@ -674,9 +672,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
 /// @brief the single-server and DB server variant of SORTED_UNIQUE
 struct AggregatorSortedUnique : public Aggregator {
   explicit AggregatorSortedUnique(velocypack::Options const* opts)
-      : Aggregator(opts),
-        allocator(1024),
-        seen(_vpackOptions) {}
+      : Aggregator(opts), allocator(1024), seen(_vpackOptions) {}
 
   ~AggregatorSortedUnique() { reset(); }
 
@@ -884,7 +880,7 @@ struct AggregatorBitFunction : public Aggregator, BitFunction {
           }
         }
       }
-    
+
       invalid = true;
     }
   }
@@ -919,93 +915,90 @@ struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
 
 /// @brief all available aggregators with their meta data
 std::unordered_map<std::string, AggregatorInfo> const aggregators = {
-  {"LENGTH",
-   {std::make_shared<GenericFactory<AggregatorLength>>(),
-    doesNotRequireInput, official, "LENGTH", "SUM"}},  // we need to sum up the lengths from the DB servers
-  {"MIN",
-   {std::make_shared<GenericFactory<AggregatorMin>>(),
-    doesRequireInput, official, "MIN", "MIN"}},  // min is commutative
-  {"MAX",
-   {std::make_shared<GenericFactory<AggregatorMax>>(),
-    doesRequireInput, official, "MAX", "MAX"}},  // max is commutative
-  {"SUM",
-   {std::make_shared<GenericFactory<AggregatorSum>>(),
-    doesRequireInput, official, "SUM", "SUM"}},  // sum is commutative
-  {"AVERAGE",
-   {std::make_shared<GenericFactory<AggregatorAverage>>(),
-    doesRequireInput, official, "AVERAGE_STEP1", "AVERAGE_STEP2"}},
-  {"AVERAGE_STEP1",
-   {std::make_shared<GenericFactory<AggregatorAverageStep1>>(),
-    doesRequireInput, internalOnly, "", "AVERAGE_STEP1"}},
-  {"AVERAGE_STEP2",
-   {std::make_shared<GenericFactory<AggregatorAverageStep2>>(),
-    doesRequireInput, internalOnly, "", "AVERAGE_STEP2"}},
-  {"VARIANCE_POPULATION",
-   {std::make_shared<GenericVarianceFactory<AggregatorVariance>>(true),
-    doesRequireInput, official, "VARIANCE_POPULATION_STEP1",
-    "VARIANCE_POPULATION_STEP2"}},
-  {"VARIANCE_POPULATION_STEP1",
-   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(true),
-    doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP1"}},
-  {"VARIANCE_POPULATION_STEP2",
-   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep2>>(true),
-    doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP2"}},
-  {"VARIANCE_SAMPLE",
-   {std::make_shared<GenericVarianceFactory<AggregatorVariance>>(false),
-    doesRequireInput, official, "VARIANCE_SAMPLE_STEP1",
-    "VARIANCE_SAMPLE_STEP2"}},
-  {"VARIANCE_SAMPLE_STEP1",
-   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(false),
-    doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP1"}},
-  {"VARIANCE_SAMPLE_STEP2",
-   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep2>>(false),
-    doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP2"}},
-  {"STDDEV_POPULATION",
-   {std::make_shared<GenericVarianceFactory<AggregatorStddev>>(true),
-    doesRequireInput, official, "STDDEV_POPULATION_STEP1",
-    "STDDEV_POPULATION_STEP2"}},
-  {"STDDEV_POPULATION_STEP1",
-   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(true),
-    doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP1"}},
-  {"STDDEV_POPULATION_STEP2",
-   {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(true),
-    doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP2"}},
-  {"STDDEV_SAMPLE",
-   {std::make_shared<GenericVarianceFactory<AggregatorStddev>>(false),
-    doesRequireInput, official, "STDDEV_SAMPLE_STEP1", "STDDEV_SAMPLE_STEP2"}},
-  {"STDDEV_SAMPLE_STEP1",
-   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(false),
-    doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP1"}},
-  {"STDDEV_SAMPLE_STEP2",
-   {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(false),
-    doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP2"}},
-  {"UNIQUE",
-   {std::make_shared<GenericFactory<AggregatorUnique>>(),
-    doesRequireInput, official, "UNIQUE", "UNIQUE_STEP2"}},
-  {"UNIQUE_STEP2",
-   {std::make_shared<GenericFactory<AggregatorUniqueStep2>>(),
-    doesRequireInput, internalOnly, "", "UNIQUE_STEP2"}},
-  {"SORTED_UNIQUE",
-   {std::make_shared<GenericFactory<AggregatorSortedUnique>>(),
-    doesRequireInput, official, "SORTED_UNIQUE", "SORTED_UNIQUE_STEP2"}},
-  {"SORTED_UNIQUE_STEP2",
-   {std::make_shared<GenericFactory<AggregatorSortedUniqueStep2>>(),
-    doesRequireInput, internalOnly, "", "SORTED_UNIQUE_STEP2"}},
-  {"COUNT_DISTINCT",
-   {std::make_shared<GenericFactory<AggregatorCountDistinct>>(),
-    doesRequireInput, official, "UNIQUE", "COUNT_DISTINCT_STEP2"}},
-  {"COUNT_DISTINCT_STEP2",
-   {std::make_shared<GenericFactory<AggregatorCountDistinctStep2>>(),
-    doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}},
-  {"BIT_AND",
-   {std::make_shared<GenericFactory<AggregatorBitAnd>>(),
-    doesRequireInput, official, "BIT_AND", "BIT_AND"}},
-  {"BIT_OR",
-   {std::make_shared<GenericFactory<AggregatorBitOr>>(),
-    doesRequireInput, official, "BIT_OR", "BIT_OR"}},
-  {"BIT_XOR",
-   {std::make_shared<GenericFactory<AggregatorBitXOr>>(),
-    doesRequireInput, official, "BIT_XOR", "BIT_XOR"}},
+    {"LENGTH",
+     {std::make_shared<GenericFactory<AggregatorLength>>(), doesNotRequireInput,
+      official, "LENGTH", "SUM"}},  // we need to sum up the lengths from the DB servers
+    {"MIN",
+     {std::make_shared<GenericFactory<AggregatorMin>>(), doesRequireInput,
+      official, "MIN", "MIN"}},  // min is commutative
+    {"MAX",
+     {std::make_shared<GenericFactory<AggregatorMax>>(), doesRequireInput,
+      official, "MAX", "MAX"}},  // max is commutative
+    {"SUM",
+     {std::make_shared<GenericFactory<AggregatorSum>>(), doesRequireInput,
+      official, "SUM", "SUM"}},  // sum is commutative
+    {"AVERAGE",
+     {std::make_shared<GenericFactory<AggregatorAverage>>(), doesRequireInput,
+      official, "AVERAGE_STEP1", "AVERAGE_STEP2"}},
+    {"AVERAGE_STEP1",
+     {std::make_shared<GenericFactory<AggregatorAverageStep1>>(),
+      doesRequireInput, internalOnly, "", "AVERAGE_STEP1"}},
+    {"AVERAGE_STEP2",
+     {std::make_shared<GenericFactory<AggregatorAverageStep2>>(),
+      doesRequireInput, internalOnly, "", "AVERAGE_STEP2"}},
+    {"VARIANCE_POPULATION",
+     {std::make_shared<GenericVarianceFactory<AggregatorVariance>>(true), doesRequireInput,
+      official, "VARIANCE_POPULATION_STEP1", "VARIANCE_POPULATION_STEP2"}},
+    {"VARIANCE_POPULATION_STEP1",
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(true),
+      doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP1"}},
+    {"VARIANCE_POPULATION_STEP2",
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep2>>(true),
+      doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP2"}},
+    {"VARIANCE_SAMPLE",
+     {std::make_shared<GenericVarianceFactory<AggregatorVariance>>(false), doesRequireInput,
+      official, "VARIANCE_SAMPLE_STEP1", "VARIANCE_SAMPLE_STEP2"}},
+    {"VARIANCE_SAMPLE_STEP1",
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(false),
+      doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP1"}},
+    {"VARIANCE_SAMPLE_STEP2",
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep2>>(false),
+      doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP2"}},
+    {"STDDEV_POPULATION",
+     {std::make_shared<GenericVarianceFactory<AggregatorStddev>>(true), doesRequireInput,
+      official, "STDDEV_POPULATION_STEP1", "STDDEV_POPULATION_STEP2"}},
+    {"STDDEV_POPULATION_STEP1",
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(true),
+      doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP1"}},
+    {"STDDEV_POPULATION_STEP2",
+     {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(true),
+      doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP2"}},
+    {"STDDEV_SAMPLE",
+     {std::make_shared<GenericVarianceFactory<AggregatorStddev>>(false),
+      doesRequireInput, official, "STDDEV_SAMPLE_STEP1", "STDDEV_SAMPLE_STEP2"}},
+    {"STDDEV_SAMPLE_STEP1",
+     {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(false),
+      doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP1"}},
+    {"STDDEV_SAMPLE_STEP2",
+     {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(false),
+      doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP2"}},
+    {"UNIQUE",
+     {std::make_shared<GenericFactory<AggregatorUnique>>(), doesRequireInput,
+      official, "UNIQUE", "UNIQUE_STEP2"}},
+    {"UNIQUE_STEP2",
+     {std::make_shared<GenericFactory<AggregatorUniqueStep2>>(),
+      doesRequireInput, internalOnly, "", "UNIQUE_STEP2"}},
+    {"SORTED_UNIQUE",
+     {std::make_shared<GenericFactory<AggregatorSortedUnique>>(),
+      doesRequireInput, official, "SORTED_UNIQUE", "SORTED_UNIQUE_STEP2"}},
+    {"SORTED_UNIQUE_STEP2",
+     {std::make_shared<GenericFactory<AggregatorSortedUniqueStep2>>(),
+      doesRequireInput, internalOnly, "", "SORTED_UNIQUE_STEP2"}},
+    {"COUNT_DISTINCT",
+     {std::make_shared<GenericFactory<AggregatorCountDistinct>>(),
+      doesRequireInput, official, "UNIQUE", "COUNT_DISTINCT_STEP2"}},
+    {"COUNT_DISTINCT_STEP2",
+     {std::make_shared<GenericFactory<AggregatorCountDistinctStep2>>(),
+      doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}},
+    {"BIT_AND",
+     {std::make_shared<GenericFactory<AggregatorBitAnd>>(), doesRequireInput,
+      official, "BIT_AND", "BIT_AND"}},
+    {"BIT_OR",
+     {std::make_shared<GenericFactory<AggregatorBitOr>>(), doesRequireInput,
+      official, "BIT_OR", "BIT_OR"}},
+    {"BIT_XOR",
+     {std::make_shared<GenericFactory<AggregatorBitXOr>>(), doesRequireInput,
+      official, "BIT_XOR", "BIT_XOR"}},
 };
 
 /// @brief aliases (user-visible) for aggregation functions

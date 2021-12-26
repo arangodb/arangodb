@@ -266,4 +266,3 @@ uint32_t log2(uint32_t value) noexcept;
 
 }  // namespace NumberUtils
 }  // namespace arangodb
-

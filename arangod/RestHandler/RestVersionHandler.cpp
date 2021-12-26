@@ -21,12 +21,12 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestVersionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
-#include "RestVersionHandler.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -53,9 +53,9 @@ RestStatus RestVersionHandler::execute() {
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE
-    result.add("license", VPackValue("enterprise"));
+  result.add("license", VPackValue("enterprise"));
 #else
-    result.add("license", VPackValue("community"));
+  result.add("license", VPackValue("community"));
 #endif
 
   if (allowInfo) {

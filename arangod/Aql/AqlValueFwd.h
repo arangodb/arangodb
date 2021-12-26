@@ -49,4 +49,3 @@ struct equal_to<arangodb::aql::AqlValue> {
 };
 
 }  // namespace std
-

@@ -23,20 +23,19 @@
 
 #pragma once
 
-#include "Benchmark.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 #include <string>
+#include "Benchmark.h"
 
 namespace arangodb::arangobench {
 
 struct VersionTest : public Benchmark<VersionTest> {
   static std::string name() { return "version"; }
 
-  VersionTest(BenchFeature& arangobench) 
-      : Benchmark<VersionTest>(arangobench),
-        _url("/_api/version") {}
+  VersionTest(BenchFeature& arangobench)
+      : Benchmark<VersionTest>(arangobench), _url("/_api/version") {}
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
     return true;
@@ -44,19 +43,21 @@ struct VersionTest : public Benchmark<VersionTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter,
-                    size_t globalCounter, BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
+                    BenchmarkOperation::RequestData& requestData) const override {
     requestData.url = _url;
     requestData.type = rest::RequestType::GET;
   }
 
   char const* getDescription() const noexcept override {
-    return "queries the server version and then instantly returns. In a cluster, this means that Coordinators instantly respond to the requests without ever accessing DB-Servers. This test can be used to establish a baseline for single server or Coordinator throughput. The --complexity parameter is not used.";
+    return "queries the server version and then instantly returns. In a "
+           "cluster, this means that Coordinators instantly respond to the "
+           "requests without ever accessing DB-Servers. This test can be used "
+           "to establish a baseline for single server or Coordinator "
+           "throughput. The --complexity parameter is not used.";
   }
 
-  bool isDeprecated() const noexcept override {
-    return false;
-  }
+  bool isDeprecated() const noexcept override { return false; }
 
  private:
   std::string const _url;

@@ -95,4 +95,3 @@ AqlValue getDocumentOrNull(VPackSlice const& elm, std::string const& key);
 }  // namespace ModificationExecutorHelpers
 }  // namespace aql
 }  // namespace arangodb
-

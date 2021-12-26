@@ -59,7 +59,7 @@ class SortCondition {
 
   /// @brief whether or not all conditions have the same sort order
   inline bool isUnidirectional() const { return _unidirectional; }
-  
+
   /// @brief whether or not all sort directions are ascending
   /// note that the return value of this function is only meaningful if the
   /// sort is unidirectional
@@ -86,7 +86,7 @@ class SortCondition {
   /// @brief returns true if all attributes in the sort condition are proven
   /// to be non-null
   bool onlyUsesNonNullSortAttributes(
-                           std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
+      std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
   /// @brief  return the sort condition (as a tuple containing variable, AstNode
   /// and sort order) at `position`.
@@ -110,7 +110,7 @@ class SortCondition {
 
   /// @brief const attributes
   std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
-  
+
   /// @brief non-null attributes
   ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> const _nonNullAttributes;
 
@@ -126,4 +126,3 @@ class SortCondition {
 };
 }  // namespace aql
 }  // namespace arangodb
-

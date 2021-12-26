@@ -134,10 +134,7 @@ class TestGraph {
 class GraphEnumerator : public PathEnumerator {
  public:
   GraphEnumerator(Traverser* traverser, TraverserOptions* opts, TestGraph const& g)
-      : PathEnumerator(traverser, opts),
-        _graph(g),
-        _idx(0),
-        _depth(0) {}
+      : PathEnumerator(traverser, opts), _graph(g), _idx(0), _depth(0) {}
 
   ~GraphEnumerator() = default;
 
@@ -305,7 +302,8 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         noFixed(""),
         registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {}, {RegIdSet{0}}),
-        executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg, filterConditionVariables, fakedQuery->ast())
+        executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg,
+                      filterConditionVariables, fakedQuery->ast())
 
   {}
 };
@@ -342,8 +340,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_producer_p
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
                     MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(), registerInfos.registersToClear());
@@ -376,8 +373,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_no_edges_are_connec
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
                     MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(), registerInfos.registersToClear());
@@ -411,8 +407,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_edges_are_
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
                     MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   myGraph.addEdge("1", "2", "1->2");
   myGraph.addEdge("2", "3", "2->3");
@@ -485,7 +480,8 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
         fixed("v/1"),
         registerInfos({}, RegIdSet{1}, 1, 2, {}, {RegIdSet{0}}),
         executorInfos(std::move(traverserPtr), registerMapping, fixed,
-                      RegisterPlan::MaxRegisterId, filterConditionVariables, fakedQuery->ast()) {}
+                      RegisterPlan::MaxRegisterId, filterConditionVariables,
+                      fakedQuery->ast()) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesnt_produce) {
@@ -495,8 +491,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesn
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
                           registerInfos.registersToKeep(),
@@ -515,11 +510,11 @@ TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream) {
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
-                          registerInfos.registersToKeep(), registerInfos.registersToClear());
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
   AqlCall call;
 
   std::tie(state, stats, call) = testee.produceRows(input, result);
@@ -541,8 +536,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_doesnt_w
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
                     MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
                        registerInfos.registersToKeep(), registerInfos.registersToClear());
@@ -578,8 +572,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_no
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
                     MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   AqlCall call;
 
@@ -618,8 +611,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_edges_connected) {
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
                     MatrixBuilder<1>{{{{R"("v/1")"}}}, {{{R"("v/2")"}}}, {{{R"("v/3")"}}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
   AqlCall call;
 

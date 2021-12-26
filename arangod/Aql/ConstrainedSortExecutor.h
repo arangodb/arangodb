@@ -118,9 +118,8 @@ class ConstrainedSortExecutor {
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   RegIdFlatSetStack _regsToKeep;
-  RegIdSet  _outputRegister = {};
+  RegIdSet _outputRegister = {};
   OutputAqlItemRow _heapOutputRow;
 };
 }  // namespace aql
 }  // namespace arangodb
-

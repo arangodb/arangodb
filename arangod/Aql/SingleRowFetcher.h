@@ -77,7 +77,5 @@ class SingleRowFetcher {
 
  private:
   DependencyProxy<blockPassthrough>* _dependencyProxy;
-
 };
 }  // namespace arangodb::aql
-

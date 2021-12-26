@@ -32,15 +32,15 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/Stats.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/Stats.h"
 
 #include <condition_variable>
 #include <memory>
 #include <mutex>
 
 namespace arangodb {
-  class ExecContext;
+class ExecContext;
 }
 
 namespace arangodb::aql {
@@ -208,7 +208,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   virtual void collectExecStats(ExecutionStats& stats) const override {
     ExecutionBlock::collectExecStats(stats);
-    stats += _blockStats; // additional stats;
+    stats += _blockStats;  // additional stats;
   }
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
@@ -312,7 +312,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * created the task might be faster, in which case we don't want to wait
    * until a worker has picked up the task. Instead, any thread that wants to
    * process the task has to _claim_ it. This is managed via the task's `state`.
-   * 
+   *
    * Before the task is queued on the scheduler, `state` is set to `Pending`.
    * When a thread wants to process the task, it must call `tryClaim` which
    * sets `state` to `InProgress` iff it is still pending. If `tryClaim`
@@ -328,34 +328,30 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * consumed.
    */
   struct PrefetchTask {
-    enum class State {
-      Pending,
-      InProgress,
-      Finished,
-      Consumed
-    };
-    using PrefetchResult = std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
-    
+    enum class State { Pending, InProgress, Finished, Consumed };
+    using PrefetchResult =
+        std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
+
     bool isConsumed() const noexcept;
     bool tryClaim() noexcept;
     void waitFor() noexcept;
     void reset() noexcept;
     PrefetchResult stealResult() noexcept;
-    
+
     void execute(ExecutionBlockImpl& block, AqlCallStack& stack);
-    
+
    private:
     std::atomic<State> _state{State::Pending};
     std::mutex _lock;
     std::condition_variable _bell;
     std::optional<PrefetchResult> _result;
   };
-  
+
   /**
    * @brief The CallstackSplit class is used for execution blocks that need to
    * perform their calls to upstream nodes in a separate thread in order to
    * prevent stack overflows.
-   * 
+   *
    * Execution blocks for which the callstack split has been enabled create a
    * single CallstackSplit instance upon creation. The CallstackSplit instance
    * manages the new thread for the upstream execution. Instead of calling
@@ -363,10 +359,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * parameter, signals the thread and then blocks. The other thread fetches
    * the parameters, performs the call to executeFetcher, stores the result and
    * notifies the original thread.
-   * 
+   *
    * This way we can split the callstack over multiple threads and thereby
    * avoid stack overflows.
-   * 
+   *
    */
   struct CallstackSplit {
     explicit CallstackSplit(ExecutionBlockImpl& block);
@@ -433,7 +429,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   QueryContext const& _query;
 
   InternalState _state;
-  
+
   ExecState _execState;
 
   SkipResult _skipped{};
@@ -450,7 +446,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   typename Executor::Stats _blockStats;
 
   AqlCallStack _stackBeforeWaiting;
-  
+
   std::shared_ptr<PrefetchTask> _prefetchTask;
 
   std::unique_ptr<CallstackSplit> _callstackSplit;

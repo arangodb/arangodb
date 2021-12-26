@@ -35,9 +35,7 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : PathEnumerator(traverser, opts),
-      _searchDepth(0) {
-
+    : PathEnumerator(traverser, opts), _searchDepth(0) {
   TRI_ASSERT(opts->isUseBreadthFirst());
   TRI_ASSERT(opts->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL);
   TRI_ASSERT(!opts->hasDepthLookupInfo());

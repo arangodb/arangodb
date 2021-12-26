@@ -101,7 +101,8 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
 }
 
-void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeStats const& stats) {
+void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid,
+                             ExecutionNodeStats const& stats) {
   auto const alias = _nodeAliases.find(nid);
   if (alias != _nodeAliases.end()) {
     nid = alias->second;
@@ -110,7 +111,7 @@ void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeSt
       return;
     }
   }
-  
+
   auto it = _nodes.find(nid);
   if (it != _nodes.end()) {
     it->second += stats;
@@ -148,7 +149,9 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
   }
 
   if (slice.hasKey("peakMemoryUsage")) {
-    peakMemoryUsage = std::max<size_t>(peakMemoryUsage, slice.get("peakMemoryUsage").getNumber<int64_t>());
+    peakMemoryUsage =
+        std::max<size_t>(peakMemoryUsage,
+                         slice.get("peakMemoryUsage").getNumber<int64_t>());
   }
 
   // note: fullCount is an optional attribute!

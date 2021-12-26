@@ -53,7 +53,9 @@ struct RocksDBLogTest : testing::Test {
       }
     };
 
-    _persistor = std::make_shared<RocksDBLogPersistor>(_db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>());
+    _persistor =
+        std::make_shared<RocksDBLogPersistor>(_db->DefaultColumnFamily(), _db,
+                                              std::make_shared<SyncExecutor>());
   }
 
   static void TearDownTestCase() {
@@ -169,7 +171,8 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
         PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
         PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
         PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{999}, LogPayload::createFromString("nine-nine-nine")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{999},
+                           LogPayload::createFromString("nine-nine-nine")},
         PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);
@@ -198,7 +201,6 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
   }
 }
 
-
 TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
   auto log = createUniqueLog();
 
@@ -207,7 +209,8 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
         PersistingLogEntry{LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first")},
         PersistingLogEntry{LogTerm{1}, LogIndex{2}, LogPayload::createFromString("second")},
         PersistingLogEntry{LogTerm{2}, LogIndex{3}, LogPayload::createFromString("third")},
-        PersistingLogEntry{LogTerm{2}, LogIndex{999}, LogPayload::createFromString("nine-nine-nine")},
+        PersistingLogEntry{LogTerm{2}, LogIndex{999},
+                           LogPayload::createFromString("nine-nine-nine")},
         PersistingLogEntry{LogTerm{2}, LogIndex{1000}, LogPayload::createFromString("thousand")},
     };
     auto iter = make_iterator(entries);

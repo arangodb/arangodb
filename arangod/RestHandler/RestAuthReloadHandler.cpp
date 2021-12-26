@@ -58,7 +58,7 @@ RestStatus RestAuthReloadHandler::execute() {
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   result.close();
-  
+
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

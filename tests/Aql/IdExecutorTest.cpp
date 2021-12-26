@@ -414,7 +414,8 @@ TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
   RegisterInfos registerInfos{{}, {}, 1, 1, {}, {RegIdSet{0}}};
   IdExecutorInfos executorInfos{false};
   makeExecutorTestHelper()
-      .addConsumer<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(registerInfos), std::move(executorInfos))
+      .addConsumer<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(
+          std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 2, 3, 4, 5, 6)
       .setCall(AqlCall{0, AqlCall::Infinity{}, 2u, false})
       .expectOutput({0}, {{1}, {2}})

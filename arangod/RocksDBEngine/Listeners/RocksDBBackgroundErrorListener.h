@@ -46,4 +46,3 @@ class RocksDBBackgroundErrorListener : public rocksdb::EventListener {
 };
 
 }  // namespace arangodb
-

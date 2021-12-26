@@ -153,8 +153,8 @@ TEST_F(AddFollowerTest, creating_a_job_should_create_a_job_in_todo) {
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  auto addFollower = AddFollower(baseStructure.getOrCreate(PREFIX), &agent, jobId,
-                                 "unittest", DATABASE, COLLECTION, SHARD);
+  auto addFollower = AddFollower(baseStructure.getOrCreate(PREFIX), &agent,
+                                 jobId, "unittest", DATABASE, COLLECTION, SHARD);
 
   addFollower.create();
 }
@@ -516,7 +516,8 @@ TEST_F(AddFollowerTest, job_can_still_be_safely_aborted) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId).abort("test abort");
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId)
+      .abort("test abort");
 }
 
 TEST_F(AddFollowerTest, job_cannot_be_aborted) {
@@ -567,7 +568,8 @@ TEST_F(AddFollowerTest, job_cannot_be_aborted) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId).abort("test abort");
+  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .abort("test abort");
 }
 
 }  // namespace add_follower_test

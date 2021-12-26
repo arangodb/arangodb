@@ -49,7 +49,8 @@ class Expression;
 class Projections;
 struct NonConstExpressionContainer;
 
-template<typename T> struct RegisterPlanT;
+template <typename T>
+struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
 /// @brief class IndexNode
@@ -57,8 +58,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   friend class ExecutionBlock;
 
  public:
-  IndexNode(ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
-            Variable const* outVariable,
+  IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
+            aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
             std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
 
@@ -107,8 +108,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
 
   bool isLateMaterialized() const noexcept {
-    TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||
-               !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.second.empty()));
+    TRI_ASSERT((_outNonMaterializedDocId == nullptr &&
+                _outNonMaterializedIndVars.second.empty()) ||
+               !(_outNonMaterializedDocId == nullptr ||
+                 _outNonMaterializedIndVars.second.empty()));
     return !_outNonMaterializedIndVars.second.empty();
   }
 
@@ -116,19 +119,21 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return isProduceResult() && !_projections.supportsCoveringIndex();
   }
 
-  bool isDeterministic() override final { return canReadOwnWrites() == ReadOwnWrites::no; }
+  bool isDeterministic() override final {
+    return canReadOwnWrites() == ReadOwnWrites::no;
+  }
 
   struct IndexVariable {
     size_t indexFieldNum;
     Variable const* var;
   };
 
-  using IndexValuesVars =
-      std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
+  using IndexValuesVars = std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
 
   using IndexValuesRegisters = std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
 
-  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
+  using IndexVarsInfo =
+      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
 
   void setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
                            IndexVarsInfo const& indexVariables);
@@ -145,7 +150,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   bool isProduceResult() const {
     return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
   }
-  
+
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
@@ -155,7 +160,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   /// @brief the index(es) condition
   std::unique_ptr<Condition> _condition;
-  
+
   /// @brief the index sort order - this is the same order for all indexes
   bool _needsGatherNodeSort;
 
@@ -171,4 +176,3 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
 }  // namespace aql
 }  // namespace arangodb
-

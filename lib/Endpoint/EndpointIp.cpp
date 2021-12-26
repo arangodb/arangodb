@@ -217,7 +217,8 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
     }
 
     // listen for new connection, executed for server endpoints only
-    LOG_TOPIC("779e6", TRACE, arangodb::Logger::FIXME) << "using backlog size " << _listenBacklog;
+    LOG_TOPIC("779e6", TRACE, arangodb::Logger::FIXME)
+        << "using backlog size " << _listenBacklog;
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result != 0) {

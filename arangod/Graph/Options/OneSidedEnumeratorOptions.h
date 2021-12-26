@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include <numeric>
 #include <cstddef>
+#include <numeric>
 
 namespace arangodb {
 
@@ -46,4 +46,3 @@ struct OneSidedEnumeratorOptions {
 };
 }  // namespace graph
 }  // namespace arangodb
-

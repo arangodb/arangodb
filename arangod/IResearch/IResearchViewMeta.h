@@ -68,9 +68,7 @@ struct IResearchViewMeta {
       return _policy;
     }
 
-    VPackSlice properties() const noexcept {
-      return _properties.slice();
-    }
+    VPackSlice properties() const noexcept { return _properties.slice(); }
 
    private:
     irs::index_writer::consolidation_policy_t _policy;  // policy instance (false == disable)
@@ -92,14 +90,14 @@ struct IResearchViewMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
-  size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
-  size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
-  ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
-  uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
-  size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
-  size_t _writebufferIdle; // maximum number of segments cached in the pool
-  size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
+  size_t _cleanupIntervalStep;  // issue cleanup after <count> commits (0 == disable)
+  size_t _commitIntervalMsec;  // issue commit after <interval> milliseconds (0 == disable)
+  size_t _consolidationIntervalMsec;  // issue consolidation after <interval> milliseconds (0 == disable)
+  ConsolidationPolicy _consolidationPolicy;  // the consolidation policy to use
+  uint32_t _version;  // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
+  size_t _writebufferActive;  // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
+  size_t _writebufferIdle;    // maximum number of segments cached in the pool
+  size_t _writebufferSizeMax;  // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _primarySortCompression;
@@ -199,8 +197,7 @@ struct IResearchViewMetaState {
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool init(VPackSlice slice, std::string& errorField,
-            IResearchViewMetaState const& defaults = DEFAULT(),
-            Mask* mask = nullptr);
+            IResearchViewMetaState const& defaults = DEFAULT(), Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object
@@ -209,8 +206,7 @@ struct IResearchViewMetaState {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(VPackBuilder& builder,
-            IResearchViewMetaState const* ignoreEqual = nullptr,
+  bool json(VPackBuilder& builder, IResearchViewMetaState const* ignoreEqual = nullptr,
             Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -221,4 +217,3 @@ struct IResearchViewMetaState {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

@@ -145,4 +145,3 @@ struct Metadata {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

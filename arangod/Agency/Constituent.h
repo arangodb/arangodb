@@ -146,7 +146,7 @@ class Constituent : public Thread {
 
   TRI_vocbase_t* _vocbase;
 
-  term_t _term;  // term number
+  term_t _term;           // term number
   Gauge<term_t>& _gterm;  // term number
 
   std::string _leaderID;  // Current leader
@@ -159,7 +159,7 @@ class Constituent : public Thread {
   // if the time since _lastHeartbeatSeen is greater than a random timeout:
   std::atomic<double> _lastHeartbeatSeen;
 
-  std::atomic<role_t> _role;           // My role
+  std::atomic<role_t> _role;  // My role
   // We use this to read off leadership without acquiring a lock.
   // It is still only changed under _termVoteLock.
   Agent* _agent;          // My boss
@@ -197,4 +197,3 @@ class Constituent : public Thread {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

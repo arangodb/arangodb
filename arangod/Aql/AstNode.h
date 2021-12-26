@@ -77,7 +77,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_FINALIZED = 0x0040000,  // node has been finalized and should not be modified; only
                                // set and checked in maintainer mode
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
-  
+
   FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
   FLAG_READ_OWN_WRITES = 0x0200000,  // reads own writes (only needed for UPSERT FOR nodes)
 };
@@ -664,7 +664,9 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   if (wasFinalizedAlready) {                                                               \
     (n)->flags = ((n)->flags & ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);           \
   }                                                                                        \
-  auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready); });
+  auto sg = arangodb::scopeGuard([&]() noexcept {                                          \
+    FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready);                                  \
+  });
 #else
 #define FINALIZE_SUBTREE(n) \
   while (0) {               \
@@ -685,4 +687,3 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   do {                             \
   } while (0)
 #endif
-

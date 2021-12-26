@@ -76,7 +76,7 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0},RegIdSet{0},RegIdSet{0}};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}, RegIdSet{0}, RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -99,12 +99,15 @@ class SplicedSubqueryIntegrationTest
 
   auto makeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
     auto inputRegisterSet = RegIdSet{inputRegister};
-    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
+    auto const outputRegister =
+        RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
     for (RegisterId::value_t r = 0; r <= inputRegister.value(); ++r) {
       inputRegisterSet.emplace(r);
     }
     auto outputRegisterSet = RegIdSet{outputRegister};
-    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{inputRegisterSet}, RegIdSet{inputRegisterSet}, RegIdSet{inputRegisterSet}};
+    auto toKeepRegisterSet =
+        RegIdSetStack{RegIdSet{inputRegisterSet}, RegIdSet{inputRegisterSet},
+                      RegIdSet{inputRegisterSet}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -115,7 +118,8 @@ class SplicedSubqueryIntegrationTest
   }
 
   auto makeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
-    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
+    auto const outputRegister =
+        RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
 
     return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister, outputRegister);
   }
@@ -128,7 +132,8 @@ class SplicedSubqueryIntegrationTest
       prototype.emplace(r);
     }
 
-    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {}, {prototype, prototype, prototype});
+    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {},
+                         {prototype, prototype, prototype});
   }
 
   auto makeDoNothingExecutorInfos() -> LambdaExe::Infos {
@@ -137,7 +142,7 @@ class SplicedSubqueryIntegrationTest
 
   auto makeAssertRegisterInfos() -> RegisterInfos {
     auto numRegs = size_t{1};
-    RegIdSet  prototype{};
+    RegIdSet prototype{};
     for (RegisterId::value_t r = 0; r < numRegs; ++r) {
       prototype.emplace(r);
     }
@@ -471,7 +476,8 @@ TEST_P(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
   auto helper = makeExecutorTestHelper<1, 1>();
   auto call = AqlCall{10};
 
-  helper.addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos(call))
+  helper
+      .addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos(call))
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
                                           makeSubqueryStartExecutorInfos(),
                                           ExecutionNode::SUBQUERY_START)

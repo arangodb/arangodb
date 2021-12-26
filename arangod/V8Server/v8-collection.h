@@ -70,4 +70,3 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
                                               v8::Local<v8::Object> const& holder);
-

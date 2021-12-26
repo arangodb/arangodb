@@ -209,6 +209,6 @@ TEST_F(WeightedQueueTest, it_should_pop_all_loose_ends) {
   EXPECT_FALSE(queue.hasProcessableElement());
 }
 
-}  // namespace queue_graph_cache_test
+}  // namespace weighted_queue_graph_cache_test
 }  // namespace tests
 }  // namespace arangodb

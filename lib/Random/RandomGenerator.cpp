@@ -521,17 +521,19 @@ void RandomGenerator::ensureDeviceIsInitialized() {
 
 void RandomGenerator::shutdown() {
   // nothing to do...
-  // thread-local devices will be released when their respective threads terminate.
-  // however, we want to reset the device for testing
+  // thread-local devices will be released when their respective threads
+  // terminate. however, we want to reset the device for testing
   _device.reset();
 }
-  
+
 int16_t RandomGenerator::interval(int16_t left, int16_t right) {
-  return static_cast<int16_t>(interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
+  return static_cast<int16_t>(
+      interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
 }
 
 int32_t RandomGenerator::interval(int32_t left, int32_t right) {
-  return static_cast<int32_t>(interval(static_cast<int64_t>(left), static_cast<int64_t>(right)));
+  return static_cast<int32_t>(
+      interval(static_cast<int64_t>(left), static_cast<int64_t>(right)));
 }
 
 int64_t RandomGenerator::interval(int64_t left, int64_t right) {

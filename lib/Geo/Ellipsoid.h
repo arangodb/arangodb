@@ -29,31 +29,27 @@ namespace arangodb {
 namespace geo {
 
 class Ellipsoid {
-public:
-    Ellipsoid(double radius, double flattening)
-    : _equatorRadius(radius), _flattening(flattening) { }
-    
-    // In meters
-    inline double equator_radius() const noexcept {
-        return _equatorRadius;
-    }
-    // In meters
-    inline double poles_radius() const noexcept {
-        return (1.0 - _flattening) * _equatorRadius;
-    }
-    // Flattening, see http://en.wikipedia.org/w/index.php?title=Flattening&oldid=602517763
-    inline double flattening() const noexcept {
-        return _flattening;
-    }
-    
-private:
-    double _equatorRadius;
-    double _flattening;
+ public:
+  Ellipsoid(double radius, double flattening)
+      : _equatorRadius(radius), _flattening(flattening) {}
+
+  // In meters
+  inline double equator_radius() const noexcept { return _equatorRadius; }
+  // In meters
+  inline double poles_radius() const noexcept {
+    return (1.0 - _flattening) * _equatorRadius;
+  }
+  // Flattening, see http://en.wikipedia.org/w/index.php?title=Flattening&oldid=602517763
+  inline double flattening() const noexcept { return _flattening; }
+
+ private:
+  double _equatorRadius;
+  double _flattening;
 };
 
 // WGS 84 is a commonly used standard for earth geometry, see
 // http://en.wikipedia.org/w/index.php?title=World_Geodetic_System&oldid=614370148
-static const Ellipsoid WGS84_ELLIPSOID(6378137.0, 1.0/298.257223563);
+static const Ellipsoid WGS84_ELLIPSOID(6378137.0, 1.0 / 298.257223563);
 static const Ellipsoid SPHERE((6371.000 * 1000), 0.0);
 
 namespace utils {
@@ -62,5 +58,3 @@ Ellipsoid const& ellipsoidFromString(const char* ptr, std::size_t len);
 
 }  // namespace geo
 }  // namespace arangodb
-
-

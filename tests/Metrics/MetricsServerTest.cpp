@@ -24,9 +24,9 @@
 
 #include "gtest/gtest.h"
 
-#include "RestServer/MetricsFeature.h"
-#include "Mocks/Servers.h"
 #include "MetricsFeatureTest.h"
+#include "Mocks/Servers.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
 

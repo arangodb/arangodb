@@ -53,8 +53,7 @@ constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
 CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc),
-      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+    : ActionBase(feature, desc), ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -121,15 +120,12 @@ bool CreateCollection::first() {
 
     auto& cluster = _feature.server().getFeature<ClusterFeature>();
 
-    bool waitForRepl =
-        (props.get(WAIT_FOR_SYNC_REPL).isBool())
-            ? props.get(WAIT_FOR_SYNC_REPL).getBool()
-            : cluster.createWaitsForSyncReplication();
+    bool waitForRepl = (props.get(WAIT_FOR_SYNC_REPL).isBool())
+                           ? props.get(WAIT_FOR_SYNC_REPL).getBool()
+                           : cluster.createWaitsForSyncReplication();
 
     bool enforceReplFact =
-        (props.get(ENF_REPL_FACT).isBool())
-            ? props.get(ENF_REPL_FACT).getBool()
-            : true;
+        (props.get(ENF_REPL_FACT).isBool()) ? props.get(ENF_REPL_FACT).getBool() : true;
 
     TRI_col_type_e type = static_cast<TRI_col_type_e>(
         props.get(StaticStrings::DataSourceType).getNumber<uint32_t>());
@@ -158,8 +154,7 @@ bool CreateCollection::first() {
     result(res);
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
-          << "local collection " << database << "/" << shard
-          << " successfully created";
+          << "local collection " << database << "/" << shard << " successfully created";
 
       if (leader.empty()) {
         std::vector<std::string> noFollowers;
@@ -170,16 +165,15 @@ bool CreateCollection::first() {
     }
 
     if (res.fail()) {
-      // If this is TRI_ERROR_ARANGO_DUPLICATE_NAME, then we assume that a previous
-      // incarnation of ourselves has already done the work. This can happen, if
-      // the timing of phaseOne runs is unfortunate with asynchronous creation of
-      // shards.
-      // In this case, we do not report an error and do not increase the version
-      // number of the shard in `setState` below.
+      // If this is TRI_ERROR_ARANGO_DUPLICATE_NAME, then we assume that a
+      // previous incarnation of ourselves has already done the work. This can
+      // happen, if the timing of phaseOne runs is unfortunate with asynchronous
+      // creation of shards. In this case, we do not report an error and do not
+      // increase the version number of the shard in `setState` below.
       if (res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
         LOG_TOPIC("9db9c", DEBUG, Logger::MAINTENANCE)
-        << "local collection " << database << "/" << shard
-        << " already found, ignoring...";
+            << "local collection " << database << "/" << shard
+            << " already found, ignoring...";
         result(TRI_ERROR_NO_ERROR);
         _doNotIncrement = true;
         return false;
@@ -191,7 +185,6 @@ bool CreateCollection::first() {
 
       res.reset(TRI_ERROR_FAILED, error.str());
       result(res);
-      
     }
 
   } catch (std::exception const& e) {
@@ -204,8 +197,7 @@ bool CreateCollection::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+    _feature.storeShardError(database, collection, shard, _description.get(SERVER_ID), res);
   }
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)

@@ -46,8 +46,7 @@ class CollectionNameResolver {
   /// @brief create the resolver
   //////////////////////////////////////////////////////////////////////////////
   explicit CollectionNameResolver(TRI_vocbase_t& vocbase)
-      : _vocbase(vocbase),
-        _serverRole(ServerState::instance()->getRole()) {}
+      : _vocbase(vocbase), _serverRole(ServerState::instance()->getRole()) {}
 
   // copy an existing resolver
   CollectionNameResolver(CollectionNameResolver const& other);
@@ -184,4 +183,3 @@ class CollectionNameResolver {
 };
 
 }  // namespace arangodb
-

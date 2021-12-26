@@ -44,28 +44,25 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
 #ifdef USE_ENTERPRISE
   if (!inaccessibleCollections.empty()) {
     return std::make_unique<transaction::IgnoreNoAccessAqlTransaction>(
-        transactionContext, collections, options,
-        std::move(inaccessibleCollections));
+        transactionContext, collections, options, std::move(inaccessibleCollections));
   }
 #endif
   return std::make_unique<AqlTransaction>(transactionContext, collections, options);
 }
 
-AqlTransaction::AqlTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    transaction::Options const& options)
+AqlTransaction::AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
+                               transaction::Options const& options)
     : transaction::Methods(transactionContext, options) {
   if (options.isIntermediateCommitEnabled()) {
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
 }
 
-  /// protected so we can create different subclasses
-AqlTransaction::AqlTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    aql::Collections const& collections,
-    transaction::Options const& options)
-    : transaction::Methods(transactionContext, options) { 
+/// protected so we can create different subclasses
+AqlTransaction::AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
+                               aql::Collections const& collections,
+                               transaction::Options const& options)
+    : transaction::Methods(transactionContext, options) {
   TRI_ASSERT(state() != nullptr);
   if (options.isIntermediateCommitEnabled()) {
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

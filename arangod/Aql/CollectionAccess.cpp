@@ -23,8 +23,8 @@
 
 #include "CollectionAccess.h"
 
-#include "Aql/Collections.h"
 #include "Aql/CollectionAccessingNode.h"
+#include "Aql/Collections.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Basics/debugging.h"
@@ -43,10 +43,10 @@ auto CollectionAccess::collection() const noexcept -> aql::Collection const* {
 CollectionAccess::CollectionAccess(aql::Collection const* collection)
     : _collection(collection) {}
 
-CollectionAccess::CollectionAccess(aql::Collections const* const collections, velocypack::Slice const slice) {
+CollectionAccess::CollectionAccess(aql::Collections const* const collections,
+                                   velocypack::Slice const slice) {
   if (slice.get("prototype").isString()) {
-    _prototypeCollection =
-        collections->get(slice.get("prototype").copyString());
+    _prototypeCollection = collections->get(slice.get("prototype").copyString());
   }
   auto colName = slice.get("collection").copyString();
   _collection = collections->get(colName);
@@ -60,7 +60,8 @@ CollectionAccess::CollectionAccess(aql::Collections const* const collections, ve
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
   }
 
-  if (auto const isSatelliteOfSlice = slice.get("isSatelliteOf"); isSatelliteOfSlice.isInteger()) {
+  if (auto const isSatelliteOfSlice = slice.get("isSatelliteOf");
+      isSatelliteOfSlice.isInteger()) {
     auto const isSatelliteOfId = isSatelliteOfSlice.getUInt();
     _isSatelliteOf = ExecutionNodeId{isSatelliteOfId};
   } else {
@@ -111,7 +112,6 @@ auto CollectionAccess::getSatelliteOf(std::unordered_map<ExecutionNodeId, Execut
     return nullptr;
   }
 }
-
 
 auto CollectionAccess::getRawSatelliteOf() const -> std::optional<ExecutionNodeId> {
   return _isSatelliteOf;

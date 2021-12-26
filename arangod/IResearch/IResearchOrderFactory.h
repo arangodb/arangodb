@@ -28,7 +28,6 @@
 
 #include "VocBase/voc-types.h"
 
-
 #include "search/sort.hpp"
 
 namespace arangodb {
@@ -163,4 +162,3 @@ class ScorerReplacer {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

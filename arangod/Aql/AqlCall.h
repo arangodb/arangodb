@@ -62,7 +62,7 @@ struct AqlCall {
    * As we disallow any warnings in the build this will stop compilation here.
    *
    * Remove this as soon as the MSVC compiler is fixed.
-   * 
+   *
    * So this wrapper class will be wrapped arround every limit to print now.
    */
 
@@ -102,12 +102,14 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
-    return AqlCall{/*offset*/ toSkip, /*softLimit*/ 0u, /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
+    return AqlCall{/*offset*/ toSkip, /*softLimit*/ 0u,
+                   /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateGetSome(std::size_t atMost) {
-    return AqlCall{/*offset*/ 0, /*softLimit*/ atMost, /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
+    return AqlCall{/*offset*/ 0, /*softLimit*/ atMost,
+                   /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
   // TODO Remove me, this will not be necessary later
@@ -243,13 +245,9 @@ constexpr bool operator<(size_t a, AqlCall::Limit const& b) {
   return a < std::get<size_t>(b);
 }
 
-constexpr bool operator>(size_t a, AqlCall::Limit const& b) {
-  return b < a;
-}
+constexpr bool operator>(size_t a, AqlCall::Limit const& b) { return b < a; }
 
-constexpr bool operator>(AqlCall::Limit const& a, size_t b) {
-  return b < a;
-}
+constexpr bool operator>(AqlCall::Limit const& a, size_t b) { return b < a; }
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
   return std::visit(

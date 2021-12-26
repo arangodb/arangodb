@@ -85,11 +85,7 @@ bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error);
 
-enum TRI_copy_recursive_e {
-  TRI_COPY_IGNORE,
-  TRI_COPY_COPY,
-  TRI_COPY_LINK
-};
+enum TRI_copy_recursive_e { TRI_COPY_IGNORE, TRI_COPY_COPY, TRI_COPY_LINK };
 
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
@@ -103,7 +99,6 @@ bool copyRecursive(std::string const& source, std::string const& target,
 bool copyDirectoryRecursive(std::string const& source, std::string const& target,
                             std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
                             std::string& error);
-
 
 // returns list of files
 std::vector<std::string> listFiles(std::string const& directory);
@@ -148,4 +143,3 @@ std::string slurpProgram(std::string const& program);
 }  // namespace FileUtils
 }  // namespace basics
 }  // namespace arangodb
-

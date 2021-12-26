@@ -90,7 +90,7 @@ class StatisticsWorker final : public Thread {
   // invocation
   velocypack::Builder _rawBuilder;
   velocypack::Builder _tempBuilder;
-  
+
   velocypack::Builder _lastStoredValue;
 
   std::string _clusterId;
@@ -98,4 +98,3 @@ class StatisticsWorker final : public Thread {
 };
 
 }  // namespace arangodb
-

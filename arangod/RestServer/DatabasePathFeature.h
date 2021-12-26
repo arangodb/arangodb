@@ -53,4 +53,3 @@ class DatabasePathFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

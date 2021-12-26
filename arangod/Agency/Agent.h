@@ -33,9 +33,9 @@
 #include "Agency/State.h"
 #include "Agency/Store.h"
 #include "Agency/Supervision.h"
-#include "Futures/Promise.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Futures/Promise.h"
 #include "RestServer/MetricsFeature.h"
 
 struct TRI_vocbase_t;
@@ -122,8 +122,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   read_ret_t read(query_t const&);
 
   /// @brief Long pool for higher index than given if leader or else empty builder and false
-  std::tuple<futures::Future<query_t>, bool, std::string> poll(
-    index_t const& index, double const& timeout);
+  std::tuple<futures::Future<query_t>, bool, std::string> poll(index_t const& index,
+                                                               double const& timeout);
 
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);
@@ -153,15 +153,14 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void trashStoreCallback(std::string const& url, velocypack::Slice body);
 
  private:
-
   void logsForTrigger();
 
   /// @brief clear expired polls registered by Agent::poll
   ///        if qu is nullptr, we're resigning.
   ///        Caller must have _promLock!
-  void triggerPollsNoLock(
-    query_t qu = nullptr,
-    SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(60));
+  void triggerPollsNoLock(query_t qu = nullptr,
+                          SteadyTimePoint const& tp = std::chrono::steady_clock::now() +
+                                                      std::chrono::seconds(60));
 
   /// @brief trigger all expire polls
   void clearExpiredPolls();
@@ -178,7 +177,6 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void advanceCommitIndex();
 
  public:
-
   /// @brief Get last confirmed index of an agent. Default my own.
   ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
   index_t confirmed(std::string const& serverId = std::string()) const;
@@ -253,7 +251,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief execute a callback while holding _transientLock
   void executeTransientLocked(std::function<void()> const& cb);
 
-    /// @brief Get read store and compaction index
+  /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
   /// @brief Get read store and compaction index
@@ -285,7 +283,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   query_t allLogs() const;
 
   /// @brief Get copy of log entries starting with begin ending on end
-  std::vector<log_t> logs(index_t begin = 0, index_t end = (std::numeric_limits<uint64_t>::max)()) const;
+  std::vector<log_t> logs(index_t begin = 0,
+                          index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
   void lastAckedAgo(Builder&) const;
@@ -354,14 +353,13 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief add agent to configuration (from State after successful local persistence)
   void updateConfiguration(VPackSlice const&);
 
-  /// @brief patch some configuration values, this is for manual interaction with
-  /// the agency leader.
+  /// @brief patch some configuration values, this is for manual interaction
+  /// with the agency leader.
   void updateSomeConfigValues(VPackSlice);
 
   Histogram<log_scale_t<float>>& commitHist() const;
 
  private:
-
   /// @brief load() has run
   bool loaded() const;
 
@@ -548,8 +546,6 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Histogram<log_scale_t<float>>& _append_hist_msec;
   Histogram<log_scale_t<float>>& _compaction_hist_msec;
   Gauge<uint64_t>& _local_index;
-
 };
 }  // namespace consensus
 }  // namespace arangodb
-

@@ -58,8 +58,7 @@ std::initializer_list<ExecutionNode::NodeType> const reduceExtractionToProjectio
 void RocksDBOptimizerRules::registerResources(OptimizerRulesFeature& feature) {
   // simplify an EnumerationCollectionNode that fetches an entire document to a
   // projection of this document
-  feature.registerRule("reduce-extraction-to-projection",
-                       reduceExtractionToProjectionRule,
+  feature.registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule,
                        OptimizerRule::reduceExtractionToProjectionRule,
                        OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
@@ -86,9 +85,9 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
   for (auto& n : nodes) {
     // isDeterministic is false for EnumerateCollectionNodes when the "random" flag is set.
-    bool const isRandomOrder = 
-      (n->getType() == EN::ENUMERATE_COLLECTION && 
-       !ExecutionNode::castTo<EnumerateCollectionNode*>(n)->isDeterministic());
+    bool const isRandomOrder =
+        (n->getType() == EN::ENUMERATE_COLLECTION &&
+         !ExecutionNode::castTo<EnumerateCollectionNode*>(n)->isDeterministic());
 
     bool stop = false;
     bool optimize = false;
@@ -230,8 +229,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           }
 
           if (idx->sparse()) {
-            // we cannot safely substitute a full collection scan with a sparse index scan,
-            // as the sparse index may be missing some documents
+            // we cannot safely substitute a full collection scan with a sparse
+            // index scan, as the sparse index may be missing some documents
             return false;
           }
 
@@ -299,10 +298,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       }
 
       modified = true;
-    } else if (!stop && 
-               projections.empty() && 
-               n->getType() == ExecutionNode::ENUMERATE_COLLECTION && 
-               !isRandomOrder) {
+    } else if (!stop && projections.empty() &&
+               n->getType() == ExecutionNode::ENUMERATE_COLLECTION && !isRandomOrder) {
       // replace collection access with primary index access (which can be
       // faster given the fact that keys and values are stored together in
       // RocksDB, but average values are much bigger in the documents column

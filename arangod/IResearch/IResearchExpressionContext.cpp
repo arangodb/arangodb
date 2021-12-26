@@ -24,10 +24,10 @@
 
 #include "IResearchExpressionContext.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "Aql/QueryContext.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/IResearchViewNode.h"
+#include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
 
 #include <Containers/HashSet.h>
@@ -50,22 +50,22 @@ void ViewExpressionContextBase::registerError(ErrorCode errorCode, char const* m
 }
 
 icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(char const* ptr, size_t length,
-                                                             bool caseInsensitive) {
+                                                                bool caseInsensitive) {
   return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length, caseInsensitive);
 }
 
 icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(char const* ptr, size_t length,
-                                                            bool caseInsensitive) {
+                                                               bool caseInsensitive) {
   return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(AqlValue splitExpression,
-                                                             velocypack::Options const* opts,
-                                                             bool& isEmptyExpression) {
+icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
+    AqlValue splitExpression, velocypack::Options const* opts, bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts, isEmptyExpression);
 }
 
-arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(arangodb::velocypack::Slice const& params) {
+arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
+    arangodb::velocypack::Slice const& params) {
   return _aqlFunctionsInternalCache->buildValidator(params);
 }
 
@@ -73,13 +73,9 @@ TRI_vocbase_t& ViewExpressionContextBase::vocbase() const {
   return _trx->vocbase();
 }
 
-transaction::Methods& ViewExpressionContextBase::trx() const {
-  return *_trx;
-}
+transaction::Methods& ViewExpressionContextBase::trx() const { return *_trx; }
 
-bool ViewExpressionContextBase::killed() const  {
-  return _query->killed();
-}
+bool ViewExpressionContextBase::killed() const { return _query->killed(); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              ViewExpressionContext implementation
@@ -131,7 +127,6 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCop
                                   "Variable '%s' is used before being assigned",
                                   var->name.c_str());
   }
-
 
   TRI_ASSERT(_inputRow.isInitialized());
   AqlValue const& value = _inputRow.getValue(varInfo.registerId);

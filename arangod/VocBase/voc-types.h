@@ -78,4 +78,3 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 
 /// @brief databases list structure
 struct TRI_vocbase_t;
-

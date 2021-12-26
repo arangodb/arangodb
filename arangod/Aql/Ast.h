@@ -69,7 +69,7 @@ using AstPropertiesFlagsType = uint32_t;
 
 /// @brief flags for customizing Ast building process
 enum AstPropertyFlag : AstPropertiesFlagsType {
-  AST_FLAG_DEFAULT = 0x00000000,     // Regular Ast     
+  AST_FLAG_DEFAULT = 0x00000000,     // Regular Ast
   NON_CONST_PARAMETERS = 0x00000001  // Parameters are considered non-const
 };
 
@@ -92,7 +92,7 @@ class Ast {
 
   /// @brief return the query
   QueryContext& query() const { return _query; }
-  
+
   AstResources& resources() { return _resources; }
 
   /// @brief return the variable generator
@@ -125,7 +125,7 @@ class Ast {
 
   /// @brief whether or not the query contains a traversal
   bool containsTraversal() const noexcept;
-  
+
   /// @brief whether or not query contains any modification operations
   bool containsModificationNode() const noexcept;
   void setContainsModificationNode() noexcept;
@@ -134,11 +134,11 @@ class Ast {
   void setContainsParallelNode() noexcept;
   bool willUseV8() const noexcept;
   void setWillUseV8() noexcept;
-        
+
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
   }
-  
+
   /// @brief convert the AST into VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
 
@@ -147,7 +147,7 @@ class Ast {
 
   /// @brief find the bottom-most expansion subnodes (if any)
   AstNode const* findExpansionSubNode(AstNode const*) const;
-  
+
   /// @brief create a node from the velocypack data
   AstNode* createNode(arangodb::velocypack::Slice slice);
 
@@ -223,13 +223,12 @@ class Ast {
 
   /// @brief create an AST sort element node
   AstNode* createNodeSortElement(AstNode const*, AstNode const*);
-  
+
   /// @brief create an AST limit node
   AstNode* createNodeLimit(AstNode const*, AstNode const*);
-  
+
   /// @brief create an AST window node
-  AstNode* createNodeWindow(AstNode const* spec,
-                            AstNode const* rangeVar,
+  AstNode* createNodeWindow(AstNode const* spec, AstNode const* rangeVar,
                             AstNode const* assignments);
 
   /// @brief create an AST assign node
@@ -381,7 +380,8 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type, AstNode const*, AstNode const*);
+  AstNode* createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type,
+                                    AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments,
@@ -436,17 +436,17 @@ class Ast {
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
-  /// @brief determines the top-level attributes used in an expression, grouped by
-  /// variable
+  /// @brief determines the top-level attributes used in an expression, grouped
+  /// by variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
-  
+
   /// @brief determines the top-level attributes used in an expression for the
   /// specified variable
   static bool getReferencedAttributes(AstNode const*, Variable const*,
                                       std::unordered_set<std::string>&);
-  
-  /// @brief determines the attributes and subattributes used in an expression for the
-  /// specified variable
+
+  /// @brief determines the attributes and subattributes used in an expression
+  /// for the specified variable
   static bool getReferencedAttributesRecursive(AstNode const*, Variable const*,
                                                std::unordered_set<arangodb::aql::AttributeNamePath>&);
 
@@ -487,11 +487,11 @@ class Ast {
   AstNode const* resolveConstAttributeAccess(AstNode const*);
 
   /// @brief resolve an attribute access, static version
-  /// if isValid is set to true, then the returned value is to be trusted. if 
-  /// isValid is set to false, then the returned value is not to be trued and the
-  /// the result is equivalent to an AQL `null` value
+  /// if isValid is set to true, then the returned value is to be trusted. if
+  /// isValid is set to false, then the returned value is not to be trued and
+  /// the the result is equivalent to an AQL `null` value
   static AstNode const* resolveConstAttributeAccess(AstNode const*, bool& isValid);
-  
+
   /// @brief optimizes the unary operators + and -
   /// the unary plus will be converted into a simple value node if the operand
   /// of the operation is a constant number
@@ -531,8 +531,7 @@ class Ast {
                                    std::unordered_map<Variable const*, AstNode const*> const&);
 
   /// @brief optimizes a call to a built-in function
-  AstNode* optimizeFunctionCall(transaction::Methods&,
-                                AqlFunctionsInternalCache&, AstNode*);
+  AstNode* optimizeFunctionCall(transaction::Methods&, AqlFunctionsInternalCache&, AstNode*);
 
   /// @brief optimizes a reference to a variable
   AstNode* optimizeReference(AstNode*);
@@ -600,7 +599,6 @@ class Ast {
     return ((_astFlags & static_cast<decltype(_astFlags)>(flag)) != 0);
   }
 
-
  public:
   /// @brief negated comparison operators
   static std::unordered_map<int, AstNodeType> const NegatedOperators;
@@ -611,7 +609,7 @@ class Ast {
  private:
   /// @brief the query
   QueryContext& _query;
-  
+
   AstResources _resources;
 
   /// @brief all scopes used in the query
@@ -630,7 +628,7 @@ class Ast {
   std::vector<AstNode*> _queries;
 
   /// @brief which collection is going to be modified in the query
-  /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to 
+  /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to
   /// whether the collection is used in exclusive mode
   std::vector<std::pair<AstNode const*, bool>> _writeCollections;
 
@@ -642,15 +640,15 @@ class Ast {
 
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
-  
+
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
   bool _containsModificationNode;
-  
+
   bool _containsUpsertNode{false};
 
   /// @brief contains a parallel traversal
   bool _containsParallelNode;
-  
+
   /// @brief query makes use of V8 function(s)
   bool _willUseV8;
 
@@ -682,11 +680,10 @@ class Ast {
   };
 
   SpecialNodes const _specialNodes;
-    
+
   /// @brief ast flags
   AstPropertiesFlagsType _astFlags;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

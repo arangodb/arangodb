@@ -126,7 +126,8 @@ void SenderThread::run() {
         TRI_ASSERT(!_idle && !_url.empty());
 
         {
-          QuickHistogramTimer timer(_stats->_histogram, (_highLineNumber - _lowLineNumber) +1);
+          QuickHistogramTimer timer(_stats->_histogram,
+                                    (_highLineNumber - _lowLineNumber) + 1);
           std::unique_ptr<httpclient::SimpleHttpResult> result(
               _client->request(rest::RequestType::POST, _url, _data.c_str(),
                                _data.length()));
@@ -187,23 +188,23 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       MUTEX_LOCKER(guard, _stats->_mutex);
       // look up the "created" flag
       _stats->_numberCreated +=
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                    "created", 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                      "created", 0);
 
       // look up the "errors" flag
       _stats->_numberErrors +=
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                    "errors", 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                      "errors", 0);
 
       // look up the "updated" flag
       _stats->_numberUpdated +=
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                    "updated", 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                      "updated", 0);
 
       // look up the "ignored" flag
       _stats->_numberIgnored +=
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                    "ignored", 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                      "ignored", 0);
     }
 
     // get the "error" flag. This returns a pointer, not a copy
@@ -217,16 +218,15 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       // will trigger the waiting ImportHelper thread to cancel the import
       _hasError = true;
     }
-  } // if
+  }  // if
 
   if (!_hasError && !result->getHttpReturnMessage().empty() && !result->isComplete()) {
     _errorMessage = result->getHttpReturnMessage();
     if (0 != _lowLineNumber || 0 != _highLineNumber) {
-      LOG_TOPIC("8add8", WARN, arangodb::Logger::FIXME) << "Error left import lines "
-                                                        << _lowLineNumber << " through "
-                                                        << _highLineNumber
-                                                        << " in unknown state";
-    } // if
+      LOG_TOPIC("8add8", WARN, arangodb::Logger::FIXME)
+          << "Error left import lines " << _lowLineNumber << " through "
+          << _highLineNumber << " in unknown state";
+    }  // if
     _hasError = true;
-  } // if
+  }  // if
 }

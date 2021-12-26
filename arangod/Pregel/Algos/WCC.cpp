@@ -172,4 +172,3 @@ VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>* WCC::createCompu
 GraphFormat<WCCValue, uint64_t>* WCC::inputFormat() const {
   return new ::WCCGraphFormat(_server, _resultField);
 }
-

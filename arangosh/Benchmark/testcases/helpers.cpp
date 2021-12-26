@@ -57,15 +57,15 @@ bool DeleteCollection(arangodb::httpclient::SimpleHttpClient* client,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CreateCollection(arangodb::httpclient::SimpleHttpClient* client,
-                      std::string const& name, int const type, BenchFeature const& arangobench) {
+                      std::string const& name, int const type,
+                      BenchFeature const& arangobench) {
   std::unordered_map<std::string, std::string> headerFields;
 
   std::string payload =
       "{\"name\":\"" + name + "\",\"type\":" + basics::StringUtils::itoa(type) +
       ",\"replicationFactor\":" + basics::StringUtils::itoa(arangobench.replicationFactor()) +
       ",\"numberOfShards\":" + basics::StringUtils::itoa(arangobench.numberOfShards()) +
-      ",\"waitForSync\":" + (arangobench.waitForSync() ? "true" : "false") +
-      "}";
+      ",\"waitForSync\":" + (arangobench.waitForSync() ? "true" : "false") + "}";
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> result(
       client->request(rest::RequestType::POST, "/_api/collection",

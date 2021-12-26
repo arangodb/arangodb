@@ -61,14 +61,16 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> obj =
           args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
-        waitForSync = TRI_ObjectToBoolean(isolate,
-                                          obj->Get(context,
-                                                   TRI_V8_ASCII_STRING(isolate, "waitForSync")).FromMaybe(v8::Local<v8::Value>()));
+        waitForSync =
+            TRI_ObjectToBoolean(isolate, obj->Get(context, TRI_V8_ASCII_STRING(isolate,
+                                                                               "waitForSync"))
+                                             .FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
-        waitForCollector = TRI_ObjectToBoolean(
-            isolate,
-            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForCollector")).FromMaybe(v8::Local<v8::Value>()));
+        waitForCollector =
+            TRI_ObjectToBoolean(isolate, obj->Get(context, TRI_V8_ASCII_STRING(isolate,
+                                                                               "waitForCollector"))
+                                             .FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
@@ -210,8 +212,7 @@ static void JS_CollectionRevisionTreeCorrupt(v8::FunctionCallbackInfo<v8::Value>
   }
 
   if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "_revisionTreeCorrupt(<count>, <hash>");
+    TRI_V8_THROW_EXCEPTION_USAGE("_revisionTreeCorrupt(<count>, <hash>");
   }
 
   uint64_t count = TRI_ObjectToUInt64(isolate, args[0], true);
@@ -233,21 +234,23 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  
+
   std::unique_ptr<containers::RevisionTree> storedTree;
   std::unique_ptr<containers::RevisionTree> computedTree;
 
   {
     TRI_vocbase_t& vocbase = collection->vocbase();
     auto& server = vocbase.server();
-    RocksDBEngine& engine = server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
     double ttl = 3600;
     // the "17" is a magic number. we just need any client id to proceed.
-    RocksDBReplicationContext* ctx 
-      = manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
+    RocksDBReplicationContext* ctx =
+        manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
     if (ctx == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("Could not create RocksDBReplicationContext");
+      TRI_V8_THROW_EXCEPTION_INTERNAL(
+          "Could not create RocksDBReplicationContext");
     }
     RocksDBReplicationContextGuard guard(manager, ctx);
     try {
@@ -263,7 +266,7 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
   }
 
   VPackBuilder builder;
-  { 
+  {
     VPackObjectBuilder guard(&builder);
     if (storedTree != nullptr) {
       builder.add(VPackValue("stored"));
@@ -279,8 +282,7 @@ static void JS_CollectionRevisionTreeVerification(v8::FunctionCallbackInfo<v8::V
     }
     if (storedTree != nullptr && computedTree != nullptr) {
       try {
-        std::vector<std::pair<uint64_t, uint64_t>> diff
-          = computedTree->diff(*storedTree);
+        std::vector<std::pair<uint64_t, uint64_t>> diff = computedTree->diff(*storedTree);
         builder.add("equal", VPackValue(diff.empty()));
       } catch (std::exception const& ex) {
         builder.add("error", VPackValue(ex.what()));
@@ -382,7 +384,8 @@ void RocksDBV8Functions::registerResources() {
                        JS_CollectionRevisionTreeSummary);
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "_revisionTreePendingUpdates"),
+                       TRI_V8_ASCII_STRING(isolate,
+                                           "_revisionTreePendingUpdates"),
                        JS_CollectionRevisionTreePendingUpdates);
   // intentionally corrupting revision tree
   TRI_AddMethodVocbase(isolate, rt,
@@ -390,7 +393,8 @@ void RocksDBV8Functions::registerResources() {
                        JS_CollectionRevisionTreeCorrupt);
   // get trees from RAM and freshly computed
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "_revisionTreeVerification"),
+                       TRI_V8_ASCII_STRING(isolate,
+                                           "_revisionTreeVerification"),
                        JS_CollectionRevisionTreeVerification);
   // rebuildRevisionTree
   TRI_AddMethodVocbase(isolate, rt,

@@ -59,7 +59,7 @@ static void JS_TtlProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result = methods::Ttl::setProperties(v8g->_server.getFeature<TtlFeature>(),
                                          properties.slice(), builder);
   }
-  
+
   if (result.fail()) {
     THROW_ARANGO_EXCEPTION(result);
   }
@@ -94,12 +94,8 @@ static void JS_TtlStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void TRI_InitV8Ttl(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_TTL_STATISTICS"),
-                               JS_TtlStatistics);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_TTL_PROPERTIES"),
-                               JS_TtlProperties);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_TTL_STATISTICS"), JS_TtlStatistics);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_TTL_PROPERTIES"), JS_TtlProperties);
 }

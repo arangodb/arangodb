@@ -159,4 +159,3 @@ class FrequencyBuffer {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

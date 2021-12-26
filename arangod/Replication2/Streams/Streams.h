@@ -82,9 +82,9 @@ struct StreamGenericBase : StreamType<Type> {
   virtual auto getAllEntriesIterator() -> std::unique_ptr<Iterator> = 0;
 };
 
-template<typename Descriptor>
+template <typename Descriptor>
 using StreamBase = StreamGenericBase<Descriptor, Stream>;
-template<typename Descriptor>
+template <typename Descriptor>
 using ProducerStreamBase = StreamGenericBase<Descriptor, ProducerStream>;
 
 template <typename, template <typename> typename>

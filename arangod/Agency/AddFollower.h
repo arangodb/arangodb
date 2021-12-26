@@ -52,4 +52,3 @@ struct AddFollower : public Job {
 
 }  // namespace consensus
 }  // namespace arangodb
-

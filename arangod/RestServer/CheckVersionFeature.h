@@ -51,4 +51,3 @@ class CheckVersionFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

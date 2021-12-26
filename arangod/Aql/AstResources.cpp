@@ -48,11 +48,9 @@ AstResources::~AstResources() {
   for (auto& it : _strings) {
     TRI_FreeString(it);
   }
-  
-  size_t memoryUsage = 
-      (_nodes.numUsed() * sizeof(AstNode)) + 
-      (_strings.capacity() * memoryUsageForStringBlock()) +
-      _stringsLength;
+
+  size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) +
+                       (_strings.capacity() * memoryUsageForStringBlock()) + _stringsLength;
   _resourceMonitor.decreaseMemoryUsage(memoryUsage);
 }
 
@@ -76,7 +74,7 @@ AstNode* AstResources::registerNode(AstNodeType type) {
   ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
 
   AstNode* node = _nodes.allocate(type);
-    
+
   // now we are responsible for tracking the memory usage
   scope.steal();
   return node;
@@ -88,7 +86,7 @@ AstNode* AstResources::registerNode(Ast* ast, arangodb::velocypack::Slice slice)
   ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
 
   AstNode* node = _nodes.allocate(ast, slice);
-    
+
   // now we are responsible for tracking the memory usage
   scope.steal();
   return node;
@@ -152,8 +150,10 @@ char* AstResources::registerLongString(char* copy, size_t length) {
   // reserve space
   if (capacity > _strings.capacity()) {
     // not enough capacity...
-    ResourceUsageScope scope(_resourceMonitor, (capacity - _strings.capacity()) * memoryUsageForStringBlock() + length);
-      
+    ResourceUsageScope scope(_resourceMonitor, (capacity - _strings.capacity()) *
+                                                       memoryUsageForStringBlock() +
+                                                   length);
+
     _strings.reserve(capacity);
 
     // we are now responsible for tracking the memory usage

@@ -37,7 +37,6 @@ using namespace arangodb::replication2::test;
 
 struct LeaderAppendEntriesTest : ReplicatedLogTest {};
 
-
 TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
@@ -56,7 +55,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
     EXPECT_EQ(req.entries.size(), 2);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -80,7 +79,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{2});
     EXPECT_EQ(req.entries.size(), 0);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
     EXPECT_EQ(req.prevLogEntry.index, firstIdx);
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -106,20 +105,18 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
     EXPECT_EQ(req.entries.size(), 2);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
     EXPECT_EQ(req.leaderCommit, LogIndex{0});
   }
 
-  {
-    follower->resolveRequestWithException(std::logic_error("logic error"));
-  }
+  { follower->resolveRequestWithException(std::logic_error("logic error")); }
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
-    EXPECT_EQ(stats.local.commitIndex, LogIndex{0}); // do not commit yet
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{0});  // do not commit yet
   }
 
   // we expect a retry
@@ -129,7 +126,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
     EXPECT_EQ(req.messageId, MessageId{2});
     // Note that the leader inserts an empty log entry in becomeLeader already
     EXPECT_EQ(req.entries.size(), 2);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -148,7 +145,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), false,
-          LogLeader::doNotTriggerAsyncReplication);
+                     LogLeader::doNotTriggerAsyncReplication);
   // Note that the leader inserts an empty log entry in becomeLeader already
   ASSERT_EQ(firstIdx, LogIndex{2});
 
@@ -159,7 +156,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
     EXPECT_EQ(req.entries.size(), 2);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -180,7 +177,7 @@ TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), true,
-          LogLeader::doNotTriggerAsyncReplication);
+                     LogLeader::doNotTriggerAsyncReplication);
   // Note that the leader inserts an empty log entry in becomeLeader already
   ASSERT_EQ(firstIdx, LogIndex{2});
 
@@ -191,7 +188,7 @@ TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
     EXPECT_EQ(req.entries.size(), 2);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -213,7 +210,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
     EXPECT_EQ(req.entries.size(), 1);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -225,7 +222,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), false,
-          LogLeader::doNotTriggerAsyncReplication);
+                     LogLeader::doNotTriggerAsyncReplication);
   // Note that the leader inserts an empty log entry in becomeLeader already
   ASSERT_EQ(firstIdx, LogIndex{2});
 
@@ -236,7 +233,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
     EXPECT_EQ(req.messageId, MessageId{4});
     // Note that the leader inserts an empty log entry in becomeLeader already
     EXPECT_EQ(req.entries.size(), 1);
-    EXPECT_EQ(req.leaderId, ParticipantId {"leader"});
+    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});

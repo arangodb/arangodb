@@ -143,8 +143,8 @@ RocksDBKeyBounds RocksDBKeyBounds::LogRange(uint64_t objectId) {
   return RocksDBKeyBounds(RocksDBEntryType::LogEntry, objectId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
-                                                         arangodb::velocypack::StringRef const& word) {
+RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(
+    uint64_t indexId, arangodb::velocypack::StringRef const& word) {
   return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId, word);
 }
 
@@ -349,11 +349,11 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
       _internals.separate();
 
-      if (type == RocksDBEntryType::PrimaryIndexValue && 
+      if (type == RocksDBEntryType::PrimaryIndexValue &&
           rocksDBEndianness == RocksDBEndianness::Big) {
         // if we are in big-endian mode, we can cheat a bit...
-        // for the upper bound we can use the object id + 1, which will always compare higher in a
-        // bytewise comparison
+        // for the upper bound we can use the object id + 1, which will always
+        // compare higher in a bytewise comparison
         rocksutils::uintToPersistentBigEndian<uint64_t>(_internals.buffer(), first + 1);
         _internals.push_back(0x00U);  // lower/equal to any ascii char
       } else {

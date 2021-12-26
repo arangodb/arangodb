@@ -53,8 +53,7 @@ TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
-                                bool extendedNames,
-                                std::string& collectionName,
+                                bool extendedNames, std::string& collectionName,
                                 std::unique_ptr<char[]>& key) {
   TRI_ASSERT(collectionName.empty());
 
@@ -63,7 +62,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
   }
 
   // the handle must always be an ASCII string. These is no need to normalize it
-  // first. 
+  // first.
   v8::String::Utf8Value str(isolate, arg);
 
   if (*str == nullptr) {
@@ -103,9 +102,8 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val,
-                           bool extendedNames,
-                           std::string& collectionName, VPackBuilder& builder,
-                           bool includeRev) {
+                           bool extendedNames, std::string& collectionName,
+                           VPackBuilder& builder, bool includeRev) {
   auto context = TRI_IGETC;
   // reset the collection identifier and the revision
   TRI_ASSERT(collectionName.empty());
@@ -134,13 +132,15 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_KeyKey);
     if (TRI_HasRealNamedProperty(context, isolate, obj, _IdKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>());
+      v8::Handle<v8::Value> didVal =
+          obj->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>());
 
       if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName, key)) {
         return false;
       }
     } else if (TRI_HasRealNamedProperty(context, isolate, obj, _KeyKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(context, _KeyKey).FromMaybe(v8::Local<v8::Value>());
+      v8::Handle<v8::Value> didVal =
+          obj->Get(context, _KeyKey).FromMaybe(v8::Local<v8::Value>());
 
       if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName, key)) {
         return false;
@@ -163,7 +163,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     if (!TRI_HasRealNamedProperty(context, isolate, obj, _RevKey)) {
       return true;
     }
-    v8::Handle<v8::Value> revObj = obj->Get(context, _RevKey).FromMaybe(v8::Local<v8::Value>());
+    v8::Handle<v8::Value> revObj =
+        obj->Get(context, _RevKey).FromMaybe(v8::Local<v8::Value>());
     if (!revObj->IsString()) {
       return true;
     }

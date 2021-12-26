@@ -108,8 +108,7 @@ auto const doubles_worth_testing = {0.0,
                                     -.00001,
                                     -100.0,
                                     4.e-12,
-                                    100000.0
-                                    -5e+15,
+                                    100000.0 - 5e+15,
                                     std::numeric_limits<double>::epsilon(),
                                     std::numeric_limits<double>::max(),
                                     std::numeric_limits<double>::min(),
@@ -119,7 +118,6 @@ auto const doubles_worth_testing = {0.0,
                                     std::numeric_limits<double>::lowest()};
 
 TEST(Zkd_byte_string_conversion, double_float_cmp) {
-
   for (auto&& a : doubles_worth_testing) {
     for (auto&& b : doubles_worth_testing) {
       auto a_bs = to_byte_string_fixed_length(a);
@@ -186,7 +184,6 @@ TEST(Zkd_byte_string_conversion, bit_reader_test_different_sizes) {
 }
 
 TEST(Zkd_byte_string_conversion, construct_destruct_double) {
-
   for (auto const a : doubles_worth_testing) {
     auto destructed = destruct_double(a);
     auto reconstructed = construct_double(destructed);
@@ -197,7 +194,6 @@ TEST(Zkd_byte_string_conversion, construct_destruct_double) {
 }
 
 TEST(Zkd_byte_string_conversion, double_from_byte_string) {
-
   for (auto a : doubles_worth_testing) {
     double a1;
     memcpy(&a1, &a, sizeof(double));

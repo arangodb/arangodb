@@ -59,7 +59,7 @@ using namespace arangodb::basics;
 namespace {
 /// @brief empty map, used for headers
 std::unordered_map<std::string, std::string> const noHeaders{};
-} // namespace
+}  // namespace
 
 namespace arangodb {
 namespace httpclient {
@@ -116,7 +116,7 @@ SimpleHttpClient::~SimpleHttpClient() {
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
-  
+
 void SimpleHttpClient::recycleResult(std::unique_ptr<SimpleHttpResult> result) {
   _result = std::move(result);
 }
@@ -269,9 +269,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   TRI_ASSERT(_result != nullptr);
 
-  auto resultGuard = scopeGuard([this]() noexcept {
-    _result.reset();
-  });
+  auto resultGuard = scopeGuard([this]() noexcept { _result.reset(); });
 
   // reset error message
   _errorMessage.clear();
@@ -449,7 +447,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   // set result type in getResult()
   setResultType(haveSentRequest);
 
-  // this method always returns a raw pointer to the result. 
+  // this method always returns a raw pointer to the result.
   // the caller must take ownership.
   return _result.release();
 }
@@ -566,7 +564,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   LOG_TOPIC("908b8", DEBUG, Logger::HTTPCLIENT)
       << "request to " << _hostname << ": "
       << GeneralRequest::translateMethod(method) << ' ' << *l;
-  
+
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
   _writeBuffer.appendText(_hostname);
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
@@ -608,14 +606,16 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   bool foundContentLength = false;
   for (auto const& header : headers) {
-    if (!foundContentLength && 
-        basics::StringUtils::equalStringsCaseInsensitive(StaticStrings::ContentLength, header.first)) {
+    if (!foundContentLength &&
+        basics::StringUtils::equalStringsCaseInsensitive(StaticStrings::ContentLength,
+                                                         header.first)) {
       foundContentLength = true;
-      continue; // skip content-length header
+      continue;  // skip content-length header
     }
     _writeBuffer.appendText(header.first);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(": "));
-    if (basics::StringUtils::equalStringsCaseInsensitive(StaticStrings::Authorization, header.first)) {
+    if (basics::StringUtils::equalStringsCaseInsensitive(StaticStrings::Authorization,
+                                                         header.first)) {
       pos = _writeBuffer.size();
       _writeBuffer.appendText(header.second);
       exclusions.emplace_back(pos, _writeBuffer.size());
@@ -639,8 +639,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
 
   _writeBuffer.ensureNullTerminated();
   if (exclusions.empty()) {
-    LOG_TOPIC("12c4c", TRACE, arangodb::Logger::HTTPCLIENT)
-        << "request: " << _writeBuffer;
+    LOG_TOPIC("12c4c", TRACE, arangodb::Logger::HTTPCLIENT) << "request: " << _writeBuffer;
   } else {
     pos = 0;
     for (size_t i = 0; i < exclusions.size(); ++i) {
@@ -651,9 +650,10 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
       pos = exclusions[i].second;
     }
     LOG_TOPIC("12c4e", TRACE, arangodb::Logger::HTTPCLIENT)
-        << "request: " << std::string_view(_writeBuffer.data() + pos, _writeBuffer.size() - pos);
+        << "request: "
+        << std::string_view(_writeBuffer.data() + pos, _writeBuffer.size() - pos);
   }
-  
+
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();
   }

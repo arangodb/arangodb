@@ -196,4 +196,3 @@ struct error {
 
 // TODO: ?
 using deserialize_error = arangodb::velocypack::deserializer::error;
-

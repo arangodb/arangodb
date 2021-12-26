@@ -65,6 +65,5 @@ class MutexNode : public ExecutionNode {
   std::vector<std::string> _clients;
 };
 
-}
-}
-
+}  // namespace aql
+}  // namespace arangodb

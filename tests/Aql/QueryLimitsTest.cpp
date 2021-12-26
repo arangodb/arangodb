@@ -36,28 +36,29 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
-#include "gtest/gtest.h"
 #include "Mocks/Servers.h"
+#include "gtest/gtest.h"
 
 namespace {
 
-class AqlQueryLimitsTest 
+class AqlQueryLimitsTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
  public:
-  AqlQueryLimitsTest() : server(false) {
-    server.startFeatures();
-  }
+  AqlQueryLimitsTest() : server(false) { server.startFeatures(); }
 
-  arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string const& queryString,
-                                        std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-                                        std::string const& optionsString = "{}") {
+  arangodb::aql::QueryResult executeQuery(
+      TRI_vocbase_t& vocbase, std::string const& queryString,
+      std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+      std::string const& optionsString = "{}") {
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), bindVars,
-                                              arangodb::aql::QueryOptions(arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
+    auto query = arangodb::aql::Query::create(
+        ctx, arangodb::aql::QueryString(queryString), bindVars,
+        arangodb::aql::QueryOptions(
+            arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
     arangodb::aql::QueryResult result;
     while (true) {
@@ -73,12 +74,14 @@ class AqlQueryLimitsTest
 };
 
 TEST_F(AqlQueryLimitsTest, testManyNodes) {
-  arangodb::CreateDatabaseInfo testDBInfo(server.server(), arangodb::ExecContext::current());
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(testDBInfo));
-  
+
   std::string query("LET x = NOOPT('testi')\n");
-  size_t cnt = arangodb::aql::ExecutionPlan::maxPlanNodes - 4; // singleton + calculation + calculation + return
+  size_t cnt = arangodb::aql::ExecutionPlan::maxPlanNodes -
+               4;  // singleton + calculation + calculation + return
   for (size_t i = 1; i <= cnt; ++i) {
     query.append("FILTER x\n");
   }
@@ -94,10 +97,11 @@ TEST_F(AqlQueryLimitsTest, testManyNodes) {
 }
 
 TEST_F(AqlQueryLimitsTest, testTooManyNodes) {
-  arangodb::CreateDatabaseInfo testDBInfo(server.server(), arangodb::ExecContext::current());
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(testDBInfo));
-  
+
   std::string query("LET x = NOOPT('testi')\n");
   size_t cnt = arangodb::aql::ExecutionPlan::maxPlanNodes;
   for (size_t i = 1; i <= cnt; ++i) {
@@ -112,12 +116,13 @@ TEST_F(AqlQueryLimitsTest, testTooManyNodes) {
 }
 
 TEST_F(AqlQueryLimitsTest, testDeepRecursion) {
-  arangodb::CreateDatabaseInfo testDBInfo(server.server(), arangodb::ExecContext::current());
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(testDBInfo));
-  
+
   std::string query("RETURN 0");
-  size_t cnt = arangodb::aql::Ast::maxExpressionNesting - 2; 
+  size_t cnt = arangodb::aql::Ast::maxExpressionNesting - 2;
   for (size_t i = 1; i <= cnt; ++i) {
     query.append(" + ");
     query.append(std::to_string(i));
@@ -133,12 +138,13 @@ TEST_F(AqlQueryLimitsTest, testDeepRecursion) {
 }
 
 TEST_F(AqlQueryLimitsTest, testTooDeepRecursion) {
-  arangodb::CreateDatabaseInfo testDBInfo(server.server(), arangodb::ExecContext::current());
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(testDBInfo));
-  
+
   std::string query("RETURN 0");
-  size_t cnt = arangodb::aql::Ast::maxExpressionNesting; 
+  size_t cnt = arangodb::aql::Ast::maxExpressionNesting;
   for (size_t i = 1; i <= cnt; ++i) {
     query.append(" + ");
     query.append(std::to_string(i));
@@ -149,4 +155,4 @@ TEST_F(AqlQueryLimitsTest, testTooDeepRecursion) {
   ASSERT_EQ(TRI_ERROR_QUERY_TOO_MUCH_NESTING, queryResult.result.errorNumber());
 }
 
-}
+}  // namespace

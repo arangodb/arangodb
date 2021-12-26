@@ -37,7 +37,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class LogicalDataSource; // forward declaration
+class LogicalDataSource;  // forward declaration
 
 }
 
@@ -66,8 +66,7 @@ struct QueryCacheResultEntry {
   QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                         std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
                         std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
-                        std::unordered_map<std::string, std::string>&& dataSources
-  );
+                        std::unordered_map<std::string, std::string>&& dataSources);
 
   ~QueryCacheResultEntry() = default;
 
@@ -89,7 +88,7 @@ struct QueryCacheResultEntry {
   double executionTime() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  
+
   /// current user has all permissions
   bool currentUserHasPermissions() const;
 };
@@ -275,4 +274,3 @@ class QueryCache {
 };
 }  // namespace aql
 }  // namespace arangodb
-

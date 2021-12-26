@@ -52,13 +52,13 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) {
       bool success = false;
       term_t otherTerm = 0;
 
-      if (body.hasKey("success") &&  body.get("success").isBoolean() &&
+      if (body.hasKey("success") && body.get("success").isBoolean() &&
           body.hasKey("term") && body.get("term").isNumber()) {
         success = body.get("success").isTrue();
         otherTerm = body.get("term").getNumber<term_t>();
       } else {
         LOG_TOPIC("1b7bb", DEBUG, Logger::AGENCY)
-          << "Bad callback message received: " << body.toJson();
+            << "Bad callback message received: " << body.toJson();
         _agent->reportFailed(_slaveID, _toLog);
         return true;
       }

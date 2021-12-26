@@ -61,7 +61,7 @@ class TransactionCollection {
   std::string const& collectionName() const;
 
   AccessMode::Type accessType() const { return _accessType; }
-  
+
   Result updateUsage(AccessMode::Type accessType);
 
   /// @brief check whether a collection is locked in a specific mode in a
@@ -93,4 +93,3 @@ class TransactionCollection {
 };
 
 }  // namespace arangodb
-

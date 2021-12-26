@@ -60,7 +60,7 @@ auto updateElectionResult(arangodb::agency::envelope envelope, DatabaseID const&
     -> arangodb::agency::envelope;
 
 auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope, DatabaseID const& database,
-                         LogId id) -> arangodb::agency::envelope;
+                            LogId id) -> arangodb::agency::envelope;
 auto deleteReplicatedLog(DatabaseID const& database, LogId id) -> futures::Future<Result>;
 
 auto createReplicatedLogTrx(arangodb::agency::envelope envelope, DatabaseID const& database,
@@ -68,4 +68,4 @@ auto createReplicatedLogTrx(arangodb::agency::envelope envelope, DatabaseID cons
 auto createReplicatedLog(DatabaseID const& database, LogPlanSpecification const& spec)
     -> futures::Future<Result>;
 
-}
+}  // namespace arangodb::replication2::agency::methods

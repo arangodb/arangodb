@@ -28,7 +28,6 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
 
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -141,12 +140,15 @@ class ProgramOptions {
   }
 
   // adds a (regular) section to the program options
-  auto addSection(std::string const& name, std::string const& description, std::string const& link = "", bool hidden = false, bool obsolete = false) {
+  auto addSection(std::string const& name, std::string const& description,
+                  std::string const& link = "", bool hidden = false, bool obsolete = false) {
     return addSection(Section(name, description, link, "", hidden, obsolete));
   }
 
   // adds an enterprise-only section to the program options
-  auto addEnterpriseSection(std::string const& name, std::string const& description, std::string const& link = "", bool hidden = false, bool obsolete = false) {
+  auto addEnterpriseSection(std::string const& name, std::string const& description,
+                            std::string const& link = "", bool hidden = false,
+                            bool obsolete = false) {
     return addSection(EnterpriseSection(name, description, link, "", hidden, obsolete));
   }
 
@@ -165,7 +167,7 @@ class ProgramOptions {
                      makeFlags(Flags::Hidden, Flags::Obsolete)));
     return getOption(name);
   }
- 
+
   // adds a sub-headline for one option or a group of options
   void addHeadline(std::string const& prefix, std::string const& description);
 
@@ -252,7 +254,7 @@ class ProgramOptions {
  private:
   // adds an option to the list of options
   void addOption(Option const& option);
-  
+
   // modernize an option name
   std::string const& modernize(std::string const& name);
 
@@ -301,4 +303,3 @@ class ProgramOptions {
 };
 }  // namespace options
 }  // namespace arangodb
-

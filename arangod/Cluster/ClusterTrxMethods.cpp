@@ -137,7 +137,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
                                                   transaction::MethodsApi api) {
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
-  
+
   TRI_ASSERT(server.substr(0, 7) != "server:");
 
   double const lockTimeout = state.options().lockTimeout;
@@ -148,7 +148,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
 
   network::RequestOptions reqOpts;
   reqOpts.database = state.vocbase().name();
-  // set request timeout a little higher than our lock timeout, so that 
+  // set request timeout a little higher than our lock timeout, so that
   // responses that are close to the timeout value have a chance of getting
   // back to us (note: the 5 is arbitrary here, could as well be 3.0 or 10.0)
   reqOpts.timeout = network::Timeout(lockTimeout + 5.0);
@@ -159,8 +159,8 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid.id()));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
   return network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Post,
-                              "/_api/transaction/begin", std::move(buffer),
-                              reqOpts, std::move(headers));
+                                   "/_api/transaction/begin", std::move(buffer),
+                                   reqOpts, std::move(headers));
 }
 
 /// check the transaction cluster response with desited TID and status
@@ -173,30 +173,32 @@ Result checkTransactionResult(TransactionId desiredTid, transaction::Status desS
     return r;
   }
 
-  // whatever we got can contain a success (HTTP 2xx) or an error (HTTP >= 400) 
-  if (VPackSlice answer = resp.slice(); (resp.statusCode() == fuerte::StatusOK || resp.statusCode() == fuerte::StatusCreated) &&
+  // whatever we got can contain a success (HTTP 2xx) or an error (HTTP >= 400)
+  if (VPackSlice answer = resp.slice();
+      (resp.statusCode() == fuerte::StatusOK || resp.statusCode() == fuerte::StatusCreated) &&
       answer.isObject()) {
     VPackSlice idSlice = answer.get({"result", "id"});
     VPackSlice statusSlice = answer.get({"result", "status"});
 
-
     if (!idSlice.isString() || !statusSlice.isString()) {
-      return r.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
+      return r.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                     "transaction has wrong format");
     }
 
     VPackStringRef idRef = idSlice.stringRef();
     TransactionId tid{StringUtils::uint64(idRef.data(), idRef.size())};
     VPackStringRef statusRef = statusSlice.stringRef();
-    if (tid == desiredTid && transaction::statusFromString(statusRef.data(), statusRef.size()) == desStatus) {
+    if (tid == desiredTid &&
+        transaction::statusFromString(statusRef.data(), statusRef.size()) == desStatus) {
       // all good
       return r.reset();
     }
   }
-  
+
   if (!r.fail()) {
     r.reset(TRI_ERROR_TRANSACTION_INTERNAL);
   }
-    
+
   TRI_ASSERT(r.fail());
   std::string msg(" (error while ");
   if (desStatus == transaction::Status::RUNNING) {
@@ -251,7 +253,8 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     stateString = "abort";
     verb = fuerte::RestVerb::Delete;
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid state for commit/abort operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid state for commit/abort operation");
   }
 
   auto* pool = state->vocbase().server().getFeature<NetworkFeature>().pool();
@@ -260,7 +263,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   for (std::string const& server : state->knownServers()) {
     TRI_ASSERT(server.substr(0, 7) != "server:");
     requests.emplace_back(network::sendRequestRetry(pool, "server:" + server, verb, path,
-                                               VPackBuffer<uint8_t>(), reqOpts));
+                                                    VPackBuffer<uint8_t>(), reqOpts));
   }
 
   return futures::collectAll(requests).thenValue(
@@ -302,16 +305,16 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
               if (cc) {
                 LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
                     << "synchronous replication of transaction " << stateString << " operation: "
-                    << "dropping follower " << follower << " for shard " 
-                    << cc->vocbase().name() << "/" << tc.collectionName() << ": "
-                    << resp.combinedResult().errorMessage();
+                    << "dropping follower " << follower << " for shard "
+                    << cc->vocbase().name() << "/" << tc.collectionName()
+                    << ": " << resp.combinedResult().errorMessage();
 
                 Result r = cc->followers()->remove(follower);
                 if (r.fail()) {
                   LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
-                      << "synchronous replication: could not drop follower " << follower
-                      << " for shard " << cc->vocbase().name() << "/" << tc.collectionName()
-                      << ": " << r.errorMessage();
+                      << "synchronous replication: could not drop follower "
+                      << follower << " for shard " << cc->vocbase().name()
+                      << "/" << tc.collectionName() << ": " << r.errorMessage();
                   if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
                     // In this case, we know that we are not or no longer
                     // the leader for this shard. Therefore we need to
@@ -354,7 +357,8 @@ bool IsServerIdLessThan::operator()(ServerID const& lhs, ServerID const& rhs) co
 }
 
 /// @brief begin a transaction on all leaders
-Future<Result> beginTransactionOnLeaders(TransactionState& state, ClusterTrxMethods::SortedServersSet const& leaders,
+Future<Result> beginTransactionOnLeaders(
+    TransactionState& state, ClusterTrxMethods::SortedServersSet const& leaders,
     // everything in this function is done synchronously, so the `api` parameter is currently unused.
     [[maybe_unused]] transaction::MethodsApi api) {
   TRI_ASSERT(state.isCoordinator());
@@ -532,7 +536,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
   if (!ClusterTrxMethods::isElCheapo(trx)) {
     return;
   }
-  
+
   TRI_ASSERT(server.substr(0, 7) != "server:");
 
   std::string value = std::to_string(state.id().child().id());

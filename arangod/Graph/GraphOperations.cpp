@@ -215,8 +215,8 @@ Result GraphOperations::checkVertexCollectionAvailability(std::string const& ver
 
   if (def == nullptr) {
     return Result(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
-                         vertexCollectionName + " " +
-                             std::string{TRI_errno_string(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)});
+                  vertexCollectionName + " " +
+                      std::string{TRI_errno_string(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)});
   }
 
   return Result(TRI_ERROR_NO_ERROR);
@@ -813,11 +813,11 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
   it = _graph.vertexCollections().find(toCollectionName);
   if (it == _graph.vertexCollections().end()) {
     // not found _to vertex
-    return std::make_pair(
-        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
-                               "referenced _to collection '" + toCollectionName + "' is not part of the graph"),
-                        options),
-        true);
+    return std::make_pair(OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
+                                                 "referenced _to collection '" +
+                                                     toCollectionName + "' is not part of the graph"),
+                                          options),
+                          true);
   }
 
   return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR, options), true);

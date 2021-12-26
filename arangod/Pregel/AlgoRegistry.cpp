@@ -110,15 +110,19 @@ template <typename V, typename E, typename M>
   } else if (algorithm == "pagerank") {
     return createWorker(vocbase, new algos::PageRank(server, userParams), body, feature);
   } else if (algorithm == "recoveringpagerank") {
-    return createWorker(vocbase, new algos::RecoveringPageRank(server, userParams), body, feature);
+    return createWorker(vocbase, new algos::RecoveringPageRank(server, userParams),
+                        body, feature);
   } else if (algorithm == "shortestpath") {
-    return createWorker(vocbase, new algos::ShortestPathAlgorithm(server, userParams), body, feature);
+    return createWorker(vocbase, new algos::ShortestPathAlgorithm(server, userParams),
+                        body, feature);
   } else if (algorithm == "linerank") {
     return createWorker(vocbase, new algos::LineRank(server, userParams), body, feature);
   } else if (algorithm == "effectivecloseness") {
-    return createWorker(vocbase, new algos::EffectiveCloseness(server, userParams), body, feature);
+    return createWorker(vocbase, new algos::EffectiveCloseness(server, userParams),
+                        body, feature);
   } else if (algorithm == "connectedcomponents") {
-    return createWorker(vocbase, new algos::ConnectedComponents(server, userParams), body, feature);
+    return createWorker(vocbase, new algos::ConnectedComponents(server, userParams),
+                        body, feature);
   } else if (algorithm == "scc") {
     return createWorker(vocbase, new algos::SCC(server, userParams), body, feature);
   } else if (algorithm == "asyncscc") {
@@ -126,7 +130,8 @@ template <typename V, typename E, typename M>
   } else if (algorithm == "hits") {
     return createWorker(vocbase, new algos::HITS(server, userParams), body, feature);
   } else if (algorithm == "labelpropagation") {
-    return createWorker(vocbase, new algos::LabelPropagation(server, userParams), body, feature);
+    return createWorker(vocbase, new algos::LabelPropagation(server, userParams),
+                        body, feature);
   } else if (algorithm == "slpa") {
     return createWorker(vocbase, new algos::SLPA(server, userParams), body, feature);
   } else if (algorithm == "dmid") {
@@ -134,7 +139,9 @@ template <typename V, typename E, typename M>
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body, feature);
   } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
-    return createWorker(vocbase, new algos::accumulators::ProgrammablePregelAlgorithm(server, userParams), body, feature);
+    return createWorker(vocbase,
+                        new algos::accumulators::ProgrammablePregelAlgorithm(server, userParams),
+                        body, feature);
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,

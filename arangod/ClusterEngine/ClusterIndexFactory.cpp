@@ -53,52 +53,44 @@ struct DefaultIndexFactory : public IndexTypeFactory {
                                std::string const& type)
       : IndexTypeFactory(server), _type(type) {}
 
-  bool equal(velocypack::Slice lhs,
-             velocypack::Slice rhs,
+  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
              std::string const& dbname) const override {
     auto& clusterEngine =
         _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto* engine = clusterEngine.actualEngine();
 
     if (!engine) {
-      THROW_ARANGO_EXCEPTION(Result(
-          TRI_ERROR_INTERNAL,
-          "cannot find storage engine while normalizing index"));
+      THROW_ARANGO_EXCEPTION(
+          Result(TRI_ERROR_INTERNAL,
+                 "cannot find storage engine while normalizing index"));
     }
 
     return engine->indexFactory().factory(_type).equal(lhs, rhs, dbname);
   }
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition,
-                                     IndexId id,
+                                     velocypack::Slice definition, IndexId id,
                                      bool /* isClusterConstructor */) const override {
     auto& clusterEngine =
         _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto ct = clusterEngine.engineType();
 
-    return std::make_shared<ClusterIndex>(id, collection, ct,
-                                          Index::type(_type),
-                                          definition);
+    return std::make_shared<ClusterIndex>(id, collection, ct, Index::type(_type), definition);
   }
 
-  virtual Result normalize(
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation,
-      TRI_vocbase_t const& vocbase) const override {
+  virtual Result normalize(velocypack::Builder& normalized, velocypack::Slice definition,
+                           bool isCreation, TRI_vocbase_t const& vocbase) const override {
     auto& clusterEngine =
         _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto* engine = clusterEngine.actualEngine();
 
     if (!engine) {
-      return Result(
-          TRI_ERROR_INTERNAL,
-          "cannot find storage engine while normalizing index");
+      return Result(TRI_ERROR_INTERNAL,
+                    "cannot find storage engine while normalizing index");
     }
 
-    return engine->indexFactory().factory(_type).normalize(
-      normalized, definition, isCreation, vocbase);
+    return engine->indexFactory().factory(_type).normalize(normalized, definition,
+                                                           isCreation, vocbase);
   }
 };
 
@@ -108,8 +100,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition,
-                                     IndexId id,
+                                     velocypack::Slice definition, IndexId id,
                                      bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
@@ -117,12 +108,12 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
                                      "cannot create edge index");
     }
 
-    auto& clusterEngine = _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
+    auto& clusterEngine =
+        _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto ct = clusterEngine.engineType();
 
     return std::make_shared<ClusterIndex>(id, collection, ct,
-                                          Index::TRI_IDX_TYPE_EDGE_INDEX,
-                                          definition);
+                                          Index::TRI_IDX_TYPE_EDGE_INDEX, definition);
   }
 };
 
@@ -132,8 +123,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition,
-                                     IndexId /*id*/,
+                                     velocypack::Slice definition, IndexId /*id*/,
                                      bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
@@ -141,12 +131,12 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
                                      "cannot create primary index");
     }
 
-    auto& clusterEngine = _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
+    auto& clusterEngine =
+        _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
     auto ct = clusterEngine.engineType();
 
-    return std::make_shared<ClusterIndex>(
-      IndexId::primary(), collection, ct,
-      Index::TRI_IDX_TYPE_PRIMARY_INDEX, definition);
+    return std::make_shared<ClusterIndex>(IndexId::primary(), collection, ct,
+                                          Index::TRI_IDX_TYPE_PRIMARY_INDEX, definition);
   }
 };
 
@@ -212,8 +202,7 @@ Result ClusterIndexFactory::enhanceIndexDefinition(  // normalize definition
     return TRI_ERROR_INTERNAL;
   }
 
-  return ae->indexFactory().enhanceIndexDefinition(
-    definition, normalized, isCreation, vocbase);
+  return ae->indexFactory().enhanceIndexDefinition(definition, normalized, isCreation, vocbase);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(LogicalCollection& col,
@@ -235,8 +224,9 @@ void ClusterIndexFactory::fillSystemIndexes(LogicalCollection& col,
   auto& ce = _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
   ClusterEngineType ct = ce.engineType();
 
-  systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
-      IndexId::primary(), col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));
+  systemIndexes.emplace_back(std::make_shared<ClusterIndex>(IndexId::primary(), col,
+                                                            ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX,
+                                                            input.slice()));
 
   // create edges indexes
   if (col.type() == TRI_COL_TYPE_EDGE) {
@@ -259,8 +249,9 @@ void ClusterIndexFactory::fillSystemIndexes(LogicalCollection& col,
     input.add(StaticStrings::IndexUnique, VPackValue(false));
     input.add(StaticStrings::IndexSparse, VPackValue(false));
     input.close();
-    systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
-        IndexId::edgeFrom(), col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
+    systemIndexes.emplace_back(
+        std::make_shared<ClusterIndex>(IndexId::edgeFrom(), col, ct,
+                                       Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
 
     // second edge index
     if (ct == ClusterEngineType::RocksDBEngine) {
@@ -277,15 +268,15 @@ void ClusterIndexFactory::fillSystemIndexes(LogicalCollection& col,
       input.add(StaticStrings::IndexUnique, VPackValue(false));
       input.add(StaticStrings::IndexSparse, VPackValue(false));
       input.close();
-      systemIndexes.emplace_back(std::make_shared<ClusterIndex>(
-          IndexId::edgeTo(), col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
+      systemIndexes.emplace_back(std::make_shared<ClusterIndex>(IndexId::edgeTo(),
+                                                                col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX,
+                                                                input.slice()));
     }
   }
 }
 
-void ClusterIndexFactory::prepareIndexes(
-    LogicalCollection& col, velocypack::Slice indexesSlice,
-    std::vector<std::shared_ptr<Index>>& indexes) const {
+void ClusterIndexFactory::prepareIndexes(LogicalCollection& col, velocypack::Slice indexesSlice,
+                                         std::vector<std::shared_ptr<Index>>& indexes) const {
   TRI_ASSERT(indexesSlice.isArray());
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
@@ -305,8 +296,8 @@ void ClusterIndexFactory::prepareIndexes(
       indexes.emplace_back(std::move(idx));
     } catch (std::exception const& ex) {
       LOG_TOPIC("7ed52", ERR, Logger::ENGINES)
-          << "error creating index from definition '" << v.toString() << "': " << ex.what();
-
+          << "error creating index from definition '" << v.toString()
+          << "': " << ex.what();
     }
   }
 }

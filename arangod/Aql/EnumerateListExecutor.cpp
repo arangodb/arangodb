@@ -161,7 +161,7 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> EnumerateListExecutor::skipR
 
     TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
 
-    auto const skip = std::invoke([&]{
+    auto const skip = std::invoke([&] {
       // if offset is > 0, we're in offset skip phase
       if (call.getOffset() > 0) {
         // we still need to skip offset entries

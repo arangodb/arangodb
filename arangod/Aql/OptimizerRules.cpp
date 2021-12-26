@@ -1067,7 +1067,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
         // sorted results
 
         AstNode* clone = ast->shallowCopyForModify(inNode);
-        auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(clone); });
+        auto sg =
+            arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE(clone); });
         // set sortedness bit for the IN operator
         clone->setBoolValue(true);
         // finally adjust the variable inside the IN calculation
@@ -1738,7 +1739,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
       // INSERT would not be scope-limited by the outermost subqueries, so we could end up
       // inserting a smaller amount of documents than what's actually proposed in the query.
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
-      if (nn->isModificationNode()) { 
+      if (nn->isModificationNode()) {
         continue;
       }
     }
@@ -4730,9 +4731,8 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
             // they are not needed for our sort. So we could calculate
             // more lazily and even make late materialization possible
             ExecutionNode* insertPoint = rn;
-            auto current  = insertPoint->getFirstDependency();
-            while (current != nullptr &&
-                   current->getType() == EN::CALCULATION) {
+            auto current = insertPoint->getFirstDependency();
+            while (current != nullptr && current->getType() == EN::CALCULATION) {
               auto nn = ExecutionNode::castTo<CalculationNode*>(current);
               if (!nn->expression()->isDeterministic()) {
                 // let's not touch non-deterministic calculation

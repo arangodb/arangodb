@@ -189,7 +189,6 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
 }
 
 bool CleanOutServer::start(bool& aborts) {
-
   if (considerCancellation()) {
     return false;
   }
@@ -257,7 +256,7 @@ bool CleanOutServer::start(bool& aborts) {
     // ignore this check
     failedServersBuilder.clear();
     { VPackObjectBuilder guard(&failedServersBuilder); }
-  } // if
+  }  // if
 
   VPackSlice failedServers = failedServersBuilder.slice();
   if (failedServers.isObject()) {
@@ -289,8 +288,9 @@ bool CleanOutServer::start(bool& aborts) {
       if (!tmp_todo) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC("1e9a9", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("1e9a9", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -341,7 +341,8 @@ bool CleanOutServer::start(bool& aborts) {
       addPreconditionServerHealth(*pending, _server, "GOOD");
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
-      addPreconditionUnchanged(*pending, planVersion, _snapshot.get(planVersion).value().get().slice());
+      addPreconditionUnchanged(*pending, planVersion,
+                               _snapshot.get(planVersion).value().get().slice());
     }
   }  // array for transaction done
 
@@ -349,7 +350,8 @@ bool CleanOutServer::start(bool& aborts) {
   write_ret_t res = singleWriteTransaction(_agent, *pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC("e341c", DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
+    LOG_TOPIC("e341c", DEBUG, Logger::SUPERVISION)
+        << "Pending: Clean out server " + _server;
 
     return true;
   }
@@ -363,7 +365,8 @@ bool CleanOutServer::start(bool& aborts) {
 bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
-  Node::Children const& databases = _snapshot.hasAsChildren("/Plan/Collections").value().get();
+  Node::Children const& databases =
+      _snapshot.hasAsChildren("/Plan/Collections").value().get();
   size_t sub = 0;
 
   for (auto const& database : databases) {
@@ -391,25 +394,28 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         }
 
         auto replicationFactor = collection.hasAsString(StaticStrings::ReplicationFactor);
-        bool isSatellite = replicationFactor && replicationFactor.value() == StaticStrings::Satellite;
+        bool isSatellite = replicationFactor &&
+                           replicationFactor.value() == StaticStrings::Satellite;
         bool isLeader = (found == 0);
 
         if (isSatellite) {
           if (isLeader) {
-
             std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-              _snapshot, database.first, collptr.first, shard.first, _server);
+                _snapshot, database.first, collptr.first, shard.first, _server);
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                    _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false).withParent(_jobId)
-              .create(trx);
+                      _jobId, database.first, collptr.first, shard.first,
+                      _server, toServer, isLeader, false)
+                .withParent(_jobId)
+                .create(trx);
 
           } else {
             // Intentionally do nothing. RemoveServer will remove the failed follower
-            LOG_TOPIC("22ca1", DEBUG, Logger::SUPERVISION) <<
-              "Do nothing for cleanout of follower of the SatelliteCollection " << collection.hasAsString("id").value();
-            continue ;
+            LOG_TOPIC("22ca1", DEBUG, Logger::SUPERVISION)
+                << "Do nothing for cleanout of follower of the "
+                   "SatelliteCollection "
+                << collection.hasAsString("id").value();
+            continue;
           }
         } else {
           decltype(servers) serversCopy(servers);  // a copy
@@ -436,7 +442,8 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           // Schedule move into trx:
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false).withParent(_jobId)
+                    toServer, isLeader, false)
+              .withParent(_jobId)
               .create(trx);
         }
       }
@@ -463,7 +470,8 @@ bool CleanOutServer::checkFeasibility() {
   uint64_t maxReplFact = 1;
   std::vector<std::string> tooLargeCollections;
   std::vector<uint64_t> tooLargeFactors;
-  Node::Children const& databases = _snapshot.hasAsChildren("/Plan/Collections").value().get();
+  Node::Children const& databases =
+      _snapshot.hasAsChildren("/Plan/Collections").value().get();
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {

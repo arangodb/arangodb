@@ -57,10 +57,8 @@ class SortExecutorInfos {
   SortExecutorInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                     RegIdFlatSet const& registersToClear,
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
-                    AqlItemBlockManager& manager,
-                    velocypack::Options const* options, 
-                    arangodb::ResourceMonitor& resourceMonitor,
-                    bool stable);
+                    AqlItemBlockManager& manager, velocypack::Options const* options,
+                    arangodb::ResourceMonitor& resourceMonitor, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -152,4 +150,3 @@ class SortExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-

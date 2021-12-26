@@ -83,4 +83,3 @@ bool retryUntilTimeout(std::function<bool()> fn, LogTopic& topic, std::string co
 }  // namespace function_utils
 }  // namespace basics
 }  // namespace arangodb
-

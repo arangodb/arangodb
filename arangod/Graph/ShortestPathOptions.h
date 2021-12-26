@@ -54,8 +54,7 @@ struct ShortestPathOptions : public BaseOptions {
   ShortestPathOptions(aql::QueryContext& query, arangodb::velocypack::Slice const& info);
 
   // @brief DBServer-constructor used by TraverserEngines
-  ShortestPathOptions(aql::QueryContext& query,
-                      arangodb::velocypack::Slice info,
+  ShortestPathOptions(aql::QueryContext& query, arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
   ~ShortestPathOptions() override;
 
@@ -93,7 +92,7 @@ struct ShortestPathOptions : public BaseOptions {
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
 
-  template<typename ListType>
+  template <typename ListType>
   void fetchVerticesCoordinator(ListType const& vertexIds);
 
   auto estimateDepth() const noexcept -> uint64_t override;
@@ -112,4 +111,3 @@ struct ShortestPathOptions : public BaseOptions {
 
 }  // namespace graph
 }  // namespace arangodb
-

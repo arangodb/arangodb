@@ -45,13 +45,11 @@ using namespace arangodb::containers;
 
 namespace {
 
-AqlValue evaluate(AqlValue const& lhs,
-                  AqlValue const& rhs,
-                  AqlValue const& distance,
+AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs, AqlValue const& distance,
                   AqlValue const* transpositions = nullptr) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*){ });
+  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -59,7 +57,9 @@ AqlValue evaluate(AqlValue const& lhs,
   transaction::Context& trxCtx = trxCtxMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
-  fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysDo([&trxCtx](){ return &trxCtx; });
+  fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysDo([&trxCtx]() {
+    return &trxCtx;
+  });
   fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
   fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
     return trxMock.get();
@@ -73,7 +73,7 @@ AqlValue evaluate(AqlValue const& lhs,
   params.emplace_back(distance);
   if (transpositions) {
     params.emplace_back(*transpositions);
-    params.emplace_back(VPackSlice::nullSlice()); // redundant argument
+    params.emplace_back(VPackSlice::nullSlice());  // redundant argument
   }
 
   arangodb::aql::Function f("LEVENSHTEIN_MATCH", &Functions::LevenshteinMatch);
@@ -90,25 +90,19 @@ AqlValue evaluate(AqlValue const& lhs,
   return result;
 }
 
-void assertLevenshteinMatchFail(AqlValue const& lhs,
-                                AqlValue const& rhs,
+void assertLevenshteinMatchFail(AqlValue const& lhs, AqlValue const& rhs,
                                 AqlValue const& distance,
                                 AqlValue const* transpositions = nullptr) {
   ASSERT_TRUE(evaluate(lhs, rhs, distance, transpositions).isNull(false));
   ASSERT_TRUE(evaluate(rhs, lhs, distance, transpositions).isNull(false));
 }
 
-void assertLevenshteinMatch(bool expectedValue,
-                            AqlValue const& lhs,
-                            AqlValue const& rhs,
-                            AqlValue const& distance,
+void assertLevenshteinMatch(bool expectedValue, AqlValue const& lhs,
+                            AqlValue const& rhs, AqlValue const& distance,
                             AqlValue const* transpositions = nullptr) {
-  auto assertLevenshteinMatchValue = [](
-      bool expectedValue,
-      AqlValue const& lhs,
-      AqlValue const& rhs,
-      AqlValue const& distance,
-      AqlValue const* transpositions = nullptr) {
+  auto assertLevenshteinMatchValue = [](bool expectedValue, AqlValue const& lhs,
+                                        AqlValue const& rhs, AqlValue const& distance,
+                                        AqlValue const* transpositions = nullptr) {
     auto const value = evaluate(lhs, rhs, distance, transpositions);
     ASSERT_TRUE(value.isBoolean());
     ASSERT_EQ(expectedValue, value.toBoolean());
@@ -118,7 +112,7 @@ void assertLevenshteinMatch(bool expectedValue,
   assertLevenshteinMatchValue(expectedValue, rhs, lhs, distance, transpositions);
 }
 
-}
+}  // namespace
 
 TEST(LevenshteinMatchFunctionTest, test) {
   AqlValue const Damerau{AqlValueHintBool{true}};
@@ -128,52 +122,100 @@ TEST(LevenshteinMatchFunctionTest, test) {
   AqlValue const InvalidArray{AqlValueHintEmptyArray{}};
   AqlValue const InvalidObject{AqlValueHintEmptyObject{}};
 
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{0}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{0}));
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{0}), &Damerau);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{1}));
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{1}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{2}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintDouble{2}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintDouble{2.5}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{3}), &Levenshtein);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{3}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{3}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Levenshtein);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{4}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Damerau);
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}));
-  assertLevenshteinMatch(true,  AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintNull{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintInt{1}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintDouble{1.}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue(AqlValueHintNull{}), AqlValue("aa"), AqlValue(AqlValueHintInt{1}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintInt{1}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintDouble{1.}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}), AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{1}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintDouble{1.}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintNull{}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintEmptyArray{}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintEmptyObject{}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintBool{false}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidNull);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidInt);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidArray);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidObject);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}));
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Damerau);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{6}), &Levenshtein);
+  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{0}), &Levenshtein);
+  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{0}));
+  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{0}), &Damerau);
+  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{1}), &Levenshtein);
+  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{1}));
+  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{1}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{2}), &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{2}));
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{2}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintDouble{2}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintDouble{2.5}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{3}), &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{3}));
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{3}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{4}), &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{4}));
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{4}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{5}));
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{5}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{6}));
+  assertLevenshteinMatch(true, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{6}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintNull{}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{2}), &Levenshtein);
+  assertLevenshteinMatch(false, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{1}), &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{2}), &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintInt{1}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{2}), &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintDouble{1.}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{2}), &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{2}), &Levenshtein);
+  assertLevenshteinMatch(false, AqlValue(AqlValueHintNull{}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{1}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyArray{}),
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}),
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintInt{1}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{2}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintDouble{1.}), AqlValue("aa"),
+                         AqlValue(AqlValueHintInt{2}), &Damerau);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}),
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
+  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintInt{1}), &Levenshtein);
+  assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
+                         AqlValue(AqlValueHintDouble{1.}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintNull{}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintEmptyArray{}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintEmptyObject{}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintBool{false}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{5}), &InvalidNull);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{5}), &InvalidInt);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{5}), &InvalidArray);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{5}), &InvalidObject);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{-1}));
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{-1}), &Damerau);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{-1}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{5}), &Levenshtein);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"),
+                             AqlValue(AqlValueHintInt{6}), &Levenshtein);
 }

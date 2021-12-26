@@ -84,7 +84,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   static constexpr irs::string_ref type_name() noexcept {
     return "v8-analyzer-empty";
   }
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) { }
+  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::frequency>::id()) {
       return &_attr;
@@ -141,23 +141,23 @@ class V8AnalyzerTest
   }
 };
 
-v8::Local<v8::Object> getAnalyzerManagerInstance(TRI_v8_global_t *v8g,
-                                           v8::Isolate *isolate) {
-  return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->IResearchAnalyzerManagerTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+v8::Local<v8::Object> getAnalyzerManagerInstance(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
+  return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->IResearchAnalyzerManagerTempl)
+      ->NewInstance(TRI_IGETC)
+      .FromMaybe(v8::Local<v8::Object>());
 }
 
-v8::Local<v8::Object> getAnalyzersInstance(TRI_v8_global_t *v8g,
-                                           v8::Isolate *isolate) {
-  return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->IResearchAnalyzerInstanceTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+v8::Local<v8::Object> getAnalyzersInstance(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
+  return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->IResearchAnalyzerInstanceTempl)
+      ->NewInstance(TRI_IGETC)
+      .FromMaybe(v8::Local<v8::Object>());
 }
 
-v8::Local<v8::Function> getAnalyzersMethodFunction(TRI_v8_global_t *v8g,
-                                                   v8::Isolate *isolate,
+v8::Local<v8::Function> getAnalyzersMethodFunction(TRI_v8_global_t* v8g, v8::Isolate* isolate,
                                                    v8::Local<v8::Object>& analyzerObj,
                                                    const char* name) {
-  auto fn = analyzerObj->Get
-    (TRI_IGETC,
-     TRI_V8_ASCII_STRING(isolate, name)).FromMaybe(v8::Local<v8::Value>());
+  auto fn = analyzerObj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, name))
+                .FromMaybe(v8::Local<v8::Value>());
   bool isFunction = fn->IsFunction();
   EXPECT_TRUE(isFunction);
   return v8::Local<v8::Function>::Cast(fn);
@@ -181,10 +181,13 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  ASSERT_TRUE(analyzers.emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                                "identity", VPackSlice::noneSlice()).ok());
-  auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+  ASSERT_TRUE(analyzers
+                  .emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                           "identity", VPackSlice::noneSlice())
+                  .ok());
+  auto analyzer =
+      analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
   ASSERT_FALSE(!analyzer);
 
   struct ExecContext : public arangodb::ExecContext {
@@ -196,32 +199,37 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  
 
   arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto isolate =
-    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+      std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                   [](v8::Isolate* p) -> void { p->Dispose(); });
   ASSERT_NE(nullptr, isolate);
   v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
   auto context = v8::Context::New(isolate.get());
   v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),
+                                                           isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = &vocbase;
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8Analyzer = getAnalyzersInstance(v8g.get(), isolate.get());
-  auto fn_name = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "name");
-  auto fn_type = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "type");
-  auto fn_properties = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "properties");
-  auto fn_features = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "features");
+  auto fn_name =
+      getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "name");
+  auto fn_type =
+      getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "type");
+  auto fn_properties = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
+                                                  v8Analyzer, "properties");
+  auto fn_features = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
+                                                v8Analyzer, "features");
 
   v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -240,8 +248,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = fn_name->CallAsFunction(context, v8Analyzer,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsString());
     EXPECT_TRUE((analyzer->name() ==
@@ -263,22 +270,21 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_name->CallAsFunction(context, v8Analyzer,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // test type (authorised)
   {
-
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -290,8 +296,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = fn_type->CallAsFunction(context, v8Analyzer,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsString());
     EXPECT_TRUE((analyzer->type() ==
@@ -313,17 +318,17 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_type->CallAsFunction(context, v8Analyzer,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // test properties (authorised)
@@ -338,16 +343,15 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = fn_properties->CallAsFunction(context, v8Analyzer,
-                                       static_cast<int>(args.size()), args.data());
+    auto result =
+        fn_properties->CallAsFunction(context, v8Analyzer,
+                                      static_cast<int>(args.size()), args.data());
 
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     VPackBuilder resultVPack;
     TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false);
-    EXPECT_EQUAL_SLICES(
-        resultVPack.slice(),
-        VPackSlice::emptyObjectSlice());
+    EXPECT_EQUAL_SLICES(resultVPack.slice(), VPackSlice::emptyObjectSlice());
   }
 
   // test properties (not authorised)
@@ -364,17 +368,19 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
 
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = fn_properties->CallAsFunction(context, v8Analyzer,
-                                       static_cast<int>(args.size()), args.data());
+    auto result =
+        fn_properties->CallAsFunction(context, v8Analyzer,
+                                      static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // test features (authorised)
@@ -389,13 +395,14 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = fn_features->CallAsFunction(context, v8Analyzer,
-                                       static_cast<int>(args.size()), args.data());
+    auto result =
+        fn_features->CallAsFunction(context, v8Analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
-    size_t size= 0;
+    size_t size = 0;
     analyzer->features().visit([&size](std::string_view) { ++size; });
     EXPECT_EQ(size, v8Result->Length());
   }
@@ -414,17 +421,19 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
 
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = fn_features->CallAsFunction(context, v8Analyzer,
-                                       static_cast<int>(args.size()), args.data());
+    auto result =
+        fn_features->CallAsFunction(context, v8Analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 }
 
@@ -443,13 +452,15 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
   {
-    const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
     ASSERT_TRUE(
         analyzers.emplace(result, name, "identity", VPackSlice::noneSlice()).ok());
   }
 
   {
-    const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    const auto name =
+        arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
     ASSERT_TRUE(analyzers
                     .emplace(result, name, "v8-analyzer-empty",
                              VPackParser::fromJson("{\"args\":\"12312\"}")->slice(),
@@ -466,28 +477,30 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto isolate =
-    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+      std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                   [](v8::Isolate* p) -> void { p->Dispose(); });
   ASSERT_NE(nullptr, isolate);
   v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
   auto context = v8::Context::New(isolate.get());
   v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),
+                                                           isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = &vocbase;
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8AnalyzerManager, "save");
+  auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
+                                            v8AnalyzerManager, "save");
 
   // invalid params (no args)
   {
@@ -504,16 +517,17 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_BAD_PARAMETER ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // invalid params (invalid type)
@@ -534,16 +548,17 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_BAD_PARAMETER ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // invalid params (invalid name)
@@ -565,16 +580,17 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_BAD_PARAMETER ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // invalid params (invalid name)
@@ -596,16 +612,17 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_BAD_PARAMETER ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // invalid params (invalid name)
@@ -627,15 +644,17 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN == ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // name collision
@@ -657,16 +676,17 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_BAD_PARAMETER ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // duplicate matching
@@ -686,21 +706,21 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     ASSERT_FALSE(!v8AnalyzerWeak);
-    ASSERT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", v8AnalyzerWeak->name());
+    ASSERT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+              v8AnalyzerWeak->name());
     ASSERT_EQ("identity", v8AnalyzerWeak->type());
-    EXPECT_EQUAL_SLICES(
-        VPackSlice::emptyObjectSlice(),
-        v8AnalyzerWeak->properties());
+    EXPECT_EQUAL_SLICES(VPackSlice::emptyObjectSlice(), v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(), arangodb::iresearch::Features{});
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                                      "::testAnalyzer1",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -723,16 +743,17 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // successful creation
@@ -740,8 +761,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")
-    };
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user =
@@ -752,21 +772,21 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     ASSERT_FALSE(!v8AnalyzerWeak);
-    ASSERT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8AnalyzerWeak->name());
+    ASSERT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
+              v8AnalyzerWeak->name());
     ASSERT_EQ("identity", v8AnalyzerWeak->type());
-    EXPECT_EQUAL_SLICES(
-        VPackSlice::emptyObjectSlice(),
-        v8AnalyzerWeak->properties());
+    EXPECT_EQUAL_SLICES(VPackSlice::emptyObjectSlice(), v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(), arangodb::iresearch::Features{});
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                                      "::testAnalyzer2",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation with DB name prefix
@@ -774,8 +794,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), vocbase.name() + "::testAnalyzer3"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")
-    };
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user =
@@ -786,7 +805,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -795,11 +814,10 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     ASSERT_FALSE(!v8AnalyzerWeak);
     ASSERT_EQ(vocbase.name() + "::testAnalyzer3", v8AnalyzerWeak->name());
     ASSERT_EQ("identity", v8AnalyzerWeak->type());
-    EXPECT_EQUAL_SLICES(
-        VPackSlice::emptyObjectSlice(),
-        v8AnalyzerWeak->properties());
+    EXPECT_EQUAL_SLICES(VPackSlice::emptyObjectSlice(), v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(), arangodb::iresearch::Features{});
-    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
   // successful creation in system db by :: prefix
@@ -807,8 +825,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "::testAnalyzer4"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")
-    };
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user =
@@ -819,7 +836,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     auto result = fn_save->CallAsFunction(context, fn_save,
-                                       static_cast<int>(args.size()), args.data());
+                                          static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -828,11 +845,10 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     ASSERT_FALSE(!v8AnalyzerWeak);
     ASSERT_EQ(vocbase.name() + "::testAnalyzer4", v8AnalyzerWeak->name());
     ASSERT_EQ("identity", v8AnalyzerWeak->type());
-    EXPECT_EQUAL_SLICES(
-        VPackSlice::emptyObjectSlice(),
-        v8AnalyzerWeak->properties());
+    EXPECT_EQUAL_SLICES(VPackSlice::emptyObjectSlice(), v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(), arangodb::iresearch::Features{});
-    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_NE(nullptr, analyzer);
   }
 }
@@ -879,28 +895,30 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto isolate =
-    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+      std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                   [](v8::Isolate* p) -> void { p->Dispose(); });
   ASSERT_NE(nullptr, isolate);
   v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
   auto context = v8::Context::New(isolate.get());
   v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),
+                                                           isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = &vocbase;
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8AnalyzerManager, "analyzer");
+  auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
+                                                v8AnalyzerManager, "analyzer");
 
   // invalid params (no name)
   {
@@ -916,18 +934,19 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
 
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_BAD_PARAMETER ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // get static (known analyzer)
@@ -944,9 +963,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -955,10 +974,8 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     ASSERT_FALSE(!v8AnalyzerWeak);
     ASSERT_EQ(std::string("identity"), v8AnalyzerWeak->name());
     ASSERT_EQ(std::string("identity"), v8AnalyzerWeak->type());
-    EXPECT_EQUAL_SLICES(
-        VPackSlice::emptyObjectSlice(),
-        v8AnalyzerWeak->properties());
-    size_t size= 0;
+    EXPECT_EQUAL_SLICES(VPackSlice::emptyObjectSlice(), v8AnalyzerWeak->properties());
+    size_t size = 0;
     v8AnalyzerWeak->features().visit([&size](std::string_view) { ++size; });
     EXPECT_EQ(2, size);
   }
@@ -977,9 +994,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.FromMaybe(v8::Local<v8::Value>())->IsNull());
   }
@@ -998,9 +1015,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -1010,9 +1027,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     ASSERT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                  v8AnalyzerWeak->name()));
     ASSERT_EQ(std::string("identity"), v8AnalyzerWeak->type());
-    EXPECT_EQUAL_SLICES(
-        VPackSlice::emptyObjectSlice(),
-        v8AnalyzerWeak->properties());
+    EXPECT_EQUAL_SLICES(VPackSlice::emptyObjectSlice(), v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(), arangodb::iresearch::Features{});
   }
 
@@ -1032,24 +1047,24 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
     v8::TryCatch tryCatch(isolate.get());
     arangodb::velocypack::Builder response;
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
   // get custom (known analyzer) authorized from system with another current db
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(
-          isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
+        TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1061,9 +1076,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     user.grantDatabase("testVocbase", arangodb::auth::Level::RO);
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -1073,9 +1088,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     ASSERT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                  v8AnalyzerWeak->name()));
     ASSERT_EQ(std::string("identity"), v8AnalyzerWeak->type());
-    EXPECT_EQUAL_SLICES(
-        VPackSlice::emptyObjectSlice(),
-        v8AnalyzerWeak->properties());
+    EXPECT_EQUAL_SLICES(VPackSlice::emptyObjectSlice(), v8AnalyzerWeak->properties());
     ASSERT_EQ(v8AnalyzerWeak->features(), arangodb::iresearch::Features{});
   }
 
@@ -1095,18 +1108,19 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
 
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // get custom (unknown analyzer) authorized
@@ -1123,9 +1137,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.FromMaybe(v8::Local<v8::Value>())->IsNull());
   }
@@ -1146,18 +1160,19 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
 
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // get custom (unknown analyzer, unknown vocbase) authorized
@@ -1176,17 +1191,18 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     user.grantDatabase("unknownVocbase", arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                              static_cast<int>(args.size()),
-                                              args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     ASSERT_TRUE(result.IsEmpty());
   }
 
@@ -1206,18 +1222,19 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
 
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
-                                                    static_cast<int>(args.size()),
-                                                    args.data());
+    auto result =
+        fn_analyzer->CallAsFunction(context, fn_analyzer,
+                                    static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 }
 
@@ -1262,28 +1279,31 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  
 
-  TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-  TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                systemDBInfo(server.server()));
+  TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                              testDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto isolate =
-    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+      std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                   [](v8::Isolate* p) -> void { p->Dispose(); });
   ASSERT_NE(nullptr, isolate);
   v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
   auto context = v8::Context::New(isolate.get());
   v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),
+                                                           isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8AnalyzerManager, "toArray");
+  auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
+                                               v8AnalyzerManager, "toArray");
   // system database (authorised)
   {
     v8g->_vocbase = &systemDBVocbase;
@@ -1298,14 +1318,16 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
-      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
-      "text_ru",  "text_sv",  "text_zh",
-      arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+        "identity", "text_de",
+        "text_en",  "text_es",
+        "text_fi",  "text_fr",
+        "text_it",  "text_nl",
+        "text_no",  "text_pt",
+        "text_ru",  "text_sv",
+        "text_zh",  arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
     auto result = fn_toArray->CallAsFunction(context, fn_toArray,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                             static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
@@ -1315,8 +1337,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
-              v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
-              WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
+          v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
+          WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       ASSERT_FALSE(!v8AnalyzerWeak);
       ASSERT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
@@ -1338,14 +1360,13 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
-      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
-      "text_ru",  "text_sv",  "text_zh",
+        "identity", "text_de", "text_en", "text_es", "text_fi",
+        "text_fr",  "text_it", "text_nl", "text_no", "text_pt",
+        "text_ru",  "text_sv", "text_zh",
     };
 
     auto result = fn_toArray->CallAsFunction(context, fn_toArray,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                             static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
@@ -1354,8 +1375,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
-              v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
-              WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
+          v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
+          WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       ASSERT_FALSE(!v8AnalyzerWeak);
       ASSERT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
@@ -1377,15 +1398,24 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
-      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
-      "text_ru",  "text_sv",  "text_zh",
-      arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-      "testVocbase::testAnalyzer2",
+        "identity",
+        "text_de",
+        "text_en",
+        "text_es",
+        "text_fi",
+        "text_fr",
+        "text_it",
+        "text_nl",
+        "text_no",
+        "text_pt",
+        "text_ru",
+        "text_sv",
+        "text_zh",
+        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+        "testVocbase::testAnalyzer2",
     };
     auto result = fn_toArray->CallAsFunction(context, fn_toArray,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                             static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
@@ -1394,8 +1424,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
-              v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
-              WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
+          v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
+          WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8AnalyzerWeak);
       EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
@@ -1419,14 +1449,16 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
-      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
-      "text_ru",  "text_sv",  "text_zh",
-      arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+        "identity", "text_de",
+        "text_en",  "text_es",
+        "text_fi",  "text_fr",
+        "text_it",  "text_nl",
+        "text_no",  "text_pt",
+        "text_ru",  "text_sv",
+        "text_zh",  arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
     auto result = fn_toArray->CallAsFunction(context, fn_toArray,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                             static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
@@ -1435,8 +1467,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
-              v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
-              WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
+          v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
+          WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8AnalyzerWeak);
       EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
@@ -1460,14 +1492,16 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
-      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
-      "text_ru",  "text_sv",  "text_zh",
-      "testVocbase::testAnalyzer2",
+        "identity", "text_de",
+        "text_en",  "text_es",
+        "text_fi",  "text_fr",
+        "text_it",  "text_nl",
+        "text_no",  "text_pt",
+        "text_ru",  "text_sv",
+        "text_zh",  "testVocbase::testAnalyzer2",
     };
     auto result = fn_toArray->CallAsFunction(context, fn_toArray,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                             static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
@@ -1476,8 +1510,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
-              v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
-              WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
+          v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
+          WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       ASSERT_FALSE(!v8AnalyzerWeak);
       ASSERT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
@@ -1501,13 +1535,12 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
-      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
-      "text_ru",  "text_sv",  "text_zh",
+        "identity", "text_de", "text_en", "text_es", "text_fi",
+        "text_fr",  "text_it", "text_nl", "text_no", "text_pt",
+        "text_ru",  "text_sv", "text_zh",
     };
     auto result = fn_toArray->CallAsFunction(context, fn_toArray,
-                                                     static_cast<int>(args.size()),
-                                                     args.data());
+                                             static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
@@ -1516,8 +1549,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
-              v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
-              WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
+          v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
+          WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       ASSERT_FALSE(!v8AnalyzerWeak);
       ASSERT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
@@ -1583,28 +1616,31 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  
 
-  TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
-  TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                systemDBInfo(server.server()));
+  TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                              testDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto isolate =
-    std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
-                                 [](v8::Isolate* p) -> void { p->Dispose(); });
+      std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams),
+                                   [](v8::Isolate* p) -> void { p->Dispose(); });
   ASSERT_NE(nullptr, isolate);
   v8::Isolate::Scope isolateScope(isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
   auto context = v8::Context::New(isolate.get());
   v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),
+                                                           isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
   auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8AnalyzerManager, "remove");
+  auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(),
+                                              v8AnalyzerManager, "remove");
 
   // invalid params (no name)
   {
@@ -1629,10 +1665,11 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_BAD_PARAMETER ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_BAD_PARAMETER ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // unknown analyzer
@@ -1660,10 +1697,11 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    EXPECT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   }
 
   // not authorised
@@ -1691,12 +1729,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    ASSERT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                                      "::testAnalyzer1",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -1708,7 +1748,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
         v8::False(isolate.get()),
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                       "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);  // hold ref to mark in-use
+                                           "::testAnalyzer2",
+                                       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);  // hold ref to mark in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1729,12 +1770,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_CONFLICT ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    ASSERT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_ARANGO_CONFLICT ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                                      "::testAnalyzer2",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(!analyzer);
   }
 
@@ -1746,7 +1789,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
         v8::True(isolate.get()),
     };
     auto inUseAnalyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                       "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);  // hold ref to mark in-use
+                                           "::testAnalyzer2",
+                                       arangodb::QueryAnalyzerRevisions::QUERY_LATEST);  // hold ref to mark in-use
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1763,7 +1807,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                                      "::testAnalyzer2",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(analyzer);
   }
 
@@ -1788,7 +1833,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                                      "::testAnalyzer1",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_FALSE(analyzer);
   }
   // removal by system db name with ::
@@ -1815,7 +1861,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                                  "::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                                      "::testAnalyzer3",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
   //  removal from wrong db
@@ -1845,12 +1892,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
-    ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_FORBIDDEN ==
-                     ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer1", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
-    EXPECT_NE(nullptr,  analyzer);
+    ASSERT_TRUE(
+        (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+         slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+         TRI_ERROR_FORBIDDEN ==
+             ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer1",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    EXPECT_NE(nullptr, analyzer);
   }
   // success removal from non-system db
   {
@@ -1872,7 +1921,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer2", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer2",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
   // success removal with db name prefix
@@ -1895,7 +1945,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                        static_cast<int>(args.size()), args.data());
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsUndefined());
-    auto analyzer = analyzers.get("testVocbase::testAnalyzer3", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    auto analyzer = analyzers.get("testVocbase::testAnalyzer3",
+                                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
     EXPECT_EQ(nullptr, analyzer);
   }
 }

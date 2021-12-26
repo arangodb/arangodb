@@ -54,4 +54,3 @@ class ClusterIndexFactory final : public IndexFactory {
 };
 
 }  // namespace arangodb
-

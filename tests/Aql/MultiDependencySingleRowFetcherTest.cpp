@@ -216,8 +216,7 @@ class MultiDependencySingleRowFetcherTest
   std::vector<ExecutionBlock*> _dependencies{};
   RegIdSet inputRegister = RegIdSet{0};
   DependencyProxy<BlockPassthrough::Disable> _proxy{_dependencies, itemBlockManager,
-                                                    inputRegister,
-                                                    1, nullptr};
+                                                    inputRegister, 1, nullptr};
 };
 
 INSTANTIATE_TEST_CASE_P(MultiDependencySingleRowFetcherTest, MultiDependencySingleRowFetcherTest,

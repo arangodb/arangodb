@@ -73,7 +73,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
   void start() override;
   void beginShutdown() override;
   void stop() override;
-  void unprepare() override { }
+  void unprepare() override {}
 
   static bool isRunning() { return _isRunning.load(); }
 
@@ -89,4 +89,3 @@ class FlushFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

@@ -93,4 +93,3 @@ class ClientConnection final : public GeneralClientConnection {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

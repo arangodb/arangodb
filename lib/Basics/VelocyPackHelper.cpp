@@ -70,12 +70,10 @@ static arangodb::velocypack::StringRef const idRef("id");
 static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
-static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
+static std::unique_ptr<VPackCustomTypeHandler> customTypeHandler;
 
-template<bool useUtf8, typename Comparator>
-int compareObjects(VPackSlice const& lhs, 
-                   VPackSlice const& rhs,
-                   VPackOptions const* options) {
+template <bool useUtf8, typename Comparator>
+int compareObjects(VPackSlice const& lhs, VPackSlice const& rhs, VPackOptions const* options) {
   // compare two velocypack objects
   std::set<arangodb::velocypack::StringRef, Comparator> keys;
   VPackCollection::unorderedKeys(lhs, keys);
@@ -92,7 +90,8 @@ int compareObjects(VPackSlice const& lhs,
       rhsValue = VPackSlice::nullSlice();
     }
 
-    int result = VelocyPackHelper::compare(lhsValue, rhsValue, useUtf8, options, &lhs, &rhs);
+    int result =
+        VelocyPackHelper::compare(lhsValue, rhsValue, useUtf8, options, &lhs, &rhs);
 
     if (result != 0) {
       return result;
@@ -163,7 +162,7 @@ static int8_t const typeWeights[256] = {
     3 /* 0xff */,
 };
 
-} // namespace
+}  // namespace
 
 // a default custom type handler that prevents throwing exceptions when
 // custom types are encountered during Slice.toJson() and family
@@ -179,7 +178,7 @@ struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
     return "hello from CustomTypeHandler";
   }
 };
-  
+
 /*static*/ arangodb::velocypack::Options VelocyPackHelper::strictRequestValidationOptions;
 /*static*/ arangodb::velocypack::Options VelocyPackHelper::looseRequestValidationOptions;
 
@@ -213,11 +212,11 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
-  
+
   // disallow tagged values and BCDs. they are not used in ArangoDB as of now
   VPackOptions::Defaults.disallowTags = true;
   VPackOptions::Defaults.disallowBCD = true;
-  
+
   // set up options for validating incoming end-user requests
   strictRequestValidationOptions = VPackOptions::Defaults;
   strictRequestValidationOptions.checkAttributeUniqueness = true;
@@ -228,7 +227,7 @@ void VelocyPackHelper::initialize() {
   strictRequestValidationOptions.disallowTags = true;
   strictRequestValidationOptions.disallowBCD = true;
   strictRequestValidationOptions.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
-  
+
   // set up options for validating requests, without UTF-8 validation
   looseRequestValidationOptions = VPackOptions::Defaults;
   looseRequestValidationOptions.checkAttributeUniqueness = true;
@@ -299,8 +298,8 @@ bool VelocyPackHelper::AttributeSorterBinary::operator()(std::string const& l,
   return false;
 }
 
-bool VelocyPackHelper::AttributeSorterBinaryStringRef::operator()(VPackStringRef const& l,
-                                                                  VPackStringRef const& r) const noexcept {
+bool VelocyPackHelper::AttributeSorterBinaryStringRef::operator()(
+    VPackStringRef const& l, VPackStringRef const& r) const noexcept {
   // use binary comparison of attribute names
   size_t cmpLength = (std::min)(l.size(), r.size());
   int res = memcmp(l.data(), r.data(), cmpLength);
@@ -312,7 +311,6 @@ bool VelocyPackHelper::AttributeSorterBinaryStringRef::operator()(VPackStringRef
   }
   return false;
 }
-
 
 size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
   return static_cast<size_t>(slice.normalizedHash());
@@ -469,8 +467,7 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice, std::string co
 }
 
 /// @brief returns a string value, or the default value if it is not a string
-std::string VelocyPackHelper::getStringValue(VPackSlice slice,
-                                             std::string const& defaultValue) {
+std::string VelocyPackHelper::getStringValue(VPackSlice slice, std::string const& defaultValue) {
   if (!slice.isString()) {
     return defaultValue;
   }
@@ -577,7 +574,8 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   }
 
   if (syncFile) {
-    LOG_TOPIC("0acab", TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
+    LOG_TOPIC("0acab", TRACE, arangodb::Logger::FIXME)
+        << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
@@ -755,7 +753,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::Object: {
       if (useUTF8) {
         return ::compareObjects<true, AttributeSorterUTF8StringRef>(lhs, rhs, options);
-      } 
+      }
       return ::compareObjects<false, AttributeSorterBinaryStringRef>(lhs, rhs, options);
     }
     case VPackValueType::Illegal:

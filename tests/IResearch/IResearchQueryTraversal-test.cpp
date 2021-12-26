@@ -43,7 +43,8 @@ class IResearchQueryTraversalTest : public IResearchQueryTest {};
 }  // namespace
 
 TEST_P(IResearchQueryTraversalTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
@@ -200,10 +201,10 @@ TEST_P(IResearchQueryTraversalTest, test) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
 
@@ -372,7 +373,5 @@ TEST_P(IResearchQueryTraversalTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryTraversalTest,
-  IResearchQueryTraversalTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryTraversalTest,
+                        IResearchQueryTraversalTest, GetLinkVersions());

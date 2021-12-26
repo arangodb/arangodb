@@ -38,11 +38,11 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class IResearchQueryNGramMatchTest : public IResearchQueryTest {};
 
-} // namespace
+}  // namespace
 
 TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   std::vector<arangodb::velocypack::Builder> insertedDocs;
@@ -55,13 +55,14 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
 
   // 2-gram analyzer
   {
-
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    auto res =
-      analyzers.emplace(result, "_system::myngram", "ngram",
-        VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
+    auto res = analyzers.emplace(
+        result, "_system::myngram", "ngram",
+        VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
+                              "\"preserveOriginal\":false}")
+            ->slice(),
         arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
@@ -126,9 +127,9 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
       }
     })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -151,7 +152,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d.missing, 'abc', 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.missing, 'abc', 0.5, "
+        "'myngram') SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -173,7 +175,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['missing'], 'abc', 0.5, 'myngram') SORT BM25(d) "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['missing'], 'abc', 0.5, "
+        "'myngram') SORT BM25(d) "
         "ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -195,7 +198,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d.seq, '0', 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.seq, '0', 0.5, 'myngram') SORT "
+        "BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -217,7 +221,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['seq'], '0', 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['seq'], '0', 0.5, 'myngram') "
+        "SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -238,7 +243,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, [ 1, \"abc\" ], 0.5, 'myngram') SORT BM25(d) "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, [ 1, \"abc\" ], 0.5, "
+        "'myngram') SORT BM25(d) "
         "ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -247,7 +253,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], [ 1, \"abc\" ], 0.5, 'myngram') SORT "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], [ 1, \"abc\" ], 0.5, "
+        "'myngram') SORT "
         "BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -256,7 +263,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, true, 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, true, 0.5, 'myngram') "
+        "SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -265,7 +273,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], false, 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], false, 0.5, "
+        "'myngram') SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -274,7 +283,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, null, 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, null, 0.5, 'myngram') "
+        "SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -283,7 +293,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], null, 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], null, 0.5, "
+        "'myngram') SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -292,7 +303,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 3.14, 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 3.14, 0.5, 'myngram') "
+        "SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -301,7 +313,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], 1234, 0.5, 'myngram') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], 1234, 0.5, "
+        "'myngram') SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -310,7 +323,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, { \"a\": 7, \"b\": \"c\" }, 0.5, 'myngram') "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, { \"a\": 7, \"b\": "
+        "\"c\" }, 0.5, 'myngram') "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -319,7 +333,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], { \"a\": 7, \"b\": \"c\" "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], { \"a\": 7, \"b\": "
+        "\"c\" "
         "}, 0.5, 'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
@@ -328,7 +343,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d.value) SORT BM25(d) ASC, TFIDF(d) "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value) SORT BM25(d) ASC, "
+        "TFIDF(d) "
         "DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
@@ -337,7 +353,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], 'test', 0.5, 'analyzer', 'too much') SORT BM25(d) ASC, "
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], 'test', 0.5, "
+        "'analyzer', 'too much') SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
@@ -345,55 +362,54 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   // test invalid threshold type (array)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', [ 1, "
-      "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', [ 1, "
+        "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid threshold type (string)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', '123') "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', '123') "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid threshold type (object)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', { \"a\": "
-      "7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', { \"a\": "
+        "7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid threshold type (null)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', null) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', null) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
-
 
   // test invalid threshold value (> 1)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 1.1) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 1.1) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid threshold value (0)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -409,27 +425,27 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   // test invalid analyzer type (boolean)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, true) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, true) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (null)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, null) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, null) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (numeric)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, 5) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, 5) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -463,13 +479,12 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
 
   // test via ANALYZER function
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[0].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH ANALYZER(NGRAM_mATCH(d.value, 'Jack Daniels', 0.7), "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH ANALYZER(NGRAM_mATCH(d.value, 'Jack "
+        "Daniels', 0.7), "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -479,21 +494,18 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
-
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[0].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 0.7, "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 0.7, "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -503,22 +515,19 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
-
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[1].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[1].slice()};
     // Searching for Jack Arrow and we have Jack Sparrow which will be matched
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.5, "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.5, "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -528,24 +537,22 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[0].slice(),
-        insertedDocs[4].slice(),
-        insertedDocs[5].slice(),
-        insertedDocs[1].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice(),
+                                                         insertedDocs[4].slice(),
+                                                         insertedDocs[5].slice(),
+                                                         insertedDocs[1].slice()};
     // Searching for Jack Arrow and set low threshold to match all Jack`s
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.2, "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.2, "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -555,7 +562,7 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
@@ -563,12 +570,12 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   // test via default analyzer
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      // no results  will be found as identity analyzer has no positions        
+        // no results  will be found as identity analyzer has no positions
     };
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 1) "
-      "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 1) "
+        "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -578,27 +585,28 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
-
 }
 
 TEST_P(IResearchQueryNGramMatchTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
   // 2-gram analyzer
   {
-
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    auto res =
-      analyzers.emplace(result, "testVocbase::myngram", "ngram",
-        VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
+    auto res = analyzers.emplace(
+        result, "testVocbase::myngram", "ngram",
+        VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
+                              "\"preserveOriginal\":false}")
+            ->slice(),
         arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
@@ -606,13 +614,13 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
   {
     // 2-gram analyzer in another DB
     {
-
-      auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      auto& analyzers =
+          server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
       TRI_vocbase_t* vocbase2;
       auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-      dbFeature.createDatabase(testDBInfo(server.server(), "testVocbase2"), vocbase2); 
+      dbFeature.createDatabase(testDBInfo(server.server(), "testVocbase2"), vocbase2);
       std::shared_ptr<arangodb::LogicalCollection> unused;
       ASSERT_NE(nullptr, vocbase2);
       arangodb::OperationOptions options(arangodb::ExecContext::current());
@@ -620,11 +628,13 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
                                                    arangodb::tests::AnalyzerCollectionName,
                                                    false, unused);
 
-      auto res =
-        analyzers.emplace(result, "testVocbase2::myngram", "ngram",
-          VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-          arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)
-      );  // cache analyzer
+      auto res = analyzers.emplace(
+          result, "testVocbase2::myngram", "ngram",
+          VPackParser::fromJson(
+              "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
+              "\"preserveOriginal\":false}")
+              ->slice(),
+          arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));  // cache analyzer
       EXPECT_TRUE(res.ok());
     }
   }
@@ -632,7 +642,7 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
   // create collection0
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection0\" }");
+        "{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
 
@@ -654,8 +664,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-      *collection,
-      arangodb::AccessMode::Type::WRITE);
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -670,7 +680,7 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
   // create view
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_FALSE(!logicalView);
 
@@ -688,9 +698,9 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       }
     })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -702,19 +712,20 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     });
     EXPECT_EQ(1, cids.size());
     EXPECT_TRUE(
-      (arangodb::tests::executeQuery(vocbase,
-        "FOR d IN testView SEARCH 1 ==1 OPTIONS "
-        "{ waitForSync: true } RETURN d")
-        .result.ok()));  // commit
+        (arangodb::tests::executeQuery(vocbase,
+                                       "FOR d IN testView SEARCH 1 ==1 OPTIONS "
+                                       "{ waitForSync: true } RETURN d")
+             .result.ok()));  // commit
   }
 
   // test missing field
   {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.missing, 'abc', 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.missing, 'abc', 0.5, "
+        "'myngram') SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -724,7 +735,7 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -734,9 +745,10 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
   {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d['missing'], 'abc', 0.5, 'myngram') SORT BM25(d) "
-      "ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['missing'], 'abc', 0.5, "
+        "'myngram') SORT BM25(d) "
+        "ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -746,7 +758,7 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -756,9 +768,10 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
   {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.seq, '0', 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.seq, '0', 0.5, 'myngram') SORT "
+        "BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -768,7 +781,7 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -778,9 +791,10 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
   {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d['seq'], '0', 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['seq'], '0', 0.5, 'myngram') "
+        "SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -790,7 +804,7 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -799,248 +813,258 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
   // test invalid input type (array)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, [ 1, \"abc\" ], 0.5, 'myngram') SORT BM25(d) "
-      "ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, [ 1, \"abc\" ], 0.5, "
+        "'myngram') SORT BM25(d) "
+        "ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (array) via []
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], [ 1, \"abc\" ], 0.5, 'myngram') SORT "
-      "BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], [ 1, \"abc\" ], 0.5, "
+        "'myngram') SORT "
+        "BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (boolean)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, true, 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, true, 0.5, 'myngram') "
+        "SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (boolean) via []
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], false, 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], false, 0.5, "
+        "'myngram') SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (null)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, null, 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, null, 0.5, 'myngram') "
+        "SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (null) via []
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], null, 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], null, 0.5, "
+        "'myngram') SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (numeric)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 3.14, 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 3.14, 0.5, 'myngram') "
+        "SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (numeric) via []
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], 1234, 0.5, 'myngram') SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], 1234, 0.5, "
+        "'myngram') SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (object)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, { \"a\": 7, \"b\": \"c\" }, 0.5, 'myngram') "
-      "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, { \"a\": 7, \"b\": "
+        "\"c\" }, 0.5, 'myngram') "
+        "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (object) via []
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], { \"a\": 7, \"b\": \"c\" "
-      "}, 0.5, 'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], { \"a\": 7, \"b\": "
+        "\"c\" "
+        "}, 0.5, 'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test missing value
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value) SORT BM25(d) ASC, TFIDF(d) "
-      "DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value) SORT BM25(d) ASC, "
+        "TFIDF(d) "
+        "DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test missing value via []
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d['value']) SORT BM25(d) ASC, "
-      "TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d['value']) SORT BM25(d) ASC, "
+        "TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test too much args
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 'abs', 0.5, 'identity', 'too much') SORT BM25(d) ASC, TFIDF(d) "
-      "DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 'abs', 0.5, 'identity', "
+        "'too much') SORT BM25(d) ASC, TFIDF(d) "
+        "DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test invalid threshold type (array)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', [ 1, "
-      "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', [ 1, "
+        "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid threshold type (string)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', '123') "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', '123') "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid threshold type (object)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', { \"a\": "
-      "7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', { \"a\": "
+        "7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid threshold type (null)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', null) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', null) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
-
 
   // test invalid threshold value (> 1)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 1.1) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 1.1) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid threshold value (0)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (array)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, [ 1, "
-      "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, [ 1, "
+        "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (boolean)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, true) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, true) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (null)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, null) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, null) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (numeric)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, 5) "
-      " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, 5) "
+        " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (object)
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, { \"a\": "
-      "7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', 0.5, { \"a\": "
+        "7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test undefined analyzer
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', "
-      "'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', "
+        "'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // can't access to local analyzer in other database
   {
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', "
-      "'testVocbase2::test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq "
-      "RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH NGRAM_MATCH(d.duplicated, 'z', "
+        "'testVocbase2::test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq "
+        "RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test via ANALYZER function
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[0].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH ANALYZER(NGRAM_mATCH(d.value, 'Jack Daniels', 0.7), "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH ANALYZER(NGRAM_mATCH(d.value, 'Jack "
+        "Daniels', 0.7), "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -1050,21 +1074,18 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
-
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[0].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 0.7, "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 0.7, "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -1074,20 +1095,18 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter with default threshold
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[0].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -1097,22 +1116,19 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
-
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[1].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[1].slice()};
     // Searching for Jack Arrow and we have Jack Sparrow which will be matched
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.5, "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.5, "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -1122,24 +1138,22 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[0].slice(),
-        insertedDocs[4].slice(),
-        insertedDocs[5].slice(),
-        insertedDocs[1].slice()
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice(),
+                                                         insertedDocs[4].slice(),
+                                                         insertedDocs[5].slice(),
+                                                         insertedDocs[1].slice()};
     // Searching for Jack Arrow and set low threshold to match all Jack`s
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.2, "
-      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.2, "
+        "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -1149,7 +1163,7 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
@@ -1157,12 +1171,12 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
   // test via default analyzer
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      // no results  will be found as identity analyzer has no positions        
+        // no results  will be found as identity analyzer has no positions
     };
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 1) "
-      "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+        vocbase,
+        "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 1) "
+        "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
@@ -1172,13 +1186,11 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
       EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+                                                                    resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryNGramMatchTest,
-  IResearchQueryNGramMatchTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryNGramMatchTest,
+                        IResearchQueryNGramMatchTest, GetLinkVersions());

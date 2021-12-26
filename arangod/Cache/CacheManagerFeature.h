@@ -53,4 +53,3 @@ class CacheManagerFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

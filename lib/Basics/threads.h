@@ -69,4 +69,3 @@ void TRI_InitThread(TRI_thread_t* thread);
 ErrorCode TRI_JoinThread(TRI_thread_t* thread);
 ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout);
 bool TRI_DetachThread(TRI_thread_t* thread);
-

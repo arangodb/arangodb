@@ -43,7 +43,8 @@ class IResearchQueryNullTermTest : public IResearchQueryTest {};
 }  // namespace
 
 TEST_P(IResearchQueryNullTermTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   arangodb::LogicalView* view{};
   std::vector<arangodb::velocypack::Builder> insertedDocs;
 
@@ -145,10 +146,10 @@ TEST_P(IResearchQueryNullTermTest, test) {
       }
     })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -1301,7 +1302,5 @@ TEST_P(IResearchQueryNullTermTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryNullTermTest,
-  IResearchQueryNullTermTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryNullTermTest, IResearchQueryNullTermTest,
+                        GetLinkVersions());

@@ -63,4 +63,3 @@ class AqlExecuteResult {
 };
 
 }  // namespace arangodb::aql
-

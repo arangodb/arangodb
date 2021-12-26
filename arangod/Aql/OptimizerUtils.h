@@ -27,8 +27,8 @@
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 class Index;
@@ -55,7 +55,8 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     aql::Collection const& coll, arangodb::aql::Ast* ast,
     arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
-    aql::IndexHint const& hint, std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted);
+    aql::IndexHint const& hint,
+    std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the caller must have read-locked the underlying collection when
@@ -71,17 +72,17 @@ bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-bool getIndexForSortCondition(
-    aql::Collection const& coll, arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    aql::IndexHint const& hint, std::vector<std::shared_ptr<Index>>& usedIndexes,
-    size_t& coveredAttributes);
+bool getIndexForSortCondition(aql::Collection const& coll,
+                              arangodb::aql::SortCondition const* sortCondition,
+                              arangodb::aql::Variable const* reference,
+                              size_t itemsInIndex, aql::IndexHint const& hint,
+                              std::vector<std::shared_ptr<Index>>& usedIndexes,
+                              size_t& coveredAttributes);
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo, bool evaluateFCalls,
     bool sorted, AstNode const* condition, Variable const* indexVariable);
 
-} // namespace utils
-} // namespace aql
-} // namespace arangodb
-
+}  // namespace utils
+}  // namespace aql
+}  // namespace arangodb

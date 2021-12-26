@@ -175,7 +175,7 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer, size_t const buffe
       // create target directory recursively
       std::string tmp = basics::FileUtils::buildFilename(outPath, filenameInZip);
       auto res = TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
-      
+
       // write back the original value
       // cppcheck-suppress *
       *(filenameWithoutPath - 1) = c;
@@ -482,7 +482,7 @@ ErrorCode TRI_UnzipFile(char const* filename, char const* outPath, bool skipPath
   }
 
   auto res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
-                      password, errorMessage);
+                       password, errorMessage);
 
   unzClose(uf);
 

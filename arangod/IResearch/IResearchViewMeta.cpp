@@ -88,8 +88,9 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
 }
 
 template <>
-arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationPolicy<irs::index_utils::consolidate_tier>(
-    VPackSlice const& slice, std::string& errorField) {
+arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy
+createConsolidationPolicy<irs::index_utils::consolidate_tier>(VPackSlice const& slice,
+                                                              std::string& errorField) {
   irs::index_utils::consolidate_tier options;
   VPackBuilder properties;
 
@@ -216,17 +217,13 @@ IResearchViewMeta::IResearchViewMeta()
       _version(static_cast<uint32_t>(ViewVersion::MAX)),
       _writebufferActive(0),
       _writebufferIdle(64),
-      _writebufferSizeMax(32 * (size_t(1) << 20)), // 32MB
+      _writebufferSizeMax(32 * (size_t(1) << 20)),  // 32MB
       _primarySortCompression{getDefaultCompression()} {
   std::string errorField;
 
   // cppcheck-suppress useInitializationList
-  _consolidationPolicy =
-      createConsolidationPolicy<irs::index_utils::consolidate_tier>(
-          arangodb::velocypack::Parser::fromJson(
-              "{ \"type\": \"tier\" }")
-              ->slice(),
-          errorField);
+  _consolidationPolicy = createConsolidationPolicy<irs::index_utils::consolidate_tier>(
+      arangodb::velocypack::Parser::fromJson("{ \"type\": \"tier\" }")->slice(), errorField);
   assert(_consolidationPolicy.policy());  // ensure above syntax is correct
 }
 
@@ -282,7 +279,7 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   if (_commitIntervalMsec != other._commitIntervalMsec) {
-    return false; // values do not match
+    return false;  // values do not match
   }
 
   if (_consolidationIntervalMsec != other._consolidationIntervalMsec) {
@@ -290,19 +287,17 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   try {
-    if (!basics::VelocyPackHelper::equal(_consolidationPolicy.properties(), other._consolidationPolicy.properties(), false)) {
-      return false; // values do not match
+    if (!basics::VelocyPackHelper::equal(_consolidationPolicy.properties(),
+                                         other._consolidationPolicy.properties(), false)) {
+      return false;  // values do not match
     }
   } catch (...) {
-    return false; // exception during match
+    return false;  // exception during match
   }
 
-  if (_version != other._version ||
-      _writebufferActive != other._writebufferActive ||
-      _writebufferIdle != other._writebufferIdle ||
-      _writebufferSizeMax != other._writebufferSizeMax ||
-      _primarySort != other._primarySort ||
-      _storedValues != other._storedValues) {
+  if (_version != other._version || _writebufferActive != other._writebufferActive ||
+      _writebufferIdle != other._writebufferIdle || _writebufferSizeMax != other._writebufferSizeMax ||
+      _primarySort != other._primarySort || _storedValues != other._storedValues) {
     return false;
   }
 
@@ -596,10 +591,10 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
     builder.add("cleanupIntervalStep", arangodb::velocypack::Value(_cleanupIntervalStep));
   }
 
-  if ((!ignoreEqual || _commitIntervalMsec != ignoreEqual->_commitIntervalMsec) // if requested or different
+  if ((!ignoreEqual || _commitIntervalMsec != ignoreEqual->_commitIntervalMsec)  // if requested or different
       && (!mask || mask->_commitIntervalMsec)) {
-    builder.add( // add value
-      "commitIntervalMsec", arangodb::velocypack::Value(_commitIntervalMsec) // args
+    builder.add(  // add value
+        "commitIntervalMsec", arangodb::velocypack::Value(_commitIntervalMsec)  // args
     );
   }
 
@@ -610,8 +605,8 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   }
 
   if ((!ignoreEqual || !arangodb::basics::VelocyPackHelper::equal(
-          _consolidationPolicy.properties(),
-          ignoreEqual->_consolidationPolicy.properties(), false)) &&
+                           _consolidationPolicy.properties(),
+                           ignoreEqual->_consolidationPolicy.properties(), false)) &&
       (!mask || mask->_consolidationPolicy)) {
     builder.add("consolidationPolicy", _consolidationPolicy.properties());
   }
@@ -641,21 +636,23 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
     builder.add("writebufferSizeMax", arangodb::velocypack::Value(_writebufferSizeMax));
   }
 
-  if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {
+  if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) &&
+      (!mask || mask->_primarySort)) {
     velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::PrimarySortField);
     if (!_primarySort.toVelocyPack(builder)) {
       return false;
     }
   }
 
-  if ((!ignoreEqual || _storedValues != ignoreEqual->_storedValues) && (!mask || mask->_storedValues)) {
+  if ((!ignoreEqual || _storedValues != ignoreEqual->_storedValues) &&
+      (!mask || mask->_storedValues)) {
     velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::StoredValuesField);
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
   }
 
-  if ((!ignoreEqual || _primarySortCompression != ignoreEqual->_primarySortCompression) && 
+  if ((!ignoreEqual || _primarySortCompression != ignoreEqual->_primarySortCompression) &&
       (!mask || mask->_primarySortCompression)) {
     auto compression = columnCompressionToString(_primarySortCompression);
     addStringRef(builder, StaticStrings::PrimarySortCompressionField, compression);
@@ -715,8 +712,7 @@ bool IResearchViewMetaState::operator!=(IResearchViewMetaState const& other) con
   return meta;
 }
 
-bool IResearchViewMetaState::init(VPackSlice slice,
-                                  std::string& errorField,
+bool IResearchViewMetaState::init(VPackSlice slice, std::string& errorField,
                                   IResearchViewMetaState const& defaults /*= DEFAULT()*/,
                                   Mask* mask /*= nullptr*/) {
   if (!slice.isObject()) {

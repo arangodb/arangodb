@@ -51,26 +51,24 @@ void checkDifference(std::vector<ServerID> const& followers,
   auto failoverCandidatesCopy = failoverCandidates;
   std::sort(failoverCandidatesCopy.begin(), failoverCandidatesCopy.end());
   std::sort(followersCopy.begin(), followersCopy.end());
-  
+
   std::vector<std::string> diff;
   std::set_symmetric_difference(failoverCandidatesCopy.begin(),
-                                failoverCandidatesCopy.end(), 
-                                followersCopy.begin(),
-                                followersCopy.end(), 
-                                std::back_inserter(diff));
+                                failoverCandidatesCopy.end(), followersCopy.begin(),
+                                followersCopy.end(), std::back_inserter(diff));
   if (!diff.empty()) {
     std::stringstream s;
     s << "Symmetric difference alert: ";
-    for (auto const& d : diff) { 
-      s << d << " "; 
+    for (auto const& d : diff) {
+      s << d << " ";
     }
     s << "failoverCandidates: ";
-    for (auto const& d : failoverCandidates) { 
-      s << d << " "; 
+    for (auto const& d : failoverCandidates) {
+      s << d << " ";
     }
     s << "followers: ";
-    for (auto const& d : followers) { 
-      s << d << " "; 
+    for (auto const& d : followers) {
+      s << d << " ";
     }
     LOG_TOPIC("9d8ec", ERR, Logger::CLUSTER) << s.str();
   }
@@ -110,7 +108,7 @@ VPackSlice planShardEntry(arangodb::LogicalCollection const& col, VPackSlice pla
        std::to_string(col.planId().id()), "shards", col.name()}));
 }
 
-} // namespace
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side
@@ -157,7 +155,7 @@ Result FollowerInfo::add(ServerID const& sid) {
     // Not a leader is expected
     return agencyRes;
   }
-    
+
   if (!agencyRes.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
       !agencyRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // "Real error", report and log
@@ -204,10 +202,9 @@ Result FollowerInfo::remove(ServerID const& sid) {
                                          // local data is modified again.
 
   // First check if there is anything to do:
-  if (std::find(_followers->begin(), _followers->end(), sid)
-        == _followers->end() &&
-      std::find(_failoverCandidates->begin(), _failoverCandidates->end(), sid)
-        == _failoverCandidates->end()) {
+  if (std::find(_followers->begin(), _followers->end(), sid) == _followers->end() &&
+      std::find(_failoverCandidates->begin(), _failoverCandidates->end(), sid) ==
+          _failoverCandidates->end()) {
     return {TRI_ERROR_NO_ERROR};  // nothing to do
   }
   // Both lists have to be in sync most of the time, sometimes the
@@ -308,8 +305,8 @@ void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyn
   // Where we remove the old leader and ourself from the list of followers
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);
-  
-  // all modifications to the internal state are guaranteed to be 
+
+  // all modifications to the internal state are guaranteed to be
   // atomic
   if (previousInsyncFollowers.size() > 1) {
     auto ourselves = arangodb::ServerState::instance()->getId();
@@ -326,19 +323,20 @@ void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyn
       LOG_TOPIC("c9422", WARN, Logger::CLUSTER)
           << "invalid failover candidates for FollowerInfo of shard - "
           << "can happen, when scheduling and starting the leadership "
-          << "takeover are timewise apart, so that the Current entry has expired. "
-          << _docColl->vocbase().name() << "/" << _docColl->name() 
-          << ". our id: " << ourselves << ", failover candidates: "
-          << *failoverCandidates << ", previous in-sync followers: "
-          << previousInsyncFollowers << ", real in-sync followers: " 
+          << "takeover are timewise apart, so that the Current entry has "
+             "expired. "
+          << _docColl->vocbase().name() << "/" << _docColl->name()
+          << ". our id: " << ourselves << ", failover candidates: " << *failoverCandidates
+          << ", previous in-sync followers: " << previousInsyncFollowers
+          << ", real in-sync followers: "
           << (realInsyncFollowers != nullptr ? *realInsyncFollowers : *emptyFollowers)
           << ", theLeader: " << _theLeader << ", theLeaderTouched; "
           << std::boolalpha << _theLeaderTouched;
-   
+
       TRI_ASSERT(false);
     } else {
       // We are a valid failover follower
-      
+
       // The first server is a different leader! (For some reason the job can be
       // triggered twice) TRI_ASSERT(myEntry != failoverCandidates->begin());
       failoverCandidates->erase(myEntry);
@@ -352,14 +350,14 @@ void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyn
 
   // all the following modifications will be noexcept, so if we get here
   // this method will not leave anything in a semi-modified state
-  
+
   // Reset local structures, if we take over leadership we do not know anything!
   if (realInsyncFollowers) {
-    _followers = std::move(realInsyncFollowers); 
+    _followers = std::move(realInsyncFollowers);
   } else {
     _followers = std::move(emptyFollowers);
   }
-  
+
   // We disallow writes until the first write.
   _canWrite = false;
   // Take over leadership
@@ -426,7 +424,8 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   auto wait(50ms), waitMore(wait);
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
-      LOG_TOPIC("8972a", DEBUG, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
+      LOG_TOPIC("8972a", DEBUG, Logger::CLUSTER)
+          << "giving up persisting follower info for dropped collection";
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
     AgencyReadTransaction trx(std::vector<std::string>(
@@ -445,13 +444,14 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
         if (!currentEntry.isNone()) {
           LOG_TOPIC("57c84", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
         }
-        // We have to prevent an endless loop in this case, if the collection has
-        // been dropped in the agency in the meantime
+        // We have to prevent an endless loop in this case, if the collection
+        // has been dropped in the agency in the meantime
         ++badCurrentCount;
         if (badCurrentCount > 30) {
           // this retries for 15s, if current is bad for such a long time, we
           // assume that the collection has been dropped in the meantime:
-          LOG_TOPIC("8972b", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
+          LOG_TOPIC("8972b", INFO, Logger::CLUSTER)
+              << "giving up persisting follower info for dropped collection";
           return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
         }
       } else {
@@ -486,12 +486,12 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
       }
     } else {
       LOG_TOPIC("b7333", WARN, Logger::CLUSTER)
-          << ::reportName(isRemove) << ", could not read " << planPath << " and "
-          << curPath << " in agency.";
+          << ::reportName(isRemove) << ", could not read " << planPath
+          << " and " << curPath << " in agency.";
     }
 
     std::this_thread::sleep_for(wait);
-    if(wait < 500ms) {
+    if (wait < 500ms) {
       wait += waitMore;
     }
   } while (!_docColl->vocbase().server().isStopping());
@@ -570,10 +570,10 @@ uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
   } while (i == 0 || i == prev);
   try {
     _followingTermId[s] = i;
-  } catch(std::bad_alloc const&) {
-    i = 1;   // I assume here that I do not get bad_alloc if the key is
-             // already in the map, since it then only has to overwrite
-             // an integer, if the key is not in the map, we default to 1.
+  } catch (std::bad_alloc const&) {
+    i = 1;  // I assume here that I do not get bad_alloc if the key is
+            // already in the map, since it then only has to overwrite
+            // an integer, if the key is not in the map, we default to 1.
   }
   return i;
 }

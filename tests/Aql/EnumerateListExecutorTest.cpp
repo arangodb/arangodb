@@ -155,15 +155,13 @@ class EnumerateListExecutorTestProduce
   EnumerateListExecutorTestProduce() : executorInfos(0, 1) {}
 
   auto makeRegisterInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
-                         RegisterCount nrInputRegister = 1, RegisterCount nrOutputRegister = 2,
-                         RegIdSet regToClear = {},
+                         RegisterCount nrInputRegister = 1,
+                         RegisterCount nrOutputRegister = 2, RegIdSet regToClear = {},
                          RegIdSetStack regToKeep = {RegIdSet{0}}) -> RegisterInfos {
-    auto infos = RegisterInfos{RegIdSet{inputRegister},
-                               RegIdSet{outputRegister},
-                               nrInputRegister,
-                               nrOutputRegister,
-                               std::move(regToClear),
-                               std::move(regToKeep)};
+    auto infos =
+        RegisterInfos{RegIdSet{inputRegister}, RegIdSet{outputRegister},
+                      nrInputRegister,         nrOutputRegister,
+                      std::move(regToClear),   std::move(regToKeep)};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }
@@ -296,7 +294,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {},
+                                                            {RegIdSet{0, 1, 2, 3}}),
                                           makeExecutorInfos(3, 4))
       .setInputValue({{1, 2, 3, R"([1, 2, 3])"}})
       .setInputSplitType(split)
@@ -313,7 +312,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_2) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {},
+                                                            {RegIdSet{0, 1, 2, 3}}),
                                           makeExecutorInfos(3, 4))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
@@ -334,7 +334,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {},
+                                                            {RegIdSet{0, 1, 2, 3}}),
                                           makeExecutorInfos(3, 4))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
@@ -352,7 +353,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {},
+                                                            {RegIdSet{0, 1, 2, 3}}),
                                           makeExecutorInfos(3, 4))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
@@ -370,7 +372,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard_fullcou
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {},
+                                                            {RegIdSet{0, 1, 2, 3}}),
                                           makeExecutorInfos(3, 4))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})

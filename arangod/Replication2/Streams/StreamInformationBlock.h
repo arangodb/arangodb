@@ -50,7 +50,8 @@ struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
   using EntryType = StreamEntry<Type>;
   using Iterator = TypedLogRangeIterator<StreamEntryView<Type>>;
 
-  using ContainerType = ::immer::flex_vector<EntryType, arangodb::immer::arango_memory_policy>;
+  using ContainerType =
+      ::immer::flex_vector<EntryType, arangodb::immer::arango_memory_policy>;
   using TransientType = typename ContainerType::transient_type;
   using LogVariantType = std::variant<ContainerType, TransientType>;
 

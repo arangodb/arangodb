@@ -70,7 +70,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleMaintenance();
 
   // timeout can be used to set an arbitrary timeout for the maintenance
-  // duration. it will be ignored if "state" is not true. 
+  // duration. it will be ignored if "state" is not true.
   RestStatus setMaintenance(bool state, uint64_t timeout);
   RestStatus handlePutMaintenance();
   RestStatus handleGetMaintenance();
@@ -106,9 +106,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     std::string collectionID;
     bool remainsFollower;
 
-    MoveShardContext(std::string database, std::string collection, std::string shard,
-                     std::string from, std::string to, std::string collectionID,
-                     bool remainsFollower)
+    MoveShardContext(std::string database, std::string collection,
+                     std::string shard, std::string from, std::string to,
+                     std::string collectionID, bool remainsFollower)
         : database(std::move(database)),
           collection(std::move(collection)),
           shard(std::move(shard)),
@@ -128,15 +128,15 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   typedef std::chrono::steady_clock clock;
   typedef futures::Future<futures::Unit> FutureVoid;
 
-  FutureVoid waitForSupervisionState(bool state,
-                                     std::string const& reactivationTime,
+  FutureVoid waitForSupervisionState(bool state, std::string const& reactivationTime,
                                      clock::time_point startTime);
 
   struct RemoveServerContext {
     size_t tries;
     std::string server;
 
-    explicit RemoveServerContext(std::string s) : tries(0), server(std::move(s)) {}
+    explicit RemoveServerContext(std::string s)
+        : tries(0), server(std::move(s)) {}
   };
 
   FutureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
@@ -179,4 +179,3 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
 };
 }  // namespace arangodb
-

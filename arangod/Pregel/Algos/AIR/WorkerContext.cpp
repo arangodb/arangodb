@@ -42,11 +42,13 @@ WorkerContext::WorkerContext(ProgrammablePregelAlgorithm const* algorithm)
   }
 }
 
-auto WorkerContext::globalAccumulators() const -> std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& {
+auto WorkerContext::globalAccumulators() const
+    -> std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& {
   return _globalAccumulators;
 }
 
-auto WorkerContext::globalAccumulatorsUpdates() const -> std::unordered_map<std::string, MutexAccumPair> const& {
+auto WorkerContext::globalAccumulatorsUpdates() const
+    -> std::unordered_map<std::string, MutexAccumPair> const& {
   return _globalAccumulatorsUpdates;
 }
 
@@ -65,14 +67,16 @@ void WorkerContext::preGlobalSuperstepMasterMessage(VPackSlice msg) {
   auto globalAccumulatorValues = msg.get("globalAccumulatorValues");
 
   if (globalAccumulatorValues.isNull() || !globalAccumulatorValues.isObject()) {
-    LOG_TOPIC("61a94", ERR, Logger::PREGEL) << "worker did not receive valid global accumulator values, but "
-              << globalAccumulatorValues.toJson();
+    LOG_TOPIC("61a94", ERR, Logger::PREGEL)
+        << "worker did not receive valid global accumulator values, but "
+        << globalAccumulatorValues.toJson();
     return;
   }
 
   for (auto&& upd : VPackObjectIterator(globalAccumulatorValues)) {
     if (!upd.key.isString()) {
-      LOG_TOPIC("60a94", ERR, Logger::PREGEL) << "global accumulator key is not a string, but " << upd.key.toJson();
+      LOG_TOPIC("60a94", ERR, Logger::PREGEL)
+          << "global accumulator key is not a string, but " << upd.key.toJson();
       continue;
     }
 

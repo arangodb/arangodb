@@ -73,4 +73,3 @@ static_assert(sizeof(TransactionId) == sizeof(TransactionId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::TransactionId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::TransactionId)
-

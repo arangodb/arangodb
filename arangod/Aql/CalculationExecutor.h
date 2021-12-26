@@ -23,9 +23,9 @@
 
 #pragma once
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
@@ -136,4 +136,3 @@ class CalculationExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

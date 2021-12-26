@@ -100,10 +100,8 @@ class CalculationExecutorTest
         expr(&ast, node),
         outRegID(1),
         inRegID(0),
-        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
-                      1 /*in width*/, 2 /*out width*/,
-                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/) {
-        }
+        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID}, 1 /*in width*/, 2 /*out width*/,
+                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/) {}
 
   auto getSplit() -> CalculationExecutorSplitType {
     auto [split] = GetParam();

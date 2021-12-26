@@ -48,7 +48,7 @@ using namespace arangodb;
 ClusterEngineType getEngineType(application_features::ApplicationServer& server) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // during the unit tests there is a mock storage engine which cannot be casted
-  // to a ClusterEngine at all. the only sensible way to find out the engine type is 
+  // to a ClusterEngine at all. the only sensible way to find out the engine type is
   // to try a dynamic_cast here and assume the MockEngine if the cast goes wrong
   auto& engine = server.getFeature<EngineSelectorFeature>().engine();
   auto cast = dynamic_cast<ClusterEngine*>(&engine);
@@ -63,7 +63,7 @@ ClusterEngineType getEngineType(application_features::ApplicationServer& server)
 #endif
 }
 
-} // namespace
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -72,22 +72,22 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(IndexId id, LogicalCollection
     : arangodb::ClusterIndex(id, collection,
                              ::getEngineType(collection.vocbase().server()),
                              arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
-                             IResearchLinkHelper::emptyIndexSlice(0).slice()), // we don`t have objectId`s on coordinator
+                             IResearchLinkHelper::emptyIndexSlice(0).slice()),  // we don`t have objectId`s on coordinator
       IResearchLink(id, collection) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
 }
 
-void IResearchLinkCoordinator::toVelocyPack(
-    velocypack::Builder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
+void IResearchLinkCoordinator::toVelocyPack(velocypack::Builder& builder,
+                                            std::underlying_type<Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to generate link definition for arangosearch view "
-                    "Cluster link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION(
+        Result(TRI_ERROR_BAD_PARAMETER,
+               std::string(
+                   "failed to generate link definition for arangosearch view "
+                   "Cluster link '") +
+                   std::to_string(Index::id().id()) + "'"));
   }
 
   auto forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
@@ -95,11 +95,12 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.openObject();
 
   if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to generate link definition for arangosearch view "
-                    "Cluster link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION(
+        Result(TRI_ERROR_INTERNAL,
+               std::string(
+                   "failed to generate link definition for arangosearch view "
+                   "Cluster link '") +
+                   std::to_string(Index::id().id()) + "'"));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
@@ -121,8 +122,8 @@ bool IResearchLinkCoordinator::IndexFactory::equal(velocypack::Slice lhs,
 }
 
 std::shared_ptr<Index> IResearchLinkCoordinator::IndexFactory::instantiate(
-    LogicalCollection& collection, VPackSlice definition,
-    IndexId id, bool /*isClusterConstructor*/) const {
+    LogicalCollection& collection, VPackSlice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
   auto link = std::shared_ptr<IResearchLinkCoordinator>(
       new IResearchLinkCoordinator(id, collection));
   auto res = link->init(definition);
@@ -134,16 +135,15 @@ std::shared_ptr<Index> IResearchLinkCoordinator::IndexFactory::instantiate(
   return link;
 }
 
-Result IResearchLinkCoordinator::IndexFactory::normalize(
-    velocypack::Builder& normalized,
-    velocypack::Slice definition,
-    bool isCreation,
-    TRI_vocbase_t const& vocbase) const {
+Result IResearchLinkCoordinator::IndexFactory::normalize(velocypack::Builder& normalized,
+                                                         velocypack::Slice definition,
+                                                         bool isCreation,
+                                                         TRI_vocbase_t const& vocbase) const {
   // no attribute set in a definition -> old version
   constexpr LinkVersion defaultVersion = LinkVersion::MIN;
 
-  return IResearchLinkHelper::normalize(
-      normalized, definition, isCreation, vocbase, defaultVersion);
+  return IResearchLinkHelper::normalize(normalized, definition, isCreation,
+                                        vocbase, defaultVersion);
 }
 
 std::shared_ptr<IResearchLinkCoordinator::IndexFactory> IResearchLinkCoordinator::createFactory(

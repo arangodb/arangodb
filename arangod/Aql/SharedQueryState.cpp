@@ -41,7 +41,8 @@ SharedQueryState::SharedQueryState(application_features::ApplicationServer& serv
       _wakeupCb(nullptr),
       _numWakeups(0),
       _cbVersion(0),
-      _maxTasks(static_cast<unsigned>(_server.getFeature<QueryRegistryFeature>().maxParallelism())),
+      _maxTasks(static_cast<unsigned>(
+          _server.getFeature<QueryRegistryFeature>().maxParallelism())),
       _numTasks(0),
       _valid(true) {}
 
@@ -52,8 +53,8 @@ void SharedQueryState::invalidate() {
     _cbVersion++;
     _valid = false;
   }
-  _cv.notify_all(); // wakeup everyone else
-  
+  _cv.notify_all();  // wakeup everyone else
+
   if (_numTasks.load() > 0) {
     std::unique_lock<std::mutex> guard(_mutex);
     _cv.wait(guard, [&] { return _numTasks.load() == 0; });
@@ -66,7 +67,7 @@ void SharedQueryState::waitForAsyncWakeup() {
   if (!_valid) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
-  
+
   TRI_ASSERT(!_wakeupCb);
   _cv.wait(guard, [&] { return _numWakeups > 0 || !_valid; });
   TRI_ASSERT(_numWakeups > 0 || !_valid);
@@ -103,7 +104,7 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
     _cv.notify_all();
     return;
   }
-  
+
   unsigned n = _numWakeups++;
   if (!_wakeupCb) {
     guard.unlock();
@@ -117,13 +118,12 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
 
   queueHandler();
 }
-  
+
 void SharedQueryState::queueHandler() {
-  
   if (_numWakeups == 0 || !_wakeupCb || !_valid) {
     return;
   }
-  
+
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
@@ -135,7 +135,7 @@ void SharedQueryState::queueHandler() {
                         : RequestLane::CLUSTER_AQL;
 
   bool queued = scheduler->tryBoundedQueue(lane, [self = shared_from_this(),
-                                        cb = _wakeupCb, v = _cbVersion]() {
+                                                  cb = _wakeupCb, v = _cbVersion]() {
     std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
     do {
@@ -162,10 +162,10 @@ void SharedQueryState::queueHandler() {
     self->queueHandler();
   });
 
-  if (!queued) { // just invalidate
-     _wakeupCb = nullptr;
-     _valid = false;
-     _cv.notify_all();
+  if (!queued) {  // just invalidate
+    _wakeupCb = nullptr;
+    _valid = false;
+    _cv.notify_all();
   }
 }
 

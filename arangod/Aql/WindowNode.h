@@ -59,14 +59,11 @@ class WindowBounds final {
     bool valid;
   };
 
-  WindowBounds(Type type,
-               AqlValue&& preceding,
-               AqlValue&& following);
+  WindowBounds(Type type, AqlValue&& preceding, AqlValue&& following);
   WindowBounds(Type type, velocypack::Slice slice);
   ~WindowBounds();
 
  public:
-
   int64_t numPrecedingRows() const;
   int64_t numFollowingRows() const;
 
@@ -133,7 +130,7 @@ class WindowNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   void setAggregateVariables(std::vector<AggregateVarInfo> const& aggregateVariables);
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -160,4 +157,3 @@ class WindowNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

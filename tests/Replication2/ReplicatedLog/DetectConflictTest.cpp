@@ -29,12 +29,11 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
 using namespace arangodb::replication2::test;
 
-struct DetectConflictTest : ::testing::Test {
-
-};
+struct DetectConflictTest : ::testing::Test {};
 
 struct TestInMemoryLog : InMemoryLog {
-  explicit TestInMemoryLog(InMemoryLog::log_type log) : InMemoryLog(std::move(log)) {}
+  explicit TestInMemoryLog(InMemoryLog::log_type log)
+      : InMemoryLog(std::move(log)) {}
 };
 
 TEST_F(DetectConflictTest, log_empty) {
@@ -48,12 +47,18 @@ TEST_F(DetectConflictTest, log_empty) {
 
 TEST_F(DetectConflictTest, log_skip_term) {
   auto log = TestInMemoryLog{{
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("A"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{2}, LogPayload::createFromString("A"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{3}, LogPayload::createFromString("A"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{4}, LogPayload::createFromString("AB"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{5}, LogPayload::createFromString("AB"))),
-      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{6}, LogPayload::createFromString("AB"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{1},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{2},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{3},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{4},
+                                          LogPayload::createFromString("AB"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{5},
+                                          LogPayload::createFromString("AB"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{3}, LogIndex{6},
+                                          LogPayload::createFromString("AB"))),
   }};
   auto res = algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
   ASSERT_TRUE(res.has_value());
@@ -64,10 +69,13 @@ TEST_F(DetectConflictTest, log_skip_term) {
 
 TEST_F(DetectConflictTest, log_missing_after) {
   auto log = TestInMemoryLog{{
-    InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("A"))),
-    InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{2}, LogPayload::createFromString("A"))),
-    InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{3}, LogPayload::createFromString("A"))),
-    }};
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{1},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{2},
+                                          LogPayload::createFromString("A"))),
+      InMemoryLogEntry(PersistingLogEntry(LogTerm{1}, LogIndex{3},
+                                          LogPayload::createFromString("A"))),
+  }};
   auto res = algorithms::detectConflict(log, TermIndexPair{LogTerm{4}, LogIndex{6}});
   ASSERT_TRUE(res.has_value());
   auto [reason, next] = *res;

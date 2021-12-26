@@ -119,7 +119,6 @@ Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefault
     if (slice.isObject()) {
       if (slice.hasKey(StaticStrings::GraphSatellites) &&
           slice.get(StaticStrings::GraphSatellites).isArray()) {
-
         for (VPackSlice it : VPackArrayIterator(slice.get(StaticStrings::GraphSatellites))) {
           if (!it.isString()) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INVALID_PARAMETER);
@@ -161,8 +160,8 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
     if (options.isObject()) {
       if (options.hasKey(StaticStrings::GraphSatellites) &&
           options.get(StaticStrings::GraphSatellites).isArray()) {
-
-        for (VPackSlice it : VPackArrayIterator(options.get(StaticStrings::GraphSatellites))) {
+        for (VPackSlice it :
+             VPackArrayIterator(options.get(StaticStrings::GraphSatellites))) {
           if (!it.isString()) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INVALID_PARAMETER);
           }
@@ -753,9 +752,7 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 
 bool Graph::isSmart() const { return false; }
 
-bool Graph::isDisjoint() const {
-  return false;
-}
+bool Graph::isDisjoint() const { return false; }
 
 bool Graph::isSatellite() const { return _isSatellite; }
 

@@ -25,11 +25,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/files.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -38,17 +38,17 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include <boost/property_tree/detail/xml_parser_utils.hpp>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
-#include <velocypack/Slice.h>
 #include <velocypack/Sink.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/property_tree/detail/xml_parser_utils.hpp>
 #include <iostream>
 #include <regex>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
@@ -98,10 +98,13 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new VectorParameter<StringParameter>(&_collections));
 
   options->addOption("--query", "AQL query to run", new StringParameter(&_query));
-  
-  options->addOption("--query-max-runtime", "runtime threshold for AQL queries (in seconds, 0 = no limit)", 
-                     new DoubleParameter(&_queryMaxRuntime))
-                     .setIntroducedIn(30800);
+
+  options
+      ->addOption(
+          "--query-max-runtime",
+          "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+          new DoubleParameter(&_queryMaxRuntime))
+      .setIntroducedIn(30800);
 
   options->addOption("--graph-name", "name of a graph to export",
                      new StringParameter(&_graphName));
@@ -115,15 +118,19 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_outputDirectory));
-  
-  options->addOption("--documents-per-batch", "number of documents to return in each batch",
-                     new UInt64Parameter(&_documentsPerBatch))
-                     .setIntroducedIn(30800);
-  
-  options->addOption("--escape-csv-formulae", "prefix string cells in CSV output with extra single quote "
-                     "to prevent formula injection",
-                     new BooleanParameter(&_escapeCsvFormulae))
-                     .setIntroducedIn(30805);
+
+  options
+      ->addOption("--documents-per-batch",
+                  "number of documents to return in each batch",
+                  new UInt64Parameter(&_documentsPerBatch))
+      .setIntroducedIn(30800);
+
+  options
+      ->addOption("--escape-csv-formulae",
+                  "prefix string cells in CSV output with extra single quote "
+                  "to prevent formula injection",
+                  new BooleanParameter(&_escapeCsvFormulae))
+      .setIntroducedIn(30805);
 
   options->addOption("--overwrite", "overwrite data in output directory",
                      new BooleanParameter(&_overwrite));
@@ -139,11 +146,13 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--type", "type of export",
                      new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
 
-  options->addOption("--compress-output",
-                     "compress files containing collection contents using gzip format",
-                     new BooleanParameter(&_useGzip))
-                     .setIntroducedIn(30408)
-                     .setIntroducedIn(30501);
+  options
+      ->addOption(
+          "--compress-output",
+          "compress files containing collection contents using gzip format",
+          new BooleanParameter(&_useGzip))
+      .setIntroducedIn(30408)
+      .setIntroducedIn(30501);
 }
 
 void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -201,7 +210,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
     _csvFields = StringUtils::split(_csvFieldOptions, ',');
   }
-  
+
   // we will use _maxRuntime only if the option was set by the user
   _useMaxRuntime = options->processingResult().touched("--query-max-runtime");
 }
@@ -212,17 +221,17 @@ void ExportFeature::prepare() {
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {
       case static_cast<int>(TRI_ERROR_FILE_EXISTS):
-        LOG_TOPIC("72723",FATAL, Logger::FIXME) << "cannot write to output directory '"
-                                        << _outputDirectory << "'";
+        LOG_TOPIC("72723", FATAL, Logger::FIXME)
+            << "cannot write to output directory '" << _outputDirectory << "'";
         break;
       case static_cast<int>(TRI_ERROR_CANNOT_OVERWRITE_FILE):
-        LOG_TOPIC("81812",FATAL, Logger::FIXME)
+        LOG_TOPIC("81812", FATAL, Logger::FIXME)
             << "output directory '" << _outputDirectory
             << "' already exists. use \"--overwrite true\" to "
                "overwrite data in it";
         break;
       default:
-        LOG_TOPIC("94945",ERR, Logger::FIXME) << _directory->status().errorMessage();
+        LOG_TOPIC("94945", ERR, Logger::FIXME) << _directory->status().errorMessage();
         break;
     }
     FATAL_ERROR_EXIT();
@@ -255,7 +264,8 @@ void ExportFeature::start() {
     LOG_TOPIC("b620d", ERR, Logger::COMMUNICATION)
         << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
         << client.databaseName() << "', username: '" << client.username() << "'";
-    LOG_TOPIC("f251e", FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage() << "'";
+    LOG_TOPIC("f251e", FATAL, Logger::COMMUNICATION)
+        << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -279,7 +289,7 @@ void ExportFeature::start() {
             _outputDirectory + TRI_DIR_SEPARATOR_STR + collection + "." + _typeExport;
         if (_useGzip) {
           filePath.append(".gz");
-        } // if
+        }  // if
         int64_t fileSize = TRI_SizeFile(filePath.c_str());
 
         if (0 < fileSize) {
@@ -293,7 +303,7 @@ void ExportFeature::start() {
           _outputDirectory + TRI_DIR_SEPARATOR_STR + "query." + _typeExport;
       if (_useGzip) {
         filePath.append(".gz");
-      } // if
+      }  // if
       exportedSize += TRI_SizeFile(filePath.c_str());
     }
   } else if (_typeExport == "xgmml" && _graphName.size()) {
@@ -302,7 +312,7 @@ void ExportFeature::start() {
         _outputDirectory + TRI_DIR_SEPARATOR_STR + _graphName + "." + _typeExport;
     if (_useGzip) {
       filePath.append(".gz");
-    } // if
+    }  // if
     int64_t fileSize = TRI_SizeFile(filePath.c_str());
 
     if (0 < fileSize) {
@@ -312,8 +322,9 @@ void ExportFeature::start() {
 
   using arangodb::basics::StringUtils::formatSize;
 
-  std::cout << "Processed " << _collections.size() << " collection(s), wrote " << formatSize(exportedSize)
-            << ", " << _httpRequestsDone << " HTTP request(s)" << std::endl;
+  std::cout << "Processed " << _collections.size() << " collection(s), wrote "
+            << formatSize(exportedSize) << ", " << _httpRequestsDone
+            << " HTTP request(s)" << std::endl;
 
   *_result = ret;
 }
@@ -349,7 +360,8 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 
     std::string fileName = collection + "." + _typeExport;
 
-    std::unique_ptr<ManagedDirectory::File> fd = _directory->writableFile(fileName, _overwrite, 0, true);
+    std::unique_ptr<ManagedDirectory::File> fd =
+        _directory->writableFile(fileName, _overwrite, 0, true);
 
     if (nullptr == fd.get() || !fd->status().ok()) {
       errorMsg = "cannot write to file '" + fileName + "'";
@@ -406,7 +418,8 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
 
   std::string fileName = "query." + _typeExport;
 
-  std::unique_ptr<ManagedDirectory::File> fd = _directory->writableFile(fileName, _overwrite, 0, true);
+  std::unique_ptr<ManagedDirectory::File> fd =
+      _directory->writableFile(fileName, _overwrite, 0, true);
 
   if (nullptr == fd.get() || !fd->status().ok()) {
     errorMsg = "cannot write to file '" + fileName + "'";
@@ -434,7 +447,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   }
 }
 
-void ExportFeature::writeFirstLine(ManagedDirectory::File & fd, std::string const& fileName,
+void ExportFeature::writeFirstLine(ManagedDirectory::File& fd, std::string const& fileName,
                                    std::string const& collection) {
   _firstLine = true;
   if (_typeExport == "json") {
@@ -465,7 +478,8 @@ void ExportFeature::writeFirstLine(ManagedDirectory::File & fd, std::string cons
   }
 }
 
-void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator it, std::string const& fileName) {
+void ExportFeature::writeBatch(ManagedDirectory::File& fd, VPackArrayIterator it,
+                               std::string const& fileName) {
   std::string line;
   line.reserve(1024);
 
@@ -555,7 +569,7 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
   }
 }
 
-void ExportFeature::writeToFile(ManagedDirectory::File & fd, std::string const& line) {
+void ExportFeature::writeToFile(ManagedDirectory::File& fd, std::string const& line) {
   fd.write(line.c_str(), line.size());
   auto res = fd.status();
   if (res.fail()) {
@@ -572,10 +586,11 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
   _httpRequestsDone++;
 
   if (response == nullptr || !response->isComplete()) {
-    LOG_TOPIC("c590f", FATAL, Logger::CONFIG) << "got invalid response from server: " + httpClient->getErrorMessage();
+    LOG_TOPIC("c590f", FATAL, Logger::CONFIG)
+        << "got invalid response from server: " + httpClient->getErrorMessage();
     FATAL_ERROR_EXIT();
   }
-  
+
   std::shared_ptr<VPackBuilder> parsedBody;
 
   if (response->wasHttpError()) {
@@ -585,23 +600,27 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
     if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
       errorMsg = " - " + error.get(arangodb::StaticStrings::ErrorMessage).copyString();
     }
-    //std::cout << parsedBody->toJson() << std::endl;
-    LOG_TOPIC("dbf58", FATAL, Logger::CONFIG) << "got invalid response from server: HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " << response->getHttpReturnMessage() << errorMsg;
+    // std::cout << parsedBody->toJson() << std::endl;
+    LOG_TOPIC("dbf58", FATAL, Logger::CONFIG)
+        << "got invalid response from server: HTTP " +
+               StringUtils::itoa(response->getHttpReturnCode()) + ": "
+        << response->getHttpReturnMessage() << errorMsg;
     FATAL_ERROR_EXIT();
   }
 
   try {
     parsedBody = response->getBodyVelocyPack();
   } catch (...) {
-    LOG_TOPIC("2ce26", FATAL, Logger::CONFIG) << "got malformed JSON response from server";
+    LOG_TOPIC("2ce26", FATAL, Logger::CONFIG)
+        << "got malformed JSON response from server";
     FATAL_ERROR_EXIT();
   }
 
   VPackSlice body = parsedBody->slice();
 
   if (!body.isObject()) {
-    LOG_TOPIC("e3f71", FATAL, Logger::CONFIG) << "got malformed JSON response from server";
+    LOG_TOPIC("e3f71", FATAL, Logger::CONFIG)
+        << "got malformed JSON response from server";
     FATAL_ERROR_EXIT();
   }
 
@@ -650,7 +669,8 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
 
   std::string fileName = _graphName + "." + _typeExport;
 
-  std::unique_ptr<ManagedDirectory::File> fd = _directory->writableFile(fileName, _overwrite, 0, true);
+  std::unique_ptr<ManagedDirectory::File> fd =
+      _directory->writableFile(fileName, _overwrite, 0, true);
 
   if (nullptr == fd.get() || !fd->status().ok()) {
     errorMsg = "cannot write to file '" + fileName + "'";
@@ -712,7 +732,8 @@ directed="1">
   }
 }
 
-void ExportFeature::writeGraphBatch(ManagedDirectory::File & fd, VPackArrayIterator it, std::string const& fileName) {
+void ExportFeature::writeGraphBatch(ManagedDirectory::File& fd, VPackArrayIterator it,
+                                    std::string const& fileName) {
   std::string xmlTag;
 
   for (auto const& doc : it) {
@@ -770,8 +791,7 @@ void ExportFeature::writeGraphBatch(ManagedDirectory::File & fd, VPackArrayItera
   }
 }
 
-void ExportFeature::xgmmlWriteOneAtt(ManagedDirectory::File & fd,
-                                     VPackSlice const& slice,
+void ExportFeature::xgmmlWriteOneAtt(ManagedDirectory::File& fd, VPackSlice const& slice,
                                      std::string const& name, int deep) {
   std::string value, type, xmlTag;
 
@@ -847,14 +867,15 @@ void ExportFeature::xgmmlWriteOneAtt(ManagedDirectory::File & fd,
 void ExportFeature::appendCsvStringValue(std::string& output, std::string const& value) {
   // escape value and put it in quotes
   output.push_back('\"');
-  // if we are going to emit a string, we have to take some security precautions.
-  // for example, to prevent formula injection in MS Excel and LibreOffice calc, any
-  // string cells starting with one of the characters =, +, -, @ need to be escaped
-  // with an extra single quote (') so that their contents will not be interpreted
-  // as formulae 🙄
+  // if we are going to emit a string, we have to take some security
+  // precautions. for example, to prevent formula injection in MS Excel and
+  // LibreOffice calc, any string cells starting with one of the characters =,
+  // +, -, @ need to be escaped with an extra single quote (') so that their
+  // contents will not be interpreted as formulae 🙄
   // https://infosecwriteups.com/formula-injection-exploiting-csv-functionality-cd3d8efd02ec
   if (_escapeCsvFormulae && !value.empty()) {
-    bool escapeFormula = value.front() == '=' || value.front() == '+' || value.front() == '-' || value.front() == '@';
+    bool escapeFormula = value.front() == '=' || value.front() == '+' ||
+                         value.front() == '-' || value.front() == '@';
     if (escapeFormula) {
       output.push_back('\'');
     }

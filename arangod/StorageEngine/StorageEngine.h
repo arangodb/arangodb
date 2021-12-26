@@ -46,7 +46,7 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 class Builder;
-}
+}  // namespace velocypack
 
 enum class RecoveryState : uint32_t {
   /// @brief recovery is not yet started
@@ -91,7 +91,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   StorageEngine(application_features::ApplicationServer& server,
                 std::string engineName, std::string const& featureName,
                 std::unique_ptr<IndexFactory>&& indexFactory);
-  
+
   virtual HealthData healthCheck() = 0;
 
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
@@ -221,13 +221,12 @@ class StorageEngine : public application_features::ApplicationFeature {
   // written *after* the call to "createCollection" returns
   virtual void createCollection(TRI_vocbase_t& vocbase,
                                 LogicalCollection const& collection) = 0;
-  
+
   // method that is called prior to deletion of a collection. allows the storage
   // engine to clean up arbitrary data for this collection before the collection
   // moves into status "deleted". this method may be called multiple times for
   // the same collection
-  virtual void prepareDropCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection& collection) {}
+  virtual void prepareDropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) {}
 
   // asks the storage engine to drop the specified collection and persist the
   // deletion info. Note that physical deletion of the collection data must not
@@ -238,7 +237,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // will be written *after* the call to "dropCollection" returns
   virtual arangodb::Result dropCollection(TRI_vocbase_t& vocbase,
                                           LogicalCollection& collection) = 0;
-  
+
   // asks the storage engine to change properties of the collection as specified
   // in the VPack Slice object and persist them. If this operation fails
   // somewhere in the middle, the storage engine is required to fully revert the
@@ -326,9 +325,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual Result createLoggerState(TRI_vocbase_t* vocbase, velocypack::Builder& builder) = 0;
   virtual Result createTickRanges(velocypack::Builder& builder) = 0;
   virtual Result firstTick(uint64_t& tick) = 0;
-  virtual Result lastLogger(TRI_vocbase_t& vocbase,
-                            uint64_t tickStart, uint64_t tickEnd,
-                            velocypack::Builder& builder) = 0;
+  virtual Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
+                            uint64_t tickEnd, velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
   void getCapabilities(velocypack::Builder& builder) const;
@@ -359,4 +357,3 @@ class StorageEngine : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

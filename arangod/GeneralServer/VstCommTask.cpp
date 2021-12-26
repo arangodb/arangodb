@@ -223,7 +223,8 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   // this->_proto->timer.cancel();
-  auto guard = scopeGuard([&]() noexcept { _messages.erase(chunk.header.messageID()); });
+  auto guard =
+      scopeGuard([&]() noexcept { _messages.erase(chunk.header.messageID()); });
   processMessage(std::move(msg.buffer), chunk.header.messageID());
   return true;
 }
@@ -240,8 +241,10 @@ static void DTraceVstCommTaskProcessMessage(size_t) {}
 template <SocketType T>
 std::string VstCommTask<T>::url(VstRequest const* req) const {
   if (req != nullptr) {
-    return std::string((req->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
-      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+    return std::string((req->databaseName().empty()
+                            ? ""
+                            : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
+           (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
   }
   return "";
 }
@@ -317,21 +320,22 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer, uint64_t
       if (cont == CommTask::Flow::Continue) {
         auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
         this->executeRequest(std::move(req), std::move(resp));
-      }       // abort is handled in prepareExecution  
+      }       // abort is handled in prepareExecution
     } else {  // not supported on server
       LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
           << "\"vst-request-header\",\"" << (void*)this << "/" << messageId << "\""
           << " is unsupported";
       this->sendSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
-                              messageId, VPackBuffer<uint8_t>());
+                               messageId, VPackBuffer<uint8_t>());
     }
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("caf73", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
-      << " " << ex.message();
-    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), rest::ContentType::VPACK,
-                            messageId, ex.code(), ex.message());
+    LOG_TOPIC("caf73", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.code() << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                            rest::ContentType::VPACK, messageId, ex.code(), ex.message());
   } catch (std::exception const& ex) {
-    LOG_TOPIC("aea49", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
+    LOG_TOPIC("aea49", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.what();
     this->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::VPACK,
                             messageId, ErrorCode(TRI_ERROR_FAILED), ex.what());
   }
@@ -392,8 +396,9 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId()
       << "\",\"" << this->_connectionInfo.clientAddress << "\",\""
-      << url(nullptr) << "\",\"" << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
+      << url(nullptr) << "\",\"" << static_cast<int>(response.responseCode())
+      << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
+      << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
   resItem->stat = std::move(stat);
 
@@ -509,8 +514,7 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   // Separate superuser traffic:
   // Note that currently, velocystream traffic will never come from
   // a forwarding, since we always forward with HTTP.
-  if (_authMethod != AuthenticationMethod::NONE &&
-      _authToken.authenticated() &&
+  if (_authMethod != AuthenticationMethod::NONE && _authToken.authenticated() &&
       _authToken.username().empty()) {
     this->statistics(mId).SET_SUPERUSER();
   }

@@ -142,7 +142,7 @@ struct SCCComputation
   }
 };
 
-}
+}  // namespace
 
 VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputation(
     WorkerConfig const* config) const {
@@ -211,12 +211,14 @@ struct SCCMasterContext : public MasterContext {
       } break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_START:
-        LOG_TOPIC("fc62a", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
+        LOG_TOPIC("fc62a", DEBUG, Logger::PREGEL)
+            << "Phase: BACKWARD_TRAVERSAL_START";
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_REST:
-        LOG_TOPIC("905b0", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
+        LOG_TOPIC("905b0", DEBUG, Logger::PREGEL)
+            << "Phase: BACKWARD_TRAVERSAL_REST";
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
         if (*converged == false) {

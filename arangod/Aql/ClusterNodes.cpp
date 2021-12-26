@@ -147,10 +147,8 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   auto infos = RegisterInfos({}, {}, nrInRegs, nrOutRegs,
                              std::move(regsToClear), std::move(regsToKeep));
 
-  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(&engine, this,
-                                                              std::move(infos), server(),
-                                                              getDistributeId(),
-                                                              queryId());
+  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
+      &engine, this, std::move(infos), server(), getDistributeId(), queryId());
 }
 
 /// @brief doToVelocyPack, for RemoteNode
@@ -250,7 +248,7 @@ CostEstimate ScatterNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
   return estimate;
 }
-  
+
 DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                                ScatterNode::ScatterType type, Collection const* collection,
                                Variable const* variable, ExecutionNodeId targetNodeId)
@@ -501,16 +499,15 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 
   Parallelism p = _parallelism;
   if (ServerState::instance()->isDBServer()) {
-    p = Parallelism::Serial; // not supported in v36
+    p = Parallelism::Serial;  // not supported in v36
   }
 
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
 
   auto executorInfos =
-      SortingGatherExecutorInfos(std::move(sortRegister),
-                                 _plan->getAst()->query(), sortMode(),
-                                 constrainedSortLimit(), p);
+      SortingGatherExecutorInfos(std::move(sortRegister), _plan->getAst()->query(),
+                                 sortMode(), constrainedSortLimit(), p);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -633,8 +630,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = SingleRemoteModificationInfos(
-      &engine,
-      in, outputNew, outputOld, out, _plan->getAst()->query(), std::move(options),
+      &engine, in, outputNew, outputOld, out, _plan->getAst()->query(), std::move(options),
       collection(), ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,

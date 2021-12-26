@@ -42,7 +42,8 @@ struct OptimizerRule;
 /// set the level of the appended plan to the largest level of rule
 /// that ought to be considered as done to indicate which rule is to be
 /// applied next.
-typedef void (*RuleFunction)(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+typedef void (*RuleFunction)(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                             OptimizerRule const&);
 
 /// @brief type of an optimizer rule
 struct OptimizerRule {
@@ -70,25 +71,17 @@ struct OptimizerRule {
     return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0);
   }
 
-  bool canBeDisabled() const {
-    return hasFlag(Flags::CanBeDisabled);
-  }
+  bool canBeDisabled() const { return hasFlag(Flags::CanBeDisabled); }
 
-  bool isClusterOnly() const {
-    return hasFlag(Flags::ClusterOnly);
-  }
+  bool isClusterOnly() const { return hasFlag(Flags::ClusterOnly); }
 
-  bool isHidden() const {
-    return hasFlag(Flags::Hidden);
-  }
+  bool isHidden() const { return hasFlag(Flags::Hidden); }
 
   bool canCreateAdditionalPlans() const {
     return hasFlag(Flags::CanCreateAdditionalPlans);
   }
 
-  bool isDisabledByDefault() const {
-    return hasFlag(Flags::DisabledByDefault);
-  }
+  bool isDisabledByDefault() const { return hasFlag(Flags::DisabledByDefault); }
 
   /// @brief optimizer rules
   enum RuleLevel : int {
@@ -228,12 +221,12 @@ struct OptimizerRule {
     /// Pass 9: fuse filter conditions
     fuseFiltersRule,
 
-    /// "Pass 10": final transformations for the cluster
+  /// "Pass 10": final transformations for the cluster
 
-    // optimize queries in the cluster so that the entire query
-    // gets pushed to a single server
-    // if applied, this rule will turn all other cluster rules off
-    // for the current plan
+  // optimize queries in the cluster so that the entire query
+  // gets pushed to a single server
+  // if applied, this rule will turn all other cluster rules off
+  // for the current plan
 #ifdef USE_ENTERPRISE
     clusterOneShardRule,
 #endif
@@ -322,7 +315,7 @@ struct OptimizerRule {
     // allows execution nodes to asynchronously prefetch the next batch from their
     // upstream node.
     asyncPrefetch,
-    
+
     // reduce a sorted gather to an unsorted gather if only a single shard is affected
     decayUnnecessarySortedGatherRule,
 
@@ -366,11 +359,9 @@ struct OptimizerRule {
   std::underlying_type<Flags>::type flags;
 
   OptimizerRule() = delete;
-  OptimizerRule(velocypack::StringRef name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
-      : name(name),
-        func(ruleFunc),
-        level(level),
-        flags(flags) {}
+  OptimizerRule(velocypack::StringRef name, RuleFunction const& ruleFunc,
+                RuleLevel level, std::underlying_type<Flags>::type flags)
+      : name(name), func(ruleFunc), level(level), flags(flags) {}
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;
@@ -389,4 +380,3 @@ struct OptimizerRule {
 
 }  // namespace aql
 }  // namespace arangodb
-

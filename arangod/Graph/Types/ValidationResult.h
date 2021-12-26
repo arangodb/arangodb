@@ -49,4 +49,3 @@ std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
 
 }  // namespace graph
 }  // namespace arangodb
-

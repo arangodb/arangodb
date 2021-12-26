@@ -52,12 +52,13 @@ using message_format = MessageFormat<message_type>;
 using vertex_computation = VertexComputation<vertex_type, edge_type, message_type>;
 using message_combiner = MessageCombiner<message_type>;
 
-using AccumulatorMap = std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>>;
+using AccumulatorMap =
+    std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>>;
 
 struct ProgrammablePregelAlgorithm : public algorithm {
  public:
   explicit ProgrammablePregelAlgorithm(application_features::ApplicationServer& server,
-                              VPackSlice userParams);
+                                       VPackSlice userParams);
 
   bool supportsAsyncMode() const override;
   bool supportsCompensation() const override;
@@ -84,4 +85,4 @@ struct ProgrammablePregelAlgorithm : public algorithm {
   VertexAccumulatorOptions _options;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos::accumulators

@@ -83,7 +83,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& =
+                                 arangodb::velocypack::StringRef()) const override;
 
   RocksDBCuckooIndexEstimatorType* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
@@ -91,16 +92,15 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
 
-  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                             arangodb::aql::AstNode const* node,
-                                             arangodb::aql::Variable const* reference,
-                                             size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+      size_t itemsInIndex) const override;
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
-                                                      arangodb::aql::AstNode const* node,
-                                                      arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts,
-                                                      ReadOwnWrites readOwnWrites) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) override;
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;
@@ -109,23 +109,21 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmup(arangodb::transaction::Methods* trx,
               std::shared_ptr<basics::LocalTaskQueue> queue) override;
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     arangodb::transaction::Methods* trx) override;
+  void afterTruncate(TRI_voc_tick_t tick, arangodb::transaction::Methods* trx) override;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/,
-                bool /*performChecks*/) override;
+                OperationOptions const& /*options*/, bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc) override;
 
  private:
   /// @brief create the iterator
   std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
                                                   arangodb::aql::AstNode const*,
-                                                  arangodb::aql::AstNode const*, bool, ReadOwnWrites) const;
+                                                  arangodb::aql::AstNode const*,
+                                                  bool, ReadOwnWrites) const;
 
   std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*,
                                                   arangodb::aql::AstNode const*,
@@ -136,8 +134,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                        arangodb::aql::AstNode const* value) const;
 
   /// @brief populate the keys builder with the keys from the array
-  void fillInLookupValues(transaction::Methods* trx,
-                          arangodb::velocypack::Builder& keys,
+  void fillInLookupValues(transaction::Methods* trx, arangodb::velocypack::Builder& keys,
                           arangodb::aql::AstNode const* values) const;
 
   /// @brief add a single value node to the iterator's keys
@@ -161,4 +158,3 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   std::vector<std::vector<arangodb::basics::AttributeName>> const _coveredFields;
 };
 }  // namespace arangodb
-

@@ -34,18 +34,18 @@ namespace arangodb {
 
 double ReplicationTimeoutFeature::timeoutFactor = 1.0;
 double ReplicationTimeoutFeature::timeoutPer4k = 0.1;
-double ReplicationTimeoutFeature::lowerLimit = 900.0;  // used to be 30.0
+double ReplicationTimeoutFeature::lowerLimit = 900.0;   // used to be 30.0
 double ReplicationTimeoutFeature::upperLimit = 3600.0;  // used to be 120.0
 
-// We essentially stop using a meaningful timeout for this operation. 
-// This is achieved by setting the default for the minimal timeout to 1h or 3600s.
-// The reason behind this is the following: We have to live with RocksDB stalls
-// and write stops, which can happen in overload situations. Then, no meaningful
-// timeout helps and it is almost certainly better to keep trying to not have
-// to drop the follower and make matters worse. In case of an actual failure
-// (or indeed a restart), the follower is marked as failed and its reboot id is
-// increased. As a consequence, the connection is aborted and we run into an
-// error anyway. This is when a follower will be dropped.
+// We essentially stop using a meaningful timeout for this operation.
+// This is achieved by setting the default for the minimal timeout to 1h or
+// 3600s. The reason behind this is the following: We have to live with RocksDB
+// stalls and write stops, which can happen in overload situations. Then, no
+// meaningful timeout helps and it is almost certainly better to keep trying to
+// not have to drop the follower and make matters worse. In case of an actual
+// failure (or indeed a restart), the follower is marked as failed and its
+// reboot id is increased. As a consequence, the connection is aborted and we
+// run into an error anyway. This is when a follower will be dropped.
 
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ReplicationTimeout") {
@@ -59,11 +59,12 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
                      "this value (in seconds)",
                      new DoubleParameter(&lowerLimit));
 
-  options->addOption("--cluster.synchronous-replication-timeout-maximum",
-                     "all synchronous replication timeouts will be at most "
-                     "this value (in seconds)",
-                     new DoubleParameter(&upperLimit))
-                     .setIntroducedIn(30800);
+  options
+      ->addOption("--cluster.synchronous-replication-timeout-maximum",
+                  "all synchronous replication timeouts will be at most "
+                  "this value (in seconds)",
+                  new DoubleParameter(&upperLimit))
+      .setIntroducedIn(30800);
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-factor",

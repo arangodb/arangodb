@@ -33,7 +33,6 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
-#include "Aql/AqlValueGroup.h"
 
 #include "Containers/FlatHashMap.h"
 
@@ -70,7 +69,7 @@ class HashedCollectExecutorInfos {
   HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             velocypack::Options const* vpackOptions, 
+                             velocypack::Options const* vpackOptions,
                              arangodb::ResourceMonitor& resourceMonitor);
 
   HashedCollectExecutorInfos() = delete;
@@ -101,7 +100,7 @@ class HashedCollectExecutorInfos {
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
-  
+
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
 
@@ -157,11 +156,13 @@ class HashedCollectExecutor {
 
  private:
   struct ValueAggregators {
-    ValueAggregators(std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts);
+    ValueAggregators(std::vector<Aggregator::Factory const*> factories,
+                     velocypack::Options const* opts);
     ~ValueAggregators();
     std::size_t size() const;
     Aggregator& operator[](std::size_t index);
     static void operator delete(void* ptr);
+
    private:
     std::size_t _size;
   };
@@ -191,7 +192,8 @@ class HashedCollectExecutor {
 
   void destroyAllGroupsAqlValues();
 
-  static std::vector<Aggregator::Factory const*> createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
+  static std::vector<Aggregator::Factory const*> createAggregatorFactories(
+      HashedCollectExecutor::Infos const& infos);
 
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
@@ -226,4 +228,3 @@ class HashedCollectExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

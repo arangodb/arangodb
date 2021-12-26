@@ -74,7 +74,7 @@ void MaintenanceWorker::run() {
               }
               _curAction->startStats();
               LOG_TOPIC("fe241", DEBUG, Logger::MAINTENANCE)
-                << "Maintenance: starting to execute action: " << *_curAction;
+                  << "Maintenance: starting to execute action: " << *_curAction;
               more = _curAction->first();
               break;
 
@@ -88,7 +88,7 @@ void MaintenanceWorker::run() {
                   << "MaintenanceWorkerRun:  unexpected state (" << _loopState << ")";
 
           }  // switch
-        
+
           // determine next loop state
           nextState(more);
 
@@ -190,8 +190,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
         _curAction->setState(COMPLETE);
         if (_curAction->requeueRequested()) {
           LOG_TOPIC("a4352", DEBUG, Logger::MAINTENANCE)
-            << "Requeueing action " << *_curAction << " with new priority "
-            << _curAction->requeuePriority();
+              << "Requeueing action " << *_curAction << " with new priority "
+              << _curAction->requeuePriority();
           _feature.requeueAction(_curAction, _curAction->requeuePriority());
         }
 
@@ -214,8 +214,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
           failAction->setState(FAILED);
           if (failAction->requeueRequested()) {
             LOG_TOPIC("a4353", DEBUG, Logger::MAINTENANCE)
-              << "Requeueing action " << *failAction << " with new priority "
-              << failAction->requeuePriority();
+                << "Requeueing action " << *failAction << " with new priority "
+                << failAction->requeuePriority();
             _feature.requeueAction(failAction, failAction->requeuePriority());
           }
           failAction = failAction->getPostAction();

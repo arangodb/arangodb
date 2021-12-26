@@ -54,10 +54,8 @@ class CountStats {
   void incrCounted() noexcept { _counted++; }
 
   std::size_t getCounted() const noexcept { return _counted; }
-  
-  void operator+= (CountStats const& stats) {
-    _counted += stats._counted;
-  }
+
+  void operator+=(CountStats const& stats) { _counted += stats._counted; }
 
  private:
   std::size_t _counted;
@@ -80,7 +78,7 @@ class FilterStats {
   void incrFiltered() noexcept { _filtered++; }
 
   std::size_t getFiltered() const noexcept { return _filtered; }
-  
+
   void operator+=(FilterStats const& stats) noexcept {
     _filtered += stats._filtered;
   }
@@ -97,15 +95,14 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 
 class EnumerateCollectionStats {
  public:
-  EnumerateCollectionStats() noexcept 
-    : _scannedFull(0), _filtered(0) {}
+  EnumerateCollectionStats() noexcept : _scannedFull(0), _filtered(0) {}
 
   void incrScanned(size_t scanned) noexcept { _scannedFull += scanned; }
   void incrFiltered(size_t filtered) noexcept { _filtered += filtered; }
 
   std::size_t getScanned() const noexcept { return _scannedFull; }
   std::size_t getFiltered() const noexcept { return _filtered; }
-  
+
   void operator+=(EnumerateCollectionStats const& stats) noexcept {
     _scannedFull += stats._scannedFull;
     _filtered += stats._filtered;
@@ -129,13 +126,13 @@ class IndexStats {
 
   void incrScanned() noexcept { _scannedIndex++; }
   void incrScanned(size_t value) noexcept { _scannedIndex += value; }
-  
+
   void incrFiltered() noexcept { _filtered++; }
   void incrFiltered(size_t value) noexcept { _filtered += value; }
 
   std::size_t getScanned() const noexcept { return _scannedIndex; }
   std::size_t getFiltered() const noexcept { return _filtered; }
-  
+
   void operator+=(IndexStats const& stats) noexcept {
     _scannedIndex += stats._scannedIndex;
     _filtered += stats._filtered;
@@ -174,7 +171,7 @@ class ModificationStats {
   }
   void incrWritesIgnored() noexcept { _writesIgnored++; }
   std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
-  
+
   void operator+=(ModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
@@ -223,7 +220,7 @@ class SingleRemoteModificationStats {
   }
   void incrScannedIndex() noexcept { _scannedIndex++; }
   std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
-  
+
   void operator+=(SingleRemoteModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;

@@ -104,4 +104,3 @@ class FilterExecutor {
 };
 
 }  // namespace arangodb::aql
-

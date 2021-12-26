@@ -57,11 +57,10 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
-                                                      arangodb::aql::AstNode const* node,
-                                                      arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts,
-                                                      ReadOwnWrites readOwnWrites) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) override;
 
   bool canBeDropped() const override { return true; }
 
@@ -88,4 +87,3 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   std::string const _typeName;
 };
 }  // namespace arangodb
-

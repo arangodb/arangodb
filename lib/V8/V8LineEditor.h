@@ -84,4 +84,3 @@ class V8LineEditor : public LineEditor {
   std::atomic<bool> _executingCommand;
 };
 }  // namespace arangodb
-

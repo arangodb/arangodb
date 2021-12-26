@@ -51,9 +51,8 @@
 #include "VocBase/Methods/Collections.h"
 
 inline auto GetLinkVersions() noexcept {
-  return testing::Values(
-    arangodb::iresearch::LinkVersion::MIN,
-    arangodb::iresearch::LinkVersion::MAX);
+  return testing::Values(arangodb::iresearch::LinkVersion::MIN,
+                         arangodb::iresearch::LinkVersion::MAX);
 }
 
 class IResearchQueryTest
@@ -76,8 +75,9 @@ class IResearchQueryTest
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    
+    dbFeature.createDatabase(testDBInfo(server.server()),
+                             _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
     arangodb::methods::Collections::createSystem(*_vocbase, options,
@@ -88,8 +88,8 @@ class IResearchQueryTest
     auto res =
         analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
-                          arangodb::iresearch::Features(
-                            {}, irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)); // required for PHRASE
+                          arangodb::iresearch::Features({}, irs::IndexFeatures::FREQ |
+                                                                irs::IndexFeatures::POS));  // required for PHRASE
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(result, "testVocbase::test_csv_analyzer",
@@ -102,9 +102,8 @@ class IResearchQueryTest
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
-         arangodb::iresearch::Features{
-           arangodb::iresearch::FieldFeatures::NORM,
-           irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // cache analyzer
+        arangodb::iresearch::Features{arangodb::iresearch::FieldFeatures::NORM,
+                                      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
@@ -115,18 +114,22 @@ class IResearchQueryTest
 
     res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                             VPackParser::fromJson("\"abc\"")->slice(),
-                            arangodb::iresearch::Features{
-                              irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // required for PHRASE
+                            arangodb::iresearch::Features{irs::IndexFeatures::FREQ |
+                                                          irs::IndexFeatures::POS});  // required for PHRASE
 
-    res = analyzers.emplace(result, "_system::ngram_test_analyzer13", "ngram",
-                            VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-                            arangodb::iresearch::Features{
-                              irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // required for PHRASE
+    res = analyzers.emplace(
+        result, "_system::ngram_test_analyzer13", "ngram",
+        VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", "
+                              "\"preserveOriginal\":false}")
+            ->slice(),
+        arangodb::iresearch::Features{irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // required for PHRASE
 
-    res = analyzers.emplace(result, "_system::ngram_test_analyzer2", "ngram",
-                            VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-                            arangodb::iresearch::Features{
-                              irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // required for PHRASE
+    res = analyzers.emplace(
+        result, "_system::ngram_test_analyzer2", "ngram",
+        VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
+                              "\"preserveOriginal\":false}")
+            ->slice(),
+        arangodb::iresearch::Features{irs::IndexFeatures::FREQ | irs::IndexFeatures::POS});  // required for PHRASE
 
     EXPECT_TRUE(res.ok());
 
@@ -141,7 +144,7 @@ class IResearchQueryTest
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServerCluster, 
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
@@ -171,7 +174,7 @@ class IResearchQueryTest
         arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                            arangodb::aql::Function::Flags::Cacheable,
                                            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
-                                           arangodb::aql::Function::Flags::CanRunOnDBServerOneShard), 
+                                           arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         nullptr);
     arangodb::iresearch::addFunction(functions, customScorer);
 
@@ -189,4 +192,4 @@ class IResearchQueryTest
   }
 };  // IResearchQueryTest
 
-#endif // ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+#endif  // ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H

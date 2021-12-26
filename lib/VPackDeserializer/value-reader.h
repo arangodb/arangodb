@@ -89,7 +89,8 @@ struct value_reader<T, std::void_t<std::enable_if_t<std::is_arithmetic_v<T>>>> {
     if (s.isNumber<T>()) {
       return result_type{s.getNumber<T>()};
     }
-    return result_type{deserialize_error{"value is not a number that fits the required type"}};
+    return result_type{
+        deserialize_error{"value is not a number that fits the required type"}};
   }
 };
 

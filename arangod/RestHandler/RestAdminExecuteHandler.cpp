@@ -53,7 +53,8 @@ RestAdminExecuteHandler::RestAdminExecuteHandler(application_features::Applicati
 
 RestStatus RestAdminExecuteHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                  "JavaScript operations are disabled");
     return RestStatus::DONE;
   }
 
@@ -76,11 +77,13 @@ RestStatus RestAdminExecuteHandler::execute() {
   }
 
   try {
-    LOG_TOPIC("c838e", DEBUG, Logger::SECURITY) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
+    LOG_TOPIC("c838e", DEBUG, Logger::SECURITY)
+        << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
 
     // get a V8 context
     bool const allowUseDatabase = server().getFeature<ActionFeature>().allowUseDatabase();
-    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestAdminScriptActionContext(allowUseDatabase);
+    JavaScriptSecurityContext securityContext =
+        JavaScriptSecurityContext::createRestAdminScriptActionContext(allowUseDatabase);
     V8ContextGuard guard(&_vocbase, securityContext);
 
     {
@@ -92,13 +95,12 @@ RestStatus RestAdminExecuteHandler::execute() {
       v8::TryCatch tryCatch(isolate);
 
       // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-      v8::Local<v8::Function> ctor =
-        v8::Local<v8::Function>::Cast(current->Get(context,
-                                                   TRI_V8_ASCII_STRING(isolate, "Function"))
-                                      .FromMaybe(v8::Handle<v8::Value>())
-                                      );
+      v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(
+          current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
+              .FromMaybe(v8::Handle<v8::Value>()));
       v8::Handle<v8::Value> args[1] = {TRI_V8_PAIR_STRING(isolate, body, bodySize)};
-      v8::Local<v8::Object> function = ctor->NewInstance(context, 1, args).FromMaybe(v8::Local<v8::Object>());
+      v8::Local<v8::Object> function =
+          ctor->NewInstance(context, 1, args).FromMaybe(v8::Local<v8::Object>());
       v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
       v8::Handle<v8::Value> rv;
@@ -110,7 +112,8 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         TRI_fake_action_t adminExecuteAction("_admin/execute", 2);
 
-        v8g->_currentRequest = TRI_RequestCppToV8(isolate, v8g, _request.get(), &adminExecuteAction);
+        v8g->_currentRequest =
+            TRI_RequestCppToV8(isolate, v8g, _request.get(), &adminExecuteAction);
         v8g->_currentResponse = v8::Object::New(isolate);
 
         auto guard = scopeGuard([&v8g, &isolate]() noexcept {
@@ -126,7 +129,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         // got an error
         std::string errorMessage;
 
-        auto stacktraceV8 = tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+        auto stacktraceV8 =
+            tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
         v8::String::Utf8Value tryCatchStackTrace(isolate, stacktraceV8);
         if (*tryCatchStackTrace != nullptr) {
           errorMessage = *tryCatchStackTrace;
@@ -147,7 +151,9 @@ RestStatus RestAdminExecuteHandler::execute() {
           case Endpoint::TransportType::VST: {
             VPackBuffer<uint8_t> buffer;
             VPackBuilder builder(buffer);
-            builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(errorMessage.data()), errorMessage.size()));
+            builder.add(
+                VPackValuePair(reinterpret_cast<uint8_t const*>(errorMessage.data()),
+                               errorMessage.size()));
             _response->setContentType(rest::ContentType::VPACK);
             _response->setPayload(std::move(buffer));
             break;
@@ -158,9 +164,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         bool returnAsJSON = _request->parsedValue("returnAsJSON", false);
         if (returnAsJSON) {
           // if the result is one of the following type, we return it as is
-          returnAsJSON &= (rv->IsString() || rv->IsStringObject() ||
-                           rv->IsNumber() || rv->IsNumberObject() ||
-                           rv->IsBoolean());
+          returnAsJSON &= (rv->IsString() || rv->IsStringObject() || rv->IsNumber() ||
+                           rv->IsNumberObject() || rv->IsBoolean());
         }
 
         VPackBuilder result;
@@ -169,7 +174,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         if (returnAsJSON) {
           result.openObject(true);
           result.add(StaticStrings::Error, VPackValue(false));
-          result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+          result.add(StaticStrings::Code,
+                     VPackValue(static_cast<int>(rest::ResponseCode::OK)));
           if (rv->IsObject()) {
             TRI_V8ToVPack(isolate, result, rv, false);
             handled = true;

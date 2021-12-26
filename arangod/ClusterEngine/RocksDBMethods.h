@@ -45,4 +45,3 @@ Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& 
 Result waitForEstimatorSync();
 }  // namespace rocksdb
 }  // namespace arangodb
-

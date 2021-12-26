@@ -41,8 +41,6 @@ struct value_type_pair {};
 template <typename...>
 struct value_type_mapping;
 
-
-
 /*
  * INSERT NEW ACCUMULATOR HERE.
  */
@@ -68,12 +66,9 @@ using my_type_mapping =
                        value_type_pair<AccumulatorValueType::STRING, std::string>,
                        value_type_pair<AccumulatorValueType::ANY, VPackSlice>>;
 
-
 /*
  * YOU DO NOT NEED TO UNDERSTAND THE CODE BELOW.
  */
-
-
 
 template <typename... Ts>
 struct type_list {

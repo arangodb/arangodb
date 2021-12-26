@@ -25,10 +25,10 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Aql/QueryResult.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
-#include "Basics/ScopeGuard.h"
 #include "Transaction/Context.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -326,18 +326,16 @@ struct V8Cursor final {
     TRI_ASSERT(vocbase != nullptr);
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
-        
+
     auto q = aql::Query::create(transaction::V8Context::CreateWhenRequired(*vocbase, true),
                                 aql::QueryString(queryString), std::move(bindVars),
                                 aql::QueryOptions(options.slice()));
-    
+
     // specify ID 0 so it uses the external V8 context
     Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl);
     // a soft shutdown will throw here!
- 
-    arangodb::ScopeGuard releaseCursorGuard([&]() noexcept {
-      cc->release();
-    });
+
+    arangodb::ScopeGuard releaseCursorGuard([&]() noexcept { cc->release(); });
     // args.Holder() is supposedly better than args.This()
     auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
     V8Cursor* v8Cursor = self.release();  // args.Holder() owns the pointer

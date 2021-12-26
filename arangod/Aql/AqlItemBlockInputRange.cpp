@@ -86,8 +86,8 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow() 
                         InputAqlItemRow{CreateInvalidInputRowHint{}});
 }
 
-/// @brief: this is a performance-optimized version of nextDataRow() that must only
-/// be used if it is sure that there is another data row
+/// @brief: this is a performance-optimized version of nextDataRow() that must
+/// only be used if it is sure that there is another data row
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow(HasDataRow /*tag unused*/) {
   TRI_ASSERT(_block != nullptr);
   TRI_ASSERT(hasDataRow());
@@ -181,7 +181,6 @@ size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
   }
   return skipped;
 }
-
 
 template <AqlItemBlockInputRange::LookAhead doPeek, AqlItemBlockInputRange::RowType type>
 ExecutorState AqlItemBlockInputRange::nextState() const noexcept {

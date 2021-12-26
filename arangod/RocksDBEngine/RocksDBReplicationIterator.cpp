@@ -63,7 +63,9 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
   _iter.reset(db->NewIterator(ro, cf));
   TRI_ASSERT(_iter != nullptr);
   if (_iter == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build RocksDBRevisionReplicationIterator for snapshot");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "unable to build RocksDBRevisionReplicationIterator for snapshot");
   }
   _iter->Seek(_bounds.start());
 }
@@ -87,7 +89,9 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     ro.readOwnWrites = false;
   });
   if (_iter == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build RocksDBRevisionReplicationIterator for transaction");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "unable to build RocksDBRevisionReplicationIterator for transaction");
   }
   _iter->Seek(_bounds.start());
 }

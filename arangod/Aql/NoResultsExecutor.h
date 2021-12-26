@@ -62,20 +62,20 @@ class NoResultsExecutor {
    *
    * @return DONE, NoStats, HardLimit = 0 Call
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const
-      noexcept -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output) const noexcept
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * @brief DO NOT SKIP ROWS
    *
    ** @return DONE, NoStats, 0, HardLimit = 0 Call
    */
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const
-      noexcept -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const noexcept
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;
 };
 }  // namespace aql
 }  // namespace arangodb
-

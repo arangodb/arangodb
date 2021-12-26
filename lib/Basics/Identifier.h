@@ -82,7 +82,6 @@ std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i)
 
 }  // namespace arangodb::basics
 
-
 #define DECLARE_HASH_FOR_IDENTIFIER(T)                        \
   namespace std {                                             \
   template <>                                                 \
@@ -102,4 +101,3 @@ DECLARE_HASH_FOR_IDENTIFIER(arangodb::basics::Identifier)
   };                                                                         \
   }  // namespace std
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::basics::Identifier)
-

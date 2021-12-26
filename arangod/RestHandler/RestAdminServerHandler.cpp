@@ -183,7 +183,8 @@ void RestAdminServerHandler::handleMode() {
     if (af->isActive() && !_request->user().empty()) {
       auth::Level lvl;
       if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(_request->user(), StaticStrings::SystemDatabase,
+        lvl = af->userManager()->databaseAuthLevel(_request->user(),
+                                                   StaticStrings::SystemDatabase,
                                                    /*configured*/ true);
       } else {
         lvl = auth::Level::RW;
@@ -259,10 +260,8 @@ void RestAdminServerHandler::handleTLS() {
     sslServerFeature.dumpTLSData(builder);
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (requestType == rest::RequestType::POST) {
-
     // Only the superuser may reload TLS data:
-    if (ExecContext::isAuthEnabled() &&
-        !ExecContext::current().isSuperuser()) {
+    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "only superusers may reload TLS data");
       return;

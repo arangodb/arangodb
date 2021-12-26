@@ -49,4 +49,3 @@ auto operator<<(std::ostream& out, AqlCallSet::DepCallPair const& callPair)
 auto operator<<(std::ostream&, AqlCallSet const&) -> std::ostream&;
 
 }  // namespace arangodb::aql
-

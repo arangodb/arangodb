@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "V8/v8-deadline.h"
 #include "Basics/system-functions.h"
-#include "v8-utils.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "v8-utils.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort certain operations
@@ -51,7 +51,7 @@ static void JS_SetExecutionDeadlineTo(v8::FunctionCallbackInfo<v8::Value> const&
     executionDeadline = TRI_microtime() + n / 1000;
   }
 
-  TRI_V8_RETURN_BOOL((when > 0.00001) && (now - when > 0.0) );
+  TRI_V8_RETURN_BOOL((when > 0.00001) && (now - when > 0.0));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -65,7 +65,8 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate) {
     return false;
   }
 
-  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, "Execution deadline reached!", true);
+  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED,
+                        "Execution deadline reached!", true);
   return true;
 }
 
@@ -99,12 +100,10 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::millise
     return timeout;
   }
   return delta;
-
 }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate)
-{
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
-                               JS_SetExecutionDeadlineTo);
+void TRI_InitV8Deadline(v8::Isolate* isolate) {
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
+      JS_SetExecutionDeadlineTo);
 }

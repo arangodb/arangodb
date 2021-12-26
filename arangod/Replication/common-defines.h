@@ -72,8 +72,6 @@ void TRI_GetTimeStampReplication(double, char*, size_t);
 
 /// @brief determine whether a collection should be included in replication
 bool TRI_ExcludeCollectionReplication(std::string const& name,
-                                      bool includeSystem,
-                                      bool includeFoxxQueues);
+                                      bool includeSystem, bool includeFoxxQueues);
 
 }  // namespace arangodb
-

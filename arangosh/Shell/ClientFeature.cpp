@@ -206,12 +206,12 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // this is the case if we have more endpoints than allowed.
     // in versions before 3.9, it was allowed to specify `--server.endpoint`
     // multiple times, and if this was done, only the last provided endpoint
-    // was used. to keep backward-compatibility, we now emulate this 
+    // was used. to keep backward-compatibility, we now emulate this
     // behavior here.
     TRI_ASSERT(_maxNumEndpoints == 1);
     std::string selectedEndpoint = _endpoints.back();
 
-    _endpoints = { std::move(selectedEndpoint) };
+    _endpoints = {std::move(selectedEndpoint)};
   }
 
   // if a username is specified explicitly, assume authentication is desired
@@ -278,7 +278,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (!_endpoints.empty()) {
-    std::for_each(_endpoints.begin(), _endpoints.end(),  [] (auto const& endpoint) {
+    std::for_each(_endpoints.begin(), _endpoints.end(), [](auto const& endpoint) {
       if (!endpoint.empty() && (endpoint != "none") &&
           (endpoint != Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
         std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
@@ -396,11 +396,12 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
 
 std::vector<std::string> ClientFeature::httpEndpoints() {
   std::vector<std::string> httpEndpoints;
-  std::for_each(_endpoints.begin(), _endpoints.end(), [&httpEndpoints] (std::string const& endpoint) {
-    if (std::string http = Endpoint::uriForm(endpoint); !http.empty()) {
-      httpEndpoints.emplace_back(std::move(http));
-    }
-  });
+  std::for_each(_endpoints.begin(), _endpoints.end(),
+                [&httpEndpoints](std::string const& endpoint) {
+                  if (std::string http = Endpoint::uriForm(endpoint); !http.empty()) {
+                    httpEndpoints.emplace_back(std::move(http));
+                  }
+                });
   return httpEndpoints;
 }
 

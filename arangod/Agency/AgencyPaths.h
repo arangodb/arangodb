@@ -1447,19 +1447,26 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             class LocalStatus : public StaticComponent<LocalStatus, Log> {
              public:
-              constexpr char const* component() const noexcept { return "localStatus"; }
+              constexpr char const* component() const noexcept {
+                return "localStatus";
+              }
 
               using BaseType::StaticComponent;
 
-              class Participant : public DynamicComponent<Participant, LocalStatus, ServerID> {
+              class Participant
+                  : public DynamicComponent<Participant, LocalStatus, ServerID> {
                public:
-                char const* component() const noexcept { return value().c_str(); }
+                char const* component() const noexcept {
+                  return value().c_str();
+                }
 
                 using BaseType::DynamicComponent;
 
                 class Term : public StaticComponent<Term, Participant> {
                  public:
-                  constexpr char const* component() const noexcept { return "term"; }
+                  constexpr char const* component() const noexcept {
+                    return "term";
+                  }
 
                   using BaseType::StaticComponent;
                 };
@@ -1470,7 +1477,9 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
                 class SpearHead : public StaticComponent<SpearHead, Participant> {
                  public:
-                  constexpr char const* component() const noexcept { return "spearHead"; }
+                  constexpr char const* component() const noexcept {
+                    return "spearHead";
+                  }
 
                   using BaseType::StaticComponent;
                 };
@@ -1483,7 +1492,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               std::shared_ptr<Participant const> participant(std::string value) const {
                 return Participant::make_shared(shared_from_this(), std::move(value));
               }
-
             };
 
             std::shared_ptr<LocalStatus const> localStatus() const {

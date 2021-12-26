@@ -46,11 +46,12 @@ class RocksDBPrimaryIndex;
 /// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx, ReadOwnWrites readOwnWrites);
+  RocksDBAllIndexIterator(LogicalCollection* collection,
+                          transaction::Methods* trx, ReadOwnWrites readOwnWrites);
   ~RocksDBAllIndexIterator() = default;
 
   char const* typeName() const override { return "all-index-iterator"; }
-  
+
   /// @brief index does not support rearming
   bool canRearm() const override { return false; }
 
@@ -87,7 +88,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
  private:
   template <typename Func>
   bool doNext(size_t limit, Func const& func);
-  
+
   bool outOfRange() const;
   bool checkIter();
 
@@ -100,8 +101,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   uint64_t _returned;
   bool _forward;
 };
-  
-  
+
 /// @brief return false to stop iteration
 typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
 

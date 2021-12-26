@@ -50,4 +50,3 @@ struct RocksDBOptimizerRules {
 };
 
 }  // namespace arangodb
-

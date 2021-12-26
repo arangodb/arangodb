@@ -97,4 +97,3 @@ class V8PlatformFeature final : public application_features::ApplicationFeature 
 };
 
 }  // namespace arangodb
-

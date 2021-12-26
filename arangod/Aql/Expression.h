@@ -165,12 +165,12 @@ class Expression {
   void freeInternals() noexcept;
 
   /// @brief find a value in an array
-  bool findInArray(AqlValue const&, AqlValue const&, velocypack::Options const* vopts,
-                   AstNode const*) const;
+  bool findInArray(AqlValue const&, AqlValue const&,
+                   velocypack::Options const* vopts, AstNode const*) const;
 
   /// @brief analyze the expression (determine its type)
   void determineType();
-  
+
   /// @brief init the accessor specialization
   void initAccessor(ExpressionContext* ctx);
 
@@ -181,7 +181,8 @@ class Expression {
   AqlValue executeSimpleExpression(AstNode const*, bool& mustDestroy, bool);
 
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
-  AqlValue executeSimpleExpressionAttributeAccess(AstNode const*, bool& mustDestroy, bool doCopy);
+  AqlValue executeSimpleExpressionAttributeAccess(AstNode const*,
+                                                  bool& mustDestroy, bool doCopy);
 
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
   AqlValue executeSimpleExpressionIndexedAccess(AstNode const*, bool& mustDestroy, bool doCopy);
@@ -246,7 +247,6 @@ class Expression {
   AqlValue executeSimpleExpressionArithmetic(AstNode const*, bool& mustDestroy);
 
  private:
-
   /// @brief the AST
   Ast* _ast;
 
@@ -270,4 +270,3 @@ class Expression {
 
 }  // namespace aql
 }  // namespace arangodb
-

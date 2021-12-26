@@ -65,7 +65,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
    * @return The name of the feature
    */
   static std::string featureName();
-  
+
   /**
    * @brief Saves a worker error for later handling and clears queued jobs
    * @param error Error from a client worker
@@ -77,7 +77,6 @@ class RestoreFeature final : public application_features::ApplicationFeature {
    * @return  First error from the list, or OK if none exist
    */
   Result getFirstError() const;
-
 
   std::unique_ptr<basics::StringBuffer> leaseBuffer();
   void returnBuffer(std::unique_ptr<basics::StringBuffer> buffer) noexcept;
@@ -153,37 +152,31 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     /// (i.e. RestoreSendJobs)
     Result result;
 
-    /// @brief data chunk offsets (start offset, length) of requests that are currently
-    /// ongoing. Resumption of the restore must start at the smallest key value contained
-    /// in here (note: we also need to track the length of each chunk to test the
-    /// resumption of a restore after a crash)
+    /// @brief data chunk offsets (start offset, length) of requests that are
+    /// currently ongoing. Resumption of the restore must start at the smallest
+    /// key value contained in here (note: we also need to track the length of
+    /// each chunk to test the resumption of a restore after a crash)
     std::map<size_t, size_t> readOffsets;
 
     /// @brief whether ot not we have read the complete input data file for the collection
     bool readCompleteInputfile;
   };
-  
+
   /// @brief Stores all necessary data to restore a single collection or shard
   struct RestoreJob {
-    RestoreJob(RestoreFeature& feature, 
-               RestoreProgressTracker& progressTracker,
-               Options const& options, 
-               Stats& stats, 
-               bool useEnvelope,
-               std::string const& collectionName,
-               std::shared_ptr<SharedState> sharedState);
+    RestoreJob(RestoreFeature& feature, RestoreProgressTracker& progressTracker,
+               Options const& options, Stats& stats, bool useEnvelope,
+               std::string const& collectionName, std::shared_ptr<SharedState> sharedState);
 
     virtual ~RestoreJob();
-    
+
     virtual Result run(arangodb::httpclient::SimpleHttpClient& client) = 0;
 
     void updateProgress();
 
     Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& client,
-                           size_t readOffset,
-                           char const* buffer,
-                           size_t bufferSize);
-    
+                           size_t readOffset, char const* buffer, size_t bufferSize);
+
     RestoreFeature& feature;
     RestoreProgressTracker& progressTracker;
     Options const& options;
@@ -194,22 +187,15 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   };
 
   struct RestoreMainJob : public RestoreJob {
-    RestoreMainJob(ManagedDirectory& directory, 
-                   RestoreFeature& feature, 
-                   RestoreProgressTracker& progressTracker,
-                   Options const& options, 
-                   Stats& stats, 
-                   VPackSlice parameters,
-                   bool useEnvelope);
-    
+    RestoreMainJob(ManagedDirectory& directory, RestoreFeature& feature,
+                   RestoreProgressTracker& progressTracker, Options const& options,
+                   Stats& stats, VPackSlice parameters, bool useEnvelope);
+
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
-    Result dispatchRestoreData(arangodb::httpclient::SimpleHttpClient& client,
-                               size_t readOffset,
-                               char const* data,
-                               size_t length,
-                               bool forceDirect);
-    
+    Result dispatchRestoreData(arangodb::httpclient::SimpleHttpClient& client, size_t readOffset,
+                               char const* data, size_t length, bool forceDirect);
+
     Result restoreData(arangodb::httpclient::SimpleHttpClient& client);
 
     /// @brief Restore a collection's indexes given its description
@@ -218,28 +204,23 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     /// @brief Send command to restore a collection's indexes
     Result sendRestoreIndexes(arangodb::httpclient::SimpleHttpClient& client,
                               arangodb::velocypack::Slice);
-    
+
     ManagedDirectory& directory;
     VPackSlice parameters;
   };
-  
+
   struct RestoreSendJob : public RestoreJob {
-    RestoreSendJob(RestoreFeature& feature, 
-                   RestoreProgressTracker& progressTracker,
-                   Options const& options, 
-                   Stats& stats, 
-                   bool useEnvelope, 
-                   std::string const& collectionName,
-                   std::shared_ptr<SharedState> sharedState,
-                   size_t readOffset,
-                   std::unique_ptr<basics::StringBuffer> buffer);
-    
+    RestoreSendJob(RestoreFeature& feature, RestoreProgressTracker& progressTracker,
+                   Options const& options, Stats& stats, bool useEnvelope,
+                   std::string const& collectionName, std::shared_ptr<SharedState> sharedState,
+                   size_t readOffset, std::unique_ptr<basics::StringBuffer> buffer);
+
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
-    
+
     size_t const readOffset;
     std::unique_ptr<basics::StringBuffer> buffer;
   };
-  
+
   ClientTaskQueue<RestoreJob>& taskQueue();
 
   static void sortCollectionsForCreation(std::vector<VPackBuilder>& collections);
@@ -265,8 +246,6 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
   Mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;
-
 };
 
 }  // namespace arangodb
-

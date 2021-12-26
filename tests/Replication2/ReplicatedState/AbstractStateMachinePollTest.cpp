@@ -29,8 +29,8 @@
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 
-#include "Basics/voc-errors.h"
 #include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 #include "Replication2/ReplicatedState/AbstractStateMachine.h"
 
 using namespace arangodb;
@@ -100,7 +100,7 @@ struct Leader : ParticipantBase {
   std::shared_ptr<replicated_log::LogLeader> log;
 };
 
-}
+}  // namespace
 
 struct PollStateMachineTest : StateMachineTest {};
 

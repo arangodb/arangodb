@@ -119,7 +119,7 @@ struct envelope {
       return std::move(*this);
     }
 
-    template<typename F>
+    template <typename F>
     precs_trx cond(bool condition, F&& func) && {
       static_assert(std::is_invocable_r_v<precs_trx, F, precs_trx&&>);
       if (condition) {
@@ -130,7 +130,8 @@ struct envelope {
 
     envelope end(std::string const& clientId = {}) {
       _builder->close();
-      _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
+      _builder->add(VPackValue(
+          clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
       _builder->close();
       return envelope(_builder.release());
     }
@@ -150,7 +151,8 @@ struct envelope {
     envelope end(std::string const& clientId = {}) {
       _builder->close();
       _builder->add(VPackSlice::emptyObjectSlice());
-      _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
+      _builder->add(VPackValue(
+          clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
       _builder->close();
       return envelope(_builder.release());
     }
@@ -243,4 +245,4 @@ struct envelope {
   builder_ptr _builder;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::agency

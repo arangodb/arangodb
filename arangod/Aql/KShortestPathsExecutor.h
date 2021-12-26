@@ -74,7 +74,7 @@ class KShortestPathsExecutorInfos {
   [[nodiscard]] auto finder() const -> FinderType&;
 
   aql::QueryContext& query() noexcept;
-  
+
   /**
    * @brief test if we use a register or a constant input
    *
@@ -197,4 +197,3 @@ class KShortestPathsExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-

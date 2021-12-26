@@ -97,8 +97,8 @@ auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aql
 }
 
 auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                                   AqlCall const& call) const
-    noexcept -> size_t {
+                                                   AqlCall const& call) const noexcept
+    -> size_t {
   auto subqueries = input.countShadowRows();
   if (subqueries > 0) {
     // We will return 1 row for every subquery execution.

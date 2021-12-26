@@ -42,11 +42,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::graph;
 
-ClusterTraverserCache::ClusterTraverserCache(
-    aql::QueryContext& query,
-    std::unordered_map<ServerID, aql::EngineId> const* engines,
-    BaseOptions* options)
-    : TraverserCache(query, options), 
+ClusterTraverserCache::ClusterTraverserCache(aql::QueryContext& query,
+                                             std::unordered_map<ServerID, aql::EngineId> const* engines,
+                                             BaseOptions* options)
+    : TraverserCache(query, options),
       _datalake(options->resourceMonitor()),
       _engines(engines) {}
 
@@ -65,7 +64,8 @@ void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
   result.add(VPackSlice(token.vpack()));
 }
 
-bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id, VPackBuilder& result) {
+bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id,
+                                         VPackBuilder& result) {
   // There will be no idString of length above uint32_t
   auto it = _cache.find(
       arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
@@ -84,7 +84,8 @@ bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id, VPa
   return false;
 }
 
-bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id, arangodb::aql::AqlValue& result) {
+bool ClusterTraverserCache::appendVertex(arangodb::velocypack::StringRef id,
+                                         arangodb::aql::AqlValue& result) {
   // There will be no idString of length above uint32_t
   auto it = _cache.find(
       arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));

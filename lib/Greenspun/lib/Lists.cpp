@@ -30,7 +30,6 @@
 
 using namespace arangodb::greenspun;
 
-
 EvalResult Prim_ListCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
   VPackArrayBuilder array(&result);
   for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {

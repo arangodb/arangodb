@@ -29,13 +29,13 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
-  
+
 StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
-  : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
+    : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
 
 /// @brief get transaction state, determine commit responsibility
-/*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(transaction::Options const& options,
-                                                                              bool& responsibleForCommit) {
+/*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(
+    transaction::Options const& options, bool& responsibleForCommit) {
   if (_state) {
     responsibleForCommit = false;
   } else {

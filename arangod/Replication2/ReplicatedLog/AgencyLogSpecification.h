@@ -52,7 +52,8 @@ struct LogPlanTermSpecification {
   LogPlanTermSpecification(from_velocypack_t, VPackSlice);
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, LogConfig config, std::optional<Leader>, std::unordered_map<ParticipantId, Participant> participants);
+  LogPlanTermSpecification(LogTerm term, LogConfig config, std::optional<Leader>,
+                           std::unordered_map<ParticipantId, Participant> participants);
 };
 
 struct LogPlanSpecification {
@@ -77,7 +78,6 @@ struct LogCurrentLocalState {
   LogCurrentLocalState(from_velocypack_t, VPackSlice);
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
 };
-
 
 struct LogCurrentSupervisionElection {
   enum class ErrorCode {
@@ -128,4 +128,4 @@ struct LogCurrent {
   LogCurrent() = default;
 };
 
-}
+}  // namespace arangodb::replication2::agency

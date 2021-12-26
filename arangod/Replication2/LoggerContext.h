@@ -32,8 +32,8 @@
 // result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
 #pragma warning(disable : 4334)
 #endif
-#include <immer/flex_vector.hpp>
 #include <immer/box.hpp>
+#include <immer/flex_vector.hpp>
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
@@ -48,7 +48,7 @@ struct LoggableValue {
   virtual auto operator<<(std::ostream& os) const noexcept -> std::ostream& = 0;
 };
 
-template<typename T, const char *N>
+template <typename T, const char* N>
 struct LogNameValuePair : LoggableValue {
   explicit LogNameValuePair(T t) : value(std::move(t)) {}
   T value;
@@ -60,7 +60,7 @@ struct LogNameValuePair : LoggableValue {
 struct LoggerContext {
   explicit LoggerContext(LogTopic const& topic) : topic(topic) {}
 
-  template<const char N[], typename T>
+  template <const char N[], typename T>
   auto with(T&& t) const -> LoggerContext {
     using S = std::decay_t<T>;
     auto pair = std::make_shared<LogNameValuePair<S, N>>(std::forward<T>(t));
@@ -85,7 +85,8 @@ struct LoggerContext {
     return os;
   }
 
-  using Container = ::immer::flex_vector<std::shared_ptr<LoggableValue>, arangodb::immer::arango_memory_policy>;
+  using Container =
+      ::immer::flex_vector<std::shared_ptr<LoggableValue>, arangodb::immer::arango_memory_policy>;
   LogTopic const& topic;
   Container const values = {};
 
@@ -93,7 +94,7 @@ struct LoggerContext {
   LoggerContext(Container values, LogTopic const& topic)
       : topic(topic), values(std::move(values)) {}
 };
-}
+}  // namespace arangodb
 
 #define LOG_CTX(id, level, ctx) \
   LOG_TOPIC(id, level, (ctx).topic) << (ctx) << " "

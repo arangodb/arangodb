@@ -190,4 +190,3 @@ struct WalAccessContext {
 };
 
 }  // namespace arangodb
-

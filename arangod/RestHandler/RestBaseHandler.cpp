@@ -57,7 +57,8 @@ arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
     LOG_TOPIC("414a9", DEBUG, arangodb::Logger::REQUESTS) << errmsg;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
   } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, "unknown exception");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "unknown exception");
   }
   success = false;
   return VPackSlice::noneSlice();
@@ -110,7 +111,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
       tmp.add("result", payload);
     }
     tmp.close();
-    
+
     writeResult(std::move(buffer), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed

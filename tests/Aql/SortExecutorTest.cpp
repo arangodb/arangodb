@@ -259,9 +259,15 @@ TEST_P(SortExecutorTest, skip_nested_subquery_no_data) {
 
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
-      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(2), makeSubqueryRegisterInfos(2), ExecutionNode::SUBQUERY_START)
-      .addConsumer<TestLambdaSkipExecutor>(makeSubqueryRegisterInfos(2), dropAllLambdaExecutorInfos(), ExecutionNode::FILTER)
-      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(3), makeSubqueryRegisterInfos(3), ExecutionNode::SUBQUERY_START)
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(2),
+                                          makeSubqueryRegisterInfos(2),
+                                          ExecutionNode::SUBQUERY_START)
+      .addConsumer<TestLambdaSkipExecutor>(makeSubqueryRegisterInfos(2),
+                                           dropAllLambdaExecutorInfos(),
+                                           ExecutionNode::FILTER)
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(3),
+                                          makeSubqueryRegisterInfos(3),
+                                          ExecutionNode::SUBQUERY_START)
       .addConsumer<SortExecutor>(makeRegisterInfos(3), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputValue({{1}})
       .expectOutput({0}, {{1}}, {{0, 1}})

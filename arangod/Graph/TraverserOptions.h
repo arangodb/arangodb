@@ -161,7 +161,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const;
 
-  bool destinationCollectionAllowed(velocypack::Slice edge, velocypack::StringRef sourceVertex) const;
+  bool destinationCollectionAllowed(velocypack::Slice edge,
+                                    velocypack::StringRef sourceVertex) const;
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
@@ -225,9 +226,9 @@ struct TraverserOptions : public graph::BaseOptions {
                           arangodb::velocypack::StringRef origin) const
       -> arangodb::velocypack::StringRef;
 
-  void initializeIndexConditions(
-    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-    aql::Variable const* indexVariable) override;
+  void initializeIndexConditions(aql::Ast* ast,
+                                 std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+                                 aql::Variable const* indexVariable) override;
 
   void calculateIndexExpressions(aql::Ast* ast) override;
 

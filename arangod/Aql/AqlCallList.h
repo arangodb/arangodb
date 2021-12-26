@@ -155,4 +155,3 @@ auto operator==(AqlCallList const& left, AqlCallList const& right) -> bool;
 auto operator<<(std::ostream& out, const arangodb::aql::AqlCallList& list) -> std::ostream&;
 
 }  // namespace arangodb::aql
-

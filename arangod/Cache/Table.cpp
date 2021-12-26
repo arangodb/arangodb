@@ -297,8 +297,8 @@ void Table::setTypeSpecifics(BucketClearer clearer, std::size_t slotsPerBucket) 
 void Table::clear() {
   disable();
   if (_auxiliary.get() != nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "unexpected auxiliary state");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unexpected auxiliary state");
   }
   for (std::uint64_t i = 0; i < _size; i++) {
     _bucketClearer(&(_buckets[i]));
@@ -346,26 +346,26 @@ void Table::slotsEmptied(std::uint64_t numSlots) noexcept {
 void Table::signalEvictions() {
   SpinLocker guard(SpinLocker::Mode::Write, _lock);
   _evictions = true;
+}
+
+std::uint32_t Table::idealSize() {
+  bool forceGrowth = false;
+  {
+    SpinLocker guard(SpinLocker::Mode::Write, _lock);
+    forceGrowth = _evictions;
+    _evictions = false;
+  }
+  if (forceGrowth) {
+    return logSize() + 1;
   }
 
-  std::uint32_t Table::idealSize() {
-    bool forceGrowth = false;
-    {
-      SpinLocker guard(SpinLocker::Mode::Write, _lock);
-      forceGrowth = _evictions;
-      _evictions = false;
-    }
-    if (forceGrowth) {
-      return logSize() + 1;
-    }
-
-    return (((static_cast<double>(_slotsUsed.load()) /
-              static_cast<double>(_slotsTotal)) > Table::idealUpperRatio)
-                ? (logSize() + 1)
-                : (((static_cast<double>(_slotsUsed.load()) /
-                     static_cast<double>(_slotsTotal)) < Table::idealLowerRatio)
-                       ? (logSize() - 1)
-                       : logSize()));
+  return (((static_cast<double>(_slotsUsed.load()) / static_cast<double>(_slotsTotal)) >
+           Table::idealUpperRatio)
+              ? (logSize() + 1)
+              : (((static_cast<double>(_slotsUsed.load()) /
+                   static_cast<double>(_slotsTotal)) < Table::idealLowerRatio)
+                     ? (logSize() - 1)
+                     : logSize()));
 }
 
 void Table::defaultClearer(void* ptr) {

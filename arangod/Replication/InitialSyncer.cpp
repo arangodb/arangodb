@@ -52,7 +52,7 @@ InitialSyncer::~InitialSyncer() {
 /// @brief start a recurring task to extend the batch
 void InitialSyncer::startRecurringBatchExtension() {
   TRI_ASSERT(!_state.isChildSyncer);
-  
+
   std::lock_guard<std::mutex> guard(_batchPingMutex);
 
   if (isAborted()) {

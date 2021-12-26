@@ -104,7 +104,7 @@ class TokenTranslator : public TraverserCache {
     TRI_ASSERT(it != _vertices.end());
     return it->second;
   }
-  
+
   bool appendVertex(arangodb::velocypack::StringRef idString, VPackBuilder& builder) override {
     builder.add(translateVertex(idString));
     return true;
@@ -180,7 +180,8 @@ class FakePathFinder : public ShortestPathFinder {
     return _calledWith[index];
   }
 
-  [[nodiscard]] auto getCalledWith() -> std::vector<std::pair<std::string, std::string>> const& {
+  [[nodiscard]] auto getCalledWith()
+      -> std::vector<std::pair<std::string, std::string>> const& {
     return _calledWith;
   };
 
@@ -210,7 +211,8 @@ enum class ShortestPathOutput { VERTEX_ONLY, VERTEX_AND_EDGE };
 // Namespace conflict with the other shortest path executor
 namespace {
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
-    regSource(RegisterId(0)), regTarget(RegisterId(1)), brokenSource{"IwillBreakYourSearch"},
+    regSource(RegisterId(0)),
+    regTarget(RegisterId(1)), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
 MatrixBuilder<2> const noneRow{{{{}}}};
 MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
@@ -360,8 +362,8 @@ class ShortestPathExecutorTest : public ::testing::Test {
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
-        registerInfos(parameters._inputRegisters, parameters._outputRegisters, 2,
-                      4, {}, {RegIdSet{0, 1}}),
+        registerInfos(parameters._inputRegisters, parameters._outputRegisters,
+                      2, 4, {}, {RegIdSet{0, 1}}),
         executorInfos(std::make_unique<FakePathFinder>(options, translator),
                       std::move(parameters._registerMapping),
                       std::move(parameters._source), std::move(parameters._target)),
@@ -372,7 +374,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, executorInfos) {
     for (auto&& p : parameters._paths) {
-     finder.addPath(std::move(p));
+      finder.addPath(std::move(p));
     }
   }
 
@@ -450,7 +452,8 @@ class ShortestPathExecutorTest : public ::testing::Test {
     for (auto const& block : results) {
       if (block != nullptr) {
         ASSERT_NE(block, nullptr);
-        for (size_t blockIndex = 0; blockIndex < block->numRows(); ++blockIndex, ++expectedRowsIndex) {
+        for (size_t blockIndex = 0; blockIndex < block->numRows();
+             ++blockIndex, ++expectedRowsIndex) {
           if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
             AqlValue value =
                 block->getValue(blockIndex, executorInfos.getOutputRegister(
@@ -582,13 +585,9 @@ class ShortestPathExecutorPathTest
   ShortestPathExecutorPathTest() : ShortestPathExecutorTest(GetParam()) {}
 };
 
-TEST_P(ShortestPathExecutorInputOutputTest, the_test) {
-  TestExecutor();
-}
+TEST_P(ShortestPathExecutorInputOutputTest, the_test) { TestExecutor(); }
 
-TEST_P(ShortestPathExecutorPathTest, the_test) {
-  TestExecutor();
-}
+TEST_P(ShortestPathExecutorPathTest, the_test) { TestExecutor(); }
 
 // Namespace conflict with the other shortest path executor
 namespace {

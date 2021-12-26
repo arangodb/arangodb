@@ -57,15 +57,15 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 }
 
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
-    Query& query, MapRemoteToSnippet const& dbServerQueryIds,
-    bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const {
+    Query& query, MapRemoteToSnippet const& dbServerQueryIds, bool isfirst,
+    std::unique_ptr<ExecutionEngine>& engine) const {
   TRI_ASSERT(!_nodes.empty());
-  
+
   std::shared_ptr<SharedQueryState> sqs;
   if (isfirst) {
     sqs = query.sharedState();
   }
-  
+
   engine = std::make_unique<ExecutionEngine>(_id, query, query.itemBlockManager(),
                                              SerializationFormat::SHADOWROWS, sqs);
 
@@ -80,7 +80,9 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   return {TRI_ERROR_NO_ERROR};
 }
 
-EngineId EngineInfoContainerCoordinator::EngineInfo::engineId() const { return _id; }
+EngineId EngineInfoContainerCoordinator::EngineInfo::engineId() const {
+  return _id;
+}
 
 EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
   // We always start with an empty coordinator snippet
@@ -116,11 +118,9 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
   return id;
 }
 
-Result EngineInfoContainerCoordinator::buildEngines(
-    Query& query,
-    AqlItemBlockManager& mgr,
-    MapRemoteToSnippet const& dbServerQueryIds,
-    aql::SnippetList& coordSnippets) const {
+Result EngineInfoContainerCoordinator::buildEngines(Query& query, AqlItemBlockManager& mgr,
+                                                    MapRemoteToSnippet const& dbServerQueryIds,
+                                                    aql::SnippetList& coordSnippets) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
@@ -135,7 +135,7 @@ Result EngineInfoContainerCoordinator::buildEngines(
       TRI_ASSERT(!first || info.engineId() == 0);
       TRI_ASSERT(!first || query.sharedState() == engine->sharedState());
       TRI_ASSERT(info.engineId() == engine->engineId());
-      
+
       first = false;
       coordSnippets.emplace_back(std::move(engine));
     }
@@ -149,6 +149,6 @@ Result EngineInfoContainerCoordinator::buildEngines(
 
   // This deactivates the defered cleanup.
   // From here on we rely on the AQL shutdown mechanism.
-//  guard.cancel();
+  //  guard.cancel();
   return Result();
 }

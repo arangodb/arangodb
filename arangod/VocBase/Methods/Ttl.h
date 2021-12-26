@@ -29,7 +29,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 class TtlFeature;
 
 namespace methods {
@@ -48,4 +48,3 @@ struct Ttl {
 };
 }  // namespace methods
 }  // namespace arangodb
-

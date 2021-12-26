@@ -37,7 +37,7 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AqlItemBlock const&);
 bool operator==(arangodb::aql::ExecutionStats const&, arangodb::aql::ExecutionStats const&);
 bool operator==(arangodb::aql::AqlItemBlock const&, arangodb::aql::AqlItemBlock const&);
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif  // TESTS_AQL_AQLHELPER_H

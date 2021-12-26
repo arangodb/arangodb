@@ -47,5 +47,5 @@ void VertexData::reset(AccumulatorsDeclaration const& vertexAccumulatorsDeclarat
 }
 
 std::unique_ptr<AccumulatorBase> const& VertexData::accumulatorByName(std::string_view name) const {
-  return _vertexAccumulators.at(std::string{name}); // C++20 use string_view to lookup in map
+  return _vertexAccumulators.at(std::string{name});  // C++20 use string_view to lookup in map
 }

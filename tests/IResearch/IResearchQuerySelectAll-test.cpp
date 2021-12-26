@@ -53,7 +53,8 @@ TEST_P(IResearchQuerySelectAllTest, test) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -90,10 +91,10 @@ TEST_P(IResearchQuerySelectAllTest, test) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
     EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
@@ -167,8 +168,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
 
     // check node estimation
     {
-      auto explanationResult =
-          arangodb::tests::explainQuery(vocbase, queryString);
+      auto explanationResult = arangodb::tests::explainQuery(vocbase, queryString);
       ASSERT_TRUE(explanationResult.result.ok());
       auto const explanationSlice = explanationResult.data->slice();
       ASSERT_TRUE(explanationSlice.isObject());
@@ -187,8 +187,7 @@ TEST_P(IResearchQuerySelectAllTest, test) {
       ASSERT_EQ(insertedDocs.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
     }
 
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase, queryString);
+    auto queryResult = arangodb::tests::executeQuery(vocbase, queryString);
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -488,7 +487,5 @@ TEST_P(IResearchQuerySelectAllTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQuerySelectAllTest,
-  IResearchQuerySelectAllTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQuerySelectAllTest,
+                        IResearchQuerySelectAllTest, GetLinkVersions());

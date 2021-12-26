@@ -103,4 +103,3 @@ struct Index {
 
 }  // namespace geo_index
 }  // namespace arangodb
-

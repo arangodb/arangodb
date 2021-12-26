@@ -94,26 +94,32 @@ class RDBNearIterator final : public IndexIterator {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           bool result = true;  // this is updated by the callback
-          if (!_collection->getPhysical()->read(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
-                geo::FilterType const ft = _near.filterType();
-                if (ft != geo::FilterType::NONE) {  // expensive test
-                  geo::ShapeContainer const& filter = _near.filterShape();
-                  TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
-                  geo::ShapeContainer test;
-                  Result res = _index->shape(doc, test);
-                  TRI_ASSERT(res.ok());  // this should never fail here
-                  if (res.fail() ||
-                      (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                      (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
-                    result = false;
-                    return false;
-                  }
-                }
-                cb(gdoc.token, doc);  // return document
-                result = true;
-                return true;
-                // geo index never needs to observe own writes
-              }, ReadOwnWrites::no).ok()) {
+          if (!_collection->getPhysical()
+                   ->read(
+                       _trx, gdoc.token,
+                       [&](LocalDocumentId const&, VPackSlice doc) {
+                         geo::FilterType const ft = _near.filterType();
+                         if (ft != geo::FilterType::NONE) {  // expensive test
+                           geo::ShapeContainer const& filter = _near.filterShape();
+                           TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+                           geo::ShapeContainer test;
+                           Result res = _index->shape(doc, test);
+                           TRI_ASSERT(res.ok());  // this should never fail here
+                           if (res.fail() ||
+                               (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                               (ft == geo::FilterType::INTERSECTS &&
+                                !filter.intersects(&test))) {
+                             result = false;
+                             return false;
+                           }
+                         }
+                         cb(gdoc.token, doc);  // return document
+                         result = true;
+                         return true;
+                         // geo index never needs to observe own writes
+                       },
+                       ReadOwnWrites::no)
+                   .ok()) {
             return false;  // ignore document
           }
           return result;
@@ -129,19 +135,25 @@ class RDBNearIterator final : public IndexIterator {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
             bool result = true;  // this is updated by the callback
-            if (!_collection->getPhysical()->read(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
-                  geo::ShapeContainer test;
-                  Result res = _index->shape(doc, test);
-                  TRI_ASSERT(res.ok());  // this should never fail here
-                  if (res.fail() ||
-                      (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                      (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
-                    result = false;
-                    return false;
-                  }
-                  return true;
-                  // geo index never needs to observe own writes
-                }, ReadOwnWrites::no).ok()) {
+            if (!_collection->getPhysical()
+                     ->read(
+                         _trx, gdoc.token,
+                         [&](LocalDocumentId const&, VPackSlice doc) {
+                           geo::ShapeContainer test;
+                           Result res = _index->shape(doc, test);
+                           TRI_ASSERT(res.ok());  // this should never fail here
+                           if (res.fail() ||
+                               (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                               (ft == geo::FilterType::INTERSECTS &&
+                                !filter.intersects(&test))) {
+                             result = false;
+                             return false;
+                           }
+                           return true;
+                           // geo index never needs to observe own writes
+                         },
+                         ReadOwnWrites::no)
+                     .ok()) {
               return false;
             }
             if (!result) {
@@ -168,8 +180,8 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    // LOG_TOPIC("b1eea", INFO, Logger::ENGINES) << "# intervals: " << scan.size();
-    // size_t seeks = 0;
+    // LOG_TOPIC("b1eea", INFO, Logger::ENGINES) << "# intervals: " <<
+    // scan.size(); size_t seeks = 0;
 
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& it = scan[i];
@@ -177,7 +189,7 @@ class RDBNearIterator final : public IndexIterator {
       RocksDBKeyBounds bds =
           RocksDBKeyBounds::GeoIndex(_index->objectId(), it.range_min.id(),
                                      it.range_max.id());
-      
+
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
@@ -202,8 +214,8 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        // LOG_TOPIC("0afaa", INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
-        // seeks++;
+        // LOG_TOPIC("0afaa", INFO, Logger::ENGINES) << "[Scan] seeking:" <<
+        // it.min; seeks++;
         _iter->Seek(bds.start());
       }
 
@@ -212,7 +224,7 @@ class RDBNearIterator final : public IndexIterator {
                           RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
-    
+
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iter.get());
     }
@@ -346,7 +358,7 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // geo index never needs to observe own writes
+  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);  // geo index never needs to observe own writes
 
   geo::QueryParams params;
   params.sorted = opts.sorted;
@@ -373,16 +385,17 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   }
 
   if (params.ascending) {
-    return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(&_collection, trx, this, std::move(params));
+    return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(
+        &_collection, trx, this, std::move(params));
   } else {
-    return std::make_unique<RDBNearIterator<geo_index::DocumentsDescending>>(&_collection, trx, this, std::move(params));
+    return std::make_unique<RDBNearIterator<geo_index::DocumentsDescending>>(
+        &_collection, trx, this, std::move(params));
   }
 }
 
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                               LocalDocumentId const& documentId,
-                               velocypack::Slice doc,
+                               LocalDocumentId const& documentId, velocypack::Slice doc,
                                arangodb::OperationOptions const& /*options*/,
                                bool /*performChecks*/) {
   // covering and centroid of coordinate / polygon / ...
@@ -431,8 +444,7 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
-                               LocalDocumentId const& documentId,
-                               velocypack::Slice doc) {
+                               LocalDocumentId const& documentId, velocypack::Slice doc) {
   Result res;
 
   // covering and centroid of coordinate / polygon / ...

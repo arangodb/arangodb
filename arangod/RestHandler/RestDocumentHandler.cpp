@@ -70,7 +70,9 @@ RestStatus RestDocumentHandler::execute() {
       return replaceDocument();
     case rest::RequestType::PATCH:
       return updateDocument();
-    default: { generateNotImplemented("ILLEGAL " + DOCUMENT_PATH); }
+    default: {
+      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+    }
   }
 
   // this handler is done
@@ -132,7 +134,8 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!found || cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                  " POST /_api/document/<collection> or query parameter 'collection'");
+                      " POST /_api/document/<collection> or query parameter "
+                      "'collection'");
     return RestStatus::DONE;
   }
 
@@ -142,29 +145,30 @@ RestStatus RestDocumentHandler::insertDocument() {
     return RestStatus::DONE;
   }
 
-
   arangodb::OperationOptions opOptions(_context);
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
+  opOptions.validate =
+      !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  
+
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
   }
 
-
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
   if (!mode.empty()) {
-    auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
+    auto overwriteMode =
+        OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
 
     if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
       opOptions.overwriteMode = overwriteMode;
 
       if (opOptions.overwriteMode == OperationOptions::OverwriteMode::Update) {
-        opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
+        opOptions.mergeObjects =
+            _request->parsedValue(StaticStrings::MergeObjectsString, true);
         opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
       }
     }
@@ -176,7 +180,8 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
   }
 
@@ -194,47 +199,43 @@ RestStatus RestDocumentHandler::insertDocument() {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
-  
+
   if (ServerState::instance()->isDBServer() &&
       (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
        _activeTrx->state()->isReadOnlyTransaction())) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    // we _cannot_ do this for follower transactions, where shards may lazily be
-    // added (e.g. if servers A and B both replicate their own write ops to follower
-    // C one after the after, then C will first see only shards from A and then only
-    // from B).
+    // make sure that the current transaction includes the collection that we
+    // want to write into. this is not necessarily the case for follower
+    // transactions that are started lazily. in this case, we must reject the
+    // request. we _cannot_ do this for follower transactions, where shards may
+    // lazily be added (e.g. if servers A and B both replicate their own write
+    // ops to follower C one after the after, then C will first see only shards
+    // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") + std::to_string(_activeTrx->tid().id())
-        + "' does not contain collection '" + cname
-        + "' with the required access mode.");
+                                   std::string("Transaction with id '") +
+                                       std::to_string(_activeTrx->tid().id()) +
+                                       "' does not contain collection '" + cname +
+                                       "' with the required access mode.");
   }
-  
-  return waitForFuture(
-      _activeTrx->insertAsync(cname, body, opOptions)
-          .thenValue([=](OperationResult&& opres) {
-            // Will commit if no error occured.
-            // or abort if an error occured.
-            // result stays valid!
-            return _activeTrx->finishAsync(opres.result).thenValue([=, opres(std::move(opres))](Result&& res) {
-              if (opres.fail()) {
-                generateTransactionError(cname, opres);
-                return;
-              }
 
-              if (res.fail()) {
-                generateTransactionError(cname, OperationResult(res, opOptions),
-                                         "");
-                return;
-              }
+  return waitForFuture(_activeTrx->insertAsync(cname, body, opOptions).thenValue([=](OperationResult&& opres) {
+    // Will commit if no error occured.
+    // or abort if an error occured.
+    // result stays valid!
+    return _activeTrx->finishAsync(opres.result).thenValue([=, opres(std::move(opres))](Result&& res) {
+      if (opres.fail()) {
+        generateTransactionError(cname, opres);
+        return;
+      }
 
-              generateSaved(opres, cname,
-                            TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                            _activeTrx->transactionContextPtr()->getVPackOptions(),
-                            isMultiple);
-            });
-          }));
+      if (res.fail()) {
+        generateTransactionError(cname, OperationResult(res, opOptions), "");
+        return;
+      }
+
+      generateSaved(opres, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                    _activeTrx->transactionContextPtr()->getVPackOptions(), isMultiple);
+    });
+  }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,7 +382,9 @@ RestStatus RestDocumentHandler::replaceDocument() {
 /// @brief was docuBlock REST_DOCUMENT_UPDATE
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestDocumentHandler::updateDocument() { return modifyDocument(true); }
+RestStatus RestDocumentHandler::updateDocument() {
+  return modifyDocument(true);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for replaceDocument and updateDocument
@@ -443,7 +446,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
+  opOptions.validate =
+      !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
@@ -452,7 +456,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
   }
 
@@ -484,14 +489,13 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
           builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
         } else if (!opOptions.ignoreRevs && revInBody.isSet()) {
           builder.add(StaticStrings::RevString, VPackValue(revInBody.toString()));
-          headerRev = revInBody;   // make sure that we report 412 and not 409
+          headerRev = revInBody;  // make sure that we report 412 and not 409
         }
       }
 
       body = builder.slice();
-    } else if (!headerRev.isSet() && revInBody.isSet() &&
-               opOptions.ignoreRevs == false) {
-      headerRev = revInBody;   // make sure that we report 412 and not 409
+    } else if (!headerRev.isSet() && revInBody.isSet() && opOptions.ignoreRevs == false) {
+      headerRev = revInBody;  // make sure that we report 412 and not 409
     }
   }
 
@@ -516,19 +520,20 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   if (ServerState::instance()->isDBServer() &&
       (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
        _activeTrx->state()->isReadOnlyTransaction())) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    // we _cannot_ do this for follower transactions, where shards may lazily be
-    // added (e.g. if servers A and B both replicate their own write ops to follower
-    // C one after the after, then C will first see only shards from A and then only
-    // from B).
+    // make sure that the current transaction includes the collection that we
+    // want to write into. this is not necessarily the case for follower
+    // transactions that are started lazily. in this case, we must reject the
+    // request. we _cannot_ do this for follower transactions, where shards may
+    // lazily be added (e.g. if servers A and B both replicate their own write
+    // ops to follower C one after the after, then C will first see only shards
+    // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") + std::to_string(_activeTrx->tid().id())
-        + "' does not contain collection '" + cname
-        + "' with the required access mode.");
+                                   std::string("Transaction with id '") +
+                                       std::to_string(_activeTrx->tid().id()) +
+                                       "' does not contain collection '" + cname +
+                                       "' with the required access mode.");
   }
-  
+
   auto f = futures::Future<OperationResult>::makeEmpty();
   if (isPatch) {
     // patching an existing document
@@ -603,10 +608,11 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
   }
-  
+
   VPackSlice search;
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
@@ -650,23 +656,24 @@ RestStatus RestDocumentHandler::removeDocument() {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
-  
+
   if (ServerState::instance()->isDBServer() &&
       (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
        _activeTrx->state()->isReadOnlyTransaction())) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    // we _cannot_ do this for follower transactions, where shards may lazily be
-    // added (e.g. if servers A and B both replicate their own write ops to follower
-    // C one after the after, then C will first see only shards from A and then only
-    // from B).
+    // make sure that the current transaction includes the collection that we
+    // want to write into. this is not necessarily the case for follower
+    // transactions that are started lazily. in this case, we must reject the
+    // request. we _cannot_ do this for follower transactions, where shards may
+    // lazily be added (e.g. if servers A and B both replicate their own write
+    // ops to follower C one after the after, then C will first see only shards
+    // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") + std::to_string(_activeTrx->tid().id())
-        + "' does not contain collection '" + cname
-        + "' with the required access mode.");
+                                   std::string("Transaction with id '") +
+                                       std::to_string(_activeTrx->tid().id()) +
+                                       "' does not contain collection '" + cname +
+                                       "' with the required access mode.");
   }
-  
+
   bool const isMultiple = search.isArray();
 
   return waitForFuture(

@@ -24,17 +24,17 @@
 
 #include "AgencyComm.h"
 
-#include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyPaths.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
@@ -521,7 +521,8 @@ VPackSlice AgencyCommResult::slice() const {
     // don't segfault in production when we don't have assertions
     // turned on
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "call to AgencyCommResult::slice() without valid precondition check");
+        TRI_ERROR_INTERNAL,
+        "call to AgencyCommResult::slice() without valid precondition check");
   }
   return _vpack->slice();
 }
@@ -627,11 +628,11 @@ network::Timeout AgencyCommHelper::defaultTimeout() {
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
-  : _server(server),
-    _agency_comm_request_time_ms(
-      _server.getFeature<arangodb::ClusterFeature>().agency_comm_request_time_ms()) {}
+    : _server(server),
+      _agency_comm_request_time_ms(
+          _server.getFeature<arangodb::ClusterFeature>().agency_comm_request_time_ms()) {}
 
-  AgencyCommResult AgencyComm::sendServerState(double timeout) {
+AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
 
@@ -645,7 +646,8 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
 
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
-      arangodb::HealthData hd = _server.getFeature<EngineSelectorFeature>().engine().healthCheck();
+      arangodb::HealthData hd =
+          _server.getFeature<EngineSelectorFeature>().engine().healthCheck();
       hd.toVelocyPack(builder);
     }
 
@@ -655,8 +657,9 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     return AgencyCommResult();
   }
 
-  return AgencyCommResult(setTransient("Sync/ServerStates/" + ServerState::instance()->getId(),
-                          builder.slice(), 0, timeout));
+  return AgencyCommResult(
+      setTransient("Sync/ServerStates/" + ServerState::instance()->getId(),
+                   builder.slice(), 0, timeout));
 }
 
 std::string AgencyComm::version() {
@@ -711,8 +714,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
 AgencyCommResult AgencyComm::setTransient(std::string const& key,
                                           arangodb::velocypack::Slice const& slice,
-                                          uint64_t ttl,
-                                          double timeout) {
+                                          uint64_t ttl, double timeout) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
   operation._ttl = ttl;
   AgencyTransientTransaction transaction(operation);
@@ -752,9 +754,8 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, double timeout) {
     }
   }
 
-  AgencyCommResult result =
-      sendWithFailover(arangodb::rest::RequestType::POST, timeout,
-                       url, builder.slice());
+  AgencyCommResult result = sendWithFailover(arangodb::rest::RequestType::POST,
+                                             timeout, url, builder.slice());
 
   if (!result.successful()) {
     return result;
@@ -792,7 +793,8 @@ AgencyCommResult AgencyComm::dump() {
   // We only get the dump from the leader, else its snapshot might be wrong
   // or at least outdated. If there is no leader, one has to contact the
   // agency directly with `/_api/agency/state`.
-  std::string url = AgencyComm::AGENCY_URL_PREFIX + "/state?redirectToLeader=true";
+  std::string url =
+      AgencyComm::AGENCY_URL_PREFIX + "/state?redirectToLeader=true";
 
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::GET,
@@ -999,8 +1001,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
                                         : timeout,
                        url, builder.slice());
 
-  if (!result.successful() &&
-      result.httpCode() != ResponseCode::PRECONDITION_FAILED) {
+  if (!result.successful() && result.httpCode() != ResponseCode::PRECONDITION_FAILED) {
     return result;
   }
 
@@ -1085,8 +1086,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
   while (true) {
     AgencyCommResult result = casValue(key + "/Lock", oldSlice, slice, ttl, timeout);
 
-    if (!result.successful() &&
-        result.httpCode() == ResponseCode::PRECONDITION_FAILED) {
+    if (!result.successful() && result.httpCode() == ResponseCode::PRECONDITION_FAILED) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
@@ -1204,13 +1204,15 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto sg = ScopeGuard([&]() noexcept {
     auto end = std::chrono::steady_clock::now();
-    _agency_comm_request_time_ms.count(std::chrono::duration_cast<std::chrono::milliseconds>(end - started).count());
+    _agency_comm_request_time_ms.count(
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - started).count());
   });
 
   if (method == arangodb::rest::RequestType::POST) {
     bool isWriteTrans = (initialUrl == ::writeURL);
     if (isWriteTrans) {
-      LOG_TOPIC("4e44e", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+      LOG_TOPIC("4e44e", TRACE, Logger::AGENCYCOMM)
+          << "sendWithFailover: "
           << "sending write transaction with POST " << inBody.toJson() << " '"
           << initialUrl << "'";
       result = comm.withSkipScheduler(true)
@@ -1218,7 +1220,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                                          std::move(buffer))
                    .get();
     } else {
-      LOG_TOPIC("4e44f", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+      LOG_TOPIC("4e44f", TRACE, Logger::AGENCYCOMM)
+          << "sendWithFailover: "
           << "sending non-write transaction with POST " << inBody.toJson()
           << " '" << initialUrl << "'";
       result = comm.withSkipScheduler(true)
@@ -1228,7 +1231,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                    .get();
     }
   } else if (method == arangodb::rest::RequestType::GET) {
-    LOG_TOPIC("4e448", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+    LOG_TOPIC("4e448", TRACE, Logger::AGENCYCOMM)
+        << "sendWithFailover: "
         << "sending transaction with GET " << inBody.toJson() << " '"
         << initialUrl << "'";
     result = comm.withSkipScheduler(true)

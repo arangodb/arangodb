@@ -26,8 +26,8 @@
 
 #include "fakeit.hpp"
 
-#include "Aql/AstNode.h"
 #include "Aql/AqlValue.h"
+#include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
@@ -72,27 +72,33 @@ class GeoConstructorTest : public ::testing::Test {
     fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
     fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
     fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&options);
-    fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
-    fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
-    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
+    fakeit::When(Method(contextMock, leaseBuilder)).AlwaysDo([]() {
+      return new arangodb::velocypack::Builder();
+    });
+    fakeit::When(Method(contextMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) {
+      delete b;
+    });
+    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
+      return this->trx;
+    });
   }
 };
 
 namespace geo_point {
 class GeoPointTest : public GeoConstructorTest {
  protected:
-  GeoPointTest() 
+  GeoPointTest()
       : GeoConstructorTest(),
         fun("GEO_POINT", &Functions::GeoPoint),
         funNode(NODE_TYPE_FCALL) {
-
     funNode.setData(static_cast<void const*>(&fun));
 
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
-      ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    });
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const* msg) -> void {
+          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        });
   }
-    
+
   arangodb::aql::Function fun;
   arangodb::aql::AstNode funNode;
 };
@@ -542,11 +548,10 @@ TEST_F(GeoPointTest, checking_object_and_object) {
 
 namespace geo_multipoint {
 struct GeoMultipointTest : public GeoConstructorTest {
-  GeoMultipointTest() 
+  GeoMultipointTest()
       : GeoConstructorTest(),
         fun("GEO_MULTIPOINT", &Functions::GeoMultiPoint),
         funNode(NODE_TYPE_FCALL) {
-
     funNode.setData(static_cast<void const*>(&fun));
   }
 
@@ -787,7 +792,7 @@ TEST_F(GeoMultipointTest, checking_object) {
 namespace geo_polygon {
 class GeoPolygonTest : public GeoConstructorTest {
  protected:
-  GeoPolygonTest() 
+  GeoPolygonTest()
       : GeoConstructorTest(),
         fun("GEO_POLYGON", &Functions::GeoPolygon),
         funNode(NODE_TYPE_FCALL) {
@@ -1209,7 +1214,7 @@ struct GeoLinestringTest : public GeoConstructorTest {
         funNode(NODE_TYPE_FCALL) {
     funNode.setData(static_cast<void const*>(&fun));
   }
-  
+
   arangodb::aql::Function fun;
   arangodb::aql::AstNode funNode;
 };
@@ -1439,7 +1444,7 @@ TEST_F(GeoLinestringTest, checking_object) {
 
 namespace geo_multilinestring {
 struct GeoMultilinestringTest : public GeoConstructorTest {
-  GeoMultilinestringTest() 
+  GeoMultilinestringTest()
       : GeoConstructorTest(),
         fun("GEO_MULTILINESTRING", &Functions::GeoMultiLinestring),
         funNode(NODE_TYPE_FCALL) {

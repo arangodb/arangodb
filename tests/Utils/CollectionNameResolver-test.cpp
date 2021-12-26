@@ -41,9 +41,8 @@ namespace {
 struct TestView : public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
       : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder&,
-      Serialization) const override {
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&,
+                                                Serialization) const override {
     return arangodb::Result();
   }
   virtual arangodb::Result dropImpl() override {
@@ -107,7 +106,8 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
       "\"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" }");  // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                  testDBInfo(server.server()));
   arangodb::CollectionNameResolver resolver(vocbase);
 
   // not present collection (no datasource)

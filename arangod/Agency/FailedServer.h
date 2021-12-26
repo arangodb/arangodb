@@ -49,4 +49,3 @@ struct FailedServer : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

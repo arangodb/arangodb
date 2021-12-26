@@ -43,10 +43,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
-                                                           velocypack::Options const* opts,
-                                                           arangodb::ResourceMonitor& resourceMonitor)
-    : _groupRegister(std::move(groupRegister)), 
+DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
+    std::pair<RegisterId, RegisterId> groupRegister,
+    velocypack::Options const* opts, arangodb::ResourceMonitor& resourceMonitor)
+    : _groupRegister(std::move(groupRegister)),
       _vpackOptions(opts),
       _resourceMonitor(resourceMonitor) {}
 
@@ -64,8 +64,7 @@ arangodb::ResourceMonitor& DistinctCollectExecutorInfos::getResourceMonitor() co
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _seen(1024, AqlValueGroupHash(1),
-            AqlValueGroupEqual(_infos.vpackOptions())) {}
+      _seen(1024, AqlValueGroupHash(1), AqlValueGroupEqual(_infos.vpackOptions())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
@@ -118,7 +117,8 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       break;
     }
 
-    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(state, input) =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
@@ -165,7 +165,8 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
       return {ExecutorState::HASMORE, {}, skipped, {}};
     }
 
-    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(state, input) =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
@@ -177,12 +178,12 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
     if (!_seen.contains(groupValue)) {
       skipped += 1;
       call.didSkip(1);
-      
+
       size_t memoryUsage = memoryUsageForGroup(groupValue);
       arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsage);
 
       _seen.emplace(groupValue.clone());
-      
+
       // now we are responsible for memory tracking
       guard.steal();
     }

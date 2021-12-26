@@ -48,18 +48,19 @@ class DatabaseInitialSyncer : public InitialSyncer {
                                                   std::string const& keysId);
   friend ::arangodb::Result syncChunkRocksDB(
       DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-      ReplicationMetricsFeature::InitialSyncStats& stats, std::string const& keysId,
-      uint64_t chunkId, std::string const& lowString,
+      ReplicationMetricsFeature::InitialSyncStats& stats,
+      std::string const& keysId, uint64_t chunkId, std::string const& lowString,
       std::string const& highString, std::vector<std::string> const& markers);
+
  private:
-  // constructor is private, as DatabaseInitialSyncer uses shared_from_this() and
-  // we must ensure that it is only created via make_shared.
+  // constructor is private, as DatabaseInitialSyncer uses shared_from_this()
+  // and we must ensure that it is only created via make_shared.
   DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                         ReplicationApplierConfiguration const& configuration);
 
  public:
-  static std::shared_ptr<DatabaseInitialSyncer> create(TRI_vocbase_t& vocbase,
-                                                       ReplicationApplierConfiguration const& configuration);
+  static std::shared_ptr<DatabaseInitialSyncer> create(
+      TRI_vocbase_t& vocbase, ReplicationApplierConfiguration const& configuration);
 
   /// @brief apply phases
   typedef enum {
@@ -89,9 +90,9 @@ class DatabaseInitialSyncer : public InitialSyncer {
     TRI_vocbase_t& vocbase;
 
     explicit Configuration(ReplicationApplierConfiguration const&,
-                           replutils::BatchInfo&,
-                           replutils::Connection&, bool, replutils::LeaderInfo&,
-                           replutils::ProgressInfo&, SyncerState& state, TRI_vocbase_t&);
+                           replutils::BatchInfo&, replutils::Connection&, bool,
+                           replutils::LeaderInfo&, replutils::ProgressInfo&,
+                           SyncerState& state, TRI_vocbase_t&);
 
     bool isChild() const noexcept;  // TODO worker safety
   };
@@ -103,7 +104,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   /// @brief run method, performs a full synchronization with the
   ///        given list of collections.
-  Result runWithInventory(bool incremental, velocypack::Slice collections, char const* context = nullptr);
+  Result runWithInventory(bool incremental, velocypack::Slice collections,
+                          char const* context = nullptr);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const& slice) override {
     return &_config.vocbase;
@@ -154,14 +156,14 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   /// @brief fetch the server's inventory, public method
   Result getInventory(arangodb::velocypack::Builder& builder);
-  
+
   /// @brief return information about the leader
   replutils::LeaderInfo leaderInfo() const;
-  
+
   void setOnSuccessCallback(std::function<Result(DatabaseInitialSyncer&)> const& cb) {
     _onSuccess = cb;
   }
-  
+
   void setAbortionCheckCallback(std::function<bool()> const& cb) {
     _checkAbortion = cb;
   }
@@ -179,8 +181,8 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       std::string const& baseUrl, arangodb::LogicalCollection* coll,
-                      std::string const& leaderColl, 
-                      int batch, TRI_voc_tick_t fromTick, uint64_t chunkSize);
+                      std::string const& leaderColl, int batch,
+                      TRI_voc_tick_t fromTick, uint64_t chunkSize);
 
   /// @brief fetch the server's inventory
   Result fetchInventory(arangodb::velocypack::Builder& builder);
@@ -259,7 +261,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result batchFinish() noexcept;
 
   Configuration _config;
-  
+
   // custom callback executed when synchronization was completed successfully
   std::function<Result(DatabaseInitialSyncer&)> _onSuccess;
 
@@ -279,4 +281,3 @@ class DatabaseInitialSyncer : public InitialSyncer {
 };
 
 }  // namespace arangodb
-

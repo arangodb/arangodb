@@ -56,9 +56,7 @@ class UserManagerTest : public ::testing::Test {
   auth::UserManager um;
 
   UserManagerTest()
-      : server(nullptr, nullptr),
-        state(ServerState::instance()),
-        um(server) {
+      : server(nullptr, nullptr), state(ServerState::instance()), um(server) {
     state->setRole(ServerState::ROLE_SINGLE);
 
     server.addFeature<DatabaseFeature>();

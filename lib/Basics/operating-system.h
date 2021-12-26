@@ -610,7 +610,8 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
-#if ( defined(_MSC_VER) && _MSC_VER < 1900 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
+#if (defined(_MSC_VER) && _MSC_VER < 1900) || \
+    (defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR))
 #define snprintf _snprintf
 #endif
 
@@ -784,4 +785,3 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 #define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
-

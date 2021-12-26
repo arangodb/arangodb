@@ -33,7 +33,7 @@ CpuUsageSnapshot CpuUsageSnapshot::fromString(char const* buffer, std::size_t bu
     if (p >= e) {
       valid = false;
     }
-    
+
     if (!valid) {
       // nothing to do
       return uint64_t(0);
@@ -47,19 +47,19 @@ CpuUsageSnapshot CpuUsageSnapshot::fromString(char const* buffer, std::size_t bu
     // remember start position of number
     char const* s = p;
     // skip over number to find its end
-    while (p < e && *p >= '0' && *p <= '9') { 
+    while (p < e && *p >= '0' && *p <= '9') {
       ++p;
     }
     return arangodb::NumberUtils::atoi_positive<uint64_t>(s, p, valid);
   };
-  
+
   char const* s = buffer;
   char const* e = s + bufferSize;
 
   bool valid = true;
-  
+
   CpuUsageSnapshot snap;
-  
+
   snap.user = readNumber(s, e, valid);
   snap.nice = readNumber(s, e, valid);
   snap.system = readNumber(s, e, valid);
@@ -92,9 +92,7 @@ void CpuUsageSnapshot::subtract(CpuUsageSnapshot const& other) noexcept {
   guestnice -= std::min(guestnice, other.guestnice);
 }
 
-bool CpuUsageSnapshot::valid() const noexcept {
-  return total() > 0;
-}
+bool CpuUsageSnapshot::valid() const noexcept { return total() > 0; }
 
 void CpuUsageSnapshot::clear() noexcept {
   user = 0;

@@ -57,7 +57,7 @@ void AcceptorUnixDomain::open() {
   _acceptor.open(endpoint.protocol());
   _acceptor.bind(endpoint);
   _acceptor.listen();
-  
+
   _open = true;
   asyncAccept();
 }
@@ -85,8 +85,7 @@ void AcceptorUnixDomain::asyncAccept() {
     info.clientPort = 0;
 
     auto commTask =
-        std::make_shared<HttpCommTask<SocketType::Unix>>(_server,
-                                                         std::move(info),
+        std::make_shared<HttpCommTask<SocketType::Unix>>(_server, std::move(info),
                                                          std::move(asioSocket));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
@@ -111,7 +110,4 @@ void AcceptorUnixDomain::close() {
   }
 }
 
-void AcceptorUnixDomain::cancel() {
-  _acceptor.cancel();
-}
-
+void AcceptorUnixDomain::cancel() { _acceptor.cancel(); }

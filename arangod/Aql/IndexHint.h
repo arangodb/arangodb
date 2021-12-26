@@ -31,7 +31,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 struct AstNode;
@@ -72,4 +72,3 @@ std::ostream& operator<<(std::ostream& stream, arangodb::aql::IndexHint const& h
 
 }  // namespace aql
 }  // namespace arangodb
-

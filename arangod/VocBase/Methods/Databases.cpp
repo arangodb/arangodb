@@ -41,9 +41,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -93,16 +93,15 @@ std::vector<std::string> Databases::list(application_features::ApplicationServer
 
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
-
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb,idx] = cache.read(std::vector<std::string>{
+    auto [acb, idx] = cache.read(std::vector<std::string>{
         AgencyCommHelper::path("Plan/Databases/" + vocbase->name())});
     auto res = acb->slice();
 
     if (!res.isArray()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
-        << "rest database handler: no agency communication";
+          << "rest database handler: no agency communication";
       return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "agency cache empty");
     }
 
@@ -122,7 +121,8 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected type for 'id' attribute");
       }
-      result.add(StaticStrings::DataSourceSystem, VPackValue(NameValidator::isSystemName(name)));
+      result.add(StaticStrings::DataSourceSystem,
+                 VPackValue(NameValidator::isSystemName(name)));
       result.add("path", VPackValue("none"));
     }
   } else {
@@ -148,15 +148,15 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
     if (!exec.isAdminUser()) {
-      auto const endTime = std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
+      auto const endTime =
+          std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
       while (true) {
         res = um->updateUser(exec.user(), [&](auth::User& entry) {
           entry.grantDatabase(info.getName(), auth::Level::RW);
           entry.grantCollection(info.getName(), "*", auth::Level::RW);
           return TRI_ERROR_NO_ERROR;
         });
-        if (res.ok() ||
-            !res.is(TRI_ERROR_ARANGO_CONFLICT) ||
+        if (res.ok() || !res.is(TRI_ERROR_ARANGO_CONFLICT) ||
             std::chrono::steady_clock::now() > endTime) {
           break;
         }
@@ -170,8 +170,8 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
     }
 
     LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
-      << "current ExecContext's user() is empty. "
-      << "Database will be created without any user having permissions";
+        << "current ExecContext's user() is empty. "
+        << "Database will be created without any user having permissions";
   }
 
   return res;
@@ -181,20 +181,26 @@ arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  bool extendedNames = info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases(); 
+  bool extendedNames =
+      info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, info.getName())) {
+  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
+                                            extendedNames, info.getName())) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
-  LOG_TOPIC("56372", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: Starting, name: " << info.getName();
+  LOG_TOPIC("56372", DEBUG, Logger::CLUSTER)
+      << "createDatabase on coordinator: Starting, name: " << info.getName();
 
   // This operation enters the database as isBuilding into the agency
   // while the database is still building it is not visible.
   ClusterInfo& ci = info.server().getFeature<ClusterFeature>().clusterInfo();
   Result res = ci.createIsBuildingDatabaseCoordinator(info);
 
-  LOG_TOPIC("54322", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: have created isBuilding database, name: " << info.getName();
+  LOG_TOPIC("54322", DEBUG, Logger::CLUSTER)
+      << "createDatabase on coordinator: have created isBuilding database, "
+         "name: "
+      << info.getName();
 
   // Even entering the database as building failed; This can happen
   // because a database with this name already exists, or because we could
@@ -227,7 +233,10 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     return res;
   }
 
-  LOG_TOPIC("54323", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: have granted current user for database: " << info.getName();
+  LOG_TOPIC("54323", DEBUG, Logger::CLUSTER)
+      << "createDatabase on coordinator: have granted current user for "
+         "database: "
+      << info.getName();
 
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
@@ -242,16 +251,21 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   UpgradeResult upgradeRes = methods::Upgrade::createDB(vocbase, userBuilder.slice());
   failureGuard.cancel();
 
-  LOG_TOPIC("54324", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: have run Upgrade::createDB for database: " << info.getName();
+  LOG_TOPIC("54324", DEBUG, Logger::CLUSTER)
+      << "createDatabase on coordinator: have run Upgrade::createDB for "
+         "database: "
+      << info.getName();
 
   // If the creation of system collections was successful,
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {
-    LOG_TOPIC("54325", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: finished, database: " << info.getName();
+    LOG_TOPIC("54325", DEBUG, Logger::CLUSTER)
+        << "createDatabase on coordinator: finished, database: " << info.getName();
     return ci.createFinalizeDatabaseCoordinator(info);
   }
 
-  LOG_TOPIC("24653", DEBUG, Logger::CLUSTER) << "createDatabase on coordinator: cancelling, database: " << info.getName();
+  LOG_TOPIC("24653", DEBUG, Logger::CLUSTER)
+      << "createDatabase on coordinator: cancelling, database: " << info.getName();
 
   // We leave this handling here to be able to capture
   // error messages and return
@@ -320,7 +334,8 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
 
   if (createInfo.getName() != dbName) {
     // check if name after normalization will change
-    res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+    res.reset(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+              "database name is not properly UTF-8 NFC-normalized");
     events::CreateDatabase(dbName, res, exec);
     return res;
   }

@@ -58,7 +58,8 @@ std::string const kTypeStringGeometryCollection = "GeometryCollection";
 
 namespace {
 inline bool sameCharIgnoringCase(char a, char b) noexcept {
-  return arangodb::basics::StringUtils::toupper(a) == arangodb::basics::StringUtils::toupper(b);
+  return arangodb::basics::StringUtils::toupper(a) ==
+         arangodb::basics::StringUtils::toupper(b);
 }
 }  // namespace
 
@@ -199,7 +200,8 @@ Result parseRegion(VPackSlice const& vpack, ShapeContainer& region) {
         return parseMultiPolygon(vpack, region);
       }
       case Type::GEOMETRY_COLLECTION: {
-        return Result(TRI_ERROR_NOT_IMPLEMENTED, "GeoJSON type is not supported");
+        return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                      "GeoJSON type is not supported");
       }
       case Type::UNKNOWN: {
         // will return TRI_ERROR_BAD_PARAMETER
@@ -272,7 +274,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
-  
+
   // Coordinates of a Polygon are an array of LinearRing coordinate arrays.
   // The first element in the array represents the exterior ring. Any subsequent
   // elements
@@ -287,7 +289,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
   //   holes are clockwise (CW).
   VPackArrayIterator it(coordinates);
   size_t const n = it.size();
-  
+
   std::vector<std::unique_ptr<S2Loop>> loops;
   loops.reserve(n);
 
@@ -343,7 +345,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     std::string("Invalid loop in polygon: ").append(error.text()));
     }
-    
+
     S2Loop* loop = loops.back().get();
     // normalization ensures that point orientation does not matter for Polygon
     // type the RFC recommends this for better compatibility

@@ -68,7 +68,6 @@ using namespace arangodb::iresearch;
 ////////////////////////////////////////////////////////////////////////////////
 aql::AstNode const ALL(aql::AstNodeValue(true));
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--       helpers for std::vector<arangodb::iresearch::IResearchSort>
 // -----------------------------------------------------------------------------
@@ -142,10 +141,7 @@ static constexpr frozen::map<irs::string_ref, arangodb::aql::ConditionOptimizati
 static constexpr frozen::map<irs::string_ref, arangodb::iresearch::CountApproximate, 2> countApproximationTypeMap = {
     {"exact", arangodb::iresearch::CountApproximate::Exact},
     {"cost", arangodb::iresearch::CountApproximate::Cost}};
-}
-
-
-
+}  // namespace
 
 void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
@@ -172,7 +168,7 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
     builder.add("noMaterialization", VPackValue(options.noMaterialization));
   }
 
-  if (options.countApproximate != CountApproximate::Exact) { // to be backward compatible - do not write default value
+  if (options.countApproximate != CountApproximate::Exact) {  // to be backward compatible - do not write default value
     for (auto const& r : countApproximationTypeMap) {
       if (r.second == options.countApproximate) {
         builder.add("countApproximate", VPackValue(r.first));
@@ -182,7 +178,8 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
   }
 
   if (options.filterOptimization != arangodb::iresearch::FilterOptimization::MAX) {
-    builder.add("filterOptimization", VPackValue(static_cast<int64_t>(options.filterOptimization)));
+    builder.add("filterOptimization",
+                VPackValue(static_cast<int64_t>(options.filterOptimization)));
   }
 }
 
@@ -272,8 +269,7 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
 
   // countApproximate
   {
-    auto const countApproximateSlice =
-        optionsSlice.get("countApproximate");
+    auto const countApproximateSlice = optionsSlice.get("countApproximate");
     if (!countApproximateSlice.isNone()) {
       if (!countApproximateSlice.isString()) {
         return false;
@@ -297,17 +293,19 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
       if (!optionSlice.isNumber()) {
         return false;
       }
-      options.filterOptimization =
-        static_cast<arangodb::iresearch::FilterOptimization>(optionSlice.getNumber<int>());
+      options.filterOptimization = static_cast<arangodb::iresearch::FilterOptimization>(
+          optionSlice.getNumber<int>());
     }
   }
 
   return true;
 }
 
-bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNode const* optionsNode,
+bool parseOptions(aql::QueryContext& query, LogicalView const& view,
+                  aql::AstNode const* optionsNode,
                   IResearchViewNode::Options& options, std::string& error) {
-  typedef bool (*OptionHandler)(aql::QueryContext&, LogicalView const& view, aql::AstNode const&,
+  typedef bool (*OptionHandler)(aql::QueryContext&, LogicalView const& view,
+                                aql::AstNode const&,
                                 IResearchViewNode::Options&, std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
@@ -398,9 +396,9 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          return true;
        }},
       // cppcheck-suppress constStatement
-      {"waitForSync", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
-                         aql::AstNode const& value,
-                         IResearchViewNode::Options& options, std::string& error) {
+      {"waitForSync",
+       [](aql::QueryContext& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
            error = "boolean value expected for option 'waitForSync'";
            return false;
@@ -410,9 +408,9 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          return true;
        }},
       // cppcheck-suppress constStatement
-      {"noMaterialization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
-                               aql::AstNode const& value,
-                               IResearchViewNode::Options& options, std::string& error) {
+      {"noMaterialization",
+       [](aql::QueryContext& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
            error = "boolean value expected for option 'noMaterialization'";
            return false;
@@ -421,10 +419,10 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          options.noMaterialization = value.getBoolValue();
          return true;
        }},
-       // cppcheck-suppress constStatement
-       {"countApproximate", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
-                               aql::AstNode const& value,
-                               IResearchViewNode::Options& options, std::string& error) {
+      // cppcheck-suppress constStatement
+      {"countApproximate",
+       [](aql::QueryContext& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
            error = "string value expected for option 'countApproximate'";
            return false;
@@ -432,17 +430,16 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          auto type = value.getString();
          auto countTypeIt = countApproximationTypeMap.find(type);
          if (countTypeIt == countApproximationTypeMap.end()) {
-           error =
-               "unknown value '" + type + "' for option 'countApproximate'";
+           error = "unknown value '" + type + "' for option 'countApproximate'";
            return false;
          }
          options.countApproximate = countTypeIt->second;
          return true;
        }},
-       // cppcheck-suppress constStatement
-       {"conditionOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
-                                  aql::AstNode const& value,
-                                  IResearchViewNode::Options& options, std::string& error) {
+      // cppcheck-suppress constStatement
+      {"conditionOptimization",
+       [](aql::QueryContext& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
            error = "string value expected for option 'conditionOptimization'";
            return false;
@@ -457,16 +454,16 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
          options.conditionOptimization = conditionTypeIt->second;
          return true;
        }},
-       // cppcheck-suppress constStatement
-       {"filterOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
-                                  aql::AstNode const& value,
-                                  IResearchViewNode::Options& options, std::string& error) {
+      // cppcheck-suppress constStatement
+      {"filterOptimization", [](aql::QueryContext& /*query*/,
+                                LogicalView const& /*view*/, aql::AstNode const& value,
+                                IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_INT)) {
            error = "int value expected for option 'filterOptimization'";
            return false;
          }
          options.filterOptimization =
-           static_cast<arangodb::iresearch::FilterOptimization>(value.getIntValue());
+             static_cast<arangodb::iresearch::FilterOptimization>(value.getIntValue());
          return true;
        }}};
 
@@ -498,7 +495,8 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
 
     if (handler == Handlers.end()) {
       // no handler found for attribute
-      aql::ExecutionPlan::invalidOptionAttribute(query, "FOR", attributeName.c_str(), attributeName.size());
+      aql::ExecutionPlan::invalidOptionAttribute(query, "FOR", attributeName.c_str(),
+                                                 attributeName.size());
       continue;
     }
 
@@ -765,9 +763,9 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods
     snapshotKey = &node;
   }
 
-  IResearchView::SnapshotMode const mode = !options.forceSync
-    ? IResearchView::SnapshotMode::FindOrCreate
-    : IResearchView::SnapshotMode::SyncAndReplace;
+  IResearchView::SnapshotMode const mode =
+      !options.forceSync ? IResearchView::SnapshotMode::FindOrCreate
+                         : IResearchView::SnapshotMode::SyncAndReplace;
 
   // use aliasing ctor
   return {SnapshotPtr(), view.snapshot(trx, mode, &collections, snapshotKey)};
@@ -937,7 +935,6 @@ bool filterConditionIsEmpty(aql::AstNode const* filterCondition) noexcept {
 // -----------------------------------------------------------------------------
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
-
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                                      aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
@@ -1421,7 +1418,8 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
 
 /// @brief replaces variables in the internals of the execution node
 /// replacements are { old variable id => new variable }
-void IResearchViewNode::replaceVariables(std::unordered_map<arangodb::aql::VariableId, arangodb::aql::Variable const*> const& replacements) {
+void IResearchViewNode::replaceVariables(
+    std::unordered_map<arangodb::aql::VariableId, arangodb::aql::Variable const*> const& replacements) {
   arangodb::aql::AstNode const& search = filterCondition();
   if (filterConditionIsEmpty(&search)) {
     // nothing to do
@@ -1606,8 +1604,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       numDocumentRegs += 1;
     }
 
-    // We have one output register for documents, which is always the first after
-    // the input registers.
+    // We have one output register for documents, which is always the first
+    // after the input registers.
 
     auto numScoreRegisters = static_cast<aql::RegisterCount>(_scorers.size());
     auto numViewVarsRegisters =
@@ -1687,13 +1685,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         outVariable(),
                                         filterCondition(),
                                         volatility(),
-                                        getRegisterPlan()->varInfo,   // ??? do we need this?
+                                        getRegisterPlan()->varInfo,  // ??? do we need this?
                                         getDepth(),
                                         std::move(outNonMaterializedViewRegs),
                                         _options.countApproximate,
                                         filterOptimization()};
 
-    return std::make_tuple(materializeType, std::move(executorInfos), std::move(registerInfos));
+    return std::make_tuple(materializeType, std::move(executorInfos),
+                           std::move(registerInfos));
   };
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1706,17 +1705,19 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return createNoResultsExecutor(engine);
   }
 
-  auto [materializeType, executorInfos, registerInfos] = buildExecutorInfo(engine, std::move(reader));
+  auto [materializeType, executorInfos, registerInfos] =
+      buildExecutorInfo(engine, std::move(reader));
 
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty());  // guaranteed by optimizer rule
   bool const ordered = !_scorers.empty();
 #ifdef USE_ENTERPRISE
-  auto& engineSelectorFeature =  _view->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engineSelectorFeature =
+      _view->vocbase().server().getFeature<EngineSelectorFeature>();
   bool const encrypted =
-    engineSelectorFeature.isRocksDB() &&
-    engineSelectorFeature.engine<RocksDBEngine>().isEncryptionEnabled();
+      engineSelectorFeature.isRocksDB() &&
+      engineSelectorFeature.engine<RocksDBEngine>().isEncryptionEnabled();
 #endif
-  
+
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
       return ::executors<false, MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
@@ -1731,12 +1732,12 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #ifdef USE_ENTERPRISE
       if (encrypted) {
         return ::executors<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
-                                            std::move(executorInfos));
+            _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                              std::move(executorInfos));
       } else {
         return ::executors<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
-                                            std::move(executorInfos));
+            _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                              std::move(executorInfos));
       }
 #else
       return ::executors<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
@@ -1746,13 +1747,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
       if (encrypted) {
-      return ::executors<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
-                                            std::move(executorInfos));
+        return ::executors<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
+            _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                              std::move(executorInfos));
       } else {
-      return ::executors<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
-                                            std::move(executorInfos));
+        return ::executors<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
+            _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                              std::move(executorInfos));
       }
 #else
       return ::executors<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(

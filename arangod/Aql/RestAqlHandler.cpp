@@ -64,11 +64,11 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 namespace {
 VPackStringRef const writeKey("write");
 VPackStringRef const exclusiveKey("exclusive");
-} // namespace
+}  // namespace
 
 RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* request, GeneralResponse* response,
-                               QueryRegistry* qr)
+                               GeneralRequest* request,
+                               GeneralResponse* response, QueryRegistry* qr)
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(qr),
       _engine(nullptr) {
@@ -112,7 +112,8 @@ void RestAqlHandler::setupClusterQuery() {
 
   TRI_IF_FAILURE("Query::setupTimeout") {
     // intentionally delay the request
-    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
 
   TRI_IF_FAILURE("Query::setupTimeoutFailSequence") {
@@ -196,9 +197,10 @@ void RestAqlHandler::setupClusterQuery() {
   }
 
   LOG_TOPIC("f9e30", DEBUG, arangodb::Logger::AQL)
-    << "Setting up cluster AQL with " << querySlice.toJson();
+      << "Setting up cluster AQL with " << querySlice.toJson();
 
-  VPackSlice coordinatorRebootIdSlice = querySlice.get(StaticStrings::AttrCoordinatorRebootId);
+  VPackSlice coordinatorRebootIdSlice =
+      querySlice.get(StaticStrings::AttrCoordinatorRebootId);
   VPackSlice coordinatorIdSlice = querySlice.get(StaticStrings::AttrCoordinatorId);
   RebootId rebootId(0);
   std::string coordinatorId;
@@ -238,7 +240,7 @@ void RestAqlHandler::setupClusterQuery() {
   // }
 
   QueryOptions options(optionsSlice);
-  if (options.ttl <= 0) { // patch TTL value
+  if (options.ttl <= 0) {  // patch TTL value
     options.ttl = _queryRegistry->defaultTTL();
   }
 
@@ -287,17 +289,17 @@ void RestAqlHandler::setupClusterQuery() {
 
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
-  auto q = ClusterQuery::create(clusterQueryId, 
-                                createTransactionContext(access),
+  auto q = ClusterQuery::create(clusterQueryId, createTransactionContext(access),
                                 std::move(options));
-  
+
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
   answerBuilder.openObject();
   answerBuilder.add(StaticStrings::Error, VPackValue(false));
-  answerBuilder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  answerBuilder.add(StaticStrings::Code,
+                    VPackValue(static_cast<int>(rest::ResponseCode::OK)));
 
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   if (clusterQueryId == 0) {
@@ -307,21 +309,22 @@ void RestAqlHandler::setupClusterQuery() {
     answerBuilder.add("queryId", VPackValue(q->id()));
   }
   // send back our own reboot id
-  answerBuilder.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
+  answerBuilder.add(StaticStrings::RebootId,
+                    VPackValue(ServerState::instance()->getRebootId().value()));
 
   QueryAnalyzerRevisions analyzersRevision;
   auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
-  if(ADB_UNLIKELY(revisionRes.fail())) {
+  if (ADB_UNLIKELY(revisionRes.fail())) {
     LOG_TOPIC("b2a37", ERR, arangodb::Logger::AQL)
-      << "Failed to read ArangoSearch analyzers revision " << revisionRes.errorMessage();
+        << "Failed to read ArangoSearch analyzers revision "
+        << revisionRes.errorMessage();
     generateError(revisionRes);
     return;
   }
-  q->prepareClusterQuery(querySlice, collectionBuilder.slice(),
-                         variablesSlice, snippetsSlice,
-                         traverserSlice, answerBuilder, analyzersRevision);
+  q->prepareClusterQuery(querySlice, collectionBuilder.slice(), variablesSlice,
+                         snippetsSlice, traverserSlice, answerBuilder, analyzersRevision);
 
-  answerBuilder.close(); // result
+  answerBuilder.close();  // result
   answerBuilder.close();
 
   cluster::CallbackGuard rGuard;
@@ -378,8 +381,8 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
-        << "[query#" << _engine->getQuery().id() << "] remote request received: " << operation
-        << " registryId=" << idString;
+        << "[query#" << _engine->getQuery().id()
+        << "] remote request received: " << operation << " registryId=" << idString;
   }
 
   try {
@@ -487,7 +490,7 @@ RestStatus RestAqlHandler::continueExecute() {
     TRI_ASSERT(_engine != nullptr);
     return useQuery(suffixes[0], suffixes[1]);
   } else if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
-    return RestStatus::DONE; // uses futures
+    return RestStatus::DONE;  // uses futures
   }
   generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                 "continued non-continuable method for /_api/aql");
@@ -701,8 +704,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
                                    rootNodeType == ExecutionNode::DISTRIBUTE));
     if (shardId.empty()) {
-      std::tie(state, skipped, items) =
-          _engine->execute(executeCall.callStack());
+      std::tie(state, skipped, items) = _engine->execute(executeCall.callStack());
     } else {
       std::tie(state, skipped, items) =
           _engine->executeForClient(executeCall.callStack(), shardId);
@@ -809,7 +811,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   answerBuilder.close();
 
   VPackOptions const* opts = &VPackOptions::Defaults;
-  if (_engine) { // might be destroyed on shutdown
+  if (_engine) {  // might be destroyed on shutdown
     opts = &_engine->getQuery().vpackOptions();
   }
 
@@ -830,7 +832,8 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
   auto errorCode =
       VelocyPackHelper::getNumericValue<ErrorCode>(querySlice, StaticStrings::Code,
                                                    TRI_ERROR_INTERNAL);
-  std::shared_ptr<ClusterQuery> query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
+  std::shared_ptr<ClusterQuery> query =
+      _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
   if (!query) {
     // this may be a race between query garbage collection and the client
     // shutting down the query. it is debatable whether this is an actual error
@@ -841,12 +844,11 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
   auto f = query->finalizeClusterQuery(errorCode);
 
-  return waitForFuture(std::move(f)
-                       .thenValue([me = shared_from_this(), this,
-                                   q = std::move(query)](Result res) {
+  return waitForFuture(std::move(f).thenValue([me = shared_from_this(), this,
+                                               q = std::move(query)](Result res) {
     VPackBufferUInt8 buffer;
     VPackBuilder answerBuilder(buffer);
-    answerBuilder.openObject(/*unindexed*/true);
+    answerBuilder.openObject(/*unindexed*/ true);
     answerBuilder.add(VPackValue("stats"));
     q->executionStats().toVelocyPack(answerBuilder, q->queryOptions().fullCount);
     q->warnings().toVelocyPack(answerBuilder);

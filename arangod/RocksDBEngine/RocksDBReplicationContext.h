@@ -84,7 +84,7 @@ class RocksDBReplicationContext {
     /// @brief number of documents in this collection
     /// only set in a very specific use-case
     uint64_t numberDocuments;
-     /// @brief number of documents we iterated over in /dump
+    /// @brief number of documents we iterated over in /dump
     uint64_t numberDocumentsDumped;
     /// @brief snapshot and number documents were fetched exclusively
     bool isNumberDocumentsExclusive;
@@ -145,9 +145,8 @@ class RocksDBReplicationContext {
 
   // returns inventory
   Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
-                      bool includeFoxxQueues, bool global,
-                      velocypack::Builder&);
-  
+                      bool includeFoxxQueues, bool global, velocypack::Builder&);
+
   // returns inventory for a single shard (DB server only!)
   Result getInventory(TRI_vocbase_t& vocbase, std::string const& collectionName,
                       velocypack::Builder&);
@@ -183,8 +182,7 @@ class RocksDBReplicationContext {
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpJson(TRI_vocbase_t& vocbase, std::string const& cname,
-                      basics::StringBuffer&, uint64_t chunkSize,
-                      bool useEnvelope);
+                      basics::StringBuffer&, uint64_t chunkSize, bool useEnvelope);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
@@ -222,15 +220,11 @@ class RocksDBReplicationContext {
   /// extend lifetime without using the context
   void extendLifetime(double ttl);
 
-  SyncerId syncerId() const {
-    return _syncerId;
-  }
+  SyncerId syncerId() const { return _syncerId; }
 
   ServerId replicationClientServerId() const { return _clientId; }
 
-  std::string const& clientInfo() const {
-    return _clientInfo;
-  }
+  std::string const& clientInfo() const { return _clientInfo; }
 
   void removeBlocker(std::string const& dbName, std::string const& collection);
 
@@ -280,4 +274,3 @@ class RocksDBReplicationContext {
 };
 
 }  // namespace arangodb
-

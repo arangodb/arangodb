@@ -33,8 +33,8 @@
 #include <thread>
 #include <type_traits>
 
-#include "process-utils.h"
 #include "Basics/system-functions.h"
+#include "process-utils.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
@@ -83,11 +83,11 @@
 #include "Basics/Thread.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
+#include "Basics/files.h"
 #include "Basics/memory.h"
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
-#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -129,7 +129,7 @@ void skipEntry(char const*& p, char const* e) {
   skipNonWhitespace(p, e);
 }
 /// @brief reads a numeric entry from the buffer
-template<typename T>
+template <typename T>
 T readEntry(char const*& p, char const* e) {
   skipWhitespace(p, e);
   char const* s = p;
@@ -138,8 +138,7 @@ T readEntry(char const*& p, char const* e) {
 }
 #endif
 
-} // namespace
-
+}  // namespace
 
 /// @brief all external processes
 std::vector<ExternalProcess*> ExternalProcesses;
@@ -216,7 +215,9 @@ ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
-                              [pid](const ExternalProcess * m) -> bool { return m->_pid == pid; });
+                              [pid](const ExternalProcess* m) -> bool {
+                                return m->_pid == pid;
+                              });
     if (found != ExternalProcesses.end()) {
       return *found;
     }
@@ -284,7 +285,7 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
       close(pipe_child_to_server[0]);
       close(pipe_child_to_server[1]);
     } else {
-      { // "close" stdin, but avoid fd 0 being reused!
+      {  // "close" stdin, but avoid fd 0 being reused!
         int fd = open("/dev/null", O_RDONLY);
         dup2(fd, 0);
         close(fd);
@@ -766,14 +767,14 @@ ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
           result._numberThreads++;
         }
       }
-    }
-    else {
-      LOG_TOPIC("66667", ERR, arangodb::Logger::FIXME) << "failed to acquire thread from snapshot - " << GetLastError();
+    } else {
+      LOG_TOPIC("66667", ERR, arangodb::Logger::FIXME)
+          << "failed to acquire thread from snapshot - " << GetLastError();
     }
     CloseHandle(snapShot);
-  }
-  else {
-    LOG_TOPIC("66668", ERR, arangodb::Logger::FIXME) << "failed to acquire process threads count - " << GetLastError();
+  } else {
+    LOG_TOPIC("66668", ERR, arangodb::Logger::FIXME)
+        << "failed to acquire process threads count - " << GetLastError();
   }
 
   return result;
@@ -809,7 +810,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
     // a malloc-free sprintf...
     static constexpr char const* proc = "/proc/";
     static constexpr char const* stat = "/stat";
-    
+
     // append /proc/
     memcpy(p, proc, strlen(proc));
     p += strlen(proc);
@@ -832,37 +833,37 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
     if (n == 0) {
       return result;
     }
-  
+
     /// buffer now contains all data documented by "proc"
     /// see man 5 proc for the state of a process
 
     char const* p = &str[0];
     char const* e = p + n;
-    
-    skipEntry(p, e); // process id
-    skipEntry(p, e); // process name
-    skipEntry(p, e); // process state
-    skipEntry(p, e); // ppid
-    skipEntry(p, e); // pgrp
-    skipEntry(p, e); // session
-    skipEntry(p, e); // tty nr
-    skipEntry(p, e); // tpgid
-    skipEntry(p, e); // flags
-    result._minorPageFaults = readEntry<uint64_t>(p, e); // min flt
-    skipEntry(p, e); // cmin flt
-    result._majorPageFaults = readEntry<uint64_t>(p, e); // maj flt
-    skipEntry(p, e); // cmaj flt
-    result._userTime = readEntry<uint64_t>(p, e); // utime
-    result._systemTime = readEntry<uint64_t>(p, e); // stime
-    skipEntry(p, e); // cutime
-    skipEntry(p, e); // cstime
-    skipEntry(p, e); // priority
-    skipEntry(p, e); // nice
-    result._numberThreads = readEntry<int64_t>(p, e); // num threads
-    skipEntry(p, e); // itrealvalue
-    skipEntry(p, e); // starttime
-    result._virtualSize = readEntry<uint64_t>(p, e); // vsize
-    result._residentSize = readEntry<int64_t>(p, e) * PageSize::getValue(); // rss
+
+    skipEntry(p, e);                                      // process id
+    skipEntry(p, e);                                      // process name
+    skipEntry(p, e);                                      // process state
+    skipEntry(p, e);                                      // ppid
+    skipEntry(p, e);                                      // pgrp
+    skipEntry(p, e);                                      // session
+    skipEntry(p, e);                                      // tty nr
+    skipEntry(p, e);                                      // tpgid
+    skipEntry(p, e);                                      // flags
+    result._minorPageFaults = readEntry<uint64_t>(p, e);  // min flt
+    skipEntry(p, e);                                      // cmin flt
+    result._majorPageFaults = readEntry<uint64_t>(p, e);  // maj flt
+    skipEntry(p, e);                                      // cmaj flt
+    result._userTime = readEntry<uint64_t>(p, e);         // utime
+    result._systemTime = readEntry<uint64_t>(p, e);       // stime
+    skipEntry(p, e);                                      // cutime
+    skipEntry(p, e);                                      // cstime
+    skipEntry(p, e);                                      // priority
+    skipEntry(p, e);                                      // nice
+    result._numberThreads = readEntry<int64_t>(p, e);     // num threads
+    skipEntry(p, e);                                      // itrealvalue
+    skipEntry(p, e);                                      // starttime
+    result._virtualSize = readEntry<uint64_t>(p, e);      // vsize
+    result._residentSize = readEntry<int64_t>(p, e) * PageSize::getValue();  // rss
     result._scClkTck = sysconf(_SC_CLK_TCK);
   }
 
@@ -923,7 +924,8 @@ void TRI_CreateExternalProcess(char const* executable,
   }
 
   for (size_t i = 0; i < n; ++i) {
-    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str(), arguments[i].size());
+    external->_arguments[i + 1] =
+        TRI_DuplicateString(arguments[i].c_str(), arguments[i].size());
     if (external->_arguments[i + 1] == nullptr) {
       // OOM
       pid->_pid = TRI_INVALID_PROCESS_ID;
@@ -966,17 +968,14 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClosePipe(ExternalProcess* process,
-                   bool read) {
-  if (process == nullptr ||
-      (read && TRI_IS_INVALID_PIPE(process->_readPipe)) ||
-      (!read && TRI_IS_INVALID_PIPE(process->_writePipe))
-      ) {
+void TRI_ClosePipe(ExternalProcess* process, bool read) {
+  if (process == nullptr || (read && TRI_IS_INVALID_PIPE(process->_readPipe)) ||
+      (!read && TRI_IS_INVALID_PIPE(process->_writePipe))) {
     return;
   }
 
   auto pipe = (read) ? &process->_readPipe : &process->_writePipe;
-  
+
 #ifndef _WIN32
   if (*pipe != -1) {
     FILE* stream = fdopen(*pipe, "w");
@@ -998,9 +997,7 @@ void TRI_ClosePipe(ExternalProcess* process,
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
-                               char* buffer,
-                               size_t bufferSize) {
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process, char* buffer, size_t bufferSize) {
   if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
     return 0;
   }
@@ -1014,14 +1011,11 @@ TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
 #endif
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_WritePipe(ExternalProcess const* process,
-                   char const* buffer,
-                   size_t bufferSize) {
+bool TRI_WritePipe(ExternalProcess const* process, char const* buffer, size_t bufferSize) {
   if (process == nullptr || TRI_IS_INVALID_PIPE(process->_writePipe)) {
     return false;
   }
@@ -1032,7 +1026,6 @@ bool TRI_WritePipe(ExternalProcess const* process,
   return TRI_WRITE_POINTER(process->_writePipe, buffer, bufferSize);
 #endif
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
@@ -1075,7 +1068,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
     bool timeoutHappened = false;
     if (timeout) {
       TRI_ASSERT((opts & WNOHANG) != 0);
-      double endTime = 0.0; 
+      double endTime = 0.0;
       while (true) {
         res = waitpid(external->_pid, &loc, opts);
         if (res != 0) {

@@ -126,4 +126,3 @@ enumerate_wrapper<T, C> enumerate(T&& v, C c) {
   return enumerate_wrapper<T, C>{std::forward<T>(v), c};
 }
 };  // namespace arangodb
-

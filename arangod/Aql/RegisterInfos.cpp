@@ -62,7 +62,6 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
       _numOutRegs(nrOutputRegisters),
       _registersToKeep(std::move(registersToKeep)),
       _registersToClear(std::move(registersToClear)) {
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (RegisterId const inReg : _inRegs) {
     TRI_ASSERT(inReg.isConstRegister() || inReg < nrInputRegisters);
@@ -85,15 +84,13 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
 #endif
 }
 
-RegIdSet const& RegisterInfos::getInputRegisters() const {
-  return _inRegs;
-}
+RegIdSet const& RegisterInfos::getInputRegisters() const { return _inRegs; }
 
-RegIdSet const& RegisterInfos::getOutputRegisters() const {
-  return _outRegs;
-}
+RegIdSet const& RegisterInfos::getOutputRegisters() const { return _outRegs; }
 
-RegisterCount RegisterInfos::numberOfInputRegisters() const { return _numInRegs; }
+RegisterCount RegisterInfos::numberOfInputRegisters() const {
+  return _numInRegs;
+}
 
 RegisterCount RegisterInfos::numberOfOutputRegisters() const {
   return _numOutRegs;

@@ -59,4 +59,3 @@ class Collection {
 };
 }  // namespace maskings
 }  // namespace arangodb
-

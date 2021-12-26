@@ -24,8 +24,8 @@
 #pragma once
 
 #include "Aql/Query.h"
-#include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterInfo.h"
 
 #include <map>
 #include <set>
@@ -42,11 +42,13 @@ class RemoteNode;
 class ScatterNode;
 class ShardLocking;
 
-using MapNodeToColNameToShards = std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>;
+using MapNodeToColNameToShards =
+    std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>;
 
 class QuerySnippet {
  public:
   using Id = size_t;
+
  private:
   struct ExpansionInformation {
     ExecutionNode* node;
@@ -89,11 +91,11 @@ class QuerySnippet {
       ShardLocking& shardLocking);
 
  private:
-  GatherNode const* _sinkNode; // node that merges the results for all shards
+  GatherNode const* _sinkNode;  // node that merges the results for all shards
 
   ExecutionNodeId const _idOfSinkRemoteNode;
 
-  RemoteNode * _remoteNode{nullptr};
+  RemoteNode* _remoteNode{nullptr};
 
   bool _madeResponsibleForShutdown;
 
@@ -109,4 +111,3 @@ class QuerySnippet {
 };
 }  // namespace aql
 }  // namespace arangodb
-

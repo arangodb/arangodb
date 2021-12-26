@@ -99,7 +99,5 @@ class WalkerWorker : public WalkerWorkerBase<T> {
   ::arangodb::containers::HashSet<T*> _done;
 };
 
-
 }  // namespace aql
 }  // namespace arangodb
-

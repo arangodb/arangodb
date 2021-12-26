@@ -76,4 +76,3 @@ class ShardingStrategy {
 };
 
 }  // namespace arangodb
-

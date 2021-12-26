@@ -41,4 +41,3 @@ class CreateDatabase : public ActionBase {
 
 }  // namespace maintenance
 }  // namespace arangodb
-

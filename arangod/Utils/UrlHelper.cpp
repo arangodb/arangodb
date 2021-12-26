@@ -32,7 +32,7 @@ using namespace arangodb::url;
 namespace {
 // used for URI-encoding
 static char const* hexValuesLower = "0123456789abcdef";
-};
+};  // namespace
 
 std::ostream& Query::toStream(std::ostream& ostream) const {
   struct output {
@@ -175,9 +175,7 @@ std::string Location::toString() const {
 
 Path const& Location::path() const noexcept { return _path; }
 
-std::optional<Query> const& Location::query() const noexcept {
-  return _query;
-}
+std::optional<Query> const& Location::query() const noexcept { return _query; }
 
 std::optional<Fragment> const& Location::fragment() const noexcept {
   return _fragment;
@@ -185,10 +183,8 @@ std::optional<Fragment> const& Location::fragment() const noexcept {
 
 // unreserved are A-Z, a-z, 0-9 and - _ . ~
 bool arangodb::url::isUnreserved(char c) {
-  return (c >= '0' && c <= '9') || 
-         (c >= 'a' && c <= 'z') || 
-         (c >= 'A' && c <= 'Z') || 
-         c == '-' || c == '_' || c == '.' || c == '~';
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') || c == '-' || c == '_' || c == '.' || c == '~';
 }
 
 // reserved are:

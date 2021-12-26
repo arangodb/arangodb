@@ -50,7 +50,8 @@ class BindParameters {
   explicit BindParameters(ResourceMonitor& resourceMonitor);
 
   /// @brief create the parameters
-  explicit BindParameters(ResourceMonitor& resourceMonitor, std::shared_ptr<arangodb::velocypack::Builder> builder);
+  explicit BindParameters(ResourceMonitor& resourceMonitor,
+                          std::shared_ptr<arangodb::velocypack::Builder> builder);
 
   /// @brief destroy the parameters
   ~BindParameters();
@@ -58,7 +59,7 @@ class BindParameters {
   /// @brief mark a bind parameter as "used", and return its value.
   /// will return VPackSlice::noneSlice() if the bind parameter does not exist!
   arangodb::velocypack::Slice markUsed(std::string const& name) noexcept;
- 
+
   /// @brief run a visitor function on all bind parameters
   void visit(std::function<void(std::string const& key, arangodb::velocypack::Slice value, bool used)> const& visitor) const;
 
@@ -95,4 +96,3 @@ class BindParameters {
 };
 }  // namespace aql
 }  // namespace arangodb
-

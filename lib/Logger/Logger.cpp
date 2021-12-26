@@ -77,9 +77,9 @@ class DefaultLogGroup final : public LogGroup {
 DefaultLogGroup defaultLogGroupInstance;
 
 }  // namespace
-  
+
 LogMessage::LogMessage(char const* function, char const* file, int line,
-                       LogLevel level, size_t topicId, std::string&& message, 
+                       LogLevel level, size_t topicId, std::string&& message,
                        uint32_t offset, bool shrunk) noexcept
     : _function(function),
       _file(file),
@@ -89,7 +89,7 @@ LogMessage::LogMessage(char const* function, char const* file, int line,
       _message(std::move(message)),
       _offset(offset),
       _shrunk(shrunk) {}
-  
+
 void LogMessage::shrink(std::size_t maxLength) {
   // no need to shrink an already shrunk message
   if (!_shrunk && _message.size() > maxLength) {
@@ -107,7 +107,6 @@ void LogMessage::shrink(std::size_t maxLength) {
     _shrunk = true;
   }
 }
-
 
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
@@ -146,7 +145,7 @@ Logger::ThreadRef::~ThreadRef() {
   //       headed by (5)
   Logger::_loggingThreadRefs.fetch_sub(1, std::memory_order_relaxed);
 }
-  
+
 LogGroup& Logger::defaultLogGroup() { return ::defaultLogGroupInstance; }
 
 LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
@@ -155,9 +154,7 @@ std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
   return LogTopic::logLevelTopics();
 }
 
-void Logger::setShowIds(bool show) {
-  _showIds = show;
-}
+void Logger::setShowIds(bool show) { _showIds = show; }
 
 void Logger::setLogLevel(LogLevel level) {
   _level.store(level, std::memory_order_relaxed);
@@ -188,7 +185,8 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (!isValid) {
     if (!isGeneral) {
-      LOG_TOPIC("05367", WARN, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
+      LOG_TOPIC("05367", WARN, arangodb::Logger::FIXME)
+          << "strange log level '" << levelName << "'";
       return;
     }
     level = LogLevel::INFO;
@@ -313,18 +311,17 @@ void Logger::setUseControlEscaped(bool value) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
-    }
-    _useControlEscaped = value;
   }
-  // NOTE: this function should not be called if the logging is active.
-  void Logger::setUseUnicodeEscaped(bool value) {
+  _useControlEscaped = value;
+}
+// NOTE: this function should not be called if the logging is active.
+void Logger::setUseUnicodeEscaped(bool value) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
-    }
-    _useUnicodeEscaped = value;
   }
-
+  _useUnicodeEscaped = value;
+}
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowRole(bool show) {
@@ -551,8 +548,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     // the message itself
     {
       out.append(",\"message\":");
-  
-      // the log message can be really large, and it can lead to 
+
+      // the log message can be really large, and it can lead to
       // truncation of the log message further down the road.
       // however, as we are supposed to produce valid JSON log
       // entries even with the truncation in place, we need to make
@@ -567,7 +564,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
         maxMessageLength = message.size();
       }
       dumper.appendString(message.c_str(), maxMessageLength);
-  
+
       // this tells the logger to not shrink our (potentially already
       // shrunk) message once more - if it would shrink the message again,
       // it may produce invalid JSON
@@ -655,9 +652,9 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       out.append("] ", 2);
     }
 
-    // the offset is used by the in-memory logger, and it cuts off everything from the start
-    // of the concatenated log string until the offset. only what's after the offset gets
-    // displayed in the web UI
+    // the offset is used by the in-memory logger, and it cuts off everything
+    // from the start of the concatenated log string until the offset. only
+    // what's after the offset gets displayed in the web UI
     TRI_ASSERT(out.size() < static_cast<size_t>(UINT32_MAX));
     offset = static_cast<uint32_t>(out.size());
 
@@ -679,7 +676,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
 
   TRI_ASSERT(offset == 0 || !_useJson);
 
-  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset, shrunk);
+  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId,
+                                          std::move(out), offset, shrunk);
 
   append(defaultLogGroup(), msg, false, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
     LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
@@ -690,9 +688,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   // logging itself must never cause an exeption to escape
 }
 
-void Logger::append(LogGroup& group, 
-                    std::unique_ptr<LogMessage>& msg,
-                    bool forceDirect,
+void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg, bool forceDirect,
                     std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
   // check if we need to shrink the message here
   if (!msg->shrunk()) {
@@ -750,7 +746,7 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
           << "could not start logging thread";
       FATAL_ERROR_EXIT();
     }
-  
+
     // (4) - this release-store synchronizes with the acquire-load (2)
     _loggingThread.store(loggingThread.release(), std::memory_order_release);
   }
@@ -768,22 +764,23 @@ void Logger::shutdown() {
   // logging is now inactive
 
   // reset the instance variable in Logger, so that others won't see it anymore
-  std::unique_ptr<LogThread> loggingThread(_loggingThread.exchange(nullptr, std::memory_order_relaxed));
-  
+  std::unique_ptr<LogThread> loggingThread(
+      _loggingThread.exchange(nullptr, std::memory_order_relaxed));
+
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
   if (loggingThread != nullptr) {
     // (5) - this release-fetch-add synchronizes with the acquire-fetch-add (1)
-    // Even though a fetch-add with 0 is essentially a noop, this is necessary to
-    // ensure that threads which try to get a reference to the _loggingThread
+    // Even though a fetch-add with 0 is essentially a noop, this is necessary
+    // to ensure that threads which try to get a reference to the _loggingThread
     // actually see the new nullptr value.
     _loggingThreadRefs.fetch_add(0, std::memory_order_release);
-    
+
     // wait until all threads have dropped their reference to the logging thread
     while (_loggingThreadRefs.load(std::memory_order_relaxed)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
-    
+
     char const* currentThreadName = Thread::currentThreadName();
     if (currentThreadName != nullptr && ::LogThreadName == currentThreadName) {
       // oops, the LogThread itself crashed...
@@ -820,7 +817,7 @@ void Logger::flush() noexcept {
     // logging not (or not yet) initialized
     return;
   }
-  
+
   ThreadRef loggingThread;
   if (loggingThread) {
     loggingThread->flush();

@@ -58,8 +58,7 @@ class RemoteNode final : public DistributeConsumerNode {
  public:
   /// @brief constructor with an id
   RemoteNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-             std::string server, std::string const& ownName,
-             std::string queryId)
+             std::string server, std::string const& ownName, std::string queryId)
       : DistributeConsumerNode(plan, id, ownName),
         _vocbase(vocbase),
         _server(std::move(server)),
@@ -111,7 +110,7 @@ class RemoteNode final : public DistributeConsumerNode {
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
-  
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -174,7 +173,7 @@ class ScatterNode : public ExecutionNode {
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override;
-  
+
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
 
@@ -212,7 +211,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -256,11 +255,7 @@ class GatherNode final : public ExecutionNode {
  public:
   enum class SortMode : uint32_t { MinElement, Heap, Default };
 
-  enum class Parallelism : uint8_t {
-    Undefined = 0,
-    Serial = 2,
-    Parallel = 4
-  };
+  enum class Parallelism : uint8_t { Undefined = 0, Serial = 2, Parallel = 4 };
 
   /// @brief inspect dependencies starting from a specified 'node'
   /// and return first corresponding collection within
@@ -298,7 +293,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
-  
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -321,11 +316,9 @@ class GatherNode final : public ExecutionNode {
 
   void setParallelism(Parallelism value);
 
-  Parallelism parallelism() const noexcept {
-    return _parallelism;
-  }
+  Parallelism parallelism() const noexcept { return _parallelism; }
 
- protected: 
+ protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
@@ -401,7 +394,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   std::string const& key() const { return _key; }
 
- protected: 
+ protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
@@ -428,4 +421,3 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
 }  // namespace aql
 }  // namespace arangodb
-

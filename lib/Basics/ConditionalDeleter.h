@@ -43,4 +43,3 @@ struct ConditionalDeleter {
 };
 
 }  // namespace arangodb
-

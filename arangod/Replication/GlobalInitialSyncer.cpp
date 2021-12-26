@@ -55,11 +55,12 @@ GlobalInitialSyncer::GlobalInitialSyncer(ReplicationApplierConfiguration const& 
   _state.databaseName = StaticStrings::SystemDatabase;
 }
 
-std::shared_ptr<GlobalInitialSyncer> GlobalInitialSyncer::create(ReplicationApplierConfiguration const& configuration) {
+std::shared_ptr<GlobalInitialSyncer> GlobalInitialSyncer::create(
+    ReplicationApplierConfiguration const& configuration) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : public GlobalInitialSyncer {
     explicit Enabler(ReplicationApplierConfiguration const& configuration)
-      : GlobalInitialSyncer(configuration) {}
+        : GlobalInitialSyncer(configuration) {}
   };
 
   return std::make_shared<Enabler>(configuration);
@@ -105,7 +106,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
 
   setAborted(false);
 
-  LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION) << "client: getting leader state";
+  LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION)
+      << "client: getting leader state";
   Result r = _state.leader.getState(_state.connection, _state.isChildSyncer, context);
   if (r.fail()) {
     return r;
@@ -147,7 +149,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
     return r;
   }
 
-  LOG_TOPIC("1bd5b", DEBUG, Logger::REPLICATION) << "inventory: " << builder.slice().toJson();
+  LOG_TOPIC("1bd5b", DEBUG, Logger::REPLICATION)
+      << "inventory: " << builder.slice().toJson();
   VPackSlice const databases = builder.slice().get("databases");
   VPackSlice const state = builder.slice().get("state");
   if (!databases.isObject() || !state.isObject()) {
@@ -157,7 +160,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
   }
 
   if (!_state.applier._skipCreateDrop) {
-    LOG_TOPIC("af241", DEBUG, Logger::REPLICATION) << "updating server inventory";
+    LOG_TOPIC("af241", DEBUG, Logger::REPLICATION)
+        << "updating server inventory";
     r = updateServerInventory(databases);
     if (r.fail()) {
       LOG_TOPIC("5fc1c", DEBUG, Logger::REPLICATION)
@@ -220,9 +224,11 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
       }
     }
   } catch (arangodb::basics::Exception const& ex) {
-    return Result(ex.code(), std::string("syncer caught an unexpected exception: ") + ex.what());
+    return Result(ex.code(),
+                  std::string("syncer caught an unexpected exception: ") + ex.what());
   } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, std::string("syncer caught an unexpected exception: ") + ex.what());
+    return Result(TRI_ERROR_INTERNAL,
+                  std::string("syncer caught an unexpected exception: ") + ex.what());
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL, "syncer caught an unexpected exception");
   }
@@ -295,17 +301,17 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
       std::vector<arangodb::LogicalCollection*> toDrop;
 
       // drop all collections that do not exist (anymore) on the leader
-      vocbase->processCollections(
-          [&survivingCollections, &toDrop](arangodb::LogicalCollection* collection) {
-            if (survivingCollections.find(collection->guid()) !=
-                survivingCollections.end()) {
-              // collection should surive
-              return;
-            }
-            if (!collection->system()) {  // we will not drop system collections here
-              toDrop.emplace_back(collection);
-            }
-          });
+      vocbase->processCollections([&survivingCollections,
+                                   &toDrop](arangodb::LogicalCollection* collection) {
+        if (survivingCollections.find(collection->guid()) !=
+            survivingCollections.end()) {
+          // collection should surive
+          return;
+        }
+        if (!collection->system()) {  // we will not drop system collections here
+          toDrop.emplace_back(collection);
+        }
+      });
 
       for (auto const& collection : toDrop) {
         try {
@@ -344,7 +350,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDataba
                  : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (r.fail()) {
-      LOG_TOPIC("0a282", WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
+      LOG_TOPIC("0a282", WARN, Logger::REPLICATION)
+          << "Dropping db failed on replicant";
       return r;
     }
 

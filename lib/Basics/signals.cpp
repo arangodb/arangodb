@@ -55,9 +55,9 @@ SignalType signalType(int signal) {
   switch (signal) {
     case SIGHUP:  //    1       Term    Hangup detected on controlling terminal
       return SignalType::logrotate;  // or death of controlling process
-                         //                 we say this is non-deadly since we
-                         //                 should do a logrotate.
-    case SIGINT:         //    2       Term    Interrupt from keyboard
+                                     //                 we say this is non-deadly since we
+                                     //                 should do a logrotate.
+    case SIGINT:  //    2       Term    Interrupt from keyboard
       return SignalType::term;
     case SIGQUIT:  //    3       Core    Quit from keyboard
     case SIGILL:   //    4       Core    Illegal Instruction
@@ -84,9 +84,9 @@ SignalType signalType(int signal) {
       return SignalType::stop;
     case SIGBUS:  //  10,7,10   Core    Bus error (bad memory access)
       return SignalType::core;
-    case SIGPOLL:   //            Term    Pollable event (Sys V).
-      return SignalType::term; //         Synonym for SIGIO
-    case SIGPROF:   //  27,27,29  Term    Profiling timer expired
+    case SIGPOLL:               //            Term    Pollable event (Sys V).
+      return SignalType::term;  //         Synonym for SIGIO
+    case SIGPROF:               //  27,27,29  Term    Profiling timer expired
       return SignalType::term;
     case SIGSYS:   //  12,31,12  Core    Bad system call (SVr4);
                    //                     see also seccomp(2)

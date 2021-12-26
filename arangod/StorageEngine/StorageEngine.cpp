@@ -53,9 +53,13 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&, VPackSlice) {}
 
-Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, const VPackSlice& slice) { return {}; }
+Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, const VPackSlice& slice) {
+  return {};
+}
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
-bool StorageEngine::inRecovery() { return recoveryState() < RecoveryState::DONE; }
+bool StorageEngine::inRecovery() {
+  return recoveryState() < RecoveryState::DONE;
+}
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted

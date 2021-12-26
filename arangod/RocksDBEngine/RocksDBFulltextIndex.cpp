@@ -44,7 +44,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 
@@ -87,7 +86,7 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
   std::set<LocalDocumentId>::iterator _pos;
 };
 
-} // namespace
+}  // namespace arangodb
 
 RocksDBFulltextIndex::RocksDBFulltextIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                            arangodb::velocypack::Slice const& info)
@@ -218,8 +217,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 
 Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                     LocalDocumentId const& documentId,
-                                    velocypack::Slice doc,
-                                    OperationOptions const& /*options*/,
+                                    velocypack::Slice doc, OperationOptions const& /*options*/,
                                     bool /*performChecks*/) {
   Result res;
   std::set<std::string> words = wordlist(doc);
@@ -289,7 +287,8 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
     // extract the string value for the indexed attribute
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, value.stringRef(),
-                                                             (size_t)minWordLength, FulltextIndexLimits::maxWordLength,
+                                                             (size_t)minWordLength,
+                                                             FulltextIndexLimits::maxWordLength,
                                                              true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
@@ -447,9 +446,11 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
 
 static RocksDBKeyBounds MakeBounds(uint64_t oid, FulltextQueryToken const& token) {
   if (token.matchType == FulltextQueryToken::COMPLETE) {
-    return RocksDBKeyBounds::FulltextIndexComplete(oid, arangodb::velocypack::StringRef(token.value));
+    return RocksDBKeyBounds::FulltextIndexComplete(oid, arangodb::velocypack::StringRef(
+                                                            token.value));
   } else if (token.matchType == FulltextQueryToken::PREFIX) {
-    return RocksDBKeyBounds::FulltextIndexPrefix(oid, arangodb::velocypack::StringRef(token.value));
+    return RocksDBKeyBounds::FulltextIndexPrefix(oid, arangodb::velocypack::StringRef(
+                                                          token.value));
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -472,8 +473,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   std::set<LocalDocumentId> intersect;
   // apply left to right logic, merging all current results with ALL previous
   for (iter->Seek(bounds.start());
-       iter->Valid() && cmp->Compare(iter->key(), end) < 0;
-       iter->Next()) {
+       iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
     TRI_ASSERT(objectId() == RocksDBKey::objectId(iter->key()));
 
     rocksdb::Status s = iter->status();
@@ -504,12 +504,12 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
 }
 
 std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* condNode,
-    aql::Variable const* var, IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) {
+    transaction::Methods* trx, aql::AstNode const* condNode, aql::Variable const* var,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL
-  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no); // fulltext index never needs to observe own writes
+  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);  // fulltext index never needs to observe own writes
 
   aql::AstNode const* fcall = condNode->getMember(0);
   TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
@@ -521,7 +521,8 @@ std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
 
   aql::AstNode const* queryNode = args->getMember(2);
   if (queryNode->type != aql::NODE_TYPE_VALUE || queryNode->value.type != aql::VALUE_TYPE_STRING) {
-    std::string message = basics::Exception::FillExceptionString(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    std::string message = basics::Exception::FillExceptionString(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                                                                 "FULLTEXT");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, message);
   }
 
@@ -537,5 +538,6 @@ std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return std::make_unique<RocksDBFulltextIndexIterator>(&_collection, trx, std::move(results));
+  return std::make_unique<RocksDBFulltextIndexIterator>(&_collection, trx,
+                                                        std::move(results));
 }

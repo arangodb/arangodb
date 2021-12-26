@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBCommon.h"
 #include <rocksdb/db.h>
+#include "RocksDBEngine/RocksDBCommon.h"
 
 namespace arangodb {
 
@@ -78,4 +78,3 @@ struct RocksDBColumnFamilyManager {
 };
 
 }  // namespace arangodb
-

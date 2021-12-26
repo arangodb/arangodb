@@ -63,8 +63,10 @@ struct AccumulatorBase {
   // One of these two operations should also be obsolete. This will need some consideration
   // wrt "efficiency" (whether velocypack is the best format for messages here. It probably is,
   // in particular since we can prevent copying stuff around)
-  virtual auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> = 0;
-  virtual auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> = 0;
+  virtual auto updateByMessageSlice(VPackSlice msg)
+      -> greenspun::EvalResultT<UpdateResult> = 0;
+  virtual auto updateByMessage(MessageData const& msg)
+      -> greenspun::EvalResultT<UpdateResult> = 0;
 
   // used to set state on WorkerContext from message by MasterContext
   virtual auto setStateBySlice(VPackSlice msg) -> greenspun::EvalResult = 0;
@@ -72,14 +74,15 @@ struct AccumulatorBase {
   virtual auto getStateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
   // used to send updates from WorkerContext to MasterContext, output of this
   // is given to aggregateStateBySlice on MasterContext
-  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
+  virtual auto getStateUpdateIntoBuilder(VPackBuilder& result)
+      -> greenspun::EvalResult = 0;
   // used to aggregate states on MasterContext after receiving messages from WorkerContexts.
   virtual auto aggregateStateBySlice(VPackSlice msg) -> greenspun::EvalResult = 0;
 
   virtual auto finalizeIntoBuilder(VPackBuilder& result) -> greenspun::EvalResult = 0;
 };
 
-template<typename T>
+template <typename T>
 constexpr auto always_false_v = false;
 
 template <typename T>
@@ -124,24 +127,25 @@ class Accumulator : public AccumulatorBase {
   }
 
   auto updateBySlice(VPackSlice s) -> greenspun::EvalResultT<UpdateResult> {
-      if constexpr (std::is_same_v<T, bool>) {
-        return this->update(s.getBool());
-      } else if constexpr (std::is_arithmetic_v<T>) {
-        return this->update(s.getNumericValue<T>());
-      } else if constexpr (std::is_same_v<VPackSlice, T>) {
-        return this->update(s);
-      } else if constexpr (std::is_same_v<std::string, T>) {
-        return this->update(s.copyString());
-      } else {
-        static_assert(always_false_v<T>);
-      }
+    if constexpr (std::is_same_v<T, bool>) {
+      return this->update(s.getBool());
+    } else if constexpr (std::is_arithmetic_v<T>) {
+      return this->update(s.getNumericValue<T>());
+    } else if constexpr (std::is_same_v<VPackSlice, T>) {
+      return this->update(s);
+    } else if constexpr (std::is_same_v<std::string, T>) {
+      return this->update(s.copyString());
+    } else {
+      static_assert(always_false_v<T>);
+    }
   }
 
   auto updateByMessageSlice(VPackSlice msg) -> greenspun::EvalResultT<UpdateResult> override {
     return updateBySlice(msg.get("value"));
   }
 
-  auto updateByMessage(MessageData const& msg) -> greenspun::EvalResultT<UpdateResult> override {
+  auto updateByMessage(MessageData const& msg)
+      -> greenspun::EvalResultT<UpdateResult> override {
     return updateBySlice(msg._value.slice());
   }
 
@@ -171,7 +175,7 @@ class Accumulator : public AccumulatorBase {
     return getIntoBuilder(result);
   }
 
-protected:
+ protected:
   data_type _value;
 };
 

@@ -53,12 +53,12 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-std::string const ResignShardLeadership::LeaderNotYetKnownString = "LEADER_NOT_YET_KNOWN";
+std::string const ResignShardLeadership::LeaderNotYetKnownString =
+    "LEADER_NOT_YET_KNOWN";
 
 ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
                                              ActionDescription const& desc)
-    : ActionBase(feature, desc),
-      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+    : ActionBase(feature, desc), ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -68,7 +68,8 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
   }
 
   if (!error.str().empty()) {
-    LOG_TOPIC("2aa84", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+    LOG_TOPIC("2aa84", ERR, Logger::MAINTENANCE)
+        << "ResignLeadership: " << error.str();
     result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -101,17 +102,17 @@ bool ResignShardLeadership::first() {
       std::stringstream error;
       error << "Failed to lookup local collection " << collection
             << " in database " + database;
-      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE)
+          << "ResignLeadership: " << error.str();
       result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
     // Get write transaction on collection
     transaction::StandaloneContext ctx(*vocbase);
-    SingleCollectionTransaction trx{
-      std::shared_ptr<transaction::Context>(
-        std::shared_ptr<transaction::Context>(), &ctx),
-      *col, AccessMode::Type::EXCLUSIVE};
+    SingleCollectionTransaction trx{std::shared_ptr<transaction::Context>(
+                                        std::shared_ptr<transaction::Context>(), &ctx),
+                                    *col, AccessMode::Type::EXCLUSIVE};
 
     Result res = trx.begin();
 
@@ -126,14 +127,15 @@ bool ResignShardLeadership::first() {
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
     col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
-    trx.abort(); // unlock
+    trx.abort();                                              // unlock
 
     transaction::cluster::abortLeaderTransactionsOnShard(col->id());
 
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "exception thrown when resigning:" << e.what();
-    LOG_TOPIC("173dd", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+    LOG_TOPIC("173dd", ERR, Logger::MAINTENANCE)
+        << "ResignLeadership: " << error.str();
     result(TRI_ERROR_INTERNAL, error.str());
     return false;
   }

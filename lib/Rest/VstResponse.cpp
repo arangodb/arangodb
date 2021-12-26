@@ -32,8 +32,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Meta/conversion.h"
 #include "Rest/VstRequest.h"
@@ -54,8 +54,7 @@ void VstResponse::reset(ResponseCode code) {
 }
 
 void VstResponse::addPayload(VPackSlice const& slice,
-                             VPackOptions const* options,
-                             bool resolveExternals) {
+                             VPackOptions const* options, bool resolveExternals) {
   if (_contentType == rest::ContentType::VPACK &&
       _contentTypeRequested == rest::ContentType::JSON) {
     // content type was set by a handler to VPACK but the client requested JSON
@@ -121,7 +120,7 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   if (!options) {
     options = &VPackOptions::Options::Defaults;
   }
-  
+
   auto handleBuffer = [this, options](VPackBuffer<uint8_t>&& buff) {
     if (ADB_UNLIKELY(_contentType == rest::ContentType::JSON)) {
       // simon: usually we escape unicode char sequences,
@@ -162,11 +161,11 @@ void VstResponse::addRawPayload(VPackStringRef payload) {
 
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackBuilder builder(buffer);
-  VPackArrayBuilder array(&builder, /*unindexed*/true);
+  VPackArrayBuilder array(&builder, /*unindexed*/ true);
   builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
   builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
-  
+
   auto fixCase = [](std::string& tmp) {
     int capState = 1;
     for (auto& it : tmp) {
@@ -185,11 +184,10 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
       }
     }
   };
-  
-  std::string currentHeader;
-  VPackObjectBuilder meta(&builder, /*unindexed*/true);  // 4 == meta
-  for (auto& item : _headers) {
 
+  std::string currentHeader;
+  VPackObjectBuilder meta(&builder, /*unindexed*/ true);  // 4 == meta
+  for (auto& item : _headers) {
     if (_contentType != ContentType::CUSTOM &&
         item.first.compare(0, StaticStrings::ContentTypeHeader.size(),
                            StaticStrings::ContentTypeHeader) == 0) {
@@ -203,8 +201,7 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     std::string len = std::to_string(_payload.size());
     builder.add(StaticStrings::ContentLength, VPackValue(len));
   }
-  if (_contentType != ContentType::VPACK &&
-      _contentType != ContentType::CUSTOM) { // fuerte uses VPack as default
+  if (_contentType != ContentType::VPACK && _contentType != ContentType::CUSTOM) {  // fuerte uses VPack as default
     currentHeader = StaticStrings::ContentTypeHeader;
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));

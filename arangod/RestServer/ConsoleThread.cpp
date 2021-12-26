@@ -67,12 +67,14 @@ void ConsoleThread::run() {
                    _server.isEnabled<V8DealerFeature>() &&
                    _server.getFeature<V8DealerFeature>().isEnabled();
   if (!v8Enabled) {
-    LOG_TOPIC("4a00f", FATAL, arangodb::Logger::FIXME) << "V8 engine is not enabled";
+    LOG_TOPIC("4a00f", FATAL, arangodb::Logger::FIXME)
+        << "V8 engine is not enabled";
     FATAL_ERROR_EXIT();
   }
 
   // enter V8 context
-  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
+  JavaScriptSecurityContext securityContext =
+      JavaScriptSecurityContext::createAdminScriptContext();
   V8ContextGuard guard(_vocbase, securityContext);
 
   // work

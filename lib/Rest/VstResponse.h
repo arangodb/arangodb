@@ -29,13 +29,10 @@
 namespace arangodb {
 
 class VstResponse : public GeneralResponse {
-
  public:
   VstResponse(ResponseCode code, uint64_t mid);
 
- bool isResponseEmpty() const override {
-    return _payload.empty();
- }
+  bool isResponseEmpty() const override { return _payload.empty(); }
 
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -44,20 +41,22 @@ class VstResponse : public GeneralResponse {
   void reset(ResponseCode code) override final;
   void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
-  void addPayload(velocypack::Buffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Buffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
   void addRawPayload(velocypack::StringRef payload) override;
- 
+
   velocypack::Buffer<uint8_t>& payload() { return _payload; }
 
   bool isCompressionAllowed() override { return false; }
-  ErrorCode deflate(size_t size = 16384) override { return TRI_ERROR_NO_ERROR; };
+  ErrorCode deflate(size_t size = 16384) override {
+    return TRI_ERROR_NO_ERROR;
+  };
 
   /// write VST response message header
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
-  
+
  private:
-  velocypack::Buffer<uint8_t> _payload; /// actual payload
+  velocypack::Buffer<uint8_t> _payload;  /// actual payload
 };
 }  // namespace arangodb
-

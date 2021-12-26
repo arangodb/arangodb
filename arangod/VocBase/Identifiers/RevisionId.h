@@ -116,4 +116,3 @@ static_assert(sizeof(RevisionId) == sizeof(RevisionId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::RevisionId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::RevisionId)
-

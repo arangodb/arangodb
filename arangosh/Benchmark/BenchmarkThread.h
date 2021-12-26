@@ -62,9 +62,9 @@ class BenchmarkThread : public arangodb::Thread {
   BenchmarkThread(application_features::ApplicationServer& server,
                   BenchmarkOperation* operation, basics::ConditionVariable* condition,
                   void (*callback)(), size_t threadNumber, uint64_t const batchSize,
-                  BenchmarkCounter<uint64_t>* operationsCounter,
-                  ClientFeature& client, bool keepAlive, bool async,
-                  double histogramIntervalSize, uint64_t histogramNumIntervals, bool generateHistogram)
+                  BenchmarkCounter<uint64_t>* operationsCounter, ClientFeature& client,
+                  bool keepAlive, bool async, double histogramIntervalSize,
+                  uint64_t histogramNumIntervals, bool generateHistogram)
       : Thread(server, "BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),

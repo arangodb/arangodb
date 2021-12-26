@@ -385,8 +385,8 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   bool ok = TRI_SetNonBlockingSocket(s);
 
   if (!ok) {
-    LOG_TOPIC("572b6", ERR, arangodb::Logger::FIXME) << "cannot switch to non-blocking: " << errno
-                                            << " (" << strerror(errno) << ")";
+    LOG_TOPIC("572b6", ERR, arangodb::Logger::FIXME)
+        << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
 
     return false;
   }

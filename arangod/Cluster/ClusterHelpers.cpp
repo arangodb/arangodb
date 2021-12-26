@@ -60,7 +60,7 @@ bool ClusterHelpers::compareServerLists(std::vector<std::string> planned,
 bool ClusterHelpers::isCoordinatorName(ServerID const& serverId) {
   return serverId.compare(0, 5, "CRDN-", 5) == 0;
 }
-  
+
 bool ClusterHelpers::isDBServerName(ServerID const& serverId) {
   return serverId.compare(0, 5, "PRMR-", 5) == 0;
 }

@@ -51,4 +51,3 @@ class AcceptorTcp final : public Acceptor {
 };
 }  // namespace rest
 }  // namespace arangodb
-

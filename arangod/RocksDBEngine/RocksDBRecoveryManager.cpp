@@ -90,7 +90,7 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::Application
 
 void RocksDBRecoveryManager::start() {
   TRI_ASSERT(isEnabled());
-  
+
   // synchronizes with acquire inRecovery()
   _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
 
@@ -136,7 +136,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   /// @brief last document removed
   RevisionId _lastRemovedDocRid = RevisionId::none();
 
-  rocksdb::SequenceNumber _startSequence;    /// start of batch sequence nr
+  rocksdb::SequenceNumber _startSequence;     /// start of batch sequence nr
   rocksdb::SequenceNumber& _currentSequence;  /// current sequence nr
   RocksDBEngine& _engine;
   bool _startOfBatch = false;
@@ -169,9 +169,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (_engine.dbExisted()) {
         LOG_TOPIC("a4ec8", INFO, Logger::ENGINES)
             << "RocksDB recovery finished, "
-            << "WAL entries scanned: " << _entriesScanned 
-            << ", max tick found in WAL: " << _maxTick 
-            << ", last HLC value: " << _maxHLC;
+            << "WAL entries scanned: " << _entriesScanned
+            << ", max tick found in WAL: " << _maxTick << ", last HLC value: " << _maxHLC;
       }
 
       // update ticks after parsing wal
@@ -183,7 +182,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
  private:
-
   void storeMaxHLC(uint64_t hlc) {
     if (hlc > _maxHLC) {
       _maxHLC = hlc;
@@ -322,8 +320,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
  public:
-  rocksdb::Status PutCF(uint32_t column_family_id,
-                        const rocksdb::Slice& key,
+  rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
     ++_entriesScanned;
 
@@ -516,30 +513,33 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       helper->LogData(blob, _currentSequence);
     }
   }
-  
+
   rocksdb::Status MarkBeginPrepare(bool = false) override {
     TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument("MarkBeginPrepare() handler not defined.");
+    return rocksdb::Status::InvalidArgument(
+        "MarkBeginPrepare() handler not defined.");
   }
-  
+
   rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
     TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument("MarkEndPrepare() handler not defined.");
+    return rocksdb::Status::InvalidArgument(
+        "MarkEndPrepare() handler not defined.");
   }
-    
+
   rocksdb::Status MarkNoop(bool /*empty_batch*/) override {
     return rocksdb::Status::OK();
   }
-    
+
   rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
     TRI_ASSERT(false);
     return rocksdb::Status::InvalidArgument(
         "MarkRollbackPrepare() handler not defined.");
   }
-    
+
   rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
     TRI_ASSERT(false);
-    return rocksdb::Status::InvalidArgument("MarkCommit() handler not defined.");
+    return rocksdb::Status::InvalidArgument(
+        "MarkCommit() handler not defined.");
   }
 
   // MergeCF is not used
@@ -550,7 +550,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
   Result shutdownRv;
 
   Result res = basics::catchToResult([&, &server = server()]() -> Result {
-    RocksDBEngine& engine = server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
 
     Result rv;
     for (auto& helper : engine.recoveryHelpers()) {
@@ -562,16 +563,18 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     WBReader handler(server, _tick);
     rocksdb::SequenceNumber earliest = engine.settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine.releasedTick());
- 
+
     if (engine.dbExisted()) {
       LOG_TOPIC("fe333", INFO, Logger::ENGINES)
-          << "RocksDB recovery starting, scanning WAL starting from sequence number " << minTick;
+          << "RocksDB recovery starting, scanning WAL starting from sequence "
+             "number "
+          << minTick;
     }
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
-    std::unique_ptr<rocksdb::TransactionLogIterator> iterator; 
+    std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
     rocksdb::Status s =
         _db->GetUpdatesSince(minTick, &iterator,
                              rocksdb::TransactionLogIterator::ReadOptions(true));
@@ -589,7 +592,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
         if (!s.ok()) {
           rv = rocksutils::convertStatus(s);
-          std::string msg = basics::StringUtils::concatT("error during WAL scan: ", rv.errorMessage());
+          std::string msg =
+              basics::StringUtils::concatT("error during WAL scan: ", rv.errorMessage());
           LOG_TOPIC("ee333", ERR, Logger::ENGINES) << msg;
           rv.reset(rv.errorNumber(), std::move(msg));  // update message
           break;

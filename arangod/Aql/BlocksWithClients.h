@@ -194,4 +194,3 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 
 }  // namespace aql
 }  // namespace arangodb
-

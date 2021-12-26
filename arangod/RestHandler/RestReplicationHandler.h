@@ -27,8 +27,8 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -334,18 +334,16 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
     std::shared_ptr<LogicalCollection> collection;
     std::unique_ptr<ReplicationIterator> iter;
   };
-  
+
   bool prepareRevisionOperation(RevisionOperationContext&);
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
 
   Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force,
                                   bool ignoreDistributeShardsLikeErrors);
-
 
   /// @brief helper function for processRestoreCoordinatorAnalyzersBatch() and
   /// processRestoreUsersBatch().
@@ -370,7 +368,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName, bool generateNewRevisionIds);
+  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName,
+                                 bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -394,8 +393,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief parse an input batch
   //////////////////////////////////////////////////////////////////////////////
 
-  Result parseBatch(transaction::Methods& trx,
-                    std::string const& collectionName,
+  Result parseBatch(transaction::Methods& trx, std::string const& collectionName,
                     VPackBuilder& documentToInsert,
                     std::unordered_set<std::string>& documentsToRemove,
                     bool generateNewRevisionIds);
@@ -507,11 +505,11 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void handleCommandDump() = 0;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the revision tree for a given collection, if available
   //////////////////////////////////////////////////////////////////////////////
-  
+
   virtual void handleCommandRevisionTree() = 0;
 
  private:

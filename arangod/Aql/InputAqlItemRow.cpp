@@ -227,7 +227,8 @@ bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   // so the same as shadowRowIndexes.upper_bound(_baseIndex)
   TRI_ASSERT(offsetBegin == offsetEnd || _baseIndex < *offsetBegin);
   size_t const numShadowRowsBeforeCurrentRow = std::distance(shadowRowsBegin, offsetBegin);
-  TRI_ASSERT(numShadowRowsBeforeCurrentRow <= static_cast<size_t>(std::distance(shadowRowsBegin, shadowRowsEnd)));
+  TRI_ASSERT(numShadowRowsBeforeCurrentRow <=
+             static_cast<size_t>(std::distance(shadowRowsBegin, shadowRowsEnd)));
 
   return numShadowRowsBeforeCurrentRow == _baseIndex;
 }

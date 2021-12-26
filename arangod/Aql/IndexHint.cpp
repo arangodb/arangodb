@@ -61,11 +61,9 @@ arangodb::aql::IndexHint::HintType fromTypeName(std::string const& typeName) {
 namespace arangodb {
 namespace aql {
 
-IndexHint::IndexHint() 
-    : _type{HintType::None}, _forced{false} {}
+IndexHint::IndexHint() : _type{HintType::None}, _forced{false} {}
 
-IndexHint::IndexHint(QueryContext& query, AstNode const* node)
-    : IndexHint() {
+IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
   if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -84,7 +82,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node)
             _type = HintType::Simple;
             _hint.simple.emplace_back(value->getStringValue(), value->getStringLength());
             handled = true;
-          } else  if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
+          } else if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
             _type = HintType::Simple;
             for (size_t j = 0; j < value->numMembers(); j++) {
               AstNode const* member = value->getMember(j);
@@ -115,16 +113,14 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node)
   }
 }
 
-IndexHint::IndexHint(VPackSlice const& slice)
-    : IndexHint() {
-      
+IndexHint::IndexHint(VPackSlice const& slice) : IndexHint() {
   // read index hint from slice
   // index hints were introduced in version 3.5. in previous versions they
   // are not available, so we need to be careful when reading them
   VPackSlice s = slice.get(::FieldContainer);
   if (s.isObject()) {
     _type = ::fromTypeName(
-          basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
+        basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
     _forced = basics::VelocyPackHelper::getBooleanValue(s, ::FieldForced, false);
   }
 

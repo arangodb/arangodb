@@ -40,21 +40,13 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   char const* name() const override final { return "RestCollectionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override final;
-  
+
   void shutdownExecute(bool isFinalized) noexcept override final;
 
  protected:
-  enum class FiguresType {
-    None = 0,
-    Standard = 1,
-    Detailed = 2
-  };
+  enum class FiguresType { None = 0, Standard = 1, Detailed = 2 };
 
-  enum class CountType {
-    None = 0,
-    Standard = 1,
-    Detailed = 2
-  };
+  enum class CountType { None = 0, Standard = 1, Detailed = 2 };
 
   void collectionRepresentation(std::string const& name, bool showProperties,
                                 FiguresType showFigures, CountType showCount);
@@ -69,7 +61,8 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
       methods::Collections::Context& ctxt, bool showProperties,
       FiguresType showFigures, CountType showCount);
 
-  virtual Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll, std::string const& command,
+  virtual Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
+                                       std::string const& command,
                                        velocypack::Builder& builder) = 0;
 
  private:
@@ -89,4 +82,3 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
 };
 
 }  // namespace arangodb
-

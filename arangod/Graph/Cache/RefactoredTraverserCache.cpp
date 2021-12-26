@@ -261,7 +261,7 @@ arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(
     return *it;
   }
   auto res = _stringHeap.registerString(idString);
- 
+
   ResourceUsageScope guard(_resourceMonitor, sizeof(res));
   _persistedStrings.emplace(res);
 

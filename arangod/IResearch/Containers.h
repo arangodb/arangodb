@@ -29,9 +29,9 @@
 #include <unordered_map>
 
 #include "Basics/Common.h"
-#include "Basics/debugging.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 
 #include "utils/hash_utils.hpp"
 #include "utils/map_utils.hpp"
@@ -52,7 +52,7 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-mutex for a resource
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T>
+template <typename T>
 class AsyncValue {
  public:
   class Value {
@@ -66,41 +66,34 @@ class AsyncValue {
     T* operator->() noexcept { return get(); }
     const T* operator->() const noexcept { return get(); }
 
-    explicit operator bool() const noexcept {
-      return nullptr != get();
-    }
+    explicit operator bool() const noexcept { return nullptr != get(); }
 
-    bool ownsLock() const noexcept {
-      return _lock.owns_lock();
-    }
+    bool ownsLock() const noexcept { return _lock.owns_lock(); }
 
    private:
     friend class AsyncValue<T>;
 
     Value(std::shared_lock<std::shared_mutex>&& lock, T* resource)
-      : _lock{std::move(lock)}, _resource{resource} {
-    }
+        : _lock{std::move(lock)}, _resource{resource} {}
 
     std::shared_lock<std::shared_mutex> _lock;
     T* _resource{};
   };
 
-  explicit AsyncValue(T* resource) noexcept
-    : _resource{resource} {
-  }
+  explicit AsyncValue(T* resource) noexcept : _resource{resource} {}
 
   ~AsyncValue() { reset(); }
 
   auto lock() const {
     auto lock = irs::make_shared_lock(_mutex);
-    return Value{ std::move(lock), _resource };
+    return Value{std::move(lock), _resource};
   }
 
   auto try_lock() const {
     auto lock = irs::make_shared_lock(_mutex, std::try_to_lock);
 
     if (lock.owns_lock()) {
-      return Value{ std::move(lock), _resource };
+      return Value{std::move(lock), _resource};
     }
 
     return Value{};
@@ -118,7 +111,7 @@ class AsyncValue {
   }
 
  private:
-  mutable std::shared_mutex _mutex; // read-lock to prevent '_resource' reset()
+  mutable std::shared_mutex _mutex;  // read-lock to prevent '_resource' reset()
   T* _resource;
 };
 
@@ -414,4 +407,3 @@ class UnorderedRefKeyMap : public UnorderedRefKeyMapBase<CharType, V>,
 
 }  // namespace iresearch
 }  // namespace arangodb
-

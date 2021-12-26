@@ -43,7 +43,7 @@ class LimitStats {
   void incrFullCountBy(size_t amount) noexcept;
 
   [[nodiscard]] auto getFullCount() const noexcept -> std::size_t;
-  
+
   auto operator+=(LimitStats const& other) noexcept -> void {
     incrFullCountBy(other.getFullCount());
   }
@@ -59,4 +59,3 @@ auto operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) no
 auto operator==(LimitStats const&, LimitStats const&) noexcept -> bool;
 
 }  // namespace arangodb::aql
-

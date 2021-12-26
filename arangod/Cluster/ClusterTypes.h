@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include <limits>
-#include <string>
 #include <iosfwd>
+#include <limits>
 #include <memory>
+#include <string>
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
@@ -72,7 +72,7 @@ class RebootId {
   [[nodiscard]] static constexpr RebootId max() noexcept {
     return RebootId{std::numeric_limits<decltype(_value)>::max()};
   }
-  
+
   std::ostream& print(std::ostream& o) const;
 
  private:
@@ -82,35 +82,26 @@ class RebootId {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 struct AnalyzersRevision {
  public:
   using Revision = uint64_t;
   using Ptr = std::shared_ptr<AnalyzersRevision const>;
 
-
   static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
   static constexpr Revision MIN = 0;
-  
+
   AnalyzersRevision(AnalyzersRevision const&) = delete;
   AnalyzersRevision& operator=(AnalyzersRevision const&) = delete;
 
-  Revision getRevision() const noexcept {
-    return _revision;
-  }
+  Revision getRevision() const noexcept { return _revision; }
 
-  Revision getBuildingRevision() const noexcept {
-    return _buildingRevision;
-  }
+  Revision getBuildingRevision() const noexcept { return _buildingRevision; }
 
-  ServerID const& getServerID() const noexcept {
-    return _serverID;
-  }
+  ServerID const& getServerID() const noexcept { return _serverID; }
 
-  RebootId const& getRebootID() const noexcept {
-    return _rebootID;
-  }
+  RebootId const& getRebootID() const noexcept { return _rebootID; }
 
   void toVelocyPack(VPackBuilder& builder) const;
 
@@ -120,9 +111,11 @@ struct AnalyzersRevision {
 
  private:
   AnalyzersRevision(Revision revision, Revision buildingRevision,
-    ServerID&& serverID, uint64_t rebootID) noexcept
-    : _revision(revision), _buildingRevision(buildingRevision),
-    _serverID(std::move(serverID)), _rebootID(rebootID) {}
+                    ServerID&& serverID, uint64_t rebootID) noexcept
+      : _revision(revision),
+        _buildingRevision(buildingRevision),
+        _serverID(std::move(serverID)),
+        _rebootID(rebootID) {}
 
   Revision _revision;
   Revision _buildingRevision;
@@ -136,9 +129,9 @@ struct AnalyzersRevision {
 /// If at some point we will decide to allow cross-database anayzer usage this could
 /// became more complicated. But for now  we keep it simple - store just two members
 struct QueryAnalyzerRevisions {
-  constexpr QueryAnalyzerRevisions(AnalyzersRevision::Revision current, 
+  constexpr QueryAnalyzerRevisions(AnalyzersRevision::Revision current,
                                    AnalyzersRevision::Revision system)
-    : currentDbRevision(current), systemDbRevision(system) {}
+      : currentDbRevision(current), systemDbRevision(system) {}
 
   QueryAnalyzerRevisions() = default;
   QueryAnalyzerRevisions(QueryAnalyzerRevisions const&) = default;
@@ -149,12 +142,12 @@ struct QueryAnalyzerRevisions {
 
   bool isDefault() const noexcept {
     return currentDbRevision == AnalyzersRevision::MIN &&
-      systemDbRevision == AnalyzersRevision::MIN;
+           systemDbRevision == AnalyzersRevision::MIN;
   }
 
   bool operator==(QueryAnalyzerRevisions const& other) const noexcept {
     return currentDbRevision == other.currentDbRevision &&
-      systemDbRevision == other.systemDbRevision;
+           systemDbRevision == other.systemDbRevision;
   }
 
   std::ostream& print(std::ostream& o) const;
@@ -171,14 +164,14 @@ struct QueryAnalyzerRevisions {
   static QueryAnalyzerRevisions QUERY_LATEST;
 
  private:
-  AnalyzersRevision::Revision currentDbRevision{ AnalyzersRevision::MIN};
-  AnalyzersRevision::Revision systemDbRevision{ AnalyzersRevision::MIN};
+  AnalyzersRevision::Revision currentDbRevision{AnalyzersRevision::MIN};
+  AnalyzersRevision::Revision systemDbRevision{AnalyzersRevision::MIN};
 };
 
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
 std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r);
 
-template<>
+template <>
 struct velocypack::Extractor<arangodb::RebootId> {
   static auto extract(velocypack::Slice slice) -> RebootId {
     return RebootId{slice.getNumericValue<std::size_t>()};
@@ -186,4 +179,3 @@ struct velocypack::Extractor<arangodb::RebootId> {
 };
 
 }  // namespace arangodb
-

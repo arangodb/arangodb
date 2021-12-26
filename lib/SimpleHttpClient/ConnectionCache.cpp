@@ -33,28 +33,25 @@
 
 namespace arangodb {
 namespace httpclient {
-  
-ConnectionLease::ConnectionLease() 
-    : _cache(nullptr), 
-      _preventRecycling(false) {}
 
-ConnectionLease::ConnectionLease(ConnectionCache* cache, 
+ConnectionLease::ConnectionLease()
+    : _cache(nullptr), _preventRecycling(false) {}
+
+ConnectionLease::ConnectionLease(ConnectionCache* cache,
                                  std::unique_ptr<GeneralClientConnection> connection)
-    : _cache(cache),
-      _connection(std::move(connection)),
-      _preventRecycling(false) {}
+    : _cache(cache), _connection(std::move(connection)), _preventRecycling(false) {}
 
 ConnectionLease::~ConnectionLease() {
   if (_cache != nullptr && _connection != nullptr && !_preventRecycling) {
     _cache->release(std::move(_connection));
   }
 }
-  
+
 ConnectionLease::ConnectionLease(ConnectionLease&& other) noexcept
     : _cache(other._cache),
       _connection(std::move(other._connection)),
       _preventRecycling(other._preventRecycling) {}
-  
+
 ConnectionLease& ConnectionLease::operator=(ConnectionLease&& other) noexcept {
   if (this != &other) {
     _cache = other._cache;
@@ -63,7 +60,7 @@ ConnectionLease& ConnectionLease::operator=(ConnectionLease&& other) noexcept {
   }
   return *this;
 }
-  
+
 void ConnectionLease::preventRecycling() noexcept {
   // this will prevent the connection from being inserted back into the connection cache
   _preventRecycling = true;
@@ -71,27 +68,22 @@ void ConnectionLease::preventRecycling() noexcept {
 
 ConnectionCache::ConnectionCache(arangodb::application_features::ApplicationServer& server,
                                  Options const& options)
-    : _server(server),
-      _options(options),
-      _connectionsCreated(0), 
-      _connectionsRecycled(0) {}
+    : _server(server), _options(options), _connectionsCreated(0), _connectionsRecycled(0) {}
 
 ConnectionCache::~ConnectionCache() = default;
 
-ConnectionLease ConnectionCache::acquire(std::string endpoint, 
-                                         double connectTimeout,
-                                         double requestTimeout,
-                                         size_t connectRetries,
+ConnectionLease ConnectionCache::acquire(std::string endpoint, double connectTimeout,
+                                         double requestTimeout, size_t connectRetries,
                                          uint64_t sslProtocol) {
   TRI_ASSERT(!endpoint.empty());
 
   // we must unify the endpoint here, because when we return the connection, we
   // will only have the unified form available
   endpoint = Endpoint::unifiedForm(endpoint);
-        
-  LOG_TOPIC("c869a", TRACE, Logger::REPLICATION) 
+
+  LOG_TOPIC("c869a", TRACE, Logger::REPLICATION)
       << "trying to find connection for endpoint " << endpoint << " in connections cache";
-  
+
   std::unique_ptr<GeneralClientConnection> connection;
   uint64_t metric;
 
@@ -102,14 +94,15 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
     if (it != _connections.end()) {
       auto& connectionsForEndpoint = (*it).second;
 
-      for (auto it = connectionsForEndpoint.rbegin(); it != connectionsForEndpoint.rend(); ++it) {
+      for (auto it = connectionsForEndpoint.rbegin();
+           it != connectionsForEndpoint.rend(); ++it) {
         auto& candidate = (*it);
         if (candidate->getEndpoint()->encryption() != Endpoint::EncryptionType::NONE &&
             static_cast<SslClientConnection*>(candidate.get())->sslProtocol() != sslProtocol) {
           // different SSL protocol
           continue;
         }
-       
+
         TRI_ASSERT(candidate->getEndpoint()->specification() == endpoint);
 
         // found a suitable candidate
@@ -131,34 +124,40 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
       metric = ++_connectionsRecycled;
     }
   }
-    
+
   // continue without the mutex
-  
+
   if (connection == nullptr) {
-    LOG_TOPIC("fd913", TRACE, Logger::REPLICATION) 
-        << "did not find connection for endpoint " << endpoint << " in connections cache. creating new connection... created connections: " << metric;
+    LOG_TOPIC("fd913", TRACE, Logger::REPLICATION)
+        << "did not find connection for endpoint "
+        << endpoint << " in connections cache. creating new connection... created connections: "
+        << metric;
     std::unique_ptr<Endpoint> ep(arangodb::Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("unable to create endpoint '") + endpoint + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          std::string("unable to create endpoint '") + endpoint + "'");
     }
- 
+
     // the unique_ptr ep is modified by the factory function and takes over ownership here
-    connection.reset(GeneralClientConnection::factory(
-        _server, ep, requestTimeout, connectTimeout, connectRetries, sslProtocol));
+    connection.reset(GeneralClientConnection::factory(_server, ep, requestTimeout, connectTimeout,
+                                                      connectRetries, sslProtocol));
 
     TRI_ASSERT(connection != nullptr);
   } else {
     connection->repurpose(connectTimeout, requestTimeout, connectRetries);
 
-    LOG_TOPIC("b8955", TRACE, Logger::REPLICATION) 
-        << "found connection for endpoint " << endpoint << " in connections cache. recycled connections: " << metric;
+    LOG_TOPIC("b8955", TRACE, Logger::REPLICATION)
+        << "found connection for endpoint " << endpoint
+        << " in connections cache. recycled connections: " << metric;
   }
 
   return {this, std::move(connection)};
 }
 
-void ConnectionCache::release(std::unique_ptr<GeneralClientConnection> connection, bool force) try {
+void ConnectionCache::release(std::unique_ptr<GeneralClientConnection> connection,
+                              bool force) try {
   if (connection == nullptr) {
     // nothing to do
     return;
@@ -168,8 +167,9 @@ void ConnectionCache::release(std::unique_ptr<GeneralClientConnection> connectio
     std::string endpoint = connection->getEndpoint()->specification();
     TRI_ASSERT(!endpoint.empty());
 
-    LOG_TOPIC("8e253", TRACE, Logger::REPLICATION) 
-        << "putting connection for endpoint " << endpoint << " back into connections cache";
+    LOG_TOPIC("8e253", TRACE, Logger::REPLICATION)
+        << "putting connection for endpoint " << endpoint
+        << " back into connections cache";
 
     MUTEX_LOCKER(locker, _lock);
 

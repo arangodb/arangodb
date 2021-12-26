@@ -148,8 +148,9 @@ class SharedExecutionBlockImplTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   ExecutionNode* generateNodeDummy() {
-    auto dummy = std::make_unique<SingletonNode>(
-      const_cast<ExecutionPlan*>(fakedQuery->plan()), ExecutionNodeId{_execNodes.size()});
+    auto dummy =
+        std::make_unique<SingletonNode>(const_cast<ExecutionPlan*>(fakedQuery->plan()),
+                                        ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -477,8 +478,8 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     };
 
     std::unique_ptr<ExecutionBlock> res = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(inReg, outReg),
-        makeSkipExecutorInfos(prodCall, skipCall));
+        fakedQuery->rootEngine(), generateNodeDummy(),
+        makeRegisterInfos(inReg, outReg), makeSkipExecutorInfos(prodCall, skipCall));
     res->addDependency(dependency);
     return res;
   }
@@ -1355,7 +1356,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
+        fakedQuery->rootEngine(), generateNodeDummy(),
+        makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeExecutorInfos(std::move(forwardData)));
     producer->addDependency(dependency);
     return producer;
@@ -1415,7 +1417,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
+        fakedQuery->rootEngine(), generateNodeDummy(),
+        makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeSkipExecutorInfos(std::move(forwardData), std::move(skipData)));
     producer->addDependency(dependency);
     return producer;
@@ -1545,8 +1548,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_waiting_block_mock) {
     blockDeque.push_back(std::move(block));
   }
 
-  WaitingExecutionBlockMock testee{fakedQuery->rootEngine(), generateNodeDummy(),
-                                   std::move(blockDeque),
+  WaitingExecutionBlockMock testee{fakedQuery->rootEngine(),
+                                   generateNodeDummy(), std::move(blockDeque),
                                    doesWaiting()
                                        ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                                        : WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
@@ -1791,7 +1794,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   };
 
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg.value(), outReg.value()),
+      fakedQuery->rootEngine(), generateNodeDummy(),
+      makeRegisterInfos(outReg.value(), outReg.value()),
       makeSkipExecutorInfos(std::move(forwardCall), std::move(forwardSkipCall)));
   lower->addDependency(upper.get());
 

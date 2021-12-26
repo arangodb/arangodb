@@ -382,4 +382,3 @@ class RepairOperationToVPackVisitor {
 };
 }  // namespace cluster_repairs
 }  // namespace arangodb
-

@@ -89,7 +89,9 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
  public:
   bool allowAdminExecute() const { return _allowAdminExecute; }
-  bool allowJavaScriptTransactions() const { return _allowJavaScriptTransactions; }
+  bool allowJavaScriptTransactions() const {
+    return _allowJavaScriptTransactions;
+  }
   bool allowJavaScriptTasks() const { return _allowJavaScriptTasks; }
 
   bool addGlobalContextMethod(std::string const&);
@@ -200,7 +202,8 @@ class V8ContextGuard {
 // in case the passed in isolate is a nullptr
 class V8ConditionalContextGuard {
  public:
-  explicit V8ConditionalContextGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  explicit V8ConditionalContextGuard(Result&, v8::Isolate*&, TRI_vocbase_t*,
+                                     JavaScriptSecurityContext const&);
   V8ConditionalContextGuard(V8ConditionalContextGuard const&) = delete;
   V8ConditionalContextGuard& operator=(V8ConditionalContextGuard const&) = delete;
   ~V8ConditionalContextGuard();
@@ -213,4 +216,3 @@ class V8ConditionalContextGuard {
 };
 
 }  // namespace arangodb
-

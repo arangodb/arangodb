@@ -35,8 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlCallStack::AqlCallStack(AqlCallList call)
-    : _operations{{std::move(call)}} {}
+AqlCallStack::AqlCallStack(AqlCallList call) : _operations{{std::move(call)}} {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
     : _operations{other._operations} {
@@ -154,17 +153,19 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
 }
 
 auto AqlCallStack::needToCountSubquery() const noexcept -> bool {
-  return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
-    auto const& nextCall = call.peekNextCall();
-    return nextCall.needSkipMore() || nextCall.hasLimit();
-  });
+  return std::any_of(_operations.begin(), _operations.end(),
+                     [](AqlCallList const& call) -> bool {
+                       auto const& nextCall = call.peekNextCall();
+                       return nextCall.needSkipMore() || nextCall.hasLimit();
+                     });
 }
 
 auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
-  return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
-    auto const& nextCall = call.peekNextCall();
-    return nextCall.needSkipMore() || nextCall.hardLimit == 0;
-  });
+  return std::any_of(_operations.begin(), _operations.end(),
+                     [](AqlCallList const& call) -> bool {
+                       auto const& nextCall = call.peekNextCall();
+                       return nextCall.needSkipMore() || nextCall.hardLimit == 0;
+                     });
 }
 
 auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
@@ -173,7 +174,7 @@ auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   for (size_t i = 0; i < n; ++i) {
     auto& call = _operations[i];
     auto const& nextCall = call.peekNextCall();
-     if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
+    if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
       return n - i - 1;
     }
   }
@@ -213,7 +214,8 @@ auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
     }
     auto const& nextCall = list.peekNextCall();
     // We cannot continue if any of our calls has a softLimit reached.
-    return !(nextCall.hasSoftLimit() && nextCall.getLimit() == 0 && nextCall.getOffset() == 0);
+    return !(nextCall.hasSoftLimit() && nextCall.getLimit() == 0 &&
+             nextCall.getOffset() == 0);
   });
 }
 

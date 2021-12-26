@@ -279,9 +279,8 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
       // try to find duplicate condition parts, and only return each
       // unique condition part once
       try {
-        std::string conditionString =
-            conditionData->first->toString() + " - " +
-            std::to_string(conditionData->second->id().id());
+        std::string conditionString = conditionData->first->toString() + " - " +
+                                      std::to_string(conditionData->second->id().id());
         isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
         // we already saw the same combination of index & condition
         // don't add it again
@@ -299,7 +298,6 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
 
   return true;
 }
-
 
 std::pair<bool, bool> findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> const& indexes,
@@ -382,7 +380,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     } else {
       sortCost = 0.0;
     }
-      
+
     double totalCost = filterCost + sortCost;
 
     // the more attributes an index contains, the more useful it will be for projections.
@@ -391,21 +389,17 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
     LOG_TOPIC("7278d", TRACE, Logger::FIXME)
         << "looked at candidate index: " << idx.get()
-        << ", isSorted: " << idx->isSorted()
-        << ", isSparse: " << idx->sparse()
+        << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse()
         << ", fields: " << idx->fields().size()
-        << ", hasSelectivityEstimate: " << idx->hasSelectivityEstimate()
-        << ", selectivityEstimate: " << (idx->hasSelectivityEstimate() ? std::to_string(idx->selectivityEstimate()) : "n/a")
-        << ", supportsFilter: " << supportsFilter
-        << ", supportsSort: " << supportsSort
+        << ", hasSelectivityEstimate: " << idx->hasSelectivityEstimate() << ", selectivityEstimate: "
+        << (idx->hasSelectivityEstimate() ? std::to_string(idx->selectivityEstimate()) : "n/a")
+        << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort
         << ", projectionsFactor: " << projectionsFactor
         << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess
         << ", isUnidirectional: " << sortCondition.isUnidirectional()
         << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch()
-        << ", itemsInIndex/estimatedItems: " << itemsInIndex
-        << ", filterCost: " << filterCost
-        << ", sortCost: " << sortCost
-        << ", totalCost: " << totalCost;
+        << ", itemsInIndex/estimatedItems: " << itemsInIndex << ", filterCost: " << filterCost
+        << ", sortCost: " << sortCost << ", totalCost: " << totalCost;
 
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
@@ -458,7 +452,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       << ", isSorted: " << bestIndex->isSorted()
       << ", isSparse: " << bestIndex->sparse()
       << ", fields: " << bestIndex->fields().size();
-  
+
   // intentionally commented out here. can be enabled during development
   // LOG_TOPIC("4b655", TRACE, Logger::FIXME) << "- picked: " << bestIndex.get();
 
@@ -574,7 +568,6 @@ void extractNonConstPartsOfAndPart(Ast* ast,
                                    AstNode const* andNode, Variable const* indexVariable,
                                    std::vector<size_t> selectedMembersFromRoot,
                                    NonConstExpressionContainer& result) {
-
   // in case of a geo spatial index a might take the form
   // of a GEO_* function. We might need to evaluate fcall arguments
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
@@ -585,7 +578,8 @@ void extractNonConstPartsOfAndPart(Ast* ast,
 
     // FCALL at this level is most likely a geo index
     if (leaf->type == NODE_TYPE_FCALL) {
-      captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path), indexVariable, result);
+      captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path),
+                                      indexVariable, result);
       continue;
     } else if (leaf->numMembers() != 2) {
       // The Index cannot solve non-binary operators.
@@ -614,7 +608,8 @@ void extractNonConstPartsOfAndPart(Ast* ast,
 
       if (lhs->type == NODE_TYPE_FCALL && !evaluateFCalls) {
         // most likely a geo index condition
-        captureFCallArgumentExpressions(ast, varInfo, lhs, std::move(path), indexVariable, result);
+        captureFCallArgumentExpressions(ast, varInfo, lhs, std::move(path),
+                                        indexVariable, result);
       } else if (!lhs->isConstant()) {
         captureNonConstExpression(ast, varInfo, lhs, std::move(path), result);
       }
@@ -622,7 +617,7 @@ void extractNonConstPartsOfAndPart(Ast* ast,
   }
 }
 
-} // namespace
+}  // namespace
 
 /// @brief Gets the best fitting index for one specific condition.
 ///        Difference to IndexHandles: Condition is only one NARY_AND
@@ -656,9 +651,9 @@ bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
   arangodb::aql::AstNode* specializedCondition;  // unused
   bool isSparse;                                 // unused
   std::vector<std::shared_ptr<Index>> usedIndexes;
-  if (findIndexHandleForAndNode(indexes, node,
-                                reference, sortCondition, itemsInCollection,
-                                hint, usedIndexes, specializedCondition, isSparse, true /*failOnForcedHint*/)
+  if (findIndexHandleForAndNode(indexes, node, reference, sortCondition,
+                                itemsInCollection, hint, usedIndexes,
+                                specializedCondition, isSparse, true /*failOnForcedHint*/)
           .first) {
     TRI_ASSERT(!usedIndexes.empty());
     usedIndex = usedIndexes[0];
@@ -674,7 +669,8 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     aql::Collection const& coll, arangodb::aql::Ast* ast,
     arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
-    aql::IndexHint const& hint, std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted) {
+    aql::IndexHint const& hint,
+    std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted) {
   // We can only start after DNF transformation
   TRI_ASSERT(root->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
   auto indexes = coll.indexes();
@@ -690,15 +686,16 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 
   size_t const n = root->numMembers();
   for (size_t i = 0; i < n; ++i) {
-    // BTS-398: if there are multiple OR-ed conditions, fail only for forced index
-    // hints if no index can be found for _any_ condition part.
+    // BTS-398: if there are multiple OR-ed conditions, fail only for forced
+    // index hints if no index can be found for _any_ condition part.
     auto node = root->getMemberUnchecked(i);
     arangodb::aql::AstNode* specializedCondition = nullptr;
-    
+
     bool failOnForcedHint = (hint.isForced() && i + 1 == n && usedIndexes.empty());
-    auto canUseIndex = findIndexHandleForAndNode(indexes, node, reference, *sortCondition,
-                                                 itemsInCollection, hint, usedIndexes,
-                                                 specializedCondition, isSparse, failOnForcedHint);
+    auto canUseIndex =
+        findIndexHandleForAndNode(indexes, node, reference, *sortCondition,
+                                  itemsInCollection, hint, usedIndexes,
+                                  specializedCondition, isSparse, failOnForcedHint);
 
     if (canUseIndex.second && !canUseIndex.first) {
       // index can be used for sorting only
@@ -738,11 +735,12 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-bool getIndexForSortCondition(
-    aql::Collection const& coll, arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    aql::IndexHint const& hint, std::vector<std::shared_ptr<Index>>& usedIndexes,
-    size_t& coveredAttributes) {
+bool getIndexForSortCondition(aql::Collection const& coll,
+                              arangodb::aql::SortCondition const* sortCondition,
+                              arangodb::aql::Variable const* reference,
+                              size_t itemsInIndex, aql::IndexHint const& hint,
+                              std::vector<std::shared_ptr<Index>>& usedIndexes,
+                              size_t& coveredAttributes) {
   // We do not have a condition. But we have a sort!
   if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
       sortCondition->isUnidirectional()) {
@@ -815,7 +813,8 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
     bool sorted, AstNode const* condition, Variable const* indexVariable) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
   TRI_ASSERT(condition != nullptr);
-  TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_AND || condition->type == NODE_TYPE_OPERATOR_NARY_OR);
+  TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_AND ||
+             condition->type == NODE_TYPE_OPERATOR_NARY_OR);
   TRI_ASSERT(indexVariable != nullptr);
 
   NonConstExpressionContainer result;
@@ -823,12 +822,13 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
   if (condition->type == NODE_TYPE_OPERATOR_NARY_OR) {
     for (size_t i = 0; i < condition->numMembers(); ++i) {
       auto andNode = condition->getMemberUnchecked(i);
-      extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted, andNode, indexVariable, {i}, result);
+      extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,
+                                    andNode, indexVariable, {i}, result);
     }
   } else {
-    extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted, condition, indexVariable, {}, result);
+    extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,
+                                  condition, indexVariable, {}, result);
   }
-
 
   return result;
 }

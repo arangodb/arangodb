@@ -42,8 +42,7 @@ class CollectionGuard {
   CollectionGuard& operator=(CollectionGuard const&) = delete;
 
   CollectionGuard(CollectionGuard&& other)
-      : _vocbase(other._vocbase),
-        _collection(std::move(other._collection)) {
+      : _vocbase(other._vocbase), _collection(std::move(other._collection)) {
     other._collection.reset();
     other._vocbase = nullptr;
   }
@@ -55,11 +54,10 @@ class CollectionGuard {
     // useCollection will throw if the collection does not exist
     TRI_ASSERT(_collection != nullptr);
   }
-  
+
   /// @brief create the guard, using a collection name
-  CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name) 
-      : _vocbase(vocbase),
-        _collection(nullptr) {
+  CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name)
+      : _vocbase(vocbase), _collection(nullptr) {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
       DataSourceId id{
           NumberUtils::atoi_zero<DataSourceId::BaseType>(name.data(),
@@ -71,7 +69,7 @@ class CollectionGuard {
     // useCollection will throw if the collection does not exist
     TRI_ASSERT(_collection != nullptr);
   }
-  
+
   /// @brief destroy the guard
   ~CollectionGuard() {
     if (_collection != nullptr) {
@@ -81,9 +79,7 @@ class CollectionGuard {
 
  public:
   /// @brief return the collection pointer
-  arangodb::LogicalCollection* collection() const {
-    return _collection.get();
-  }
+  arangodb::LogicalCollection* collection() const { return _collection.get(); }
 
  private:
   /// @brief pointer to vocbase
@@ -93,4 +89,3 @@ class CollectionGuard {
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 };
 }  // namespace arangodb
-

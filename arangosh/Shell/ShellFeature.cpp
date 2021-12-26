@@ -156,7 +156,8 @@ void ShellFeature::start() {
         break;
 
       case RunMode::CHECK_SYNTAX:
-        ok = shell.runScript(_checkSyntaxFiles, _positionals, false, _scriptParameters, _runMain);
+        ok = shell.runScript(_checkSyntaxFiles, _positionals, false,
+                             _scriptParameters, _runMain);
         break;
 
       case RunMode::UNIT_TESTS:
@@ -168,10 +169,12 @@ void ShellFeature::start() {
         break;
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("98f7d", ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
+    LOG_TOPIC("98f7d", ERR, arangodb::Logger::FIXME)
+        << "caught exception: " << ex.what();
     ok = false;
   } catch (...) {
-    LOG_TOPIC("4a477", ERR, arangodb::Logger::FIXME) << "caught unknown exception";
+    LOG_TOPIC("4a477", ERR, arangodb::Logger::FIXME)
+        << "caught unknown exception";
     ok = false;
   }
 

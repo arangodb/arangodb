@@ -75,8 +75,7 @@ RestStatus RestShutdownHandler::execute() {
 
   if (_request->requestType() == rest::RequestType::GET) {
     if (!ServerState::instance()->isCoordinator()) {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-          TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
     }
     VPackBuilder builder;

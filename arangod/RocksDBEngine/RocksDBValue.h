@@ -46,7 +46,7 @@ class LogId;
 struct LogIndex;
 struct LogTerm;
 struct LogPayload;
-}
+}  // namespace replication2
 
 class RocksDBValue {
  public:
@@ -177,4 +177,3 @@ class RocksDBValue {
 };
 
 }  // namespace arangodb
-

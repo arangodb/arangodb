@@ -126,13 +126,12 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, ServerId client
   WRITE_LOCKER(writeLocker, _lock);
 
   // insert new client entry
-  auto const [it, inserted] = _clients.try_emplace(
-    key,
-    arangodb::lazyConstruct([&]{
-      return ReplicationClientProgress(timestamp, expires, lastServedTick,
-                                                  syncerId, clientId, clientInfo);
-    })
-  );
+  auto const [it, inserted] =
+      _clients.try_emplace(key, arangodb::lazyConstruct([&] {
+                             return ReplicationClientProgress(timestamp, expires,
+                                                              lastServedTick, syncerId,
+                                                              clientId, clientInfo);
+                           }));
   auto const syncer = syncerId.toString();
 
   if (inserted) {
@@ -148,11 +147,11 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, ServerId client
   if (lastServedTick > 0) {
     it->second.lastServedTick = lastServedTick;
     LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
-          << "updating replication client entry for " << SyncerInfo{it->second}
+        << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl << ", last tick: " << lastServedTick;
   } else {
     LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
-          << "updating replication client entry for " << SyncerInfo{it->second}
+        << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl;
   }
 }
@@ -220,11 +219,10 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
 
       LOG_TOPIC("81d72", TRACE, Logger::REPLICATION)
           << "replication progress tracker entry: "
-          << "server: " << value.clientId.id() 
-          << ", syncer: " << value.syncerId.toString() 
-          << ", lastServed: " << value.lastServedTick 
-          << ", lastSeen: " << value.lastSeenStamp 
-          << ", expire: " << value.expireStamp;
+          << "server: " << value.clientId.id()
+          << ", syncer: " << value.syncerId.toString()
+          << ", lastServed: " << value.lastServedTick
+          << ", lastSeen: " << value.lastSeenStamp << ", expire: " << value.expireStamp;
     }
   }
 #endif

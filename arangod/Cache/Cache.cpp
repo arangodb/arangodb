@@ -201,7 +201,7 @@ Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
   }
 
   status = cache.insert(cv.get());
-  while (status.fail() && retry(status)){
+  while (status.fail() && retry(status)) {
     basics::cpu_relax();
     status = cache.insert(cv.get());
   }
@@ -307,7 +307,9 @@ void Cache::recordStat(Stat stat) {
       _manager->reportHitStat(Stat::findMiss);
       break;
     }
-    default: { break; }
+    default: {
+      break;
+    }
   }
 }
 
@@ -374,7 +376,8 @@ void Cache::shutdown() {
       _metadata.changeTable(0);
     }
     _manager->unregisterCache(_id);
-    std::atomic_store_explicit(&_table, std::shared_ptr<cache::Table>(), std::memory_order_release);
+    std::atomic_store_explicit(&_table, std::shared_ptr<cache::Table>(),
+                               std::memory_order_release);
   }
 }
 

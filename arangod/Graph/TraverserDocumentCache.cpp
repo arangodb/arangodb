@@ -48,8 +48,7 @@ using namespace arangodb::graph;
 TraverserDocumentCache::TraverserDocumentCache(aql::QueryContext& query,
                                                std::shared_ptr<arangodb::cache::Cache> cache,
                                                BaseOptions* options)
-    : TraverserCache(query, options), 
-      _cache(std::move(cache)) {
+    : TraverserCache(query, options), _cache(std::move(cache)) {
   TRI_ASSERT(_cache != nullptr);
 }
 
@@ -81,7 +80,8 @@ void TraverserDocumentCache::insertEdgeIntoResult(EdgeDocumentToken const& idTok
   builder.add(lookupToken(idToken));
 }
 
-bool TraverserDocumentCache::appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result) {
+bool TraverserDocumentCache::appendVertex(arangodb::velocypack::StringRef idString,
+                                          arangodb::velocypack::Builder& result) {
   auto finding = lookup(idString);
   if (finding.found()) {
     auto val = finding.value();
@@ -98,7 +98,8 @@ bool TraverserDocumentCache::appendVertex(arangodb::velocypack::StringRef idStri
   return found;
 }
 
-bool TraverserDocumentCache::appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result) {
+bool TraverserDocumentCache::appendVertex(arangodb::velocypack::StringRef idString,
+                                          arangodb::aql::AqlValue& result) {
   auto finding = lookup(idString);
   if (finding.found()) {
     auto val = finding.value();

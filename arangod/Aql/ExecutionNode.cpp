@@ -292,9 +292,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
 
       bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
-      auto node = new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
-                                  plan->getAst()->variables()->variables(false), groupVariables,
-                                  aggregateVariables, isDistinctCommand);
+      auto node =
+          new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
+                          plan->getAst()->variables()->variables(false),
+                          groupVariables, aggregateVariables, isDistinctCommand);
 
       // specialize the node if required
       bool specialized = slice.get("specialized").getBoolean();
@@ -353,10 +354,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new AsyncNode(plan, slice);
     case MUTEX:
       return new MutexNode(plan, slice);
-    case WINDOW:{
-      
-      Variable* rangeVar =
-          Variable::varFromVPack(plan->getAst(), slice, "rangeVariable", /*optional*/true);
+    case WINDOW: {
+      Variable* rangeVar = Variable::varFromVPack(plan->getAst(), slice,
+                                                  "rangeVariable", /*optional*/ true);
 
       // aggregates
       VPackSlice aggregatesSlice = slice.get("aggregates");
@@ -378,11 +378,11 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
           aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
         }
       }
-      
-      auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
+
+      auto type = rangeVar != nullptr ? WindowBounds::Type::Range
+                                      : WindowBounds::Type::Row;
       WindowBounds bounds(type, slice);
-      return new WindowNode(plan, slice, std::move(bounds),
-                            rangeVar, aggregateVariables);
+      return new WindowNode(plan, slice, std::move(bounds), rangeVar, aggregateVariables);
     }
     default: {
       // should not reach this point
@@ -421,7 +421,8 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     _varsUsedLaterStack.reserve(varsUsedLaterStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
       if (!stackEntrySlice.isArray()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
             "\"varsUsedLaterStack\" needs to contain arrays");
       }
       auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
@@ -432,15 +433,17 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
         Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
         if (oneVariable == nullptr) {
-          std::string errmsg = "varsUsedLaterStack: ID not found in all-array: " +
-                               StringUtils::itoa(oneVarUsedLater.id);
+          std::string errmsg =
+              "varsUsedLaterStack: ID not found in all-array: " +
+              StringUtils::itoa(oneVarUsedLater.id);
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
         }
         varsUsedLater.insert(oneVariable);
       }
     }
   } else if (!varsUsedLaterStackSlice.isNone()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
         "\"varsUsedLaterStack\" needs to be a non-empty array");
   }
 
@@ -476,7 +479,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   }
 
   VPackSlice regsToKeepStackSlice = slice.get("regsToKeepStack");
-  
+
   if (regsToKeepStackSlice.isArray()) {
     // || regsToKeepStackSlice.length() == 0) {
     _regsToKeepStack.reserve(regsToKeepStackSlice.length());
@@ -499,13 +502,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
         "\"regsToKeepStack\" needs to be a non-empty array");
   }
 
-
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
-      
+
   _isAsyncPrefetchEnabled =
       VelocyPackHelper::getBooleanValue(slice, "isAsyncPrefetchEnabled", false);
-      
+
   _isCallstackSplitEnabled =
       VelocyPackHelper::getBooleanValue(slice, "isCallstackSplitEnabled", false);
 }
@@ -521,13 +523,10 @@ ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
 /// i.e., the upmost dependency will be the first, and this node will be the
 /// last in the array.
 void ExecutionNode::allToVelocyPack(VPackBuilder& builder, unsigned flags) const {
-
   struct NodeSerializer : WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
     NodeSerializer(VPackBuilder& builder, unsigned flags)
         : builder(builder), flags(flags) {}
-    void after(ExecutionNode* n) override {
-      n->toVelocyPack(builder, flags);
-    }
+    void after(ExecutionNode* n) override { n->toVelocyPack(builder, flags); }
     VPackBuilder& builder;
     unsigned flags;
   } nodeSerializer{builder, flags};
@@ -637,7 +636,7 @@ void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
   setVarsValid(dependency->getVarsValidStack());
   setVarUsageValid();
 }
-  
+
 /// @brief replaces variables in the internals of the execution node
 /// replacements are { old variable id => new variable }
 void ExecutionNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& /*replacements*/) {
@@ -650,17 +649,16 @@ bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
           (isInSplicedSubquery() == other.isInSplicedSubquery()) &&
           (_dependencies.size() == other._dependencies.size()) &&
           (std::equal(_dependencies.begin(), _dependencies.end(),
-                      other._dependencies.begin(), [](ExecutionNode* const l, ExecutionNode* const r) {
-            return l->isEqualTo(*r);
-          })));
+                      other._dependencies.begin(),
+                      [](ExecutionNode* const l, ExecutionNode* const r) {
+                        return l->isEqualTo(*r);
+                      })));
 }
 
 /// @brief invalidate the cost estimation for the node and its dependencies
 void ExecutionNode::invalidateCost() {
   struct CostInvalidator : WalkerWorkerBase<ExecutionNode> {
-    void after(ExecutionNode* n) override {
-      n->_costEstimate.invalidate();
-    }
+    void after(ExecutionNode* n) override { n->_costEstimate.invalidate(); }
   } invalidator;
   this->walk(invalidator);
 }
@@ -702,11 +700,7 @@ bool ExecutionNode::walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker)
 }
 
 bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst) {
-  enum class State {
-    Pending,
-    Processed,
-    InSubQuery
-  };
+  enum class State { Pending, Processed, InSubQuery };
 
   using Entry = std::pair<ExecutionNode*, State>;
   // we can be quite generous with the buffer size since the implementation is not recursive.
@@ -1010,12 +1004,12 @@ void ExecutionNode::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
   // optimization. turning it off should not affect correctness,
   // only performance.
   // note: we are intentionally not performing this optimization
-  // in case the query still contains old style subqueries. 
+  // in case the query still contains old style subqueries.
   // in that case, the register planning optimization would be slightly
   // more complex to perform. 99.99% of queries should not be affected
   // by this optimization being turned off, because old-style subqueries
   // are only around in case except someone intentionally turned off
-  // subquery optimizations. 
+  // subquery optimizations.
   v->shrink(this);
 }
 
@@ -1140,7 +1134,9 @@ RegisterInfos ExecutionNode::createRegisterInfos(RegIdSet readableInputRegisters
 RegisterCount ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
   // in case of the SingletonNode, there are no input registers
-  return previousNode == nullptr ? getNrOutputRegisters() : getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  return previousNode == nullptr
+             ? getNrOutputRegisters()
+             : getRegisterPlan()->nrRegs[previousNode->getDepth()];
 }
 
 auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
@@ -1179,10 +1175,10 @@ void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
   assertNotContained(maxRegister, _regsToClear);
   // validate all levels of _regsToKeepStack
   for (auto const& regsToKeep : _regsToKeepStack) {
-    assertNotContained(maxRegister, regsToKeep); 
+    assertNotContained(maxRegister, regsToKeep);
   }
 #endif
-  
+
   auto removeRegisters = [maxRegister](auto& container) {
     for (auto it = container.begin(); it != container.end(); /* no hoisting */) {
       if ((*it) > maxRegister) {
@@ -1384,7 +1380,9 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   return RegisterId{RegisterId::maxRegisterId};
 }
 
-bool ExecutionNode::isIncreaseDepth() const { return isIncreaseDepth(getType()); }
+bool ExecutionNode::isIncreaseDepth() const {
+  return isIncreaseDepth(getType());
+}
 
 bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
   switch (type) {
@@ -1447,7 +1445,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
       return false;
     // It should be safe to return false for these, but is it necessary?
     // Returning true can lead to more efficient register usage.
-    case REMOTE: // simon: could probably return true
+    case REMOTE:  // simon: could probably return true
     case SCATTER:
     case GATHER:
     case ASYNC:
@@ -1493,7 +1491,6 @@ auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
   auto registerInfos = createRegisterInfos({}, {});
   IdExecutorInfos infos(false);
 
@@ -1560,13 +1557,13 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   }
   auto const produceResult = this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
   auto outputRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos({},
-                                           RegIdSet{outputRegister});
+  auto registerInfos = createRegisterInfos({}, RegIdSet{outputRegister});
   auto executorInfos =
-      EnumerateCollectionExecutorInfos(outputRegister, engine.getQuery(), collection(),
-                                       _outVariable, produceResult,
+      EnumerateCollectionExecutorInfos(outputRegister, engine.getQuery(),
+                                       collection(), _outVariable, produceResult,
                                        this->_filter.get(), this->projections(),
-                                       this->_random, this->doCount(), this->canReadOwnWrites());
+                                       this->_random, this->doCount(),
+                                       this->canReadOwnWrites());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -1592,7 +1589,9 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
 
 void EnumerateCollectionNode::setRandom() { _random = true; }
 
-bool EnumerateCollectionNode::isDeterministic() { return !_random && (canReadOwnWrites() == ReadOwnWrites::no); }
+bool EnumerateCollectionNode::isDeterministic() {
+  return !_random && (canReadOwnWrites() == ReadOwnWrites::no);
+}
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
@@ -1610,16 +1609,16 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   auto const estimatedNrItems = collection()->count(&trx, transaction::CountType::TryCache);
   if (!doCount()) {
-    // if "count" mode is active, the estimated number of items from above must not
-    // be multiplied with the number of items in this collection
-    estimate.estimatedNrItems *= estimatedNrItems; 
+    // if "count" mode is active, the estimated number of items from above must
+    // not be multiplied with the number of items in this collection
+    estimate.estimatedNrItems *= estimatedNrItems;
   }
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
   // do the same for IndexNodes) so IndexNodes will be preferred
   estimate.estimatedCost += estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
-  
+
   return estimate;
 }
 
@@ -1645,8 +1644,8 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
   RegisterId outRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos(RegIdSet{inputRegister},
-                                           RegIdSet{outRegister});
+  auto registerInfos =
+      createRegisterInfos(RegIdSet{inputRegister}, RegIdSet{outRegister});
   auto executorInfos = EnumerateListExecutorInfos(inputRegister, outRegister);
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -1796,8 +1795,7 @@ CostEstimate LimitNode::estimateCost() const {
     estimate.estimatedCost += estimatedNrItems * skipCost;
     estimatedNrItems = 0;
   }
-  estimate.estimatedNrItems =
-      (std::min)(_limit, estimatedNrItems);
+  estimate.estimatedNrItems = (std::min)(_limit, estimatedNrItems);
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
@@ -1868,7 +1866,7 @@ void CalculationNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const 
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic",
                       VPackValue(func->hasFlag(Function::Flags::Deterministic)));
-            nodes.add("canAccessDocuments", 
+            nodes.add("canAccessDocuments",
                       VPackValue(func->hasFlag(Function::Flags::CanReadDocuments)));
             nodes.add("canRunOnDBServerCluster",
                       VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
@@ -1908,7 +1906,8 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegisterId outputRegister = variableToRegisterId(_outVariable);
-  TRI_ASSERT((_outVariable->type() == Variable::Type::Const) == outputRegister.isConstRegister());
+  TRI_ASSERT((_outVariable->type() == Variable::Type::Const) ==
+             outputRegister.isConstRegister());
 
   VarSet inVars;
   _expression->variables(inVars);
@@ -1933,27 +1932,28 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   TRI_ASSERT(expression() != nullptr);
 
-  auto registerInfos =
-      createRegisterInfos(std::move(inputRegisters),
-                          outputRegister.isRegularRegister() ? RegIdSet{outputRegister} : RegIdSet{});
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                           outputRegister.isRegularRegister()
+                                               ? RegIdSet{outputRegister}
+                                               : RegIdSet{});
 
   if (_outVariable->type() == Variable::Type::Const) {
     // we have a const variable, so we can simply use an IdExector to forward the rows.
     auto executorInfos = IdExecutorInfos(false, outputRegister);
     return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 
-  auto executorInfos = CalculationExecutorInfos(
-      outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
-      *expression(), std::move(expInVarsToRegs)); /* required by expression.execute */
+  auto executorInfos = CalculationExecutorInfos(outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
+                                                *expression(),
+                                                std::move(expInVarsToRegs)); /* required by expression.execute */
 
   if (isReference) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
-        &engine, this,std::move(registerInfos), std::move(executorInfos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (!willUseV8) {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
-        &engine, this,std::move(registerInfos), std::move(executorInfos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
     return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -1987,9 +1987,9 @@ ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
 Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
-Expression* CalculationNode::expression() const { 
+Expression* CalculationNode::expression() const {
   TRI_ASSERT(_expression != nullptr);
-  return _expression.get(); 
+  return _expression.get();
 }
 
 /// @brief replaces variables in the internals of the execution node
@@ -2127,7 +2127,8 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot instantiate SubqueryExecutor");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "cannot instantiate SubqueryExecutor");
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -2596,9 +2597,8 @@ AsyncNode::AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 ExecutionNode::NodeType AsyncNode::getType() const { return ASYNC; }
 
 ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                    bool withProperties) const {
-  return cloneHelper(std::make_unique<AsyncNode>(plan, _id),
-                     withDependencies, withProperties);
+                                bool withProperties) const {
+  return cloneHelper(std::make_unique<AsyncNode>(plan, _id), withDependencies, withProperties);
 }
 
 namespace {
@@ -2669,7 +2669,8 @@ MaterializeMultiNode::MaterializeMultiNode(ExecutionPlan* plan,
       _inNonMaterializedColPtr(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_IN_NM_COL_PARAM,
                                                            true)) {}
 
-void MaterializeMultiNode::doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const {
+void MaterializeMultiNode::doToVelocyPack(arangodb::velocypack::Builder& nodes,
+                                          unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
 
@@ -2704,11 +2705,11 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
   auto readableInputRegisters = getReadableInputRegisters(inNmColPtrRegId, inNmDocIdRegId);
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
-  auto executorInfos =
-      MaterializerExecutorInfos(inNmColPtrRegId, inNmDocIdRegId,
-                                outDocumentRegId, engine.getQuery());
+  auto executorInfos = MaterializerExecutorInfos(inNmColPtrRegId, inNmDocIdRegId,
+                                                 outDocumentRegId, engine.getQuery());
 
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -2735,8 +2736,7 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan, bool withDepende
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void MaterializeMultiNode::getVariablesUsedHere(
-    VarSet& vars) const {
+void MaterializeMultiNode::getVariablesUsedHere(VarSet& vars) const {
   // call base class method
   MaterializeNode::getVariablesUsedHere(vars);
 
@@ -2754,7 +2754,8 @@ MaterializeSingleNode::MaterializeSingleNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice const& base)
     : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
 
-void MaterializeSingleNode::doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const {
+void MaterializeSingleNode::doToVelocyPack(arangodb::velocypack::Builder& nodes,
+                                           unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
 
@@ -2783,7 +2784,8 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
   auto readableInputRegisters = getReadableInputRegisters(name, inNmDocIdRegId);
   auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
   auto executorInfos =
       MaterializerExecutorInfos<decltype(name)>(name, inNmDocIdRegId, outDocumentRegId,

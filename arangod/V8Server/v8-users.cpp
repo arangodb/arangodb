@@ -85,9 +85,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static bool IsAdminUser() {
-  return ExecContext::current().isAdminUser();
-}
+static bool IsAdminUser() { return ExecContext::current().isAdminUser(); }
 
 /// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
@@ -541,14 +539,17 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
     TRI_GET_GLOBALS();
-    v8g->_server.getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-      auto lvl = um->databaseAuthLevel(username, vocbase.name());
+    v8g->_server.getFeature<DatabaseFeature>().enumerateDatabases(
+        [&](TRI_vocbase_t& vocbase) -> void {
+          auto lvl = um->databaseAuthLevel(username, vocbase.name());
 
-      if (lvl != auth::Level::NONE) {  // hide non accessible collections
-        result->Set(context, TRI_V8_STD_STRING(isolate, vocbase.name()),
-                    TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl))).FromMaybe(false);
-      }
-    });
+          if (lvl != auth::Level::NONE) {  // hide non accessible collections
+            result
+                ->Set(context, TRI_V8_STD_STRING(isolate, vocbase.name()),
+                      TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)))
+                .FromMaybe(false);
+          }
+        });
     TRI_V8_RETURN(result);
   }
 
@@ -614,12 +615,13 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
 
   v8g->UsersTempl.Reset(isolate, rt);
   // ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"));
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"),
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> aa =
+      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoUsers"), aa);

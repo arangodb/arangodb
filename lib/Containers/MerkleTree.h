@@ -37,7 +37,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace containers {
 
@@ -54,19 +54,19 @@ class FnvHashProvider : public HashProvider {
 
 class MerkleTreeBase {
  public:
-  enum class BinaryFormat : char { 
-   // Snappy-compressed full data (all buckets, even if empty)
-   CompressedSnappyFull = '1',
-   // Uncompressed data (all buckets, only use for testing!)
-   Uncompressed = '2',
-   // Only contains non-empty buckets (efficient for sparse trees)
-   OnlyPopulated = '3',
-   // Snappy-compressed data of populated buckets
-   CompressedSnappyLazy = '4',
-   
-   // placeholder for optimal format, will determine the "best"
-   // format automatically, based on heuristics
-   Optimal = 'z',
+  enum class BinaryFormat : char {
+    // Snappy-compressed full data (all buckets, even if empty)
+    CompressedSnappyFull = '1',
+    // Uncompressed data (all buckets, only use for testing!)
+    Uncompressed = '2',
+    // Only contains non-empty buckets (efficient for sparse trees)
+    OnlyPopulated = '3',
+    // Snappy-compressed data of populated buckets
+    CompressedSnappyLazy = '4',
+
+    // placeholder for optimal format, will determine the "best"
+    // format automatically, based on heuristics
+    Optimal = 'z',
   };
 
   struct Node {
@@ -75,39 +75,38 @@ class MerkleTreeBase {
 
     void toVelocyPack(arangodb::velocypack::Builder& output) const;
 
-    bool empty() const noexcept {
-      return count == 0 && hash == 0;
-    }
+    bool empty() const noexcept { return count == 0 && hash == 0; }
 
     bool operator==(Node const& other) const noexcept;
   };
   static constexpr std::uint64_t NodeSize = sizeof(Node);
   static_assert(NodeSize == 16, "Node size assumptions invalid.");
-  
+
   // an empty dummy node with count=0, hash=0, shared and read-only
   static Node const emptyNode;
-  
+
   struct alignas(64) Meta {
     std::uint64_t rangeMin;
     std::uint64_t rangeMax;
     std::uint64_t depth;
     std::uint64_t initialRangeMin;
     Node summary;
-      
+
     // used for older versions. unfortunately needed
     struct Padding {
-      std::uint64_t p0 ;
+      std::uint64_t p0;
       std::uint64_t p1;
     } padding;
 
     void serialize(std::string& output, bool addPadding) const;
   };
-  
+
   static_assert(sizeof(Meta) == 64, "Meta size assumptions invalid.");
-  static_assert(sizeof(Meta::Padding) == 16, "Meta padding size assumptions invalid.");
+  static_assert(sizeof(Meta::Padding) == 16,
+                "Meta padding size assumptions invalid.");
   static constexpr std::uint64_t MetaSize = sizeof(Meta);
-  
-  // size of each shard, in bytes. 
+
+  // size of each shard, in bytes.
   // note: trees with a small depth may only have a single shard which is smaller than this value
   static constexpr std::uint64_t ShardSize = (1 << 16);
 
@@ -117,11 +116,11 @@ class MerkleTreeBase {
     Meta meta;
     std::vector<ShardType> shards;
     std::size_t memoryUsage = 0;
-  
+
     void clear() {
       shards.clear();
       memoryUsage = 0;
-      meta.summary = { 0, 0 };
+      meta.summary = {0, 0};
     }
 
     void ensureShard(std::uint64_t shard, std::uint64_t shardSize);
@@ -154,7 +153,7 @@ class MerkleTree : public MerkleTreeBase {
   //
   // Unfortunately, we can only compare two different MerkleTrees, if
   // the difference of their rangeMin values is a multiple of the number
-  // of _rev values in a leaf node, which is 
+  // of _rev values in a leaf node, which is
   //   (rangeMax-rangeMin)/(1ULL << (BranchingBits*depth)),
   // since (1ULL << (BranchingBits*depth)) is the number of leaves. Therefore
   // we must ensure that trees of replicas of shards which we must be
@@ -167,14 +166,14 @@ class MerkleTree : public MerkleTreeBase {
   //    the number of leaves in the tree, which is
   //      1ULL << (BranchingBits*depth)
   //    That is, we can only ever grow the width by factors of 2.
-  // 2. M - rangeMin is divisible by 
+  // 2. M - rangeMin is divisible by
   //      (rangeMax-rangeMin)/(1ULL << (BranchingBits*depth))
   //
   // Condition 1. ensures that each leaf is responsible for the same
   // number of _rev values and that we can always grow rangeMax-rangeMin
   // by a factor of 2 without having to rehash everything.
   // Condition 2. ensures that two trees which have started with the same
-  // magic M and have the same width are comparable, since the difference 
+  // magic M and have the same width are comparable, since the difference
   // of their rangeMin values will always be divisible by the number
   // given in Condition 2.
   //
@@ -185,7 +184,7 @@ class MerkleTree : public MerkleTreeBase {
     // summary node is included in MetaSize
     return MetaSize + (NodeSize * nodeCountAtDepth(depth));
   }
-  
+
   static constexpr std::uint64_t shardSize(std::uint64_t depth) noexcept {
     std::uint64_t shardSize = allocationSize(depth) - MetaSize;
     return std::min(shardSize, ShardSize);
@@ -203,7 +202,7 @@ class MerkleTree : public MerkleTreeBase {
   static constexpr std::uint64_t shardForIndex(std::uint64_t index) noexcept {
     return NodeSize * index / ShardSize;
   }
-  
+
   static constexpr std::uint64_t shardBaseIndex(std::uint64_t shard) noexcept {
     return shard * ShardSize / NodeSize;
   }
@@ -226,7 +225,7 @@ class MerkleTree : public MerkleTreeBase {
    * @return A newly allocated tree constructed from the input
    */
   static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromBuffer(std::string_view buffer);
-  
+
   /**
    * @brief Construct a tree from a buffer containing an uncompressed tree
    *
@@ -234,7 +233,7 @@ class MerkleTree : public MerkleTreeBase {
    * @return A newly allocated tree constructed from the input
    */
   static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromUncompressed(std::string_view buffer);
-  
+
   /**
    * @brief Construct a tree from a buffer containing a Snappy-compressed tree
    *
@@ -242,9 +241,9 @@ class MerkleTree : public MerkleTreeBase {
    * @return A newly allocated tree constructed from the input
    */
   static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromSnappyCompressed(std::string_view buffer);
-  
+
   static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromSnappyLazyCompressed(std::string_view buffer);
-  
+
   /**
    * @brief Construct a tree from a buffer containing only the populated buckets
    *
@@ -282,7 +281,8 @@ class MerkleTree : public MerkleTreeBase {
    *                 first created and was still empty.
    * @throws std::invalid_argument  If depth is less than 2
    */
-  MerkleTree(std::uint64_t depth, std::uint64_t rangeMin, std::uint64_t rangeMax = 0, std::uint64_t initialRangeMin = 0);
+  MerkleTree(std::uint64_t depth, std::uint64_t rangeMin,
+             std::uint64_t rangeMax = 0, std::uint64_t initialRangeMin = 0);
 
   ~MerkleTree();
 
@@ -292,7 +292,7 @@ class MerkleTree : public MerkleTreeBase {
    * @param other Input tree, intended assignment
    */
   MerkleTree& operator=(std::unique_ptr<MerkleTree<Hasher, BranchingBits>>&& other);
-  
+
   std::uint64_t memoryUsage() const;
 
   /**
@@ -381,8 +381,7 @@ class MerkleTree : public MerkleTreeBase {
    * @return  Vector of (inclusive) ranges of keys over which trees differ
    * @throws std::invalid_argument  If trees different rangeMin
    */
-  std::vector<std::pair<std::uint64_t, std::uint64_t>> diff(
-      MerkleTree<Hasher, BranchingBits>& other);
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> diff(MerkleTree<Hasher, BranchingBits>& other);
 
   /**
    * @brief Convert to a human-readable string for printing
@@ -411,7 +410,7 @@ class MerkleTree : public MerkleTreeBase {
    * @return Vector of (inclusive) ranges that partiion the keyspace
    */
   std::vector<std::pair<std::uint64_t, std::uint64_t>> partitionKeys(std::uint64_t count) const;
-  
+
   /**
    * @brief Serialize the tree for transport or storage in binary format
    */
@@ -423,14 +422,14 @@ class MerkleTree : public MerkleTreeBase {
    * If any inconsistency is found, this function will throw
    */
   void checkConsistency() const;
-  
+
   std::uint64_t numberOfShards() const noexcept;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // intentionally corrupts the tree. used for testing only
   void corrupt(std::uint64_t count, std::uint64_t hash);
 #endif
-  
+
  protected:
   explicit MerkleTree(std::string_view buffer);
   explicit MerkleTree(Data&& data);
@@ -454,7 +453,8 @@ class MerkleTree : public MerkleTreeBase {
   void growRight(std::uint64_t key);
   bool equalAtIndex(MerkleTree<Hasher, BranchingBits> const& other,
                     std::uint64_t index) const noexcept;
-  std::pair<std::uint64_t, std::uint64_t> chunkRange(std::uint64_t chunk, std::uint64_t depth) const;
+  std::pair<std::uint64_t, std::uint64_t> chunkRange(std::uint64_t chunk,
+                                                     std::uint64_t depth) const;
   void serializeMeta(std::string& output, bool addPadding) const;
   void serializeNodes(std::string& output, bool all) const;
 
@@ -471,8 +471,7 @@ class MerkleTree : public MerkleTreeBase {
    * @param maxKey Maximum key to insert
    */
   void prepareInsertMinMax(std::unique_lock<std::shared_mutex>& guard,
-                           std::uint64_t minKey,
-                           std::uint64_t maxKey);
+                           std::uint64_t minKey, std::uint64_t maxKey);
 
   /**
    * @brief Checks the consistency of the tree
@@ -487,11 +486,9 @@ class MerkleTree : public MerkleTreeBase {
 };
 
 template <typename Hasher, std::uint64_t const BranchingBits>
-std::ostream& operator<<(std::ostream& stream,
-                         MerkleTree<Hasher, BranchingBits> const& tree);
+std::ostream& operator<<(std::ostream& stream, MerkleTree<Hasher, BranchingBits> const& tree);
 
 using RevisionTree = MerkleTree<FnvHashProvider, 3>;
 
 }  // namespace containers
 }  // namespace arangodb
-

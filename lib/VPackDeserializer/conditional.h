@@ -117,7 +117,7 @@ struct is_string_condition {
   }
 };
 
-template<const char K[]>
+template <const char K[]>
 struct has_key_condition {
   using forward_hints = hints::hint_list<hints::has_field<K>>;
 
@@ -187,7 +187,7 @@ struct conditional_executor<I, E> {
   using unpack_result = result<R, deserialize_error>;
 
   template <typename C>
-  static auto unpack(::arangodb::velocypack::deserializer::slice_type v, C &&)
+  static auto unpack(::arangodb::velocypack::deserializer::slice_type v, C&&)
       -> unpack_result {
     using namespace std::string_literals;
     return unpack_result{deserialize_error{"unrecognized value `"s + v.toJson() + "`"}};

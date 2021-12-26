@@ -169,7 +169,8 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       result.valid = false;
     }
 
-    view = arangodb::velocypack::StringRef(searchAttribute.data() + searchAttribute.size());
+    view = arangodb::velocypack::StringRef(searchAttribute.data() +
+                                           searchAttribute.size());
   } else {
     // if there is no searchAttribute, there must not be anything else
     if (!view.empty()) {

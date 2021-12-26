@@ -34,7 +34,7 @@ namespace aql {
 template <typename T, WalkerUniqueness U>
 class NodeFinder final : public WalkerWorker<ExecutionNode, U> {
   ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
-  
+
   T _lookingFor;
 
   bool _enterSubqueries;
@@ -73,4 +73,3 @@ class EndNodeFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness:
 };
 }  // namespace aql
 }  // namespace arangodb
-

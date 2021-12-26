@@ -34,7 +34,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 
 struct ExecutionStats {
@@ -42,7 +42,7 @@ struct ExecutionStats {
 
   /// @brief instantiate the statistics from VelocyPack
   explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
- 
+
  public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
@@ -102,10 +102,9 @@ struct ExecutionStats {
   ///        will be counted as the target instead
   ///        within nodes.
   std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> _nodeAliases;
-  
+
   ///  @brief statistics per ExecutionNodes
   std::map<aql::ExecutionNodeId, ExecutionNodeStats> _nodes;
 };
 }  // namespace aql
 }  // namespace arangodb
-

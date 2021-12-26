@@ -52,7 +52,7 @@ TEST(NetworkUtilsTest, errorCodeFromBody) {
 TEST(NetworkUtilsTest, errorCodesFromHeaders) {
   network::Headers headers;
   headers[StaticStrings::ErrorCodes] = "{\"5\":2}";
-  
+
   std::unordered_map<ErrorCode, size_t> errorCounter;
   network::errorCodesFromHeaders(headers, errorCounter, true);
   ASSERT_EQ(errorCounter.size(), 1);

@@ -50,7 +50,6 @@ class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class ClusterCollection final : public PhysicalCollection {
-  
  public:
   explicit ClusterCollection(LogicalCollection& collection, ClusterEngineType sengineType,
                              arangodb::velocypack::Slice const& info);
@@ -99,18 +98,18 @@ class ClusterCollection final : public PhysicalCollection {
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
+                                                ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
-
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
-  
+
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
@@ -118,9 +117,9 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               IndexIterator::DocumentCallback const& cb, ReadOwnWrites) const override;
-  
+
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
-            IndexIterator::DocumentCallback const& cb, ReadOwnWrites) const override;
+              IndexIterator::DocumentCallback const& cb, ReadOwnWrites) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result, ReadOwnWrites) const override;
@@ -128,9 +127,9 @@ class ClusterCollection final : public PhysicalCollection {
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& result, OperationOptions& options) override;
 
-  Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions& options,
-                ManagedDocumentResult& previous) override;
+  Result update(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice newSlice, ManagedDocumentResult& result,
+                OperationOptions& options, ManagedDocumentResult& previous) override;
 
   Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
@@ -154,4 +153,3 @@ class ClusterCollection final : public PhysicalCollection {
 };
 
 }  // namespace arangodb
-

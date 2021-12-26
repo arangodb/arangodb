@@ -42,8 +42,8 @@ using namespace arangodb::aql;
 // and only then gets instantiated. That is okay, however, because the
 // constructor will not access it.
 template <BlockPassthrough passBlocksThrough>
-DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(
-    arangodb::ResourceMonitor& monitor, ::arangodb::aql::RegisterCount nrRegisters)
+DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::ResourceMonitor& monitor,
+                                                            ::arangodb::aql::RegisterCount nrRegisters)
     : DependencyProxy<passBlocksThrough>({}, nrRegisters),
       _itemsToReturn(),
       _numFetchBlockCalls(0),
@@ -133,14 +133,14 @@ size_t DependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
 
 template <BlockPassthrough passBlocksThrough>
 MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
-    arangodb::ResourceMonitor& monitor,
-    RegIdSet const& inputRegisters,
+    arangodb::ResourceMonitor& monitor, RegIdSet const& inputRegisters,
     ::arangodb::aql::RegisterCount nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, nrRegisters),
       _itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
-    _dependencyMocks.emplace_back(std::make_unique<DependencyProxyMock<passBlocksThrough>>(monitor, nrRegisters));
+    _dependencyMocks.emplace_back(
+        std::make_unique<DependencyProxyMock<passBlocksThrough>>(monitor, nrRegisters));
   }
 }
 

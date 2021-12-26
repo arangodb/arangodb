@@ -27,7 +27,6 @@
 #include <velocypack/Parser.h>
 #include "Agency/TransactionBuilder.h"
 
-
 using namespace arangodb::agency;
 
 namespace {
@@ -42,7 +41,7 @@ std::shared_ptr<VPackBuilder> vpackFromJsonString(char const* c) {
 auto operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
-}
+}  // namespace
 
 TEST(TransactionBuilderTest, read_transaction) {
   VPackBuilder builder;
@@ -70,9 +69,14 @@ TEST(TransactionBuilderTest, write_transaction) {
 
 TEST(TransactionBuilderTest, write_transaction_emplace) {
   VPackBuilder builder;
-  envelope::into_builder(builder).write().emplace("a", [](VPackBuilder& builder) {
-    builder.add("foo", VPackValue("bar"));
-  }).end("client-id").done();
+  envelope::into_builder(builder)
+      .write()
+      .emplace("a",
+               [](VPackBuilder& builder) {
+                 builder.add("foo", VPackValue("bar"));
+               })
+      .end("client-id")
+      .done();
 
   auto expected = R"=([[{"a":{"foo":"bar"}}, {}, "client-id"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
@@ -104,7 +108,13 @@ TEST(TransactionBuilderTest, write_transaction_remove) {
 
 TEST(TransactionBuilderTest, write_transaction_precs) {
   VPackBuilder builder;
-  envelope::into_builder(builder).write().set("a", 12).precs().isEmpty("b").end("client-id").done();
+  envelope::into_builder(builder)
+      .write()
+      .set("a", 12)
+      .precs()
+      .isEmpty("b")
+      .end("client-id")
+      .done();
 
   auto expected = R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}}, "client-id"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
@@ -112,7 +122,14 @@ TEST(TransactionBuilderTest, write_transaction_precs) {
 
 TEST(TransactionBuilderTest, write_transaction_precs_multi) {
   VPackBuilder builder;
-  envelope::into_builder(builder).write().set("a", 12).precs().isEmpty("b").isEqual("c", 12).end("client-id").done();
+  envelope::into_builder(builder)
+      .write()
+      .set("a", 12)
+      .precs()
+      .isEmpty("b")
+      .isEqual("c", 12)
+      .end("client-id")
+      .done();
 
   auto expected = R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}, "c":{"old": 12}}, "client-id"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
@@ -121,16 +138,16 @@ TEST(TransactionBuilderTest, write_transaction_precs_multi) {
 TEST(TransactionBuilderTest, multi_envelope) {
   VPackBuilder builder;
   envelope::into_builder(builder)
-    .write()
+      .write()
       .set("a", 12)
-    .precs()
+      .precs()
       .isEmpty("b")
       .isEqual("c", 12)
-    .end("client-id")
-    .read()
+      .end("client-id")
+      .read()
       .key("a")
-    .end()
-  .done();
+      .end()
+      .done();
 
   auto expected = R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}, "c":{"old": 12}}, "client-id"], ["a"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());

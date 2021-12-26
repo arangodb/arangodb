@@ -41,7 +41,8 @@ RestStatus RestDebugHandler::execute() {
 
   if (len == 0 || len > 2) {
     generateNotImplemented(
-        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
+        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or "
+        "/_admin/debug/crash");
     return RestStatus::DONE;
   }
 
@@ -125,6 +126,7 @@ RestStatus RestDebugHandler::execute() {
     }
   }
   generateNotImplemented(
-      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
+      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or "
+      "/_admin/debug/crash");
   return RestStatus::DONE;
 }

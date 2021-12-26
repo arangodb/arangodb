@@ -134,7 +134,7 @@ class MaterializeExecutor {
    private:
     static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
   };
-  
+
   transaction::Methods _trx;
   ReadContext _readDocumentContext;
   Infos const& _infos;
@@ -145,4 +145,3 @@ class MaterializeExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

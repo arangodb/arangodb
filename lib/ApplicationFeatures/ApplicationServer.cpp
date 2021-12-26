@@ -63,7 +63,8 @@ using namespace arangodb::options;
 namespace {
 // fail and abort with the specified message
 static void failCallback(std::string const& message) {
-  LOG_TOPIC("85b08", FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
+  LOG_TOPIC("85b08", FATAL, arangodb::Logger::FIXME)
+      << "error. cannot proceed. reason: " << message;
   FATAL_ERROR_EXIT();
 }
 }  // namespace
@@ -72,19 +73,15 @@ std::atomic<bool> ApplicationServer::CTRL_C(false);
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
                                      char const* binaryPath)
-    : _state(State::UNINITIALIZED),
-      _options(options),
-      _binaryPath(binaryPath) {
+    : _state(State::UNINITIALIZED), _options(options), _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
 }
 
 bool ApplicationServer::isPrepared() {
   auto tmp = state();
-  return tmp == State::IN_START || 
-         tmp == State::IN_WAIT ||
-         tmp == State::IN_SHUTDOWN ||
-         tmp == State::IN_STOP;
+  return tmp == State::IN_START || tmp == State::IN_WAIT ||
+         tmp == State::IN_SHUTDOWN || tmp == State::IN_STOP;
 }
 
 bool ApplicationServer::isStopping() const {
@@ -93,10 +90,8 @@ bool ApplicationServer::isStopping() const {
 }
 
 bool ApplicationServer::isStoppingState(State state) const {
-  return state == State::IN_SHUTDOWN ||
-         state == State::IN_STOP ||
-         state == State::IN_UNPREPARE ||
-         state == State::STOPPED ||
+  return state == State::IN_SHUTDOWN || state == State::IN_STOP ||
+         state == State::IN_UNPREPARE || state == State::STOPPED ||
          state == State::ABORTED;
 }
 
@@ -221,13 +216,15 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
 // signal the server to initiate a soft shutdown
 void ApplicationServer::initiateSoftShutdown() {
-  LOG_TOPIC("aa452", TRACE, Logger::STARTUP) << "ApplicationServer::initiateSoftShutdown";
+  LOG_TOPIC("aa452", TRACE, Logger::STARTUP)
+      << "ApplicationServer::initiateSoftShutdown";
 
   // fowards the begin shutdown signal to all features
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
     ApplicationFeature& feature = it->get();
     if (feature.isEnabled()) {
-      LOG_TOPIC("65421", TRACE, Logger::STARTUP) << (*it).get().name() << "::initiateSoftShutdown";
+      LOG_TOPIC("65421", TRACE, Logger::STARTUP)
+          << (*it).get().name() << "::initiateSoftShutdown";
       try {
         feature.initiateSoftShutdown();
       } catch (std::exception const& ex) {
@@ -236,7 +233,8 @@ void ApplicationServer::initiateSoftShutdown() {
             << feature.name() << "': " << ex.what();
       } catch (...) {
         LOG_TOPIC("53421", ERR, Logger::STARTUP)
-            << "caught unknown exception during initiateSoftShutdown of feature '"
+            << "caught unknown exception during initiateSoftShutdown of "
+               "feature '"
             << feature.name() << "'";
       }
     }
@@ -257,7 +255,8 @@ void ApplicationServer::beginShutdown() {
     // try to enter the new state, but make sure nobody changed it in between
   } while (!_state.compare_exchange_weak(old, State::IN_SHUTDOWN, std::memory_order_relaxed));
 
-  LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
+  LOG_TOPIC("c7911", TRACE, Logger::STARTUP)
+      << "ApplicationServer::beginShutdown";
 
   // make sure that we advance the state when we get out of here
   auto waitAborter = scopeGuard([this]() noexcept {
@@ -312,20 +311,21 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
 }
 
 void ApplicationServer::collectOptions() {
-  LOG_TOPIC("0eac7", TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
+  LOG_TOPIC("0eac7", TRACE, Logger::STARTUP)
+      << "ApplicationServer::collectOptions";
 
   _options->addSection(Section("", "general settings", "", "general options", false, false));
 
   _options->addOption("--dump-dependencies", "dump dependency graph",
                       new BooleanParameter(&_dumpDependencies),
                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                   arangodb::options::Flags::Command));
+                                                          arangodb::options::Flags::Command));
 
   _options->addOption("--dump-options",
                       "dump configuration options in JSON format",
                       new BooleanParameter(&_dumpOptions),
                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                   arangodb::options::Flags::Command));
+                                                          arangodb::options::Flags::Command));
 
   apply(
       [this](ApplicationFeature& feature) {
@@ -384,7 +384,8 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   }
 
   if (_dumpOptions) {
-    auto builder = _options->toVPack(false, true, [](std::string const&) { return true; });
+    auto builder =
+        _options->toVPack(false, true, [](std::string const&) { return true; });
     arangodb::velocypack::Options options;
     options.prettyPrint = true;
     std::cout << builder.slice().toJson(&options) << std::endl;
@@ -393,7 +394,8 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 }
 
 void ApplicationServer::validateOptions() {
-  LOG_TOPIC("1ed27", TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
+  LOG_TOPIC("1ed27", TRACE, Logger::STARTUP)
+      << "ApplicationServer::validateOptions";
 
   for (ApplicationFeature& feature : _orderedFeatures) {
     if (feature.isEnabled()) {
@@ -408,10 +410,10 @@ void ApplicationServer::validateOptions() {
   if (!modernizedOptions.empty()) {
     for (auto const& it : modernizedOptions) {
       LOG_TOPIC("3e342", WARN, Logger::STARTUP)
-          << "please note that the specified option '--" << it.first 
+          << "please note that the specified option '--" << it.first
           << " has been renamed to '--" << it.second << "' in this ArangoDB version";
-    } 
-      
+    }
+
     LOG_TOPIC("27c9c", INFO, Logger::STARTUP)
         << "please be sure to read the manual section about changed options";
   }
@@ -680,13 +682,13 @@ void ApplicationServer::start() {
         }
         if (feature.state() == ApplicationFeature::State::STARTED) {
           LOG_TOPIC("e5cfe", TRACE, Logger::STARTUP)
-          << "forcefully beginning stop of feature '" << feature.name() << "'";
+              << "forcefully beginning stop of feature '" << feature.name() << "'";
           try {
             feature.beginShutdown();
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("13224", TRACE, Logger::STARTUP)
-            << "caught exception while stopping feature '" << feature.name() << "'";
+                << "caught exception while stopping feature '" << feature.name() << "'";
           }
         }
       }

@@ -84,7 +84,7 @@ Result recalculateCountsOnAllDBServers(application_features::ApplicationServer& 
       std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
                         "/recalculateCount";
       auto f = network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Put,
-                                    std::move(uri), body, options, headers);
+                                         std::move(uri), body, options, headers);
       futures.emplace_back(std::move(f));
     }
   }

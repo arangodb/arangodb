@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <set>
 #include <map>
+#include <set>
 
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
@@ -80,7 +80,7 @@ class WorkerConfig {
   inline std::unordered_map<CollectionID, std::string> const& collectionPlanIdMap() const {
     return _collectionPlanIdMap;
   }
-  
+
   std::string const& shardIDToCollectionName(ShardID const& shard) const {
     auto const& it = _shardToCollectionName.find(shard);
     if (it != _shardToCollectionName.end()) {
@@ -121,7 +121,7 @@ class WorkerConfig {
     // TODO cache this? prob small
     return _localPShardIDs_hash.find(shardIndex) != _localPShardIDs_hash.end();
   }
-  
+
   std::vector<ShardID> const& edgeCollectionRestrictions(ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
@@ -134,7 +134,7 @@ class WorkerConfig {
 
   /// Let async
   bool _asynchronousMode = false;
-  bool _useMemoryMaps = false; /// always use mmaps
+  bool _useMemoryMaps = false;  /// always use mmaps
 
   size_t _parallelism = 1;
 
@@ -149,7 +149,7 @@ class WorkerConfig {
 
   // Map from edge collection to their shards, only iterated over keep sorted
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
-  
+
   std::unordered_map<CollectionID, std::vector<ShardID>> _edgeCollectionRestrictions;
 
   /// cache these ids as much as possible, since we access them often

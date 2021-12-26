@@ -97,4 +97,3 @@ class HttpCommTask final : public GeneralCommTask<T> {
 };
 }  // namespace rest
 }  // namespace arangodb
-

@@ -79,9 +79,7 @@ class AqlCallStack {
   // Put another call on top of the stack.
   void pushCall(AqlCallList const& call);
 
-  auto empty() const noexcept -> bool {
-    return _operations.empty();
-  }
+  auto empty() const noexcept -> bool { return _operations.empty(); }
 
   auto subqueryLevel() const noexcept -> size_t { return _operations.size(); }
 
@@ -187,4 +185,3 @@ class AqlCallStack {
 
 }  // namespace aql
 }  // namespace arangodb
-

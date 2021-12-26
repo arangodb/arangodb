@@ -47,7 +47,8 @@ Collection* Collections::get(std::string_view const name) const {
   return nullptr;
 }
 
-Collection* Collections::add(std::string const& name, AccessMode::Type accessType, Collection::Hint hint) {
+Collection* Collections::add(std::string const& name,
+                             AccessMode::Type accessType, Collection::Hint hint) {
   // check if collection already is in our map
   TRI_ASSERT(!name.empty());
   auto it = _collections.find(name);
@@ -93,7 +94,7 @@ std::vector<std::string> Collections::collectionNames() const {
 }
 
 bool Collections::empty() const { return _collections.empty(); }
-  
+
 void Collections::toVelocyPack(velocypack::Builder& builder) const {
   builder.openArray();
   for (auto const& c : _collections) {

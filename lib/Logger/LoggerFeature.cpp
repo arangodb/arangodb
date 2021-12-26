@@ -69,12 +69,10 @@ void LogHackWriter(char const* p) {
 
 namespace arangodb {
 
-LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, 
-                             bool threaded)
+LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
     : ApplicationFeature(server, "Logger"),
       _timeFormatString(LogTimeFormats::defaultFormatName()),
       _threaded(threaded) {
-
   // note: we use the _threaded option to determine whether we are arangod
   // (_threaded = true) or one of the client tools (_threaded = false). in
   // the latter case we disable some options for the Logger, which only make
@@ -90,9 +88,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
   _foregroundTty = (isatty(STDOUT_FILENO) == 1);
 }
 
-LoggerFeature::~LoggerFeature() {
-  Logger::shutdown();
-}
+LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
@@ -110,29 +106,33 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_useColor),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--log.escape-control-chars", "escape control characters when logging",
-                     new BooleanParameter(&_useControlEscaped))
-                     .setIntroducedIn(30900);
-  options->addOption("--log.escape-unicode-chars", "escape unicode characters when logging",
-                     new BooleanParameter(&_useUnicodeEscaped))
-                     .setIntroducedIn(30900);
+  options
+      ->addOption("--log.escape-control-chars",
+                  "escape control characters when logging",
+                  new BooleanParameter(&_useControlEscaped))
+      .setIntroducedIn(30900);
+  options
+      ->addOption("--log.escape-unicode-chars",
+                  "escape unicode characters when logging",
+                  new BooleanParameter(&_useUnicodeEscaped))
+      .setIntroducedIn(30900);
 
-  options->addOption(
-      "--log.output,-o",
-      "log destination(s), e.g. "
+  options->addOption("--log.output,-o",
+                     "log destination(s), e.g. "
 #ifdef _WIN32
-      "file://C:\\path\\to\\file"
+                     "file://C:\\path\\to\\file"
 #else
-      "file:///path/to/file"
+                     "file:///path/to/file"
 #endif
-      " (any '$PID' will be replaced with the process id)",
-      new VectorParameter<StringParameter>(&_output));
+                     " (any '$PID' will be replaced with the process id)",
+                     new VectorParameter<StringParameter>(&_output));
 
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
-  
+
   options
-      ->addOption("--log.max-entry-length", "maximum length of a log entry (in bytes)",
+      ->addOption("--log.max-entry-length",
+                  "maximum length of a log entry (in bytes)",
                   new UInt32Parameter(&_maxEntryLength))
       .setIntroducedIn(30709);
 
@@ -168,9 +168,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
-    options->addOption("--log.api-enabled",
-                       "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
-                       new StringParameter(&_apiSwitch))
+    options
+        ->addOption("--log.api-enabled",
+                    "whether the log api is enabled (true) or not (false), or "
+                    "only enabled for superuser JWT (jwt)",
+                    new StringParameter(&_apiSwitch))
         .setIntroducedIn(30411)
         .setIntroducedIn(30506)
         .setIntroducedIn(30605);
@@ -199,27 +201,32 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_file),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--log.line-number",
-                     "include the function name, file name and line number of the source code "
-                     "that issues the log message. Format: `[func@FileName.cpp:123]`",
-                     new BooleanParameter(&_lineNumber),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--log.line-number",
+      "include the function name, file name and line number of the source code "
+      "that issues the log message. Format: `[func@FileName.cpp:123]`",
+      new BooleanParameter(&_lineNumber),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--log.shorten-filenames",
       "shorten filenames in log output (use with --log.line-number)",
       new BooleanParameter(&_shortenFilenames),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
-  
-  options->addOption("--log.hostname",
-                     "hostname to use in log message (empty for none, use 'auto' to automatically figure out hostname)",
-                     new StringParameter(&_hostname))
-                     .setIntroducedIn(30800);
-  
-  options->addOption("--log.process", "show process identifier (pid) in log message",
-                     new BooleanParameter(&_processId),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30800);
+
+  options
+      ->addOption("--log.hostname",
+                  "hostname to use in log message (empty for none, use 'auto' "
+                  "to automatically figure out hostname)",
+                  new StringParameter(&_hostname))
+      .setIntroducedIn(30800);
+
+  options
+      ->addOption("--log.process",
+                  "show process identifier (pid) in log message",
+                  new BooleanParameter(&_processId),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30800);
 
   options->addOption("--log.thread", "show thread identifier in log message",
                      new BooleanParameter(&_threadId),
@@ -259,7 +266,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
-  
+
   options->addObsoleteOption("log.content-filter", "", true);
   options->addObsoleteOption("log.source-filter", "", true);
   options->addObsoleteOption("log.application", "", true);
@@ -314,8 +321,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LogTimeFormats::formatFromName(_timeFormatString);
   }
 
-  if (_apiSwitch == "true" || _apiSwitch == "on" ||
-      _apiSwitch == "On") {
+  if (_apiSwitch == "true" || _apiSwitch == "on" || _apiSwitch == "On") {
     _apiEnabled = true;
     _apiSwitch = "true";
   } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
@@ -378,7 +384,8 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // replace $PID with current process id in filenames
   for (auto& output : _output) {
-    output = StringUtils::replace(output, "$PID", std::to_string(Thread::currentProcessId()));
+    output = StringUtils::replace(output, "$PID",
+                                  std::to_string(Thread::currentProcessId()));
   }
 }
 
@@ -389,7 +396,7 @@ void LoggerFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 #endif
-  
+
   // set maximum length for each log entry
   Logger::defaultLogGroup().maxLogEntryLength(std::max<uint32_t>(256, _maxEntryLength));
 

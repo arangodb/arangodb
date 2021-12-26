@@ -871,7 +871,8 @@ graph::Graph const* GraphNode::graph() const noexcept { return _graphObj; }
 void GraphNode::initializeIndexConditions() const {
   // We need to prepare the variable accesses before we ask the index nodes.
   // Those are located on the options, and need to be partially executed.
-  options()->initializeIndexConditions(plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
+  options()->initializeIndexConditions(plan()->getAst(), getRegisterPlan()->varInfo,
+                                       getTemporaryVariable());
 }
 
 bool GraphNode::isEligibleAsSatelliteTraversal() const {

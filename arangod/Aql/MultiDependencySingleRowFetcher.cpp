@@ -43,17 +43,19 @@ auto MultiDependencySingleRowFetcher::UpstreamSkipReport::isInitialized() const 
 }
 
 auto MultiDependencySingleRowFetcher::UpstreamSkipReport::initialize(size_t depth) -> void {
-  _report.resize(depth, std::make_pair(0,0));
+  _report.resize(depth, std::make_pair(0, 0));
   _isInitialized = true;
 }
 
-auto MultiDependencySingleRowFetcher::UpstreamSkipReport::getSkipped(size_t subqueryDepth) const -> size_t {
+auto MultiDependencySingleRowFetcher::UpstreamSkipReport::getSkipped(size_t subqueryDepth) const
+    -> size_t {
   TRI_ASSERT(_isInitialized);
   TRI_ASSERT(subqueryDepth < _report.size());
   return _report[subqueryDepth].first;
 }
 
-auto MultiDependencySingleRowFetcher::UpstreamSkipReport::getFullCount(size_t subqueryDepth) const -> size_t {
+auto MultiDependencySingleRowFetcher::UpstreamSkipReport::getFullCount(size_t subqueryDepth) const
+    -> size_t {
   TRI_ASSERT(_isInitialized);
   TRI_ASSERT(subqueryDepth < _report.size());
   return _report[subqueryDepth].second;
@@ -67,7 +69,8 @@ auto MultiDependencySingleRowFetcher::UpstreamSkipReport::clearCounts(size_t sub
   }
 }
 
-auto MultiDependencySingleRowFetcher::UpstreamSkipReport::setSkipped(size_t subqueryDepth, size_t skipped) -> void {
+auto MultiDependencySingleRowFetcher::UpstreamSkipReport::setSkipped(size_t subqueryDepth,
+                                                                     size_t skipped) -> void {
   TRI_ASSERT(subqueryDepth < _report.size());
   _report[subqueryDepth].first = skipped;
 }
@@ -165,7 +168,7 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
                                               AqlCallSet const& aqlCallSet)
     -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
   TRI_ASSERT(_callsInFlight.size() == numberDependencies());
-   if (!_maximumSkipReport.isInitialized()) {
+  if (!_maximumSkipReport.isInitialized()) {
     size_t levels = stack.subqueryLevel();
     initializeReports(levels);
   }
@@ -272,8 +275,8 @@ auto MultiDependencySingleRowFetcher::upstreamState() const -> ExecutionState {
   }
 }
 
-
-auto MultiDependencySingleRowFetcher::resetDidReturnSubquerySkips(size_t shadowRowDepth) -> void {
+auto MultiDependencySingleRowFetcher::resetDidReturnSubquerySkips(size_t shadowRowDepth)
+    -> void {
   _didReturnSubquerySkips = false;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

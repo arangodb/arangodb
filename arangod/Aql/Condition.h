@@ -45,12 +45,12 @@ struct AstNode;
 struct Variable;
 
 // note to maintainers:
-// 
+//
 enum class ConditionOptimization {
-  None,       // only generic optimizations are made (e.g. AND to n-ry AND, sorting and deduplicating IN nodes )
-  NoNegation, // no conversions to negation normal form. Implies NoDNF and no optimization.
-  NoDNF,      // no conversions to DNF are made and no condition optimization
-  Auto,       // all existing condition optimizations are applied
+  None,  // only generic optimizations are made (e.g. AND to n-ry AND, sorting and deduplicating IN nodes )
+  NoNegation,  // no conversions to negation normal form. Implies NoDNF and no optimization.
+  NoDNF,  // no conversions to DNF are made and no condition optimization
+  Auto,   // all existing condition optimizations are applied
 
 };
 
@@ -141,7 +141,8 @@ class Condition {
   void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
 
   /// @brief create a condition from VPack
-  static std::unique_ptr<Condition> fromVPack(ExecutionPlan*, arangodb::velocypack::Slice const&);
+  static std::unique_ptr<Condition> fromVPack(ExecutionPlan*,
+                                              arangodb::velocypack::Slice const&);
 
   /// @brief clone the condition
   std::unique_ptr<Condition> clone() const;
@@ -155,7 +156,7 @@ class Condition {
   /// @param mutlivalued attributes may have more than one value
   ///                    (ArangoSearch view case)
   /// @param conditionOptimization  allowed condition optimizations
-  void normalize(ExecutionPlan*, bool multivalued = false, 
+  void normalize(ExecutionPlan*, bool multivalued = false,
                  ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
 
   /// @brief normalize the condition
@@ -230,14 +231,12 @@ class Condition {
   AstNode* collapse(AstNode const*);
 
   /// @brief converts binary to n-ary, comparison normal and negation normal form
-  AstNode* transformNodePreorder(
-      AstNode*, 
-      ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
+  AstNode* transformNodePreorder(AstNode*,
+                                 ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
 
   /// @brief converts from negation normal to disjunctive normal form
-  AstNode* transformNodePostorder(
-      AstNode*, 
-      ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
+  AstNode* transformNodePostorder(AstNode*, ConditionOptimization conditionOptimization =
+                                                ConditionOptimization::Auto);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step
@@ -260,4 +259,3 @@ class Condition {
 };
 }  // namespace aql
 }  // namespace arangodb
-

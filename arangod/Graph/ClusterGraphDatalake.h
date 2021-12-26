@@ -48,13 +48,13 @@ class ClusterGraphDatalake {
   ~ClusterGraphDatalake();
 
   size_t numEntries() const noexcept { return _data.size(); }
-  
+
   void clear() noexcept {
     _data.clear();
     _resourceMonitor.decreaseMemoryUsage(_totalMemoryUsage);
     _totalMemoryUsage = 0;
   }
-  
+
   arangodb::velocypack::Slice operator[](size_t index) const noexcept;
 
   arangodb::velocypack::Slice add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data);

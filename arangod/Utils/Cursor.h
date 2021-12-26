@@ -70,7 +70,7 @@ class Cursor {
   inline double ttl() const { return _ttl; }
 
   inline double expires() const { return _expires; }
-  
+
   inline bool isUsed() const { return _isUsed; }
 
   inline bool isDeleted() const { return _isDeleted; }
@@ -125,7 +125,7 @@ class Cursor {
    * @return ErrorResult, if something goes wrong
    */
   virtual Result dumpSync(velocypack::Builder& result) = 0;
-  
+
   /// Set wakeup handler on streaming cursor
   virtual void setWakeupHandler(std::function<bool()> const& cb) {}
   virtual void resetWakeupHandler() {}
@@ -140,4 +140,3 @@ class Cursor {
   std::atomic<bool> _isUsed;
 };
 }  // namespace arangodb
-

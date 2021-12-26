@@ -41,11 +41,13 @@ OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
                                     std::unordered_map<ErrorCode, size_t> errorCounter) {
   switch (code) {
     case fuerte::StatusAccepted:
-      return OperationResult(Result(), std::move(body), std::move(options), std::move(errorCounter));
+      return OperationResult(Result(), std::move(body), std::move(options),
+                             std::move(errorCounter));
     case fuerte::StatusCreated: {
       options.waitForSync = true;  // wait for sync is abused here
       // operationResult should get a return code.
-      return OperationResult(Result(), std::move(body), std::move(options), std::move(errorCounter));
+      return OperationResult(Result(), std::move(body), std::move(options),
+                             std::move(errorCounter));
     }
     case fuerte::StatusPreconditionFailed:
       return network::opResultFromBody(std::move(body), TRI_ERROR_ARANGO_CONFLICT,
@@ -72,7 +74,8 @@ OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
                                       std::unordered_map<ErrorCode, size_t> errorCounter) {
   switch (code) {
     case fuerte::StatusOK:
-      return OperationResult(Result(), std::move(body), std::move(options), std::move(errorCounter));
+      return OperationResult(Result(), std::move(body), std::move(options),
+                             std::move(errorCounter));
     case fuerte::StatusConflict:
     case fuerte::StatusPreconditionFailed:
       return OperationResult(Result(TRI_ERROR_ARANGO_CONFLICT), std::move(body),
@@ -95,7 +98,8 @@ OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
     case fuerte::StatusAccepted:
     case fuerte::StatusCreated: {
       options.waitForSync = (code == fuerte::StatusCreated);
-      return OperationResult(Result(), std::move(body), std::move(options), std::move(errorCounter));
+      return OperationResult(Result(), std::move(body), std::move(options),
+                             std::move(errorCounter));
     }
     case fuerte::StatusConflict:
       return OperationResult(network::resultFromBody(body, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED),
@@ -123,7 +127,8 @@ OperationResult clusterResultRemove(arangodb::fuerte::StatusCode code,
     case fuerte::StatusAccepted:
     case fuerte::StatusCreated: {
       options.waitForSync = (code != fuerte::StatusAccepted);
-      return OperationResult(Result(), std::move(body), std::move(options), std::move(errorCounter));
+      return OperationResult(Result(), std::move(body), std::move(options),
+                             std::move(errorCounter));
     }
     case fuerte::StatusConflict:
     case fuerte::StatusPreconditionFailed:
@@ -141,4 +146,3 @@ OperationResult clusterResultRemove(arangodb::fuerte::StatusCode code,
 
 }  // namespace network
 }  // namespace arangodb
-                   

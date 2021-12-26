@@ -34,7 +34,7 @@ class ShellFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
-  
+
   void setExitCode(int code) { *_result = code; }
 
  private:
@@ -64,4 +64,3 @@ class ShellFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

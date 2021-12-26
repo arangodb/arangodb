@@ -58,7 +58,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief agency public path
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +75,7 @@ std::string const RestVocbaseBaseHandler::AGENCY_PRIV_PATH =
 /// @brief analyzer path
 ////////////////////////////////////////////////////////////////////////////////
 /*static*/ std::string const RestVocbaseBaseHandler::ANALYZER_PATH =
-  "/_api/analyzer";
+    "/_api/analyzer";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
@@ -325,7 +324,8 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
           assembleDocumentId(collectionName,
                              slice.get(StaticStrings::KeyString).copyString(), true));
       _response->setHeaderNC(StaticStrings::Location,
-                             std::string("/_db/" + StringUtils::urlEncode(_request->databaseName()) +
+                             std::string("/_db/" +
+                                         StringUtils::urlEncode(_request->databaseName()) +
                                          DOCUMENT_PATH + "/" + escapedHandle));
     }
   }
@@ -360,7 +360,7 @@ void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
   TRI_ASSERT(opres.errorNumber() == TRI_ERROR_ARANGO_CONFLICT);
   const auto code = precFailed ? ResponseCode::PRECONDITION_FAILED : ResponseCode::CONFLICT;
   resetResponse(code);
-  
+
   VPackSlice slice = opres.slice();
   if (slice.isObject()) {  // single document case
     std::string const rev =
@@ -480,7 +480,7 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
         builder.add(StaticStrings::KeyString, VPackValue(key));
         builder.add(StaticStrings::RevString, VPackValue(rev.toString()));
         builder.close();
-      
+
         generateConflictError(tmp, /*precFailed*/ rev.isSet());
       }
       return;
@@ -546,26 +546,30 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 }
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
-    std::string const& collectionName, AccessMode::Type type, OperationOptions const& opOptions) const {
+    std::string const& collectionName, AccessMode::Type type,
+    OperationOptions const& opOptions) const {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    auto tmp = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase),
-                                                         collectionName, type);
-    if (!opOptions.isSynchronousReplicationFrom.empty() && ServerState::instance()->isDBServer()) {
+    auto tmp = std::make_unique<SingleCollectionTransaction>(
+        transaction::StandaloneContext::Create(_vocbase), collectionName, type);
+    if (!opOptions.isSynchronousReplicationFrom.empty() &&
+        ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
     return tmp;
   }
-  
+
   TransactionId tid = TransactionId::none();
   std::size_t pos = 0;
   try {
     tid = TransactionId{std::stoull(value, &pos, 10)};
-  } catch (...) {}
+  } catch (...) {
+  }
   if (!tid.isSet() || (tid.isLegacyTransactionId() &&
-                   ServerState::instance()->isRunningInCluster())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
+                       ServerState::instance()->isRunningInCluster())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid transaction ID");
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -588,24 +592,26 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
       }
     }
   }
- 
-  // if we have a read operation and the x-arango-aql-document-call header is set,
-  // it means this is a request by the DOCUMENT function inside an AQL query. in 
-  // this case, we cannot be sure to lease the transaction context successfully, 
-  // because the AQL query may have already acquired the write lock on the context
-  // for the entire duration of the query. if this is the case, then the query
-  // already has the lock, and it is ok if we lease the context here without 
-  // acquiring it again.
+
+  // if we have a read operation and the x-arango-aql-document-call header is
+  // set, it means this is a request by the DOCUMENT function inside an AQL
+  // query. in this case, we cannot be sure to lease the transaction context
+  // successfully, because the AQL query may have already acquired the write
+  // lock on the context for the entire duration of the query. if this is the
+  // case, then the query already has the lock, and it is ok if we lease the
+  // context here without acquiring it again.
   bool const isSideUser =
-      (ServerState::instance()->isDBServer() &&
-       AccessMode::isRead(type) &&
+      (ServerState::instance()->isDBServer() && AccessMode::isRead(type) &&
        !_request->header(StaticStrings::AqlDocumentCall).empty());
 
   std::shared_ptr<transaction::Context> ctx = mgr->leaseManagedTrx(tid, type, isSideUser);
-  
+
   if (!ctx) {
-    LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id " << tid << " not found";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction ") + std::to_string(tid.id()) + " not found");
+    LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS)
+        << "Transaction with id " << tid << " not found";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                                   std::string("transaction ") +
+                                       std::to_string(tid.id()) + " not found");
   }
   std::unique_ptr<transaction::Methods> trx;
   if (ServerState::instance()->isDBServer() &&
@@ -620,7 +626,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
 }
 
 /// @brief create proper transaction context, including the proper IDs
-std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
+std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext(
+    AccessMode::Type mode) const {
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
@@ -631,10 +638,12 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   std::size_t pos = 0;
   try {
     tid = TransactionId{std::stoull(value, &pos, 10)};
-  } catch (...) {}
+  } catch (...) {
+  }
   if (tid.empty() || (tid.isLegacyTransactionId() &&
                       ServerState::instance()->isRunningInCluster())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid transaction ID");
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -642,8 +651,9 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
 
   if (pos > 0 && pos < value.size()) {
     if (!tid.isLeaderTransactionId() || !ServerState::instance()->isDBServer()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                                     "illegal to start a managed transaction here");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+          "illegal to start a managed transaction here");
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
       return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
@@ -662,7 +672,8 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
 
   auto ctx = mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
   if (!ctx) {
-    LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
+    LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS)
+        << "Transaction with id '" << tid << "' not found";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND,
                                    std::string("transaction '") +
                                        std::to_string(tid.id()) + "' not found");

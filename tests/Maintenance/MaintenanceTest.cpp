@@ -845,7 +845,7 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
                                          localToChangeset(node.second), node.first,
                                          errors, makeDirty, callNotify, actions,
                                          arangodb::MaintenanceFeature::ShardActionMap{},
-                                         ReplicatedLogStatusMapByDatabase {});
+                                         ReplicatedLogStatusMapByDatabase{});
     ASSERT_EQ(actions.size(), 0);
   }
 
@@ -873,7 +873,8 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
 TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_should_be_dropped) {
   std::vector<std::shared_ptr<ActionDescription>> actions;
 
-  localNodes.begin()->second.getOrCreate("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
+  localNodes.begin()->second.getOrCreate("db3") =
+      arangodb::velocypack::Slice::emptyObjectSlice();
   std::unordered_set<std::string> dirty{};
   bool callNotify = false;
 
@@ -902,7 +903,8 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
 TEST_F(MaintenanceTestActionPhaseOne,
        local_databases_one_more_non_empty_database_should_be_dropped) {
   std::vector<std::shared_ptr<ActionDescription>> actions;
-  localNodes.begin()->second.getOrCreate("db3/col") = arangodb::velocypack::Slice::emptyObjectSlice();
+  localNodes.begin()->second.getOrCreate("db3/col") =
+      arangodb::velocypack::Slice::emptyObjectSlice();
   std::unordered_set<std::string> dirty{"db3"};
   bool callNotify = false;
 
@@ -958,7 +960,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
   createPlanCollection(dbname, colname, 1, 3, plan);
 
   auto cid = collectionMap(plan).at("db3/x");
-  auto shards = plan.getOrCreate({COLLECTIONS, dbname, cid}).hasAsChildren(SHARDS).value().get();
+  auto shards =
+      plan.getOrCreate({COLLECTIONS, dbname, cid}).hasAsChildren(SHARDS).value().get();
   ASSERT_EQ(shards.size(), 1);
   std::string shardName = shards.begin()->first;
 
@@ -1052,7 +1055,8 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
   auto cid = collectionMap(plan).at("_system/bar");
   auto shards = plan.getOrCreate({"Collections", dbname, cid, "shards"}).children();
 
-  plan.getOrCreate({"Collections", dbname, cid, indexes}).handle<POP>(arangodb::velocypack::Slice::emptyObjectSlice());
+  plan.getOrCreate({"Collections", dbname, cid, indexes})
+      .handle<POP>(arangodb::velocypack::Slice::emptyObjectSlice());
   std::unordered_set<std::string> dirty{"_system"};
   bool callNotify = false;
 
@@ -1121,7 +1125,8 @@ TEST_F(MaintenanceTestActionPhaseOne,
     auto collection = cb.slice();
     auto shname = collection.get(NAME).copyString();
 
-    (*node.second.getOrCreate(dbname).children().begin()->second).getOrCreate(prop) = v.slice();
+    (*node.second.getOrCreate(dbname).children().begin()->second).getOrCreate(prop) =
+        v.slice();
 
     arangodb::maintenance::diffPlanLocal(*engine, planToChangeset(plan), 0, dirty,
                                          localToChangeset(node.second), node.first,
@@ -1655,7 +1660,8 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership_plan) {
 
 TEST_F(MaintenanceTestActionPhaseOne,
        empty_db3_in_plan_should_drop_all_local_db3_collections_on_all_servers) {
-  plan.getOrCreate(PLAN_COL_PATH + "db3") = arangodb::velocypack::Slice::emptyObjectSlice();
+  plan.getOrCreate(PLAN_COL_PATH + "db3") =
+      arangodb::velocypack::Slice::emptyObjectSlice();
   std::unordered_set<std::string> dirty{"db3"};
   bool callNotify = false;
 
@@ -1709,7 +1715,8 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
           newServers.add(VPackValue(std::string("_") + leader));
           newServers.add(VPackValue(follower));
         }
-        plan.getOrCreate({"Collections", dbname, cid, "shards", shname}) = newServers.slice();
+        plan.getOrCreate({"Collections", dbname, cid, "shards", shname}) =
+            newServers.slice();
         break;
       }
     }
@@ -1731,7 +1738,8 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
   std::string const dbname("_system");
   std::string const colname("bar");
   auto cid = collectionMap(plan).at(dbname + "/" + colname);
-  Node::Children const& shards = plan.getOrCreate({"Collections", dbname, cid, "shards"}).children();
+  Node::Children const& shards =
+      plan.getOrCreate({"Collections", dbname, cid, "shards"}).children();
   auto firstShard = shards.begin();
   VPackBuilder b = firstShard->second->toBuilder();
   std::string const shname = firstShard->first;

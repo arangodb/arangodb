@@ -117,7 +117,8 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
     case rocksdb::Status::Code::kMergeInProgress:
       return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, status.ToString()};
     case rocksdb::Status::Code::kIncomplete:
-      return {TRI_ERROR_ARANGO_INCOMPLETE_READ, "'incomplete' error in storage engine: " + status.ToString()};
+      return {TRI_ERROR_ARANGO_INCOMPLETE_READ,
+              "'incomplete' error in storage engine: " + status.ToString()};
     case rocksdb::Status::Code::kShutdownInProgress:
       return {TRI_ERROR_SHUTTING_DOWN, status.ToString()};
     case rocksdb::Status::Code::kTimedOut:

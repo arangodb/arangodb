@@ -229,8 +229,7 @@ class Traverser {
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   virtual bool getSingleVertex(arangodb::velocypack::Slice edge,
-                               arangodb::velocypack::StringRef sourceVertexId,
-                               uint64_t depth,
+                               arangodb::velocypack::StringRef sourceVertexId, uint64_t depth,
                                arangodb::velocypack::StringRef& targetVertexId) = 0;
 
   virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) = 0;
@@ -333,4 +332,3 @@ class Traverser {
 };
 }  // namespace traverser
 }  // namespace arangodb
-

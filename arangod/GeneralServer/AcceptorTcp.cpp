@@ -117,7 +117,7 @@ void AcceptorTcp<T>::open() {
     throw std::runtime_error(ec.message());
   }
   _open = true;
-  
+
   LOG_TOPIC("853a9", DEBUG, arangodb::Logger::COMMUNICATION)
       << "successfully opened acceptor TCP";
 
@@ -134,7 +134,7 @@ void AcceptorTcp<T>::close() {
   }
 }
 
-template<SocketType T>
+template <SocketType T>
 void AcceptorTcp<T>::cancel() {
   _acceptor.cancel();
 }
@@ -143,7 +143,8 @@ template <>
 void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
-  auto asioSocket = std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
+  auto asioSocket =
+      std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
   auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
@@ -184,24 +185,21 @@ void AcceptorTcp<SocketType::Tcp>::performHandshake(std::unique_ptr<AsioSocket<S
 
 namespace {
 bool tls_h2_negotiated(SSL* ssl) {
-
-  const unsigned char *next_proto = nullptr;
+  const unsigned char* next_proto = nullptr;
   unsigned int next_proto_len = 0;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-    SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+  SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+#endif  // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   // allowed value is "h2"
   // http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
-  if (next_proto != nullptr && next_proto_len == 2 &&
-      memcmp(next_proto, "h2", 2) == 0) {
+  if (next_proto != nullptr && next_proto_len == 2 && memcmp(next_proto, "h2", 2) == 0) {
     return true;
   }
   return false;
 }
-}
-
+}  // namespace
 
 template <>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
@@ -220,7 +218,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     if (ec) {
       LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
           << "error during TLS handshake: '" << ec.message() << "'";
-      as.reset(); // ungraceful shutdown
+      as.reset();  // ungraceful shutdown
       return;
     }
 
@@ -234,14 +232,16 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
 
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
-    
+
     std::shared_ptr<CommTask> task;
     if (tls_h2_negotiated(as->socket.native_handle())) {
-      task = std::make_shared<H2CommTask<SocketType::Ssl>>(_server, std::move(info), std::move(as));
+      task = std::make_shared<H2CommTask<SocketType::Ssl>>(_server, std::move(info),
+                                                           std::move(as));
     } else {
-      task = std::make_shared<HttpCommTask<SocketType::Ssl>>(_server, std::move(info), std::move(as));
+      task = std::make_shared<HttpCommTask<SocketType::Ssl>>(_server, std::move(info),
+                                                             std::move(as));
     }
-    
+
     _server.registerTask(std::move(task));
   };
   ptr->handshake(std::move(cb));
@@ -254,9 +254,10 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   // select the io context for this socket
   auto& ctx = _server.selectIoContext();
 
-  auto asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
+  auto asioSocket =
+      std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto& socket = asioSocket->socket.lowest_layer();
-  auto& peer =  asioSocket->peer;
+  auto& peer = asioSocket->peer;
   auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);

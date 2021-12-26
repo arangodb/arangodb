@@ -47,7 +47,7 @@ class MultiAqlItemBlockInputRange {
   bool upstreamHasMore(size_t const dependency) const noexcept;
 
   bool hasValidRow() const noexcept;
-  
+
   bool hasDataRow() const noexcept;
   bool hasDataRow(size_t const dependency) const noexcept;
 
@@ -129,4 +129,3 @@ class MultiAqlItemBlockInputRange {
 };
 
 }  // namespace arangodb::aql
-

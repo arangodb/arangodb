@@ -56,10 +56,7 @@ struct isFuture<Future<T>> {
 };
 
 /// @brief Specifies state of a future as returned by wait_for and wait_until
-enum class FutureStatus : uint8_t {
-  Ready,
-  Timeout
-};
+enum class FutureStatus : uint8_t { Ready, Timeout };
 
 namespace detail {
 
@@ -134,10 +131,10 @@ using decay_t = typename decay<T>::type;
 struct EmptyConstructor {};
 
 // uses a condition_variable to wait
-template<typename T>
+template <typename T>
 void waitImpl(Future<T>& f) {
   if (f.isReady()) {
-    return; // short-circuit
+    return;  // short-circuit
   }
 
   std::mutex m;
@@ -155,15 +152,15 @@ void waitImpl(Future<T>& f) {
     cv.notify_one();
   });
   std::unique_lock<std::mutex> lock(m);
-  cv.wait(lock, [&ret]{ return ret.isReady(); });
+  cv.wait(lock, [&ret] { return ret.isReady(); });
   f = std::move(ret);
 }
 
 // uses a condition_variable to wait
-template<typename T, typename Clock, typename Duration>
+template <typename T, typename Clock, typename Duration>
 void waitImpl(Future<T>& f, std::chrono::time_point<Clock, Duration> const& tp) {
   if (f.isReady()) {
-    return; // short-circuit
+    return;  // short-circuit
   }
 
   std::mutex m;
@@ -181,7 +178,7 @@ void waitImpl(Future<T>& f, std::chrono::time_point<Clock, Duration> const& tp) 
     cv.notify_one();
   });
   std::unique_lock<std::mutex> lock(m);
-  cv.wait_until(lock, tp, [&ret]{ return ret.isReady(); });
+  cv.wait_until(lock, tp, [&ret] { return ret.isReady(); });
   f = std::move(ret);
 }
 }  // namespace detail
@@ -303,9 +300,7 @@ class Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait() {
-    detail::waitImpl(*this);
-  }
+  void wait() { detail::waitImpl(*this); }
 
   /// waits for the result, returns if it is not available
   /// for the specified timeout duration. Future must be valid
@@ -382,21 +377,21 @@ class Future {
 
     Promise<B> promise;
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<DF>(fn),
-                            pr = std::move(promise)](Try<T>&& t) mutable {
-      if (t.hasException()) {
-        pr.setException(std::move(t).exception());
-      } else {
-        try {
-          auto f = std::invoke(std::forward<DF>(fn), std::move(t).get());
-          std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
-            pr.setTry(std::move(t));
-          });
-        } catch (...) {
-          pr.setException(std::current_exception());
-        }
-      }
-    });
+    getState().setCallback(
+        [fn = std::forward<DF>(fn), pr = std::move(promise)](Try<T>&& t) mutable {
+          if (t.hasException()) {
+            pr.setException(std::move(t).exception());
+          } else {
+            try {
+              auto f = std::invoke(std::forward<DF>(fn), std::move(t).get());
+              std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
+                pr.setTry(std::move(t));
+              });
+            } catch (...) {
+              pr.setException(std::current_exception());
+            }
+          }
+        });
     return future;
   }
 

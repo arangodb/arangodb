@@ -30,10 +30,9 @@
 namespace arangodb {
 
 class RocksDBZkdIndexBase : public RocksDBIndex {
-
  public:
   RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
-      arangodb::velocypack::Slice const& info);
+                      arangodb::velocypack::Slice const& info);
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type type) const override;
   const char* typeName() const override { return "zkd"; };
@@ -110,8 +109,8 @@ auto supportsFilterCondition(arangodb::Index const* index,
 
 auto specializeCondition(arangodb::Index const* index, arangodb::aql::AstNode* condition,
                          const arangodb::aql::Variable* reference) -> aql::AstNode*;
-}
+}  // namespace zkd
 
-}
+}  // namespace arangodb
 
 #endif  // ARANGOD_ROCKSDB_ZKD_INDEX_H

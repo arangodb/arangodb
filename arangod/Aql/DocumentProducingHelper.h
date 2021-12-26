@@ -30,10 +30,10 @@
 
 #include <velocypack/Builder.h>
 
-#include "Aql/types.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Projections.h"
+#include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -46,7 +46,7 @@ class Methods;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 struct AqlValue;
 class Expression;
@@ -54,16 +54,15 @@ class ExpressionContext;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class QueryContext;
-  
+
 struct DocumentProducingFunctionContext {
  public:
-  DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
-                                   RegisterId outputRegister, bool produceResult,
-                                   aql::QueryContext& query,
+  DocumentProducingFunctionContext(InputAqlItemRow const& inputRow,
+                                   OutputAqlItemRow* outputRow, RegisterId outputRegister,
+                                   bool produceResult, aql::QueryContext& query,
                                    transaction::Methods& trx, Expression* filter,
                                    arangodb::aql::Projections const& projections,
-                                   bool allowCoveringIndexOptimization,
-                                   bool checkUniqueness);
+                                   bool allowCoveringIndexOptimization, bool checkUniqueness);
 
   DocumentProducingFunctionContext() = delete;
 
@@ -88,9 +87,9 @@ struct DocumentProducingFunctionContext {
   void incrFiltered() noexcept;
 
   size_t getAndResetNumScanned() noexcept;
-  
+
   size_t getAndResetNumFiltered() noexcept;
-  
+
   InputAqlItemRow const& getInputRow() const noexcept;
 
   OutputAqlItemRow& getOutputRow() const noexcept;
@@ -107,10 +106,12 @@ struct DocumentProducingFunctionContext {
   void reset();
 
   void setIsLastIndex(bool val);
-  
+
   bool hasFilter() const noexcept;
-  
-  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
+
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() {
+    return _aqlFunctionsInternalCache;
+  }
 
   arangodb::velocypack::Builder& getBuilder() noexcept;
 
@@ -128,7 +129,7 @@ struct DocumentProducingFunctionContext {
   size_t _numFiltered;
   uint_fast16_t _killCheckCounter = 0;
 
-  /// @brief Builder that is reused to generate projection results 
+  /// @brief Builder that is reused to generate projection results
   arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief set of already returned documents. Used to make the result distinct
@@ -171,4 +172,3 @@ IndexIterator::DocumentCallback buildDocumentCallback(DocumentProducingFunctionC
 
 }  // namespace aql
 }  // namespace arangodb
-

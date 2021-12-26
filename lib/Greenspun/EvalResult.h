@@ -25,9 +25,9 @@
 
 #pragma once
 
-#include <vector>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -94,7 +94,7 @@ struct EvalError {
   std::string message;
 };
 
-template<typename T>
+template <typename T>
 struct EvalResultT {
   bool ok() const { return hasValue(); }
   bool fail() const { return !ok(); }
@@ -105,14 +105,14 @@ struct EvalResultT {
   operator bool() const { return ok(); }
 
   EvalResultT() = default;
-  EvalResultT(EvalError error) : _value(std::in_place_index<1>, std::move(error)) {}
+  EvalResultT(EvalError error)
+      : _value(std::in_place_index<1>, std::move(error)) {}
   EvalResultT(EvalResultT const&) = default;
   EvalResultT(EvalResultT&&) noexcept = default;
   EvalResultT& operator=(EvalResultT const&) = default;
   EvalResultT& operator=(EvalResultT&&) noexcept = default;
 
   EvalResultT(T s) : _value(std::in_place_index<0>, std::move(s)) {}
-
 
   template <typename F>
   EvalResultT mapError(F&& f) {
@@ -123,14 +123,14 @@ struct EvalResultT {
   }
 
   EvalResultT<std::monostate> asResult() && {
-    return std::move(*this).map([](auto &&) -> std::monostate { return {}; });
+    return std::move(*this).map([](auto&&) -> std::monostate { return {}; });
   };
 
-  template<typename F>
+  template <typename F>
   auto map(F&& f) && -> EvalResultT<std::invoke_result_t<F, T&&>> {
     if (hasValue()) {
       return {f(value())};
-    } else if(hasError()) {
+    } else if (hasError()) {
       return error();
     } else {
       return EvalError("valueless by exception");
@@ -151,4 +151,3 @@ using EvalResult = EvalResultT<std::monostate>;
 
 }  // namespace greenspun
 }  // namespace arangodb
-

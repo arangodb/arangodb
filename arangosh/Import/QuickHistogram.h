@@ -187,15 +187,14 @@ class QuickHistogram : public arangodb::Thread {
         std::ostringstream oss;
         oss << std::put_time(&tm, "%m-%d-%Y %H:%M:%S");
 
-        LOG_TOPIC("8a76c",INFO, arangodb::Logger::FIXME) << Logger::FIXED(fp_measuring,3) << ","
-                                                 << Logger::FIXED(fp_interval,3) << ","
-                                                 << num << ","
-                                                 << ((0 != num) ? _readingLatencies->at(0).count() : 0) << ","
-                                                 << mean.count() << "," << median.count() << ","
-                                                 << per95.count() << "," << per99.count() << ","
-                                                 << per99_9.count() << ","
-                                                 << ((0 != num) ? _readingLatencies->at(num - 1).count() : 0) << ","
-                                                 << _objectsReading.load() << "," << oss.str();
+        LOG_TOPIC("8a76c", INFO, arangodb::Logger::FIXME)
+            << Logger::FIXED(fp_measuring, 3) << ","
+            << Logger::FIXED(fp_interval, 3) << "," << num << ","
+            << ((0 != num) ? _readingLatencies->at(0).count() : 0) << ","
+            << mean.count() << "," << median.count() << "," << per95.count()
+            << "," << per99.count() << "," << per99_9.count() << ","
+            << ((0 != num) ? _readingLatencies->at(num - 1).count() : 0) << ","
+            << _objectsReading.load() << "," << oss.str();
 
         _readingLatencies->clear();
         _intervalStart = intervalEnd;
@@ -254,12 +253,14 @@ class QuickHistogram : public arangodb::Thread {
 class QuickHistogramTimer {
  public:
   explicit QuickHistogramTimer(QuickHistogram& histo)
-    : _intervalStart(std::chrono::steady_clock::now()), _histogram(histo),
-    _objects(1) {}
+      : _intervalStart(std::chrono::steady_clock::now()),
+        _histogram(histo),
+        _objects(1) {}
 
   explicit QuickHistogramTimer(QuickHistogram& histo, uint64_t objects)
-    : _intervalStart(std::chrono::steady_clock::now()), _histogram(histo),
-    _objects(objects) {}
+      : _intervalStart(std::chrono::steady_clock::now()),
+        _histogram(histo),
+        _objects(objects) {}
 
   ~QuickHistogramTimer() {
     std::chrono::microseconds latency;

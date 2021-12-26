@@ -34,7 +34,7 @@
 
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
 #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
 namespace arangodb {
@@ -135,7 +135,8 @@ class ResultT {
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   // cppcheck-suppress noExplicitConstructor
-  /* implicit */ ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
+  /* implicit */ ResultT(T&& val)
+      : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
   // This is disabled if U is implicitly convertible to Result
   // (e.g., if U = int) to avoid ambiguous construction.
@@ -227,8 +228,12 @@ class ResultT {
   bool fail() const { return _result.fail(); }
   bool is(ErrorCode code) { return _result.is(code); }
   ErrorCode errorNumber() const { return _result.errorNumber(); }
-  [[nodiscard]] std::string_view errorMessage() const& { return _result.errorMessage(); }
-  [[nodiscard]] std::string errorMessage() && { return std::move(_result).errorMessage(); }
+  [[nodiscard]] std::string_view errorMessage() const& {
+    return _result.errorMessage();
+  }
+  [[nodiscard]] std::string errorMessage() && {
+    return std::move(_result).errorMessage();
+  }
 
   // access methods
   Result const& result() const& { return _result; }

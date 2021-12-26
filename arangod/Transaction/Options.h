@@ -70,7 +70,7 @@ struct Options {
   uint64_t intermediateCommitSize;
   uint64_t intermediateCommitCount;
   bool allowImplicitCollectionsForRead;
-  bool allowImplicitCollectionsForWrite; // replication only!
+  bool allowImplicitCollectionsForWrite;  // replication only!
 #ifdef USE_ENTERPRISE
   bool skipInaccessibleCollections;
 #endif
@@ -91,8 +91,7 @@ struct Options {
 
 struct AllowImplicitCollectionsSwitcher {
   AllowImplicitCollectionsSwitcher(Options& options, bool allow) noexcept
-      : _options(options), 
-        _oldValue(options.allowImplicitCollectionsForRead) {
+      : _options(options), _oldValue(options.allowImplicitCollectionsForRead) {
     // previous value has been saved, now override value in options with disallow
     options.allowImplicitCollectionsForRead = allow;
   }
@@ -108,4 +107,3 @@ struct AllowImplicitCollectionsSwitcher {
 
 }  // namespace transaction
 }  // namespace arangodb
-

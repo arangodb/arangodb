@@ -54,7 +54,7 @@ using namespace arangodb::cluster;
 using namespace arangodb::httpclient;
 
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
+static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
 
 static void VerifyAttributes(VPackSlice result, std::string const& colName,
                              std::string const& sName) {
@@ -71,8 +71,8 @@ static void VerifyAttributes(VPackSlice result, std::string const& colName,
 }
 
 static void VerifyNumbers(VPackSlice result, std::string const& colName,
-                          std::string const& sName, uint64_t testTotal, uint64_t testCurrent,
-                          double testFollowerPercent) {
+                          std::string const& sName, uint64_t testTotal,
+                          uint64_t testCurrent, double testFollowerPercent) {
   ASSERT_TRUE(result.isObject());
 
   VPackSlice col = result.get(colName);
@@ -286,8 +286,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path, velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& opts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqType == fuerte::RestVerb::Get);
@@ -303,7 +303,8 @@ TEST_F(ShardDistributionReporterTest,
     // '/_db/UnitTestDB/_api/collection/' + shard.shard + '/count'
     if (destination == "server:" + dbserver1) {
       // off-sync follows s2,s3
-      if (opts.database == "UnitTestDB" && path == "/_api/collection/" + s2 + "/count") {
+      if (opts.database == "UnitTestDB" &&
+          path == "/_api/collection/" + s2 + "/count") {
         response.setResponse(generateCountResponse(shard2LowFollowerCount));
       } else {
         EXPECT_EQ(opts.database, "UnitTestDB");
@@ -318,7 +319,8 @@ TEST_F(ShardDistributionReporterTest,
     } else if (destination == "server:" + dbserver3) {
       // Leads s3
       // off-sync follows s2
-      if (opts.database == "UnitTestDB" && path == "/_api/collection/" + s2 + "/count") {
+      if (opts.database == "UnitTestDB" &&
+          path == "/_api/collection/" + s2 + "/count") {
         response.setResponse(generateCountResponse(shard2HighFollowerCount));
       } else {
         EXPECT_EQ(opts.database, "UnitTestDB");
@@ -338,7 +340,7 @@ TEST_F(ShardDistributionReporterTest,
     ShardDistributionReporter testee(&ci, sender);
     testee.getDistributionForDatabase(dbname, resultBuilder);
     VPackSlice result = resultBuilder.slice();
-  
+
     ASSERT_TRUE(result.isObject());
 
     {
@@ -662,10 +664,10 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
             ASSERT_EQ(current.getNumber<uint64_t>(), shard2LowFollowerCount);
-            
+
             VPackSlice pct = progress.get("followerPercent");
             ASSERT_TRUE(pct.isNumber());
-            
+
             VPackSlice syncing = progress.get("followersSyncing");
             ASSERT_TRUE(syncing.isNumber());
           }
@@ -714,10 +716,10 @@ TEST_F(ShardDistributionReporterTest,
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
             ASSERT_TRUE(current.getNumber<uint64_t>() == shard3FollowerCount);
-            
+
             VPackSlice pct = progress.get("followerPercent");
             ASSERT_TRUE(pct.isNumber());
-            
+
             VPackSlice syncing = progress.get("followersSyncing");
             ASSERT_TRUE(syncing.isNumber());
           }
@@ -831,8 +833,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path, velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -865,7 +867,9 @@ TEST_F(ShardDistributionReporterTest,
         ShardDistributionReporter testee(&ci, sender);
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount, double(smallerFollowerCount + largerFollowerCount) / double(2.0) / double(leaderCount));
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount,
+                      double(smallerFollowerCount + largerFollowerCount) /
+                          double(2.0) / double(leaderCount));
       }
     }
 
@@ -879,7 +883,8 @@ TEST_F(ShardDistributionReporterTest,
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
         // follower has more docs than leader. cap follower pct to 1.0
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount, 1.0);
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
+                      largerFollowerCount, 1.0);
       }
     }
 
@@ -893,7 +898,8 @@ TEST_F(ShardDistributionReporterTest,
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
         // follower has more docs than leader. cap follower pct to 1.0
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount, 1.0);
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
+                      smallerFollowerCount, 1.0);
       }
     }
   }
@@ -917,8 +923,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path, velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -968,8 +974,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path, velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -1020,8 +1026,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path, velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -1070,8 +1076,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path, velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -1121,8 +1127,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path, velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -1149,7 +1155,8 @@ TEST_F(ShardDistributionReporterTest,
     VPackBuilder resultBuilder;
     ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
-    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount, double(largerFollowerCount) / 1.0 / double(leaderCount));
+    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount,
+                  double(largerFollowerCount) / 1.0 / double(leaderCount));
   }
 }
 
@@ -1173,8 +1180,8 @@ TEST_F(ShardDistributionReporterTest,
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
-                          arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body,
+                          arangodb::fuerte::RestVerb reqType,
+                          std::string const& path, velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");

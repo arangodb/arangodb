@@ -28,8 +28,6 @@
 namespace arangodb {
 namespace consensus {
 
-
-
 constexpr char const* ANALYZERS = "Analyzers";
 constexpr char const* COLLECTIONS = "Collections";
 constexpr char const* REPLICATED_LOGS = "ReplicatedLogs";
@@ -54,14 +52,14 @@ constexpr char const* PLAN_VIEWS = "Plan/Views/";
 constexpr char const* PLAN_ANALYZERS = "Plan/Analyzers/";
 
 constexpr char const* HOTBACKUP_TRANSFER_LOCKS = "/Target/HotBackup/Transfers/";
-constexpr char const* HOTBACKUP_TRANSFER_JOBS = "/Target/HotBackup/TransferJobs/";
+constexpr char const* HOTBACKUP_TRANSFER_JOBS =
+    "/Target/HotBackup/TransferJobs/";
 constexpr char const* HOTBACKUP_KEY = "/Target/HotBackup/Create";
 
 constexpr char const* PREC_IS_READ_LOCKED = "is-read-locked";
 constexpr char const* PREC_IS_WRITE_LOCKED = "is-write-locked";
 constexpr char const* PREC_CAN_READ_LOCK = "can-read-lock";
 constexpr char const* PREC_CAN_WRITE_LOCK = "can-write-lock";
-
 
 constexpr char const* OP_READ_LOCK = "read-lock";
 constexpr char const* OP_WRITE_LOCK = "write-lock";
@@ -72,4 +70,3 @@ constexpr char const* OP_CMP = "cmp";
 
 }  // namespace consensus
 }  // namespace arangodb
-

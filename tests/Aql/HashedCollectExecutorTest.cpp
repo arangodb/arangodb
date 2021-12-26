@@ -115,7 +115,8 @@ class HashedCollectExecutorTest
                           std::vector<std::string> aggregateTypes = {},
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> HashedCollectExecutorInfos {
-    return HashedCollectExecutorInfos{std::move(groupRegisters), RegisterPlan::MaxRegisterId,
+    return HashedCollectExecutorInfos{std::move(groupRegisters),
+                                      RegisterPlan::MaxRegisterId,
                                       std::move(aggregateTypes),
                                       std::move(aggregateRegisters),
                                       &VPackOptions::Defaults,
@@ -313,7 +314,7 @@ TEST_P(HashedCollectExecutorTest, skip_some) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 2;         // skip some
-  call.softLimit = 0u;      // 0 limit
+  call.softLimit = 0u;     // 0 limit
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -335,7 +336,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_get) {
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
   call.offset = 2;         // skip some
-  call.softLimit = 1000u;   // high limit
+  call.softLimit = 1000u;  // high limit
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()
       .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
@@ -378,8 +379,8 @@ TEST_P(HashedCollectExecutorTest, skip_and_fullCount) {
   auto registerInfos = buildRegisterInfos(1, 2, {{1, 0}});
   auto executorInfos = buildExecutorInfos(1, 2, {{1, 0}});
   AqlCall call{};
-  call.offset = 1;     // skip some
-  call.hardLimit = 2u; // hard limit
+  call.offset = 1;      // skip some
+  call.hardLimit = 2u;  // hard limit
   call.fullCount = true;
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper()

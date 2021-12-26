@@ -37,12 +37,11 @@
 #endif
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <WinSock2.h>
 
 typedef long suseconds_t;
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
@@ -237,4 +236,3 @@ ErrorCode TRI_InetPton4(char const* src, unsigned char* dst);
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_InetPton6(char const* src, unsigned char* dst);
-

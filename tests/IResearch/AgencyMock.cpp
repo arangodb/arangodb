@@ -65,9 +65,9 @@ void Store::notifyObservers() const {
   {
     MUTEX_LOCKER(storeLocker, _storeLock);
 
-    for (auto& entry: _observerTable) {
+    for (auto& entry : _observerTable) {
       auto& key = entry.first;
-      auto pos = key.rfind("/"); // observer id is after the last '/'
+      auto pos = key.rfind("/");  // observer id is after the last '/'
 
       if (std::string::npos == pos) {
         continue;
@@ -75,9 +75,7 @@ void Store::notifyObservers() const {
 
       bool success;
       auto* idStr = &(key[pos + 1]);
-      auto id = arangodb::NumberUtils::atoi<uint32_t>(
-        idStr, idStr + std::strlen(idStr), success
-      );
+      auto id = arangodb::NumberUtils::atoi<uint32_t>(idStr, idStr + std::strlen(idStr), success);
 
       if (success) {
         callbackIds.emplace_back(id);
@@ -85,16 +83,16 @@ void Store::notifyObservers() const {
     }
   }
 
-  for (auto& id: callbackIds) {
+  for (auto& id : callbackIds) {
     try {
       callbackRegistry->getCallback(id)->refetchAndUpdate(true, true);  // force a check
-    } catch(...) {
+    } catch (...) {
       // ignore
     }
   }
 }
 
-} // arangodb
+}  // namespace arangodb::consensus
 
 using namespace arangodb;
 using namespace arangodb::network;

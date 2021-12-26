@@ -337,8 +337,8 @@ void OptimizerRulesFeature::addRules() {
 #endif
 
 #ifdef USE_ENTERPRISE
-  // must run before distribute-in-cluster and must not be disabled, as it is necessary
-  // for distributing SmartGraph operations
+  // must run before distribute-in-cluster and must not be disabled, as it is
+  // necessary for distributing SmartGraph operations
   registerRule("cluster-lift-constant-for-disjoint-graph-nodes",
                clusterLiftConstantsForDisjointGraphNodes,
                OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
@@ -417,8 +417,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  registerRule("optimize-count", optimizeCountRule,
-               OptimizerRule::optimizeCountRule,
+  registerRule("optimize-count", optimizeCountRule, OptimizerRule::optimizeCountRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   registerRule("parallelize-gather", parallelizeGatherRule, OptimizerRule::parallelizeGatherRule,
@@ -459,15 +458,15 @@ void OptimizerRulesFeature::addRules() {
   // It changes the structure of the query plan by "splicing", i.e. replacing
   // every SubqueryNode by a SubqueryStart and a SubqueryEnd node with the
   // subquery's nodes in between, resulting in a linear query plan. If an
-  // optimizer rule runs after this rule, it has to be aware of SubqueryStartNode and
-  // SubqueryEndNode and would likely be more complicated to write.
-  // note: since 3.8 this rule cannot be turned off anymore. this also means
-  // that any query execution plan created by 3.8 will not contain nodes of type
-  // SUBQUERY after optimization. it is still possible that 3.8 encounters plan
-  // with SUBQUERY node types inside, e.g. if they come from 3.7 coordinators
-  // during rolling upgrades.
-  registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
-               OptimizerRule::makeFlags());
+  // optimizer rule runs after this rule, it has to be aware of
+  // SubqueryStartNode and SubqueryEndNode and would likely be more complicated
+  // to write. note: since 3.8 this rule cannot be turned off anymore. this also
+  // means that any query execution plan created by 3.8 will not contain nodes
+  // of type SUBQUERY after optimization. it is still possible that 3.8
+  // encounters plan with SUBQUERY node types inside, e.g. if they come from 3.7
+  // coordinators during rolling upgrades.
+  registerRule("splice-subqueries", spliceSubqueriesRule,
+               OptimizerRule::spliceSubqueriesRule, OptimizerRule::makeFlags());
 
   // allow nodes to asynchronously prefetch the next batch while processing the current batch.
   // this effectively allows parts of the query to run in parallel, but as some internal details
@@ -479,11 +478,10 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::Hidden));
 
   // finally sort all rules by their level
-  std::sort(
-      _rules.begin(), _rules.end(),
-      [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
-        return (lhs.level < rhs.level);
-      });
+  std::sort(_rules.begin(), _rules.end(),
+            [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
+              return (lhs.level < rhs.level);
+            });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // make the rules database read-only from now on

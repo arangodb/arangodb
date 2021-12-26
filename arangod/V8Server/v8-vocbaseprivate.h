@@ -52,7 +52,5 @@ TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val,
-                           bool extendedNames,
-                           std::string& collectionName,
+                           bool extendedNames, std::string& collectionName,
                            arangodb::velocypack::Builder& builder, bool includeRev);
-

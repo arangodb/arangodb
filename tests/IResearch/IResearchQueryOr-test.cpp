@@ -40,7 +40,7 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class IResearchQueryOrTest : public IResearchQueryTest {};
 
@@ -55,22 +55,23 @@ TEST_P(IResearchQueryOrTest, test) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
   // add collection_1
   {
-    auto collectionJson = VPackParser::fromJson(
-        "{ \"name\": \"collection_1\" }");
+    auto collectionJson =
+        VPackParser::fromJson("{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection1);
   }
 
   // add collection_2
   {
-    auto collectionJson = VPackParser::fromJson(
-        "{ \"name\": \"collection_2\" }");
+    auto collectionJson =
+        VPackParser::fromJson("{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection2);
   }
@@ -97,10 +98,10 @@ TEST_P(IResearchQueryOrTest, test) {
           "storeValues":"id" }
       }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -151,8 +152,7 @@ TEST_P(IResearchQueryOrTest, test) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -197,9 +197,7 @@ TEST_P(IResearchQueryOrTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_EQUAL_SLICES(
-          arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-          resolved);
+      EXPECT_EQUAL_SLICES(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved);
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -324,8 +322,7 @@ TEST_P(IResearchQueryOrTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_EQUAL_SLICES(arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                                        resolved);
+      EXPECT_EQUAL_SLICES(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved);
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -593,7 +590,4 @@ TEST_P(IResearchQueryOrTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryOrTest,
-  IResearchQueryOrTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryOrTest, IResearchQueryOrTest, GetLinkVersions());

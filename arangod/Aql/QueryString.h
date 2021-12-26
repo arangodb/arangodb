@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include <velocypack/StringRef.h>
+#include "Basics/Common.h"
 
 #include <iosfwd>
 
@@ -75,4 +75,3 @@ class QueryString {
 std::ostream& operator<<(std::ostream&, QueryString const&);
 }  // namespace aql
 }  // namespace arangodb
-

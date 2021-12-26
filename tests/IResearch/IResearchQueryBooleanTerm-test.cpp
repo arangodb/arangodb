@@ -39,9 +39,9 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
-static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
+static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
 
 class IResearchQueryBooleanTermTest : public IResearchQueryTest {};
 
@@ -49,7 +49,8 @@ class IResearchQueryBooleanTermTest : public IResearchQueryTest {};
 
 TEST_P(IResearchQueryBooleanTermTest, test) {
   // ==, !=, <, <=, >, >=, range
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   arangodb::LogicalView* view{};
   std::vector<arangodb::velocypack::Builder> insertedDocs;
 
@@ -155,10 +156,10 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
         "version": %u }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
@@ -2252,7 +2253,5 @@ TEST_P(IResearchQueryBooleanTermTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryBooleanTermTest,
-  IResearchQueryBooleanTermTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryBooleanTermTest,
+                        IResearchQueryBooleanTermTest, GetLinkVersions());

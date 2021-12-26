@@ -338,7 +338,6 @@ TEST_F(VPackDeserializerBasicTest, test_ignore_unknown_hint) {
               vPackWithUnknown->slice());
       ASSERT_TRUE(res.ok());
     }
-
   }
 }
 
@@ -374,8 +373,8 @@ class VPackDeserializerArithmeticTest : public ::testing::Test {
   ~VPackDeserializerArithmeticTest() {}
 };
 
-using TypesToTest = ::testing::Types<size_t, uint8_t, uint16_t, uint32_t, uint64_t,
-                                     int8_t, int16_t, int32_t, int64_t, float, double>;
+using TypesToTest =
+    ::testing::Types<size_t, uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t, int64_t, float, double>;
 
 TYPED_TEST_CASE(VPackDeserializerArithmeticTest, TypesToTest);
 

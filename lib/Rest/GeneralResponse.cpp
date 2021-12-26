@@ -416,7 +416,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_DUPLICATE):
     case static_cast<int>(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED):
       return ResponseCode::CONFLICT;
-    
+
     case static_cast<int>(TRI_ERROR_HTTP_PRECONDITION_FAILED):
     case static_cast<int>(TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED):
       return ResponseCode::PRECONDITION_FAILED;

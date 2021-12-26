@@ -180,8 +180,8 @@ bool RestBatchHandler::executeNextHandler() {
   LOG_TOPIC("910e9", TRACE, arangodb::Logger::REPLICATION)
       << "part header is: " << std::string(headerStart, headerLength);
 
-  auto request = std::make_unique<HttpRequest>(_request->connectionInfo(), /*messageId*/1,
-                                               /*allowMethodOverride*/false);
+  auto request = std::make_unique<HttpRequest>(_request->connectionInfo(), /*messageId*/ 1,
+                                               /*allowMethodOverride*/ false);
   if (0 < headerLength) {
     auto buff = std::make_unique<char[]>(headerLength + 1);
     memcpy(buff.get(), headerStart, headerLength);
@@ -198,10 +198,10 @@ bool RestBatchHandler::executeNextHandler() {
     LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
         << "part body is '" << std::string(bodyStart, bodyLength) << "'";
     request->body().clear();
-    request->body().reserve(bodyLength+1);
+    request->body().reserve(bodyLength + 1);
     request->body().append(bodyStart, bodyLength);
     request->body().push_back('\0');
-    request->body().resetTo(bodyLength); // ensure null terminated
+    request->body().resetTo(bodyLength);  // ensure null terminated
   }
 
   if (!authorization.empty()) {
@@ -214,8 +214,9 @@ bool RestBatchHandler::executeNextHandler() {
   std::shared_ptr<RestHandler> handler;
 
   {
-    auto response = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1,
-                                                   std::make_unique<StringBuffer>(false));
+    auto response =
+        std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1,
+                                       std::make_unique<StringBuffer>(false));
     auto& factory = server().getFeature<GeneralServerFeature>().handlerFactory();
     handler = factory.createHandler(server(), std::move(request), std::move(response));
 
@@ -230,21 +231,20 @@ bool RestBatchHandler::executeNextHandler() {
   // assume a bad lane, so the request is definitely executed via the queues
   auto const lane = RequestLane::CLIENT_V8;
 
-
   // now schedule the real handler
-  bool ok =
-      SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [this, self = shared_from_this(), handler]() {
-        // start to work for this handler
-        // ignore any errors here, will be handled later by inspecting the response
-        try {
-          ExecContextScope scope(nullptr);  // workaround because of assertions
-          handler->runHandler([this, self](RestHandler* handler) {
-            processSubHandlerResult(*handler);
-          });
-        } catch (...) {
-          processSubHandlerResult(*handler);
-        }
+  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [this, self = shared_from_this(),
+                                                                handler]() {
+    // start to work for this handler
+    // ignore any errors here, will be handled later by inspecting the response
+    try {
+      ExecContextScope scope(nullptr);  // workaround because of assertions
+      handler->runHandler([this, self](RestHandler* handler) {
+        processSubHandlerResult(*handler);
       });
+    } catch (...) {
+      processSubHandlerResult(*handler);
+    }
+  });
 
   if (!ok) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL);
@@ -285,9 +285,8 @@ RestStatus RestBatchHandler::executeHttp() {
   VPackStringRef bodyStr = _request->rawPayload();
 
   // setup some auxiliary structures to parse the multipart message
-  _multipartMessage =
-      MultipartMessage{_boundary.data(), _boundary.size(), bodyStr.data(),
-                       bodyStr.data() + bodyStr.size()};
+  _multipartMessage = MultipartMessage{_boundary.data(), _boundary.size(),
+                                       bodyStr.data(), bodyStr.data() + bodyStr.size()};
 
   _helper.message = _multipartMessage;
   _helper.searchStart = _multipartMessage.messageStart;

@@ -95,9 +95,9 @@ struct SimpleHttpClientParams {
   uint64_t getRetryWaitTime() { return _retryWaitTime; }
 
   void setRetryMessage(std::string const& m) { _retryMessage = m; }
-  
+
   double getRequestTimeout() const { return _requestTimeout; }
-  
+
   void setRequestTimeout(double value) noexcept { _requestTimeout = value; }
 
   void setMaxPacketSize(size_t ms) { _maxPacketSize = ms; }
@@ -138,7 +138,7 @@ struct SimpleHttpClientParams {
 
  private:
   double _requestTimeout;
-  
+
   // flag whether or not we keep the connection on destruction
   bool _keepConnectionOnDestruction = false;
 
@@ -206,7 +206,7 @@ class SimpleHttpClient {
   SimpleHttpClient(GeneralClientConnection*, SimpleHttpClientParams const&);
   ~SimpleHttpClient();
 
-  /// @brief allow the SimpleHttpClient to reuse/recycle the result. 
+  /// @brief allow the SimpleHttpClient to reuse/recycle the result.
   /// the SimpleHttpClient will assume ownership for it
   void recycleResult(std::unique_ptr<SimpleHttpResult> result);
 
@@ -312,7 +312,8 @@ class SimpleHttpClient {
 
   void setErrorMessage(std::string_view message, ErrorCode error) {
     if (error != TRI_ERROR_NO_ERROR) {
-      _errorMessage = basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
+      _errorMessage =
+          basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
     } else {
       setErrorMessage(message);
     }
@@ -507,7 +508,7 @@ class SimpleHttpClient {
   std::atomic<bool> _aborted;
 
   std::string _hostname;
-  
+
   // reference to communication feature phase (populated only once for
   // the entire lifetime of the SimpleHttpClient, as the repeated feature
   // lookup may be expensive otherwise)
@@ -515,4 +516,3 @@ class SimpleHttpClient {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

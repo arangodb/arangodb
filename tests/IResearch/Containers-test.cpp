@@ -241,7 +241,7 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     std::set<std::string> expected({"abc", "def", "ghi"});
 
     for (auto& entry : map) {
-      EXPECT_TRUE((1 == expected.erase(static_cast<std::string>(entry.key())))); // FIXME: after C++20 remove cast and use heterogeneous lookup
+      EXPECT_TRUE((1 == expected.erase(static_cast<std::string>(entry.key()))));  // FIXME: after C++20 remove cast and use heterogeneous lookup
     }
 
     EXPECT_TRUE((expected.empty()));

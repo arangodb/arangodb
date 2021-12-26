@@ -28,13 +28,13 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Aql/QueryWarnings.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/GraphTestTools.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
-#include "Basics/GlobalResourceMonitor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

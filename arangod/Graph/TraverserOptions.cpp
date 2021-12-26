@@ -762,8 +762,8 @@ auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
 }
 
 void TraverserOptions::initializeIndexConditions(
-  aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-  aql::Variable const* indexVariable) {
+    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Variable const* indexVariable) {
   BaseOptions::initializeIndexConditions(ast, varInfo, indexVariable);
   for (auto& [unused, infos] : _depthLookupInfo) {
     for (auto& info : infos) {
@@ -798,7 +798,8 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
 }
 
 #ifndef USE_ENTERPRISE
-bool TraverserOptions::checkSmartDestination(VPackSlice edge, velocypack::StringRef sourceVertex) const {
+bool TraverserOptions::checkSmartDestination(VPackSlice edge,
+                                             velocypack::StringRef sourceVertex) const {
   return false;
 }
 #endif

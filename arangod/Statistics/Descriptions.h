@@ -34,11 +34,7 @@ class ApplicationServer;
 }
 namespace stats {
 
-enum RequestStatisticsSource {
-  USER,
-  SUPERUSER,
-  ALL
-};
+enum RequestStatisticsSource { USER, SUPERUSER, ALL };
 
 enum class GroupType { System, Client, ClientUser, Http, Vst, Server };
 
@@ -101,4 +97,3 @@ class Descriptions final {
 };
 }  // namespace stats
 }  // namespace arangodb
-

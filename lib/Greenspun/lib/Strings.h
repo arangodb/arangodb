@@ -29,5 +29,3 @@
 namespace arangodb::greenspun {
 void RegisterAllStringFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
-
-

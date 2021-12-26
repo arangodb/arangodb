@@ -85,8 +85,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @param fn the function to execute
   /// @param delay how log to sleep before the execution
   //////////////////////////////////////////////////////////////////////////////
-  bool queue(ThreadGroup id,
-             std::chrono::steady_clock::duration delay,
+  bool queue(ThreadGroup id, std::chrono::steady_clock::duration delay,
              std::function<void()>&& fn);
 
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
@@ -116,4 +115,3 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

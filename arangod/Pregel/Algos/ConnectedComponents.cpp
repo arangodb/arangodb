@@ -59,7 +59,7 @@ struct MyComputation : public VertexComputation<uint64_t, uint8_t, uint64_t> {
 struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
   explicit MyGraphFormat(application_features::ApplicationServer& server,
                          std::string const& result)
-      : VertexGraphFormat<uint64_t, uint8_t>(server, result, /*vertexNull*/0) {}
+      : VertexGraphFormat<uint64_t, uint8_t>(server, result, /*vertexNull*/ 0) {}
 
   void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
@@ -80,7 +80,7 @@ struct MyCompensation : public VertexCompensation<uint64_t, uint8_t, uint64_t> {
   }
 };
 
-}
+}  // namespace
 
 VertexComputation<uint64_t, uint8_t, uint64_t>* ConnectedComponents::createComputation(
     WorkerConfig const* config) const {

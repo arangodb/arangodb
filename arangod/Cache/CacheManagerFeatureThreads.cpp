@@ -60,9 +60,11 @@ void CacheRebalancerThread::run() {
       CONDITION_LOCKER(guard, _condition);
       guard.wait(interval);
     } catch (std::exception const& ex) {
-      LOG_TOPIC("e78b8", ERR, Logger::CACHE) << "cache rebalancer thread caught exception: " << ex.what();
+      LOG_TOPIC("e78b8", ERR, Logger::CACHE)
+          << "cache rebalancer thread caught exception: " << ex.what();
     } catch (...) {
-      LOG_TOPIC("7269a", ERR, Logger::CACHE) << "cache rebalancer thread caught unknown exception";
+      LOG_TOPIC("7269a", ERR, Logger::CACHE)
+          << "cache rebalancer thread caught unknown exception";
     }
   }
 }

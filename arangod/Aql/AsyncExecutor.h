@@ -40,7 +40,6 @@ class NoStats;
 class OutputAqlItemRow;
 class SharedQueryState;
 
-
 // The RemoteBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
 class AsyncExecutor final {};
@@ -57,33 +56,25 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   ExecutionBlockImpl(ExecutionEngine* engine, AsyncNode const* node);
 
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
- 
+
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
  private:
-  
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack);
-  
-  enum class AsyncState {
-    Empty,
-    InProgress,
-    GotResult,
-    GotException
-  };
+
+  enum class AsyncState { Empty, InProgress, GotResult, GotException };
 
  private:
-
   std::shared_ptr<SharedQueryState> _sharedState;
 
   std::mutex _mutex;
   SkipResult _returnSkip;
   SharedAqlItemBlockPtr _returnBlock;
   std::exception_ptr _returnException;
-  
+
   ExecutionState _returnState = ExecutionState::HASMORE;
   AsyncState _internalState = AsyncState::Empty;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

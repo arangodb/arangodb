@@ -34,9 +34,9 @@
 #include <atomic>
 #include <limits>
 #include <numeric>
+#include <stdexcept>
 #include <type_traits>
 #include <unordered_set>
-#include <stdexcept>
 
 namespace arangodb {
 namespace options {
@@ -211,7 +211,8 @@ struct BooleanParameter : public Parameter {
           (value == "true" || value == "on" || value == "1" || value == "yes");
       return "";
     }
-    return "invalid value for type " + this->name() + ". expecting 'true' or 'false'";
+    return "invalid value for type " + this->name() +
+           ". expecting 'true' or 'false'";
   }
 
   std::string typeDescription() const override {
@@ -251,7 +252,8 @@ struct AtomicBooleanParameter : public Parameter {
       ptr->store(value == "true" || value == "on" || value == "1");
       return "";
     }
-    return "invalid value for type " + this->name() + ". expecting 'true' or 'false'";
+    return "invalid value for type " + this->name() +
+           ". expecting 'true' or 'false'";
   }
 
   std::string typeDescription() const override {
@@ -447,7 +449,6 @@ struct DiscreteValuesParameter : public T {
     return T::set(value);
   }
 
-  
   // cppcheck-suppress virtualCallInConstructor ; bogus warning
   std::string description() const override {
     std::string msg("Possible values: ");
@@ -504,9 +505,7 @@ struct VectorParameter : public Parameter {
     return result;
   }
 
-  void flushValue() override {
-    ptr->clear();
-  }
+  void flushValue() override { ptr->clear(); }
 
   void toVPack(VPackBuilder& builder) const override {
     builder.openArray();
@@ -519,18 +518,18 @@ struct VectorParameter : public Parameter {
   std::vector<typename T::ValueType>* ptr;
 };
 
-// specialized type for a vector of discrete values (defined in the unordered_set)
-// this templated type needs a concrete value type
+// specialized type for a vector of discrete values (defined in the
+// unordered_set) this templated type needs a concrete value type
 template <typename T>
 struct DiscreteValuesVectorParameter : public Parameter {
   explicit DiscreteValuesVectorParameter(std::vector<typename T::ValueType>* ptr,
                                          std::unordered_set<typename T::ValueType> const& allowed)
-      : ptr(ptr),
-        allowed(allowed) {
+      : ptr(ptr), allowed(allowed) {
     for (size_t i = 0; i < ptr->size(); ++i) {
       if (allowed.find(ptr->at(i)) == allowed.end()) {
         // default value is not in list of allowed values
-        std::string msg("invalid default value for DiscreteValues parameter: '");
+        std::string msg(
+            "invalid default value for DiscreteValues parameter: '");
         msg.append(stringifyValue(ptr->at(i)));
         msg.append("'. ");
         msg.append(description());
@@ -545,9 +544,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
     return std::string(param.name()) + "...";
   }
 
-  void flushValue() override {
-    ptr->clear();
-  }
+  void flushValue() override { ptr->clear(); }
 
   std::string valueString() const override {
     std::string value;
@@ -612,7 +609,6 @@ struct DiscreteValuesVectorParameter : public Parameter {
   std::unordered_set<typename T::ValueType> allowed;
 };
 
-
 // a type that's useful for obsolete parameters that do nothing
 struct ObsoleteParameter : public Parameter {
   explicit ObsoleteParameter(bool requiresValue) : required(requiresValue) {}
@@ -628,4 +624,3 @@ struct ObsoleteParameter : public Parameter {
 };
 }  // namespace options
 }  // namespace arangodb
-

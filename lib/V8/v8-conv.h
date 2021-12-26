@@ -55,4 +55,3 @@ bool TRI_ObjectToBoolean(v8::Isolate* isolate, v8::Handle<v8::Value> const);
 
 bool TRI_GetOptionalBooleanProperty(v8::Isolate* isolate, v8::Handle<v8::Object> const obj,
                                     const char* property, bool defaultValue);
-

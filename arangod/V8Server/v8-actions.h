@@ -34,12 +34,10 @@ namespace arangodb {
 class GeneralRequest;
 }
 
-v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
-                                          TRI_v8_global_t const* v8g,
+v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                                           arangodb::GeneralRequest* request,
                                           TRI_action_t const* action);
 
 void TRI_InitV8Actions(v8::Isolate* isolate);
 
 void TRI_InitV8ServerUtils(v8::Isolate* isolate);
-

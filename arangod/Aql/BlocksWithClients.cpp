@@ -96,9 +96,9 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.try_emplace(shardIds[i], i);
   }
-        
+
   _clientBlockData.reserve(shardIds.size());
-        
+
   if constexpr (std::is_same<MutexExecutor, Executor>::value) {
     auto* mutex = ExecutionNode::castTo<MutexNode const*>(ep);
     TRI_ASSERT(mutex != nullptr);
@@ -156,17 +156,16 @@ template <class Executor>
 auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
                                                        std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
- 
   if constexpr (std::is_same<MutexExecutor, Executor>::value) {
     _executor.acquireLock();
   }
-  
+
   auto guard = scopeGuard([&]() noexcept {
     if constexpr (std::is_same<MutexExecutor, Executor>::value) {
       _executor.releaseLock();
     }
   });
-  
+
   traceExecuteBegin(stack, clientId);
   auto res = executeWithoutTraceForClient(std::move(stack), clientId);
   traceExecuteEnd(res, clientId);

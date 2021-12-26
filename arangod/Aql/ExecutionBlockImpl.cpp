@@ -159,16 +159,14 @@ class TestLambdaSkipExecutor;
 
 template <typename Executor>
 constexpr bool executorHasSideEffects =
-    is_one_of_v<Executor, 
-                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+    is_one_of_v<Executor, ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 template <typename Executor>
 constexpr bool executorCanReturnWaiting =
-    is_one_of_v<Executor, 
-                ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
+    is_one_of_v<Executor, ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>,
                 ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
@@ -617,9 +615,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
               KShortestPathsExecutor<graph::KShortestPathsFinder>, KShortestPathsExecutor<KPathRefactored>,
               KShortestPathsExecutor<KPathRefactoredTracer>, KShortestPathsExecutor<KPathRefactoredCluster>,
               KShortestPathsExecutor<KPathRefactoredClusterTracer>, ParallelUnsortedGatherExecutor,
-              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>, HashedCollectExecutor,
-              AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor, DistinctCollectExecutor,
-              ConstrainedSortExecutor, CountCollectExecutor,
+              IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, IdExecutor<ConstFetcher>,
+              HashedCollectExecutor, AccuWindowExecutor, WindowExecutor, IndexExecutor, EnumerateCollectionExecutor,
+              DistinctCollectExecutor, ConstrainedSortExecutor, CountCollectExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               TestLambdaSkipExecutor,
 #endif
@@ -780,19 +778,19 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // we can safely ignore the result here, because we will try to
       // claim the task ourselves anyway.
       SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                          [block = this, task = _prefetchTask,
+                                         [block = this, task = _prefetchTask,
                                           stack = ctx.stack]() mutable {
-                                            if (!task->tryClaim()) {
-                                              return;
-                                            }
-                                            // task is a copy of the PrefetchTask shared_ptr, and we will only
-                                            // attempt to execute the task if we successfully claimed the task.
-                                            // i.e., it does not matter if this task lingers around in the
-                                            // scheduler queue even after the execution block has been destroyed,
-                                            // because in this case we will not be able to claim the task and
-                                            // simply return early without accessing the block.
-                                            task->execute(*block, stack);
-                                          });
+                                           if (!task->tryClaim()) {
+                                             return;
+                                           }
+                                           // task is a copy of the PrefetchTask shared_ptr, and we will only
+                                           // attempt to execute the task if we successfully claimed the task.
+                                           // i.e., it does not matter if this task lingers around in the
+                                           // scheduler queue even after the execution block has been destroyed,
+                                           // because in this case we will not be able to claim the task and
+                                           // simply return early without accessing the block.
+                                           task->execute(*block, stack);
+                                         });
     }
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
@@ -1421,7 +1419,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
         size_t skippedLocal = 0;
         AqlCallType call{};
         if constexpr (executorCanReturnWaiting<Executor>) {
-          auto sg = arangodb::scopeGuard([&]() noexcept { ctx.clientCall.resetSkipCount(); });
+          auto sg = arangodb::scopeGuard(
+              [&]() noexcept { ctx.clientCall.resetSkipCount(); });
           ExecutionState executorState = ExecutionState::HASMORE;
           std::tie(executorState, stats, skippedLocal, call) =
               _executor.skipRowsRange(_lastRange, ctx.clientCall);
@@ -1564,7 +1563,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
             << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
 
         AqlCall callCopy = ctx.clientCall;
-        auto sg = arangodb::scopeGuard([&]() noexcept { ctx.clientCall.resetSkipCount(); });
+        auto sg = arangodb::scopeGuard(
+            [&]() noexcept { ctx.clientCall.resetSkipCount(); });
         if constexpr (executorHasSideEffects<Executor>) {
           if (ctx.stack.needToSkipSubquery()) {
             // Fast Forward call.
@@ -1754,9 +1754,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack const& callStack)
           // which implies we're using a MultiDependencyRowFetcher.
           // Imagine the following situation:
           // In case the last subquery ended, at least for one dependency, on an
-          // item block-boundary. But the next row in this dependency - and thus,
-          // all other dependencies - is a non-relevant shadow row. Then the
-          // executor will have been called by now, possibly multiple times,
+          // item block-boundary. But the next row in this dependency - and
+          // thus, all other dependencies - is a non-relevant shadow row. Then
+          // the executor will have been called by now, possibly multiple times,
           // until all dependencies have some input and thus arrived at this
           // particular shadow row. So now the condition of this if-branch is
           // true.
@@ -2212,30 +2212,33 @@ template class ::arangodb::aql::ExecutionBlockImpl<WindowExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false, arangodb::iresearch::MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false, arangodb::iresearch::MaterializeType::Materialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<false, false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<true, false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<true, false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
+    false, false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
+    false, false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
+    true, false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
+    true, false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true, arangodb::iresearch::MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true, arangodb::iresearch::MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true, arangodb::iresearch::MaterializeType::Materialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<false, true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<false, true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<true, true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<true, true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
+    false, true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
+    false, true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
+    true, true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
+    true, true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::Materialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewMergeExecutor<false, false, arangodb::iresearch::MaterializeType::Materialize>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
     false, false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
@@ -2244,9 +2247,12 @@ template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
     true, false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
     true, false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true, arangodb::iresearch::MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true, arangodb::iresearch::MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true, arangodb::iresearch::MaterializeType::Materialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewMergeExecutor<false, true, arangodb::iresearch::MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewMergeExecutor<false, true, arangodb::iresearch::MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewMergeExecutor<false, true, arangodb::iresearch::MaterializeType::Materialize>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
     false, true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<

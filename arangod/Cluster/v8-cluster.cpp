@@ -38,8 +38,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralRequest.h"
@@ -69,7 +69,8 @@ static void onlyInCluster() {
     return;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "ArangoDB is not running in cluster mode");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "ArangoDB is not running in cluster mode");
 }
 
 static void onlyInClusterOrActiveFailover(v8::Isolate* isolate) {
@@ -102,19 +103,24 @@ static void CreateAgencyException(v8::FunctionCallbackInfo<v8::Value> const& arg
     return;
   }
 
-  errorObject->Set(context,
-                   TRI_V8_STD_STRING(isolate, StaticStrings::Code),
-                   v8::Number::New(isolate, static_cast<int>(result.httpCode()))).FromMaybe(false);
-  errorObject->Set(context,
-                   TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                   v8::Number::New(isolate, static_cast<int>(result.errorCode()))).FromMaybe(false);
-  errorObject->Set(context,
-                   TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage).FromMaybe(false);
-  errorObject->Set(context,
-                   TRI_V8_STD_STRING(isolate, StaticStrings::Error), v8::True(isolate)).FromMaybe(false);
+  errorObject
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Code),
+            v8::Number::New(isolate, static_cast<int>(result.httpCode())))
+      .FromMaybe(false);
+  errorObject
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+            v8::Number::New(isolate, static_cast<int>(result.errorCode())))
+      .FromMaybe(false);
+  errorObject
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage)
+      .FromMaybe(false);
+  errorObject
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Error), v8::True(isolate))
+      .FromMaybe(false);
 
   TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Value> proto = ArangoErrorTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+  v8::Handle<v8::Value> proto =
+      ArangoErrorTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
   if (!proto.IsEmpty()) {
     errorObject->SetPrototype(TRI_IGETC, proto).FromMaybe(false);
   }
@@ -131,12 +137,12 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() < 3) {
@@ -192,12 +198,12 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() != 1) {
@@ -246,12 +252,12 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() != 1) {
@@ -280,12 +286,12 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() < 1) {
@@ -310,7 +316,8 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
       VPackSlice const slice = o.value;
 
       if (!slice.isNone()) {
-        l->Set(context, TRI_V8_STD_STRING(isolate, key), TRI_VPackToV8(isolate, slice)).FromMaybe(false);
+        l->Set(context, TRI_V8_STD_STRING(isolate, key), TRI_VPackToV8(isolate, slice))
+            .FromMaybe(false);
       }
     }
   }
@@ -329,12 +336,12 @@ static void JS_APIAgency(std::string const& envelope,
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() < 1) {
@@ -389,12 +396,12 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() < 1) {
@@ -428,12 +435,12 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() < 2) {
@@ -470,12 +477,12 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() > 0) {
@@ -509,12 +516,12 @@ static void JS_EndpointsAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auto context = TRI_IGETC;
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() != 0) {
@@ -561,12 +568,12 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() > 2) {
@@ -605,12 +612,12 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this agency operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
   if (args.Length() != 0) {
@@ -685,12 +692,12 @@ static void JS_FlushClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this cluster operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this cluster operation");
   }
 
   if (args.Length() != 0) {
@@ -730,18 +737,11 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
                                    ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
   }
 
-  std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
-                                             "avoidServers",
-                                             "cid",
-                                             "globallyUniqueId",
-                                             "count",
-                                             "distributeShardsLike",
-                                             "keyOptions",
-                                             "numberOfShards",
-                                             "path",
-                                             "planId",
-                                             "version",
-                                             "objectId"};
+  std::unordered_set<std::string> ignoreKeys{
+      "allowUserKeys",    "avoidServers",   "cid",
+      "globallyUniqueId", "count",          "distributeShardsLike",
+      "keyOptions",       "numberOfShards", "path",
+      "planId",           "version",        "objectId"};
   VPackBuilder infoBuilder =
       col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
   VPackSlice info = infoBuilder.slice();
@@ -765,12 +765,16 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
         if (t.at(0) == '_') {
           t = t.substr(1);
         }
-        shorts->Set(context, pos, TRI_V8_STD_STRING(isolate, serverAliases.at(t))).FromMaybe(false);
+        shorts
+            ->Set(context, pos, TRI_V8_STD_STRING(isolate, serverAliases.at(t)))
+            .FromMaybe(false);
         pos++;
       } catch (...) {
       }
     }
-    shardShorts->Set(context, TRI_V8_STD_STRING(isolate, p.key.copyString()), shorts).FromMaybe(false);
+    shardShorts
+        ->Set(context, TRI_V8_STD_STRING(isolate, p.key.copyString()), shorts)
+        .FromMaybe(false);
   }
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "shardShorts"), shardShorts).FromMaybe(false);
   TRI_V8_RETURN(result);
@@ -809,37 +813,45 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
   // First some stuff from Plan for which Current does not make sense:
   auto cid = std::to_string(col->id().id());
   std::string const& name = col->name();
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cid)).FromMaybe(false);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name)).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cid))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name))
+      .FromMaybe(false);
 
   std::shared_ptr<CollectionInfoCurrent> cic =
       ci.getCollectionCurrent(TRI_ObjectToString(isolate, args[0]), cid);
 
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "currentVersion"),
-              v8::Number::New(isolate, (double)cic->getCurrentVersion())).FromMaybe(false);
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "type"),
-              v8::Number::New(isolate, (int)col->type())).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "currentVersion"),
+            v8::Number::New(isolate, (double)cic->getCurrentVersion()))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "type"),
+            v8::Number::New(isolate, (int)col->type()))
+      .FromMaybe(false);
 
   VPackSlice slice = cic->getIndexes(shardID);
   v8::Handle<v8::Value> indexes = TRI_VPackToV8(isolate, slice);
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "indexes"), indexes).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "indexes"), indexes).FromMaybe(false);
 
   // Finally, report any possible error:
   bool error = cic->error(shardID);
-  result->Set(context,
-              TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-              v8::Boolean::New(isolate, error)).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+            v8::Boolean::New(isolate, error))
+      .FromMaybe(false);
   if (error) {
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Number::New(isolate, cic->errorNum(shardID))).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+              v8::Number::New(isolate, cic->errorNum(shardID)))
+        .FromMaybe(false);
     std::string const errorMessage = cic->errorMessage(shardID);
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, errorMessage)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+              TRI_V8_STD_STRING(isolate, errorMessage))
+        .FromMaybe(false);
   }
   auto servers = cic->servers(shardID);
   v8::Handle<v8::Array> list =
@@ -849,18 +861,14 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
   uint32_t pos = 0;
   for (auto const& s : servers) {
     try {
-      shorts->Set(context,
-                  pos,
-                  TRI_V8_STD_STRING(isolate, serverAliases.at(s))).FromMaybe(false);
+      shorts->Set(context, pos, TRI_V8_STD_STRING(isolate, serverAliases.at(s))).FromMaybe(false);
     } catch (...) {
     }
     list->Set(context, pos, TRI_V8_STD_STRING(isolate, s)).FromMaybe(false);
     pos++;
   }
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "servers"), list).FromMaybe(false);
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "shorts"), shorts).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "servers"), list).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "shorts"), shorts).FromMaybe(false);
 
   servers = cic->failoverCandidates(shardID);
   list = v8::Array::New(isolate, static_cast<int>(servers.size()));
@@ -869,8 +877,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
     list->Set(context, pos, TRI_V8_STD_STRING(isolate, s)).FromMaybe(false);
     pos++;
   }
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "failoverCandidates"), list).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "failoverCandidates"), list).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -924,7 +931,8 @@ static void JS_GetResponsibleServersClusterInfo(v8::FunctionCallbackInfo<v8::Val
 
   uint32_t const n = array->Length();
   for (uint32_t i = 0; i < n; ++i) {
-    shardIds.emplace(TRI_ObjectToString(isolate, array->Get(context, i).FromMaybe(v8::Local<v8::Value>())));
+    shardIds.emplace(
+        TRI_ObjectToString(isolate, array->Get(context, i).FromMaybe(v8::Local<v8::Value>())));
   }
 
   if (shardIds.empty()) {
@@ -937,9 +945,10 @@ static void JS_GetResponsibleServersClusterInfo(v8::FunctionCallbackInfo<v8::Val
 
   v8::Handle<v8::Object> responsible = v8::Object::New(isolate);
   for (auto const& it : result) {
-    responsible->Set(context,
-                     TRI_V8_ASCII_STRING(isolate, it.first.data()),
-                     TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
+    responsible
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, it.first.data()),
+              TRI_V8_STD_STRING(isolate, it.second))
+        .FromMaybe(false);
   }
 
   TRI_V8_RETURN(responsible);
@@ -1000,12 +1009,15 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "shardId"),
-              TRI_V8_STD_STRING(isolate, shardId)).FromMaybe(true);
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "usesDefaultShardingAttributes"),
-              v8::Boolean::New(isolate, usesDefaultShardingAttributes)).FromMaybe(true);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "shardId"),
+            TRI_V8_STD_STRING(isolate, shardId))
+      .FromMaybe(true);
+  result
+      ->Set(context,
+            TRI_V8_ASCII_STRING(isolate, "usesDefaultShardingAttributes"),
+            v8::Boolean::New(isolate, usesDefaultShardingAttributes))
+      .FromMaybe(true);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1081,20 +1093,23 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     auto id = DBServers[i];
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "serverId"),
-                TRI_V8_STD_STRING(isolate, id)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "serverId"),
+              TRI_V8_STD_STRING(isolate, id))
+        .FromMaybe(false);
 
     auto itr = serverAliases.find(id);
 
     if (itr != serverAliases.end()) {
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "serverName"),
-                  TRI_V8_STD_STRING(isolate, itr->second)).FromMaybe(false);
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "serverName"),
+                TRI_V8_STD_STRING(isolate, itr->second))
+          .FromMaybe(false);
     } else {
-      result->Set(context,
-                  TRI_V8_ASCII_STRING(isolate, "serverName"),
-                  TRI_V8_STD_STRING(isolate, id)).FromMaybe(false);
+      result
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "serverName"),
+                TRI_V8_STD_STRING(isolate, id))
+          .FromMaybe(false);
     }
 
     l->Set(context, (uint32_t)i, result).FromMaybe(false);
@@ -1142,12 +1157,12 @@ static void JS_GetCoordinators(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_UniqidClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to execute this cluster operation");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN, "not allowed to execute this cluster operation");
   }
 
   if (args.Length() > 1) {
@@ -1248,11 +1263,11 @@ static void JS_getFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
 static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(<value>)");
   }
-      
+
   bool value = TRI_ObjectToBoolean(isolate, args[0]);
 
   ServerState::instance()->setFoxxmasterQueueupdate(value);
@@ -1489,13 +1504,13 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
     network::RequestOptions options;
     options.timeout = network::Timeout(10.0);
     options.database = vocbase.name();
-    
+
     // send an empty body
     VPackBuffer<uint8_t> buffer;
     buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
 
     std::string const url("/_api/foxx/_local/heal");
-    
+
     network::Headers headers;
     auto auth = AuthenticationFeature::instance();
     if (auth != nullptr && auth->isActive()) {
@@ -1509,13 +1524,14 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
         // ourselves
         continue;
       }
-      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Post,
-                                    url, buffer, options, headers);
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
+                                         fuerte::RestVerb::Post, url, buffer,
+                                         options, headers);
       futures.emplace_back(std::move(f));
     }
 
     Result res;
-    
+
     if (!futures.empty()) {
       auto responses = futures::collectAll(futures).get();
       for (auto const& it : responses) {
@@ -1523,8 +1539,8 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
         res.reset(resp.combinedResult());
 
         if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
-          // it is expected in a multi-coordinator setup that a coordinator is not
-          // aware of a database that was created very recently.
+          // it is expected in a multi-coordinator setup that a coordinator is
+          // not aware of a database that was created very recently.
           res.reset();
         }
         if (res.fail()) {
@@ -1537,7 +1553,7 @@ static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-  
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -1589,12 +1605,13 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8g->AgencyTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgencyCtor"));
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "ArangoAgencyCtor"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoAgencyCtor"),
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> aa =
+      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoAgency"), aa);
@@ -1641,16 +1658,18 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "getCoordinators"), JS_GetCoordinators);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "uniqid"), JS_UniqidClusterInfo);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getAnalyzersRevision"), JS_GetAnalyzersRevision);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "getAnalyzersRevision"),
+                       JS_GetAnalyzersRevision);
 
   v8g->ClusterInfoTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "ArangoClusterInfoCtor"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoClusterInfoCtor"),
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> ci = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> ci =
+      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!ci.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoClusterInfo"), ci);
@@ -1690,13 +1709,13 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "status"), JS_StatusServerState);
 
   v8g->ServerStateTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "ArangoServerStateCtor"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoServerStateCtor"),
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> ss = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> ss =
+      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!ss.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoServerState"), ss);
@@ -1710,9 +1729,9 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
       isolate,
       TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION"),
       JS_GetCollectionShardDistribution, true);
-  
-  TRI_AddGlobalFunctionVocbase(
-      isolate,
-      TRI_V8_ASCII_STRING(isolate, "SYS_PROPAGATE_SELF_HEAL"),
-      JS_PropagateSelfHeal, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_PROPAGATE_SELF_HEAL"),
+                               JS_PropagateSelfHeal, true);
 }

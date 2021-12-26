@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -83,4 +83,3 @@ class PlanCache {
 };
 }  // namespace aql
 }  // namespace arangodb
-

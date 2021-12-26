@@ -160,7 +160,7 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
   void superstep0(MessageIterator<DMIDMessage> const& messages) {
     DMIDMessage message(pregelId(), 0);
     RangeIterator<Edge<float>> edges = getEdges();
-    for(; edges.hasMore(); ++edges) {
+    for (; edges.hasMore(); ++edges) {
       Edge<float>* edge = *edges;
       message.weight = edge->data();  // edge weight
       sendMessage(edge, message);
@@ -312,17 +312,18 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
 
       float senderWeight = message->weight;
 
-      float myInfluence = (float)vecLS->getAggregatedValue(this->shard(), this->key().toString());
+      float myInfluence =
+          (float)vecLS->getAggregatedValue(this->shard(), this->key().toString());
       myInfluence *= senderWeight;
 
       /**
        * hasEdgeToSender determines if sender has influence on this vertex
        */
       bool hasEdgeToSender = false;
-      
+
       for (auto edges = getEdges(); edges.hasMore(); ++edges) {
         Edge<float>* edge = *edges;
-        
+
         if (edge->targetShard() == senderID.shard && edge->toKey() == senderID.key) {
           hasEdgeToSender = true;
           /**
@@ -616,8 +617,9 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         // Output for DMID modularity calculator
         b.add(_resultField, VPackValue(VPackValueType::Array));
         for (auto const& pair : ptr->membershipDegree) {
-          size_t i = arangodb::basics::StringUtils::uint64_trusted(pair.first.key.data(),
-                                                                   pair.first.key.size());
+          size_t i =
+              arangodb::basics::StringUtils::uint64_trusted(pair.first.key.data(),
+                                                            pair.first.key.size());
           b.openArray();
           b.add(VPackValue(i));
           b.add(VPackValue(pair.second));
@@ -705,7 +707,8 @@ struct DMIDMasterContext : public MasterContext {
       if (globalSuperstep() <= RW_ITERATIONBOUND + 4) {
         VertexSumAggregator* convergedDA = getAggregator<VertexSumAggregator>(DA_AGG);
 
-        LOG_TOPIC("db510", INFO, Logger::PREGEL) << "Aggregator DA at step: " << globalSuperstep();
+        LOG_TOPIC("db510", INFO, Logger::PREGEL)
+            << "Aggregator DA at step: " << globalSuperstep();
         convergedDA->forEach([&](PregelID const& _id, double entry) {
           LOG_TOPIC("df98d", INFO, Logger::PREGEL) << _id.key;
         });

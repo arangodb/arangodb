@@ -162,7 +162,8 @@ std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() 
 
 std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::DatabaseTailingSyncer::create(_vocbase, _configuration, initialTick, useTick);
+  return arangodb::DatabaseTailingSyncer::create(_vocbase, _configuration,
+                                                 initialTick, useTick);
 }
 
 std::string DatabaseReplicationApplier::getStateFilename() const {

@@ -54,7 +54,6 @@ struct FakeAbstractFollower : replicated_log::AbstractFollower {
 };
 
 struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActionContext {
-
   auto dropReplicatedLog(LogId id) -> Result final {
     if (auto it = logs.find(id); it != logs.end()) {
       logs.erase(it);
@@ -80,7 +79,7 @@ struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActi
   std::unordered_map<LogId, std::shared_ptr<TestReplicatedLog>> logs;
 };
 
-}
+}  // namespace
 
 TEST_F(ReplicationMaintenanceActionTest, drop_replicated_log) {
   auto const logId = LogId{12};
@@ -115,7 +114,8 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader) {
   spec.currentTerm = agency::LogPlanTermSpecification{};
   spec.currentTerm->term = LogTerm{8};
   spec.currentTerm->participants[serverId] = {};
-  spec.currentTerm->leader = agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
+  spec.currentTerm->leader =
+      agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
 
@@ -136,14 +136,16 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_wrong_rebo
   spec.currentTerm = agency::LogPlanTermSpecification{};
   spec.currentTerm->term = LogTerm{8};
   spec.currentTerm->participants[serverId] = {};
-  spec.currentTerm->leader = agency::LogPlanTermSpecification::Leader{serverId, RebootId{18}};
+  spec.currentTerm->leader =
+      agency::LogPlanTermSpecification::Leader{serverId, RebootId{18}};
 
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
 
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  EXPECT_TRUE(std::holds_alternative<FollowerStatus>(log->getParticipant()->getStatus().getVariant()));
+  EXPECT_TRUE(std::holds_alternative<FollowerStatus>(
+      log->getParticipant()->getStatus().getVariant()));
 }
 
 TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follower) {
@@ -157,7 +159,8 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follo
   spec.currentTerm->term = LogTerm{8};
   spec.currentTerm->participants[serverId] = {};
   spec.currentTerm->participants[followerId] = {};
-  spec.currentTerm->leader = agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
+  spec.currentTerm->leader =
+      agency::LogPlanTermSpecification::Leader{serverId, RebootId{17}};
 
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec);
 
@@ -169,4 +172,3 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follo
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
   EXPECT_NE(status.follower.find(followerId), status.follower.end());
 }
-

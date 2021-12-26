@@ -40,18 +40,17 @@ class ApplicationServer;
 
 namespace httpclient {
 class ConnectionCache;
-class GeneralClientConnection; 
+class GeneralClientConnection;
 
 struct ConnectionLease {
   ConnectionLease();
-  ConnectionLease(ConnectionCache* cache,
-                  std::unique_ptr<GeneralClientConnection> connection);
-  
+  ConnectionLease(ConnectionCache* cache, std::unique_ptr<GeneralClientConnection> connection);
+
   ~ConnectionLease();
-  
+
   ConnectionLease(ConnectionLease const&) = delete;
   ConnectionLease& operator=(ConnectionLease const&) = delete;
-  
+
   ConnectionLease(ConnectionLease&& other) noexcept;
   ConnectionLease& operator=(ConnectionLease&& other) noexcept;
 
@@ -64,7 +63,7 @@ struct ConnectionLease {
 };
 
 class ConnectionCache {
-  ConnectionCache(ConnectionCache const&) = delete; 
+  ConnectionCache(ConnectionCache const&) = delete;
   ConnectionCache& operator=(ConnectionCache const&) = delete;
 
  public:
@@ -76,20 +75,19 @@ class ConnectionCache {
   };
 
   explicit ConnectionCache(arangodb::application_features::ApplicationServer& server,
-                           Options const& options); 
+                           Options const& options);
   ~ConnectionCache();
 
-  ConnectionLease acquire(std::string endpoint,
-                          double connectTimeout, double requestTimeout,
+  ConnectionLease acquire(std::string endpoint, double connectTimeout, double requestTimeout,
                           size_t connectRetries, uint64_t sslProtocol);
 
-  /// @brief the force flag also moves unconnected connections back into the cache.
-  /// this is currently used only for testing
+  /// @brief the force flag also moves unconnected connections back into the
+  /// cache. this is currently used only for testing
   void release(std::unique_ptr<GeneralClientConnection> connection, bool force = false);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::unordered_map<std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> const& connections() const { 
-    return  _connections;
+  std::unordered_map<std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> const& connections() const {
+    return _connections;
   }
 #endif
 
@@ -99,7 +97,7 @@ class ConnectionCache {
   Options const _options;
 
   mutable arangodb::Mutex _lock;
-  
+
   std::unordered_map<std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> _connections;
 
   uint64_t _connectionsCreated;

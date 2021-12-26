@@ -27,8 +27,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -58,9 +58,9 @@ class ServerState {
   };
 
   enum ReadOnlyMode {
-    API_TRUE,             // Set from outside via API
+    API_TRUE,  // Set from outside via API
     API_FALSE,
-    LICENSE_TRUE,         // Set from license feature
+    LICENSE_TRUE,  // Set from license feature
     LICENSE_FALSE
   };
 
@@ -195,7 +195,7 @@ class ServerState {
   bool isSingleServerOrCoordinator() const noexcept {
     return isSingleServerOrCoordinator(loadRole());
   }
-  
+
   static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) noexcept {
     return isCoordinator(role) || isSingleServer(role);
   }
@@ -264,7 +264,7 @@ class ServerState {
   std::string getFoxxmaster() const;
 
   void setFoxxmaster(std::string const&);
-  
+
   void setFoxxmasterQueueupdate(bool value) noexcept;
 
   bool getFoxxmasterQueueupdate() const noexcept;
@@ -296,7 +296,7 @@ class ServerState {
 
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
-  
+
   /// @brief check equality of naming conventions settings with other registered servers
   bool checkNamingConventionsEquality(AgencyComm&);
 
@@ -364,18 +364,17 @@ class ServerState {
 
   /// @brief whether or not the cluster was initialized
   bool _initialized;
-  
+
   /// @brief lock for all foxxmaster-related members
   mutable arangodb::basics::ReadWriteSpinLock _foxxmasterLock;
-  
+
   std::string _foxxmaster;
 
   // @brief point in time since which this server is the Foxxmaster
   TRI_voc_tick_t _foxxmasterSince;
-  
+
   bool _foxxmasterQueueupdate;
 };
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
-

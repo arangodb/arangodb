@@ -31,11 +31,11 @@ namespace consensus {
 
 struct ResignLeadership : public Job {
   ResignLeadership(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-                 std::string const& creator = std::string(),
-                 std::string const& server = std::string());
+                   std::string const& creator = std::string(),
+                   std::string const& server = std::string());
 
-  ResignLeadership(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
-                 std::string const& jobId);
+  ResignLeadership(Node const& snapshot, AgentInterface* agent,
+                   JOB_STATUS status, std::string const& jobId);
 
   virtual ~ResignLeadership();
 
@@ -53,4 +53,3 @@ struct ResignLeadership : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

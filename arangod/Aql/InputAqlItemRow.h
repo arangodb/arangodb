@@ -88,8 +88,8 @@ class InputAqlItemRow {
 
   RegisterCount getNumRegisters() const noexcept;
 
-  // This the old operator==. It tests if both rows refer to the _same_ block and
-  // the _same_ index.
+  // This the old operator==. It tests if both rows refer to the _same_ block
+  // and the _same_ index.
   [[nodiscard]] bool isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -151,4 +151,3 @@ class InputAqlItemRow {
 
 }  // namespace aql
 }  // namespace arangodb
-

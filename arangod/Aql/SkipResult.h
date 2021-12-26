@@ -85,4 +85,3 @@ class SkipResult {
 std::ostream& operator<<(std::ostream&, arangodb::aql::SkipResult const&);
 
 }  // namespace arangodb::aql
-

@@ -99,13 +99,13 @@ TEST_P(IResearchQueryJoinTest, Subquery) {
       "writebufferIdle": 64
     })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto json = VPackParser::fromJson(viewDefinition);
-    ASSERT_TRUE(arangodb::LogicalView::create(
-      entities_view, vocbase, json->slice(), true).ok());
+    ASSERT_TRUE(arangodb::LogicalView::create(entities_view, vocbase, json->slice(), true)
+                    .ok());
     ASSERT_NE(nullptr, entities_view);
   }
 
@@ -134,13 +134,13 @@ TEST_P(IResearchQueryJoinTest, Subquery) {
       "type": "arangosearch",
       "writebufferIdle": 64 })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()));
     auto json = VPackParser::fromJson(viewDefinition);
 
-    ASSERT_TRUE(arangodb::LogicalView::create(
-      links_view, vocbase, json->slice(), true).ok());
+    ASSERT_TRUE(
+        arangodb::LogicalView::create(links_view, vocbase, json->slice(), true).ok());
     ASSERT_NE(nullptr, links_view);
   }
 
@@ -329,10 +329,10 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -487,7 +487,7 @@ TEST_P(IResearchQueryJoinTest, test) {
 
   // add link to collection
   {
-    auto viewDefinitionTemplate =  R"({
+    auto viewDefinitionTemplate = R"({
       "links": {
         "collection_1": {
           "analyzers": [ "test_analyzer", "identity" ],
@@ -500,10 +500,10 @@ TEST_P(IResearchQueryJoinTest, test) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition =
+        irs::string_utils::to_string(viewDefinitionTemplate,
+                                     static_cast<uint32_t>(linkVersion()),
+                                     static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -660,8 +660,9 @@ TEST_P(IResearchQueryJoinTest, test) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
-                                                               resolved, true));
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                       arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+                       resolved, true));
     }
   }
 
@@ -926,8 +927,7 @@ TEST_P(IResearchQueryJoinTest, test) {
 
     // check node estimation
     {
-      auto explanationResult =
-          arangodb::tests::explainQuery(vocbase, query);
+      auto explanationResult = arangodb::tests::explainQuery(vocbase, query);
       ASSERT_TRUE(explanationResult.result.ok());
       auto const explanationSlice = explanationResult.data->slice();
       ASSERT_TRUE(explanationSlice.isObject());
@@ -943,11 +943,12 @@ TEST_P(IResearchQueryJoinTest, test) {
       }
 
       ASSERT_TRUE(viewNode.isObject());
-      ASSERT_EQ(insertedDocsView.size()*insertedDocsCollection.size()
-                  + insertedDocsCollection.size() + 1. // cost of collection node
-                  + 1., // cost of singleton node
+      ASSERT_EQ(insertedDocsView.size() * insertedDocsCollection.size() +
+                    insertedDocsCollection.size() + 1.  // cost of collection node
+                    + 1.,  // cost of singleton node
                 viewNode.get("estimatedCost").getDouble());
-      ASSERT_EQ(insertedDocsView.size()*insertedDocsCollection.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
+      ASSERT_EQ(insertedDocsView.size() * insertedDocsCollection.size(),
+                viewNode.get("estimatedNrItems").getNumber<size_t>());
     }
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
@@ -1830,7 +1831,4 @@ TEST_P(IResearchQueryJoinTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryJoinTest,
-  IResearchQueryJoinTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryJoinTest, IResearchQueryJoinTest, GetLinkVersions());

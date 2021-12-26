@@ -154,4 +154,3 @@ class RollingVector {
 
 }  // namespace containers
 }  // namespace arangodb
-

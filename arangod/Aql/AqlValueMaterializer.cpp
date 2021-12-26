@@ -35,14 +35,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 AqlValueMaterializer::AqlValueMaterializer(velocypack::Options const* options)
-    : options(options),
-      materialized(),
-      hasCopied(false) {}
+    : options(options), materialized(), hasCopied(false) {}
 
 AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
-    : options(other.options),
-      materialized(other.materialized),
-      hasCopied(other.hasCopied) {
+    : options(other.options), materialized(other.materialized), hasCopied(other.hasCopied) {
   if (other.hasCopied) {
     // copy other's slice
     materialized = other.materialized.clone();
@@ -66,9 +62,7 @@ AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer const
 }
 
 AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer&& other) noexcept
-    : options(other.options),
-      materialized(other.materialized),
-      hasCopied(other.hasCopied) {
+    : options(other.options), materialized(other.materialized), hasCopied(other.hasCopied) {
   // reset other
   other.hasCopied = false;
   // cppcheck-suppress *

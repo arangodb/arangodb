@@ -45,9 +45,7 @@ ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx
 ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
-bool ClusterTransactionCollection::hasOperations() const {
-  return false;  
-}
+bool ClusterTransactionCollection::hasOperations() const { return false; }
 
 bool ClusterTransactionCollection::canAccess(AccessMode::Type accessType) const {
   // check if access type matches
@@ -164,7 +162,8 @@ Result ClusterTransactionCollection::doUnlock(AccessMode::Type type) {
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC("e8aab", ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
+    LOG_TOPIC("e8aab", ERR, arangodb::Logger::FIXME)
+        << "logic error in doUnlock";
     TRI_ASSERT(false);
     return {TRI_ERROR_INTERNAL, "logic error in doUnlock"};
   }

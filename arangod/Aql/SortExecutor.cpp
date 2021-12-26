@@ -78,9 +78,8 @@ SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
                                      RegIdFlatSet const& registersToClear,
                                      std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
-                                     velocypack::Options const* options, 
-                                     arangodb::ResourceMonitor& resourceMonitor,
-                                     bool stable)
+                                     velocypack::Options const* options,
+                                     arangodb::ResourceMonitor& resourceMonitor, bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
@@ -93,7 +92,9 @@ SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
-RegisterCount SortExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
+RegisterCount SortExecutorInfos::numberOfInputRegisters() const {
+  return _numInRegs;
+}
 
 RegisterCount SortExecutorInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
@@ -195,14 +196,14 @@ void SortExecutor::doSorting() {
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  
+
   size_t memoryUsageForRowIndexes = _input->memoryUsageForRowIndexes();
   // may throw
   ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsageForRowIndexes);
 
   TRI_ASSERT(_input != nullptr);
   _sortedIndexes = _input->produceRowIndexes();
-  
+
   // now we are responsible for tracking the memory
   guard.steal();
   _memoryUsageForRowIndexes = memoryUsageForRowIndexes;
@@ -248,8 +249,8 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
 }
 
 [[nodiscard]] auto SortExecutor::expectedNumberOfRowsNew(AqlItemBlockInputMatrix const& input,
-                                                         AqlCall const& call) const
-    noexcept -> size_t {
+                                                         AqlCall const& call) const noexcept
+    -> size_t {
   size_t rowsAvailable = input.countDataRows();
   if (_input != nullptr) {
     if (_returnNext < _sortedIndexes.size()) {

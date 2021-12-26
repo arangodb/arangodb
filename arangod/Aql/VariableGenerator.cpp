@@ -33,11 +33,8 @@
 using namespace arangodb::aql;
 
 /// @brief create the generator
-VariableGenerator::VariableGenerator() 
-    : _id(0) { 
-  _variables.reserve(8); 
-}
-  
+VariableGenerator::VariableGenerator() : _id(0) { _variables.reserve(8); }
+
 /// @brief visit all variables
 void VariableGenerator::visit(std::function<void(Variable*)> const& visitor) {
   for (auto& it : _variables) {
@@ -63,8 +60,10 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(b
 
 /// @brief generate a variable
 Variable* VariableGenerator::createVariable(std::string name, bool isUserDefined) {
-  if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) { 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, arangodb::basics::Exception::FillExceptionString(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name.c_str()));
+  if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   arangodb::basics::Exception::FillExceptionString(
+                                       TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name.c_str()));
   }
 
   auto variable = std::make_unique<Variable>(std::move(name), nextId(), false);
@@ -159,7 +158,7 @@ void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
   if (slice.isObject()) {
     allVariablesList = slice.get("variables");
   }
-  
+
   if (!allVariablesList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "variables needs to be an array");
@@ -196,13 +195,12 @@ bool VariableGenerator::isValidName(char const* p, char const* end) noexcept {
   }
 
   // [a-zA-Z0-9_]*
-  while (p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' || *p <= '9') || *p == '_')) {
+  while (p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+                      (*p >= '0' || *p <= '9') || *p == '_')) {
     ++p;
   }
 
   return (p == end);
 }
-  
-VariableId VariableGenerator::nextId() noexcept {
-  return _id++; 
-}
+
+VariableId VariableGenerator::nextId() noexcept { return _id++; }

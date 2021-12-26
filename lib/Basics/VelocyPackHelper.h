@@ -148,9 +148,9 @@ class VelocyPackHelper {
   template <bool useUtf8>
   struct VPackSorted {
     explicit VPackSorted(bool reverse,
-                arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
-                arangodb::velocypack::Slice const* lhsBase = nullptr,
-                arangodb::velocypack::Slice const* rhsBase = nullptr)
+                         arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
+                         arangodb::velocypack::Slice const* lhsBase = nullptr,
+                         arangodb::velocypack::Slice const* rhsBase = nullptr)
         : _reverse(reverse), options(options), lhsBase(lhsBase), rhsBase(rhsBase) {}
 
     inline bool operator()(arangodb::velocypack::Slice const& lhs,
@@ -172,7 +172,8 @@ class VelocyPackHelper {
   };
 
   struct AttributeSorterUTF8StringRef {
-    bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const;
+    bool operator()(arangodb::velocypack::StringRef const& l,
+                    arangodb::velocypack::StringRef const& r) const;
   };
 
   struct AttributeSorterBinary {
@@ -180,9 +181,9 @@ class VelocyPackHelper {
   };
 
   struct AttributeSorterBinaryStringRef {
-    bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const noexcept;
+    bool operator()(arangodb::velocypack::StringRef const& l,
+                    arangodb::velocypack::StringRef const& r) const noexcept;
   };
-
 
   /// @brief unpacks an array as tuple. Use like this: auto&& [a, b, c] = unpack<size_t, std::string, double>(slice);
   template <typename... Ts>
@@ -273,7 +274,8 @@ class VelocyPackHelper {
       arangodb::velocypack::Slice slice,
       arangodb::velocypack::StringRef const& defaultValue) noexcept {
     if (slice.isExternal()) {
-      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
+      slice = arangodb::velocypack::Slice(
+          reinterpret_cast<uint8_t const*>(slice.getExternal()));
     }
 
     if (slice.isString()) {
@@ -288,7 +290,8 @@ class VelocyPackHelper {
       arangodb::velocypack::Slice slice, T const& key,
       arangodb::velocypack::StringRef const& defaultValue) noexcept {
     if (slice.isExternal()) {
-      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
+      slice = arangodb::velocypack::Slice(
+          reinterpret_cast<uint8_t const*>(slice.getExternal()));
     }
 
     if (slice.isObject()) {
@@ -303,7 +306,8 @@ class VelocyPackHelper {
   /// @brief returns a string sub-element, or the default value if it does not
   /// exist or it is not a string
   template <typename T>
-  static std::string getStringValue(VPackSlice slice, T const& name, std::string const& defaultValue) {
+  static std::string getStringValue(VPackSlice slice, T const& name,
+                                    std::string const& defaultValue) {
     if (slice.isExternal()) {
       slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
     }
@@ -320,7 +324,7 @@ class VelocyPackHelper {
   /// @brief convert an Object sub value into a uint64
   static uint64_t stringUInt64(VPackSlice slice);
 
-  template<typename T>
+  template <typename T>
   static uint64_t stringUInt64(VPackSlice slice, T const& name) {
     return stringUInt64(slice.get(name));
   }
@@ -329,8 +333,7 @@ class VelocyPackHelper {
   static VPackBuilder velocyPackFromFile(std::string const&);
 
   /// @brief writes a VelocyPack to a file
-  static bool velocyPackToFile(std::string const& filename,
-                               VPackSlice slice, bool syncFile);
+  static bool velocyPackToFile(std::string const& filename, VPackSlice slice, bool syncFile);
 
   /// @brief compares two VelocyPack number values
   static int compareNumberValues(arangodb::velocypack::ValueType,
@@ -433,4 +436,3 @@ struct less<arangodb::velocypack::StringRef> {
 /// @brief Simple and limited logging of VelocyPack slices
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
                                    arangodb::velocypack::Slice const&);
-

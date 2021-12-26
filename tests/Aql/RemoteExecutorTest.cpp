@@ -180,7 +180,6 @@ auto MakeSkipResult(size_t const i) -> SkipResult {
 }
 
 TEST(DeSerializeAqlExecuteResultTest, test) {
-  
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
   AqlItemBlockManager manager{resourceMonitor, SerializationFormat::SHADOWROWS};
@@ -188,13 +187,13 @@ TEST(DeSerializeAqlExecuteResultTest, test) {
   auto const testingAqlExecuteResults = std::array{
       AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},
       AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(4), nullptr},
-      AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), buildBlock<1>(manager, {{42}})},
+      AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0),
+                       buildBlock<1>(manager, {{42}})},
       AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(3),
                        buildBlock<2>(manager, {{3, 42}, {4, 41}})},
   };
-  
+
   for (AqlExecuteResult const& aqlExecuteResult : testingAqlExecuteResults) {
-    
     velocypack::Builder builder;
     aqlExecuteResult.toVelocyPack(builder, &velocypack::Options::Defaults);
 

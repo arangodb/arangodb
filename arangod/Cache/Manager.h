@@ -88,8 +88,8 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(SharedPRNGFeature& sharedPRNG,
-          PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats = true);
+  Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
+          std::uint64_t globalLimit, bool enableWindowedStats = true);
 
   ~Manager();
 
@@ -165,7 +165,7 @@ class Manager {
   /// @brief Post a function to the scheduler
   //////////////////////////////////////////////////////////////////////////////
   bool post(std::function<void()> fn);
-  
+
   SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 
  private:
@@ -292,4 +292,3 @@ class Manager {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

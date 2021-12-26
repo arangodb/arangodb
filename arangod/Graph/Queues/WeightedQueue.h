@@ -131,4 +131,3 @@ class WeightedQueue {
 
 }  // namespace graph
 }  // namespace arangodb
-

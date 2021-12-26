@@ -91,9 +91,7 @@ bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
 
   // Undo the counting of us as queued writer:
   _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed);
-  {
-    std::lock_guard<std::mutex> guard(_reader_mutex);
-  }
+  { std::lock_guard<std::mutex> guard(_reader_mutex); }
   _readers_bell.notify_all();
 
   return false;
@@ -162,15 +160,11 @@ void ReadWriteLock::unlockWrite() noexcept {
   auto state = _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
   if ((state & QUEUED_WRITER_MASK) != 0) {
     // there are other writers waiting -> wake up one of them
-    {
-      std::lock_guard<std::mutex> guard(_writer_mutex);
-    }
+    { std::lock_guard<std::mutex> guard(_writer_mutex); }
     _writers_bell.notify_one();
   } else {
     // no more writers -> wake up any waiting readings
-    {
-      std::lock_guard<std::mutex> guard(_reader_mutex);
-    }
+    { std::lock_guard<std::mutex> guard(_reader_mutex); }
     _readers_bell.notify_all();
   }
 }
@@ -184,9 +178,7 @@ void ReadWriteLock::unlockRead() noexcept {
   if (state != 0 && (state & ~QUEUED_WRITER_MASK) == 0) {
     // we were the last reader and there are other writers waiting
     // -> wake up one of them
-    {
-      std::lock_guard<std::mutex> guard(_writer_mutex);
-    }
+    { std::lock_guard<std::mutex> guard(_writer_mutex); }
     _writers_bell.notify_one();
   }
 }

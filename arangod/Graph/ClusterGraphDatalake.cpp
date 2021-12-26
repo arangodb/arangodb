@@ -32,31 +32,30 @@
 
 namespace arangodb {
 namespace graph {
-  
+
 ClusterGraphDatalake::ClusterGraphDatalake(arangodb::ResourceMonitor& resourceMonitor)
-    : _resourceMonitor(resourceMonitor),
-      _totalMemoryUsage(0) {}
-  
-ClusterGraphDatalake::~ClusterGraphDatalake() {
-  clear();
-}
+    : _resourceMonitor(resourceMonitor), _totalMemoryUsage(0) {}
+
+ClusterGraphDatalake::~ClusterGraphDatalake() { clear(); }
 
 arangodb::velocypack::Slice ClusterGraphDatalake::operator[](size_t index) const noexcept {
-  TRI_ASSERT(index < _data.size()); 
+  TRI_ASSERT(index < _data.size());
   return arangodb::velocypack::Slice(_data[index]->data());
 }
 
-arangodb::velocypack::Slice ClusterGraphDatalake::add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data) {
+arangodb::velocypack::Slice ClusterGraphDatalake::add(
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data) {
   TRI_ASSERT(data != nullptr);
 
   if (_data.empty()) {
     // save initial reallocations
     _data.reserve(8);
   }
-  
+
   size_t memoryUsage = (data->usesLocalMemory() ? 0 : data->capacity());
-  memoryUsage += sizeof(typename decltype(_data)::value_type) + sizeof(arangodb::velocypack::Buffer<uint8_t>);
-  
+  memoryUsage += sizeof(typename decltype(_data)::value_type) +
+                 sizeof(arangodb::velocypack::Buffer<uint8_t>);
+
   {
     arangodb::ResourceUsageScope scope(_resourceMonitor, memoryUsage);
 
@@ -70,5 +69,5 @@ arangodb::velocypack::Slice ClusterGraphDatalake::add(std::shared_ptr<arangodb::
   return arangodb::velocypack::Slice(_data.back()->data());
 }
 
-} // namespace
-} // namespace
+}  // namespace graph
+}  // namespace arangodb

@@ -24,26 +24,26 @@
 
 #include <Basics/Guarded.h>
 #include <Containers/ImmerMemoryPolicy.h>
+#include <chrono>
 #include <cstddef>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <chrono>
-#include <tuple>
 
+#include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogParticipant.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/LoggerContext.h"
-#include "Basics/Result.h"
-#include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
 struct DeferredAction;

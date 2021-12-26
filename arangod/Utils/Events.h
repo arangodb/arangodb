@@ -60,7 +60,8 @@ void DropDatabase(std::string const& name, Result const& result, ExecContext con
 // index creation start
 void CreateIndexStart(std::string const& db, std::string const& col, VPackSlice slice);
 // index creation result
-void CreateIndexEnd(std::string const& db, std::string const& col, VPackSlice slice, ErrorCode result);
+void CreateIndexEnd(std::string const& db, std::string const& col,
+                    VPackSlice slice, ErrorCode result);
 void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, ErrorCode result);
 void CreateView(std::string const& db, std::string const& name, ErrorCode result);
@@ -87,4 +88,3 @@ void RestoreHotbackup(std::string const& id, ErrorCode result);
 void DeleteHotbackup(std::string const& id, ErrorCode result);
 }  // namespace events
 }  // namespace arangodb
-

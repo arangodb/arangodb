@@ -37,4 +37,3 @@ Future<T> Promise<T>::getFuture() {
 
 }  // namespace futures
 }  // namespace arangodb
-

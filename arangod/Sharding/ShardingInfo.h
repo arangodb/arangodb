@@ -27,9 +27,9 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <atomic>
 #include <unordered_map>
 #include <unordered_set>
-#include <atomic>
 
 namespace arangodb {
 class LogicalCollection;
@@ -117,7 +117,7 @@ class ShardingInfo {
   // but there are places that might read these values before they are set (e.g.,
   // LogicalCollection::appendVelocyPack), and since these can be executed by a different
   // thread _replicationFactor and _writeConcern must both be atomic to avoid data races.
-  
+
   // @brief replication factor (1 = no replication, 0 = smart edge collection)
   std::atomic<size_t> _replicationFactor;
 
@@ -142,4 +142,3 @@ class ShardingInfo {
   std::unique_ptr<ShardingStrategy> _shardingStrategy;
 };
 }  // namespace arangodb
-

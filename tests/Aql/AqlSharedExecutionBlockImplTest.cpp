@@ -69,7 +69,6 @@ using InsertExecutor =
  *   Insert/Update => SideEffectExecutor
  */
 
-
 /*
  *   NOTE: We have removed COUNT collect, as it cannot have results in flight.
  *   CountCollectExecutor => Reports even if no data is present,
@@ -260,7 +259,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       auto col = collections.get(collectionName);
       TRI_ASSERT(col != nullptr);  // failed to add collection
       OperationOptions opts{};
-      ModificationExecutorInfos execInfos{fakedQuery->rootEngine(), 
+      ModificationExecutorInfos execInfos{fakedQuery->rootEngine(),
                                           0,
                                           RegisterPlan::MaxRegisterId,
                                           RegisterPlan::MaxRegisterId,

@@ -36,8 +36,8 @@
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
+#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
@@ -241,7 +241,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   manager.destroyCache(cache);
 }
 
-TEST(CacheTransactionalCacheTest, verify_cache_can_grow_correctly_when_it_runs_out_of_space_LongRunning) {
+TEST(CacheTransactionalCacheTest,
+     verify_cache_can_grow_correctly_when_it_runs_out_of_space_LongRunning) {
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
     scheduler.post(fn);

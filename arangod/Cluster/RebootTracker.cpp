@@ -189,8 +189,9 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
   });
 
   auto const [iterator, inserted] =
-      callbackMap.try_emplace(callbackId, DescriptedCallback{std::move(callback),
-                                                         std::move(callbackDescription)});
+      callbackMap.try_emplace(callbackId,
+                              DescriptedCallback{std::move(callback),
+                                                 std::move(callbackDescription)});
   TRI_ASSERT(inserted);
   TRI_ASSERT(callbackId == iterator->first);
 
@@ -317,10 +318,10 @@ RebootTracker::CallbackId RebootTracker::getNextCallbackId() noexcept {
 
 void RebootTracker::queueCallback(DescriptedCallback callback) {
   queueCallbacks({std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
-      std::unordered_map<CallbackId, DescriptedCallback>{ { getNextCallbackId(), std::move(callback) } }
-  )});
+      std::unordered_map<CallbackId, DescriptedCallback>{
+          {getNextCallbackId(), std::move(callback)}})});
 }
-    
+
 void RebootTracker::PeerState::toVelocyPack(velocypack::Builder& builder) const {
   builder.openObject();
   builder.add(StaticStrings::AttrCoordinatorId, VPackValue(_serverId));
@@ -334,8 +335,9 @@ RebootTracker::PeerState RebootTracker::PeerState::fromVelocyPack(velocypack::Sl
   VPackSlice rebootIdSlice = slice.get(StaticStrings::AttrCoordinatorRebootId);
 
   if (!serverIdSlice.isString() || !rebootIdSlice.isInteger()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid reboot id");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid reboot id");
   }
-  
-  return { serverIdSlice.copyString(), RebootId(rebootIdSlice.getUInt()) };
+
+  return {serverIdSlice.copyString(), RebootId(rebootIdSlice.getUInt())};
 }

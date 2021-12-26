@@ -247,7 +247,8 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
   }
 }
 
-static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan, AstNode* parent, size_t testIndex,
+static bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
+                                            AstNode* parent, size_t testIndex,
                                             TraversalNode* tn, Variable const* pathVar,
                                             bool& conditionIsImpossible, size_t& swappedIndex,
                                             int64_t& indexedAccessDepth) {
@@ -688,8 +689,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
             size_t swappedIndex = 0;
             // If we get here we can optimize this condition
-            if (!checkPathVariableAccessFeasible(_plan->getAst(), _plan, andNode, i - 1,
-                                                 node, pathVar, conditionIsImpossible,
+            if (!checkPathVariableAccessFeasible(_plan->getAst(), _plan, andNode,
+                                                 i - 1, node, pathVar, conditionIsImpossible,
                                                  swappedIndex, indexedAccessDepth)) {
               if (conditionIsImpossible) {
                 // If we get here we cannot fulfill the condition

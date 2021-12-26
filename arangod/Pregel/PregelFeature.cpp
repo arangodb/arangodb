@@ -71,10 +71,10 @@ network::Headers buildHeaders() {
 }
 
 /// @brief custom deleter for the PregelFeature.
-/// it does nothing, i.e. doesn't delete it. This is because the ApplicationServer
-/// is managing the PregelFeature, but we need a shared_ptr to it here as well. The
-/// shared_ptr we are using here just tracks the refcount, but doesn't manage the
-/// memory
+/// it does nothing, i.e. doesn't delete it. This is because the
+/// ApplicationServer is managing the PregelFeature, but we need a shared_ptr to
+/// it here as well. The shared_ptr we are using here just tracks the refcount,
+/// but doesn't manage the memory
 struct NonDeleter {
   void operator()(arangodb::pregel::PregelFeature*) {}
 };
@@ -84,12 +84,13 @@ struct NonDeleter {
 std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
     std::vector<std::string> const& vertexCollections,
-    std::vector<std::string> const& edgeCollections, 
+    std::vector<std::string> const& edgeCollections,
     std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
     VPackSlice const& params) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     return std::make_pair(Result{TRI_ERROR_SHUTTING_DOWN,
-                                 "pregel system not available"}, 0);
+                                 "pregel system not available"},
+                          0);
   }
 
   ServerState* ss = ServerState::instance();
@@ -168,18 +169,17 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
           std::string shardKeyAttribute = "vertex";
           if (params.hasKey("shardKeyAttribute")) {
-           shardKeyAttribute =  params.get("shardKeyAttribute").copyString();
+            shardKeyAttribute = params.get("shardKeyAttribute").copyString();
           }
 
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
             return std::make_pair(Result{TRI_ERROR_BAD_PARAMETER,
                                          "Edge collection needs to be sharded "
-                                         "by shardKeyAttribute parameter ('"
-                                         + shardKeyAttribute
-                                         + "'), or use SmartGraphs. The current shardKey is: "
-                                         + (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
+                                         "by shardKeyAttribute parameter ('" +
+                                             shardKeyAttribute + "'), or use SmartGraphs. The current shardKey is: " +
+                                             (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
 
-                                         },
+                                  },
                                   0);
           }
         }
@@ -207,7 +207,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
       return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
     }
   }
-   
+
   uint64_t en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(en, vocbase, vertexCollections,
                                                edgeColls, edgeCollectionRestrictions,
@@ -250,12 +250,13 @@ void PregelFeature::scheduleGarbageCollection() {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  auto handle = scheduler->queueDelayed(RequestLane::INTERNAL_LOW, offset, [this](bool canceled) {
-    if (!canceled) {
-      garbageCollectConductors();
-      scheduleGarbageCollection();
-    }
-  });
+  auto handle =
+      scheduler->queueDelayed(RequestLane::INTERNAL_LOW, offset, [this](bool canceled) {
+        if (!canceled) {
+          garbageCollectConductors();
+          scheduleGarbageCollection();
+        }
+      });
 
   MUTEX_LOCKER(guard, _mutex);
   _gcHandle = std::move(handle);
@@ -267,7 +268,7 @@ void PregelFeature::start() {
     _recoveryManager = std::make_unique<RecoveryManager>(ci);
     _recoveryManagerPtr.store(_recoveryManager.get(), std::memory_order_release);
   }
-  
+
   if (!ServerState::instance()->isAgent()) {
     scheduleGarbageCollection();
   }
@@ -275,7 +276,7 @@ void PregelFeature::start() {
 
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
-  
+
   MUTEX_LOCKER(guard, _mutex);
   _gcHandle.reset();
 
@@ -290,7 +291,7 @@ void PregelFeature::beginShutdown() {
 
 void PregelFeature::unprepare() {
   garbageCollectConductors();
-  
+
   MUTEX_LOCKER(guard, _mutex);
   decltype(_conductors) cs = std::move(_conductors);
   decltype(_workers) ws = std::move(_workers);
@@ -302,7 +303,7 @@ void PregelFeature::unprepare() {
   for (auto& it : cs) {
     TRI_ASSERT(it.second.conductor.use_count() == 1);
   }
-  
+
   for (auto it : _workers) {
     TRI_ASSERT(it.second.second.use_count() == 1);
   }
@@ -317,16 +318,20 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t execut
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   std::string user = ExecContext::current().user();
   MUTEX_LOCKER(guard, _mutex);
-  _conductors.try_emplace(executionNumber, ConductorEntry{ std::move(user), std::chrono::steady_clock::time_point{}, std::move(c) });
+  _conductors.try_emplace(executionNumber,
+                          ConductorEntry{std::move(user),
+                                         std::chrono::steady_clock::time_point{},
+                                         std::move(c)});
 }
 
 std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _conductors.find(executionNumber);
-  return (it != _conductors.end() && ::authorized(it->second.user)) ? it->second.conductor : nullptr;
+  return (it != _conductors.end() && ::authorized(it->second.user)) ? it->second.conductor
+                                                                    : nullptr;
 }
 
 void PregelFeature::garbageCollectConductors() try {
@@ -351,25 +356,25 @@ void PregelFeature::garbageCollectConductors() try {
   for (auto& c : conductors) {
     c->cancel();
   }
-    
+
   MUTEX_LOCKER(guard, _mutex);
   for (auto& c : conductors) {
     uint64_t executionNumber = c->executionNumber();
-    
+
     _conductors.erase(executionNumber);
     _workers.erase(executionNumber);
   }
-} catch (...) {}
+} catch (...) {
+}
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNumber) {
   if (isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   std::string user = ExecContext::current().user();
   MUTEX_LOCKER(guard, _mutex);
-  _workers.try_emplace(executionNumber,
-                   std::move(user), std::move(w));
+  _workers.try_emplace(executionNumber, std::move(user), std::move(w));
 }
 
 std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
@@ -394,10 +399,8 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
   });
 }
 
-void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
-                                           std::string const& path,
-                                           VPackSlice const& body,
-                                           VPackBuilder& outBuilder) {
+void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
+                                           VPackSlice const& body, VPackBuilder& outBuilder) {
   if (isStopping()) {
     return;  // shutdown ongoing
   }
@@ -419,7 +422,8 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
       return;
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND, "Conductor not found, invalid execution number: " + std::to_string(exeNum));
+        TRI_ERROR_CURSOR_NOT_FOUND,
+        "Conductor not found, invalid execution number: " + std::to_string(exeNum));
   }
 
   if (path == Utils::finishedStartupPath) {
@@ -433,10 +437,8 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   }
 }
 
-void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
-                                        std::string const& path,
-                                        VPackSlice const& body,
-                                        VPackBuilder& outBuilder) {
+void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
+                                        VPackSlice const& body, VPackBuilder& outBuilder) {
   if (isStopping() && path != Utils::finalizeExecutionPath) {
     return;  // shutdown ongoing
   }
@@ -494,9 +496,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [this, exeNum]() {
-      cleanupWorker(exeNum);
-    });
+    w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
   } else if (path == Utils::continueRecoveryPath) {
     w->compensateStep(body);
   } else if (path == Utils::finalizeRecoveryPath) {
@@ -516,17 +516,16 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
   uint64_t nr{0};
   for (auto const& p : _conductors) {
     std::shared_ptr<Conductor> const& c = p.second.conductor;
-    if (c->_state == ExecutionState::DEFAULT ||
-        c->_state == ExecutionState::RUNNING ||
+    if (c->_state == ExecutionState::DEFAULT || c->_state == ExecutionState::RUNNING ||
         c->_state == ExecutionState::STORING) {
       ++nr;
     }
   }
   return nr;
 }
-  
+
 Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
-                                   arangodb::velocypack::Builder& result, 
+                                   arangodb::velocypack::Builder& result,
                                    bool allDatabases, bool fanout) const {
   std::vector<std::shared_ptr<Conductor>> conductors;
 
@@ -534,7 +533,7 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
   {
     MUTEX_LOCKER(guard, _mutex);
     conductors.reserve(_conductors.size());
-  
+
     for (auto const& p : _conductors) {
       auto const& ce = p.second;
       if (!::authorized(ce.user)) {
@@ -550,9 +549,9 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
   for (auto const& c : conductors) {
     c->toVelocyPack(result);
   }
-  
+
   Result res;
-  
+
   if (ServerState::instance()->isCoordinator() && fanout) {
     // coordinator case, fan out to other coordinators!
     NetworkFeature const& nf = vocbase.server().getFeature<NetworkFeature>();
@@ -568,7 +567,7 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
     options.database = vocbase.name();
     options.param("local", "true");
     options.param("all", allDatabases ? "true" : "false");
-    
+
     std::string const url = "/_api/control_pregel";
 
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
@@ -578,8 +577,10 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
         continue;
       }
 
-      auto f = network::sendRequestRetry(pool, "server:" + coordinator, fuerte::RestVerb::Get,
-                                    url, VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
+                                         fuerte::RestVerb::Get, url,
+                                         VPackBuffer<uint8_t>{}, options,
+                                         ::buildHeaders());
       futures.emplace_back(std::move(f));
     }
 
@@ -589,8 +590,8 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
         auto& resp = it.get();
         res.reset(resp.combinedResult());
         if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
-          // it is expected in a multi-coordinator setup that a coordinator is not
-          // aware of a database that was created very recently.
+          // it is expected in a multi-coordinator setup that a coordinator is
+          // not aware of a database that was created very recently.
           res.reset();
         }
         if (res.fail()) {
@@ -605,7 +606,7 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
         }
       }
     }
-  } 
+  }
 
   result.close();
 

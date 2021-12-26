@@ -34,5 +34,4 @@ template <typename T, typename Hash = ::iresearch_absl::container_internal::hash
 using FlatHashSet = ::iresearch_absl::flat_hash_set<T, Hash, Eq, Allocator>;
 
 }
-}
-
+}  // namespace arangodb

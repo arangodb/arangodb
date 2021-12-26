@@ -164,4 +164,3 @@ class RefactoredTraverserCache {
 
 }  // namespace graph
 }  // namespace arangodb
-

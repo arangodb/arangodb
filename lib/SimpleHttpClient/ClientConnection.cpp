@@ -171,7 +171,8 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& co
       return false;
     }
 
-    TRI_read_return_t  lenRead = TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
+    TRI_read_return_t lenRead =
+        TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
 
     if (lenRead == -1) {
       // error occurred
