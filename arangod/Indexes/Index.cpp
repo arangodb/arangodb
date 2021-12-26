@@ -50,6 +50,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include "Basics/CrashHandler.h"
+
 using namespace std::chrono;
 using namespace date;
 
@@ -207,7 +209,7 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection, VPackSlice sl
       _collection(collection),
       _name(arangodb::basics::VelocyPackHelper::getStringValue(
           slice, arangodb::StaticStrings::IndexName, ::defaultIndexName(slice))),
-      _fields(parseFields(slice.get(arangodb::StaticStrings::IndexFields), /*allowEmpty*/ false,
+      _fields(parseFields(slice.get(arangodb::StaticStrings::IndexFields), /*allowEmpty*/ true,
                             Index::allowExpansion(Index::type(
                                 slice.get(arangodb::StaticStrings::IndexType).stringView())))),
       _useExpansion(::hasExpansion(_fields)),
@@ -1083,6 +1085,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Index::parseFields(VPa
   }
 
   if (result.empty() && !allowEmpty) {
+    CrashHandler::logBacktrace();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                    "invalid index description");
   }
