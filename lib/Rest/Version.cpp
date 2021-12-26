@@ -107,7 +107,7 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
-#ifdef ARANGODB_USE_IPO 
+#ifdef ARANGODB_USE_IPO
   Values["ipo"] = "true";
 #else
   Values["ipo"] = "false";
@@ -433,10 +433,8 @@ std::string Version::getEndianness() {
   }
   return "unknown";
 }
-  
-std::string Version::getPlatform() {
-  return TRI_PLATFORM;
-}
+
+std::string Version::getPlatform() { return TRI_PLATFORM; }
 
 // get build date
 std::string Version::getBuildDate() {

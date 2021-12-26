@@ -95,7 +95,8 @@ Variable const* Scope::getVariable(std::string const& name) const {
 
 /// @brief return a variable, allowing usage of special pseudo vars such
 /// as OLD and NEW
-Variable const* Scope::getVariable(char const* name, size_t nameLength, bool allowSpecial) const {
+Variable const* Scope::getVariable(char const* name, size_t nameLength,
+                                   bool allowSpecial) const {
   auto variable = getVariable(name, nameLength);
 
   if (variable == nullptr && allowSpecial) {
@@ -231,7 +232,8 @@ Variable const* Scopes::getVariable(char const* name, size_t nameLength,
 /// @brief get the $CURRENT variable
 Variable const* Scopes::getCurrentVariable() const {
   if (_currentVariables.empty()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, Variable::NAME_CURRENT);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
+                                  Variable::NAME_CURRENT);
   }
   auto result = _currentVariables.back();
   TRI_ASSERT(result != nullptr);

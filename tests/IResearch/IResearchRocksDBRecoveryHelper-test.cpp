@@ -87,7 +87,6 @@ TEST(IResearchRocksDBRecoveryHelperIndexId, comparison_less_cid2) {
   ASSERT_FALSE(id2 < id);
 }
 
-
 TEST(IResearchRocksDBRecoveryHelperIndexId, comparison_less_iid) {
   arangodb::iresearch::IResearchRocksDBRecoveryHelper::IndexId id(
       1, arangodb::DataSourceId(2), arangodb::IndexId(3));

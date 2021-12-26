@@ -46,31 +46,30 @@ namespace {
 // if the vector elements are not identical
 void checkDifference(std::vector<ServerID> const& followers,
                      std::vector<ServerID> const& failoverCandidates) {
-  // intentionally copy the vectors here, as we don't want to modify the originals
+  // intentionally copy the vectors here, as we don't want to modify the
+  // originals
   auto followersCopy = followers;
   auto failoverCandidatesCopy = failoverCandidates;
   std::sort(failoverCandidatesCopy.begin(), failoverCandidatesCopy.end());
   std::sort(followersCopy.begin(), followersCopy.end());
-  
+
   std::vector<std::string> diff;
-  std::set_symmetric_difference(failoverCandidatesCopy.begin(),
-                                failoverCandidatesCopy.end(), 
-                                followersCopy.begin(),
-                                followersCopy.end(), 
-                                std::back_inserter(diff));
+  std::set_symmetric_difference(
+      failoverCandidatesCopy.begin(), failoverCandidatesCopy.end(),
+      followersCopy.begin(), followersCopy.end(), std::back_inserter(diff));
   if (!diff.empty()) {
     std::stringstream s;
     s << "Symmetric difference alert: ";
-    for (auto const& d : diff) { 
-      s << d << " "; 
+    for (auto const& d : diff) {
+      s << d << " ";
     }
     s << "failoverCandidates: ";
-    for (auto const& d : failoverCandidates) { 
-      s << d << " "; 
+    for (auto const& d : failoverCandidates) {
+      s << d << " ";
     }
     s << "followers: ";
-    for (auto const& d : followers) { 
-      s << d << " "; 
+    for (auto const& d : followers) {
+      s << d << " ";
     }
     LOG_TOPIC("9d8ec", ERR, Logger::CLUSTER) << s.str();
   }
@@ -93,7 +92,8 @@ std::string currentShardPath(arangodb::LogicalCollection const& col) {
          std::to_string(col.planId().id()) + "/" + col.name();
 }
 
-VPackSlice currentShardEntry(arangodb::LogicalCollection const& col, VPackSlice current) {
+VPackSlice currentShardEntry(arangodb::LogicalCollection const& col,
+                             VPackSlice current) {
   return current.get(std::vector<std::string>(
       {AgencyCommHelper::path(), "Current", "Collections", col.vocbase().name(),
        std::to_string(col.planId().id()), col.name()}));
@@ -104,13 +104,14 @@ std::string planShardPath(arangodb::LogicalCollection const& col) {
          std::to_string(col.planId().id()) + "/shards/" + col.name();
 }
 
-VPackSlice planShardEntry(arangodb::LogicalCollection const& col, VPackSlice plan) {
+VPackSlice planShardEntry(arangodb::LogicalCollection const& col,
+                          VPackSlice plan) {
   return plan.get(std::vector<std::string>(
       {AgencyCommHelper::path(), "Plan", "Collections", col.vocbase().name(),
        std::to_string(col.planId().id()), "shards", col.name()}));
 }
 
-} // namespace
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side
@@ -142,11 +143,13 @@ Result FollowerInfo::add(ServerID const& sid) {
     _followers = v;     // will cast to std::vector<ServerID> const
     {
       // insertIntoCandidates
-      if (std::find(_failoverCandidates->begin(), _failoverCandidates->end(), sid) ==
-          _failoverCandidates->end()) {
-        auto nextCandidates = std::make_shared<std::vector<ServerID>>(*_failoverCandidates);
+      if (std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
+                    sid) == _failoverCandidates->end()) {
+        auto nextCandidates =
+            std::make_shared<std::vector<ServerID>>(*_failoverCandidates);
         nextCandidates->push_back(sid);  // add a single entry
-        _failoverCandidates = nextCandidates;  // will cast to std::vector<ServerID> const
+        _failoverCandidates =
+            nextCandidates;  // will cast to std::vector<ServerID> const
       }
     }
   }
@@ -157,7 +160,7 @@ Result FollowerInfo::add(ServerID const& sid) {
     // Not a leader is expected
     return agencyRes;
   }
-    
+
   if (!agencyRes.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
       !agencyRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // "Real error", report and log
@@ -199,15 +202,17 @@ Result FollowerInfo::remove(ServerID const& sid) {
 
   MUTEX_LOCKER(locker, _agencyMutex);
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
-  WRITE_LOCKER(writeLocker, _dataLock);  // the data lock has to be locked until this function completes
-                                         // because if the agency communication does not work
-                                         // local data is modified again.
+  WRITE_LOCKER(
+      writeLocker,
+      _dataLock);  // the data lock has to be locked until this function
+                   // completes because if the agency communication does not
+                   // work local data is modified again.
 
   // First check if there is anything to do:
-  if (std::find(_followers->begin(), _followers->end(), sid)
-        == _followers->end() &&
-      std::find(_failoverCandidates->begin(), _failoverCandidates->end(), sid)
-        == _failoverCandidates->end()) {
+  if (std::find(_followers->begin(), _followers->end(), sid) ==
+          _followers->end() &&
+      std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
+                sid) == _failoverCandidates->end()) {
     return {TRI_ERROR_NO_ERROR};  // nothing to do
   }
   // Both lists have to be in sync most of the time, sometimes the
@@ -249,9 +254,13 @@ Result FollowerInfo::remove(ServerID const& sid) {
       _canWrite = false;
     }
     // we are finished
-    _docColl->vocbase().server().getFeature<arangodb::ClusterFeature>().followersDroppedCounter()++;
+    _docColl->vocbase()
+        .server()
+        .getFeature<arangodb::ClusterFeature>()
+        .followersDroppedCounter()++;
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
-        << "Removing follower " << sid << " from " << _docColl->name() << " succeeded";
+        << "Removing follower " << sid << " from " << _docColl->name()
+        << " succeeded";
     return agencyRes;
   }
   if (agencyRes.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
@@ -299,46 +308,52 @@ bool FollowerInfo::contains(ServerID const& sid) const {
 ///        before a failover to this server has happened
 ////////////////////////////////////////////////////////////////////////////////
 
-void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyncFollowers,
-                                      std::shared_ptr<std::vector<ServerID>> realInsyncFollowers) {
+void FollowerInfo::takeOverLeadership(
+    std::vector<ServerID> const& previousInsyncFollowers,
+    std::shared_ptr<std::vector<ServerID>> realInsyncFollowers) {
   auto emptyFollowers = std::make_shared<std::vector<ServerID>>();
   auto emptyFailoverCandidates = std::make_shared<std::vector<ServerID>>();
 
-  // This function copies over the information taken from the last CURRENT into a local vector.
-  // Where we remove the old leader and ourself from the list of followers
+  // This function copies over the information taken from the last CURRENT into
+  // a local vector. Where we remove the old leader and ourself from the list of
+  // followers
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);
-  
-  // all modifications to the internal state are guaranteed to be 
+
+  // all modifications to the internal state are guaranteed to be
   // atomic
   if (previousInsyncFollowers.size() > 1) {
     auto ourselves = arangodb::ServerState::instance()->getId();
     auto failoverCandidates =
         std::make_shared<std::vector<ServerID>>(previousInsyncFollowers);
-    auto myEntry =
-        std::find(failoverCandidates->begin(), failoverCandidates->end(), ourselves);
+    auto myEntry = std::find(failoverCandidates->begin(),
+                             failoverCandidates->end(), ourselves);
 
-    // We expect of course to be one of the fail over candidates. However, if the creation
-    // of the TakeOverLeadership job and it's start leading here are timewise apart, chances
-    // are that Current has been changed in the meantime. The assertion should remain here
-    // to detect any errors during CI.
+    // We expect of course to be one of the fail over candidates. However, if
+    // the creation of the TakeOverLeadership job and it's start leading here
+    // are timewise apart, chances are that Current has been changed in the
+    // meantime. The assertion should remain here to detect any errors during
+    // CI.
     if (myEntry == failoverCandidates->end()) {
       LOG_TOPIC("c9422", WARN, Logger::CLUSTER)
           << "invalid failover candidates for FollowerInfo of shard - "
           << "can happen, when scheduling and starting the leadership "
-          << "takeover are timewise apart, so that the Current entry has expired. "
-          << _docColl->vocbase().name() << "/" << _docColl->name() 
-          << ". our id: " << ourselves << ", failover candidates: "
-          << *failoverCandidates << ", previous in-sync followers: "
-          << previousInsyncFollowers << ", real in-sync followers: " 
-          << (realInsyncFollowers != nullptr ? *realInsyncFollowers : *emptyFollowers)
+          << "takeover are timewise apart, so that the Current entry has "
+             "expired. "
+          << _docColl->vocbase().name() << "/" << _docColl->name()
+          << ". our id: " << ourselves
+          << ", failover candidates: " << *failoverCandidates
+          << ", previous in-sync followers: " << previousInsyncFollowers
+          << ", real in-sync followers: "
+          << (realInsyncFollowers != nullptr ? *realInsyncFollowers
+                                             : *emptyFollowers)
           << ", theLeader: " << _theLeader << ", theLeaderTouched; "
           << std::boolalpha << _theLeaderTouched;
-   
+
       TRI_ASSERT(false);
     } else {
       // We are a valid failover follower
-      
+
       // The first server is a different leader! (For some reason the job can be
       // triggered twice) TRI_ASSERT(myEntry != failoverCandidates->begin());
       failoverCandidates->erase(myEntry);
@@ -352,14 +367,14 @@ void FollowerInfo::takeOverLeadership(std::vector<ServerID> const& previousInsyn
 
   // all the following modifications will be noexcept, so if we get here
   // this method will not leave anything in a semi-modified state
-  
+
   // Reset local structures, if we take over leadership we do not know anything!
   if (realInsyncFollowers) {
-    _followers = std::move(realInsyncFollowers); 
+    _followers = std::move(realInsyncFollowers);
   } else {
     _followers = std::move(emptyFollowers);
   }
-  
+
   // We disallow writes until the first write.
   _canWrite = false;
   // Take over leadership
@@ -389,7 +404,8 @@ bool FollowerInfo::updateFailoverCandidates() {
     return _canWrite;
   }
   TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
-  // Update both lists (we use a copy here, as we are modifying them in other places individually!)
+  // Update both lists (we use a copy here, as we are modifying them in other
+  // places individually!)
   _failoverCandidates = std::make_shared<std::vector<ServerID>>(*_followers);
   // Just be sure
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
@@ -402,8 +418,9 @@ bool FollowerInfo::updateFailoverCandidates() {
     // We could not persist the update in the agency.
     // Collection left in RO mode.
     LOG_TOPIC("7af00", INFO, Logger::CLUSTER)
-        << "Could not persist insync follower for " << _docColl->vocbase().name()
-        << "/" << std::to_string(_docColl->planId().id())
+        << "Could not persist insync follower for "
+        << _docColl->vocbase().name() << "/"
+        << std::to_string(_docColl->planId().id())
         << " keep RO-mode for now, next write will retry.";
     TRI_ASSERT(!_canWrite);
   } else {
@@ -426,7 +443,8 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   auto wait(50ms), waitMore(wait);
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
-      LOG_TOPIC("8972a", DEBUG, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
+      LOG_TOPIC("8972a", DEBUG, Logger::CLUSTER)
+          << "giving up persisting follower info for dropped collection";
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
     AgencyReadTransaction trx(std::vector<std::string>(
@@ -443,41 +461,46 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
         LOG_TOPIC("01896", ERR, Logger::CLUSTER)
             << ::reportName(isRemove) << ", did not find object in " << curPath;
         if (!currentEntry.isNone()) {
-          LOG_TOPIC("57c84", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
+          LOG_TOPIC("57c84", ERR, Logger::CLUSTER)
+              << "Found: " << currentEntry.toJson();
         }
-        // We have to prevent an endless loop in this case, if the collection has
-        // been dropped in the agency in the meantime
+        // We have to prevent an endless loop in this case, if the collection
+        // has been dropped in the agency in the meantime
         ++badCurrentCount;
         if (badCurrentCount > 30) {
           // this retries for 15s, if current is bad for such a long time, we
           // assume that the collection has been dropped in the meantime:
-          LOG_TOPIC("8972b", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
+          LOG_TOPIC("8972b", INFO, Logger::CLUSTER)
+              << "giving up persisting follower info for dropped collection";
           return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
         }
       } else {
-        if (!planEntry.isArray() || planEntry.length() == 0 || !planEntry[0].isString() ||
+        if (!planEntry.isArray() || planEntry.length() == 0 ||
+            !planEntry[0].isString() ||
             !(planEntry[0].isEqualString(ServerState::instance()->getId()) ||
-              planEntry[0].isEqualString("_" + ServerState::instance()->getId()))) {
+              planEntry[0].isEqualString("_" +
+                                         ServerState::instance()->getId()))) {
           LOG_TOPIC("42231", INFO, Logger::CLUSTER)
               << ::reportName(isRemove)
               << ", did not find myself in Plan: " << _docColl->vocbase().name()
               << "/" << std::to_string(_docColl->planId().id())
               << " (can happen when the leader changed recently).";
           if (!planEntry.isNone()) {
-            LOG_TOPIC("ffede", INFO, Logger::CLUSTER) << "Found: " << planEntry.toJson();
+            LOG_TOPIC("ffede", INFO, Logger::CLUSTER)
+                << "Found: " << planEntry.toJson();
           }
           return {TRI_ERROR_CLUSTER_NOT_LEADER};
         } else {
           auto newValue = newShardEntry(currentEntry);
           AgencyWriteTransaction trx;
-          trx.preconditions.push_back(
-              AgencyPrecondition(curPath, AgencyPrecondition::Type::VALUE, currentEntry));
-          trx.preconditions.push_back(
-              AgencyPrecondition(planPath, AgencyPrecondition::Type::VALUE, planEntry));
-          trx.operations.push_back(AgencyOperation(curPath, AgencyValueOperationType::SET,
-                                                   newValue.slice()));
-          trx.operations.push_back(
-              AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
+          trx.preconditions.push_back(AgencyPrecondition(
+              curPath, AgencyPrecondition::Type::VALUE, currentEntry));
+          trx.preconditions.push_back(AgencyPrecondition(
+              planPath, AgencyPrecondition::Type::VALUE, planEntry));
+          trx.operations.push_back(AgencyOperation(
+              curPath, AgencyValueOperationType::SET, newValue.slice()));
+          trx.operations.push_back(AgencyOperation(
+              "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
           AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
           if (res2.successful()) {
             return {TRI_ERROR_NO_ERROR};
@@ -486,12 +509,12 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
       }
     } else {
       LOG_TOPIC("b7333", WARN, Logger::CLUSTER)
-          << ::reportName(isRemove) << ", could not read " << planPath << " and "
-          << curPath << " in agency.";
+          << ::reportName(isRemove) << ", could not read " << planPath
+          << " and " << curPath << " in agency.";
     }
 
     std::this_thread::sleep_for(wait);
-    if(wait < 500ms) {
+    if (wait < 500ms) {
       wait += waitMore;
     }
   } while (!_docColl->vocbase().server().isStopping());
@@ -570,10 +593,10 @@ uint64_t FollowerInfo::newFollowingTermId(ServerID const& s) noexcept {
   } while (i == 0 || i == prev);
   try {
     _followingTermId[s] = i;
-  } catch(std::bad_alloc const&) {
-    i = 1;   // I assume here that I do not get bad_alloc if the key is
-             // already in the map, since it then only has to overwrite
-             // an integer, if the key is not in the map, we default to 1.
+  } catch (std::bad_alloc const&) {
+    i = 1;  // I assume here that I do not get bad_alloc if the key is
+            // already in the map, since it then only has to overwrite
+            // an integer, if the key is not in the map, we default to 1.
   }
   return i;
 }

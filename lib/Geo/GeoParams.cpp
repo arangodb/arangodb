@@ -41,8 +41,10 @@ using namespace arangodb::geo;
 
 RegionCoverParams::RegionCoverParams()
     : maxNumCoverCells(kMaxNumCoverCellsDefault),
-      worstIndexedLevel(S2::kAvgEdge.GetClosestLevel(S2Earth::KmToRadians(600))),
-      bestIndexedLevel(S2::kAvgEdge.GetClosestLevel(S2Earth::MetersToRadians(100.0))) {
+      worstIndexedLevel(
+          S2::kAvgEdge.GetClosestLevel(S2Earth::KmToRadians(600))),
+      bestIndexedLevel(
+          S2::kAvgEdge.GetClosestLevel(S2Earth::MetersToRadians(100.0))) {
   // optimize levels for buildings, points are converted without S2RegionCoverer
 }
 

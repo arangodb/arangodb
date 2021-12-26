@@ -39,44 +39,55 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class IResearchQueryGeoDistanceTest : public IResearchQueryTest {};
 
 TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
   // geo analyzer
   {
-
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     // shape
     {
       auto json = VPackParser::fromJson(R"({})");
-      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeojson", "geojson", json->slice(), { }).ok());
+      ASSERT_TRUE(analyzers
+                      .emplace(result, vocbase.name() + "::mygeojson",
+                               "geojson", json->slice(), {})
+                      .ok());
     }
 
     // centroid
     {
       auto json = VPackParser::fromJson(R"({"type": "centroid"})");
-      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeocentroid", "geojson", json->slice(), { }).ok());
+      ASSERT_TRUE(analyzers
+                      .emplace(result, vocbase.name() + "::mygeocentroid",
+                               "geojson", json->slice(), {})
+                      .ok());
     }
 
     // point
     {
       auto json = VPackParser::fromJson(R"({"type": "point"})");
-      ASSERT_TRUE(analyzers.emplace(result, vocbase.name() + "::mygeopoint", "geojson", json->slice(), { }).ok());
+      ASSERT_TRUE(analyzers
+                      .emplace(result, vocbase.name() + "::mygeopoint",
+                               "geojson", json->slice(), {})
+                      .ok());
     }
   }
 
   // create collection
   std::shared_ptr<arangodb::LogicalCollection> collection;
   {
-    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
+    auto createJson =
+        VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
     collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
   }
@@ -84,7 +95,8 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   // create view
   arangodb::iresearch::IResearchView* impl{};
   {
-    auto createJson = VPackParser::fromJson(R"({ "name": "testView", "type": "arangosearch" })");
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "arangosearch" })");
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_FALSE(!logicalView);
 
@@ -101,8 +113,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
     })";
 
     auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()));
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -157,12 +168,12 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
-    for (auto doc: VPackArrayIterator(docs->slice())) {
+    for (auto doc : VPackArrayIterator(docs->slice())) {
       auto res = trx.insert(collection->name(), doc, options);
       EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
@@ -171,20 +182,21 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
     EXPECT_TRUE(trx.commit().ok());
 
     // sync view
-    ASSERT_TRUE(arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView OPTIONS { waitForSync: true } RETURN d").result.ok());
+    ASSERT_TRUE(
+        arangodb::tests::executeQuery(
+            vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
+            .result.ok());
   }
 
   // ensure presence of special a column for geo indices
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
-      *collection,
-      arangodb::AccessMode::Type::READ);
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::READ);
     ASSERT_TRUE(trx.begin().ok());
 
-    auto snapshot = impl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    auto snapshot = impl->snapshot(
+        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     ASSERT_NE(nullptr, snapshot);
     ASSERT_EQ(1, snapshot->size());
     ASSERT_EQ(insertedDocs.size(), snapshot->docs_count());
@@ -202,7 +214,8 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
     auto doc = insertedDocs.begin();
     for (; it->next(); ++doc) {
-      EXPECT_EQUAL_SLICES(doc->slice().get("geometry"), arangodb::iresearch::slice(payload->value));
+      EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
+                          arangodb::iresearch::slice(payload->value));
     }
 
     ASSERT_TRUE(trx.commit().ok());
@@ -210,9 +223,8 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   // EXISTS will also work
   {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(FOR d IN testView
+    auto result = arangodb::tests::executeQuery(vocbase,
+                                                R"(FOR d IN testView
            SEARCH EXISTS(d.geometry)
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
@@ -230,9 +242,8 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   // EXISTS will also work
   {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(FOR d IN testView
+    auto result = arangodb::tests::executeQuery(vocbase,
+                                                R"(FOR d IN testView
            SEARCH EXISTS(d.geometry, 'string')
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
@@ -250,9 +261,8 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   // EXISTS will also work
   {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(FOR d IN testView
+    auto result = arangodb::tests::executeQuery(vocbase,
+                                                R"(FOR d IN testView
            SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson")
            RETURN d)");
     ASSERT_TRUE(result.result.ok());
@@ -330,8 +340,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice()
-    };
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -354,8 +363,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice()
-    };
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -378,8 +386,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice()
-    };
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -402,7 +409,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice(), insertedDocs[28].slice(),
+        insertedDocs[16].slice(),
+        insertedDocs[17].slice(),
+        insertedDocs[28].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -426,7 +435,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice(), insertedDocs[28].slice(),
+        insertedDocs[16].slice(),
+        insertedDocs[17].slice(),
+        insertedDocs[28].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -450,8 +461,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice(), insertedDocs[17].slice()
-    };
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -474,8 +484,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice()
-    };
+        insertedDocs[16].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -498,8 +507,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[16].slice()
-    };
+        insertedDocs[16].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.607768, 55.70892)
@@ -522,8 +530,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[12].slice()
-    };
+        insertedDocs[12].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
@@ -546,8 +553,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[12].slice()
-    };
+        insertedDocs[12].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
@@ -570,8 +576,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[12].slice()
-    };
+        insertedDocs[12].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
@@ -608,8 +613,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[12].slice()
-    };
+        insertedDocs[12].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         R"(LET origin = GEO_POINT(37.613663, 55.704002)
@@ -632,14 +636,12 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected;
-    std::transform(
-      insertedDocs.begin(), insertedDocs.begin() + 12, std::back_inserter(expected),
-      [](VPackBuilder const& doc) { return doc.slice(); }
-    );
-    std::transform(
-      insertedDocs.begin() + 13, insertedDocs.end(), std::back_inserter(expected),
-      [](VPackBuilder const& doc) { return doc.slice(); }
-    );
+    std::transform(insertedDocs.begin(), insertedDocs.begin() + 12,
+                   std::back_inserter(expected),
+                   [](VPackBuilder const& doc) { return doc.slice(); });
+    std::transform(insertedDocs.begin() + 13, insertedDocs.end(),
+                   std::back_inserter(expected),
+                   [](VPackBuilder const& doc) { return doc.slice(); });
 
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -663,14 +665,12 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected;
-    std::transform(
-      insertedDocs.begin(), insertedDocs.begin() + 12, std::back_inserter(expected),
-      [](VPackBuilder const& doc) { return doc.slice(); }
-    );
-    std::transform(
-      insertedDocs.begin() + 13, insertedDocs.end(), std::back_inserter(expected),
-      [](VPackBuilder const& doc) { return doc.slice(); }
-    );
+    std::transform(insertedDocs.begin(), insertedDocs.begin() + 12,
+                   std::back_inserter(expected),
+                   [](VPackBuilder const& doc) { return doc.slice(); });
+    std::transform(insertedDocs.begin() + 13, insertedDocs.end(),
+                   std::back_inserter(expected),
+                   [](VPackBuilder const& doc) { return doc.slice(); });
 
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -693,8 +693,10 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected {
-      insertedDocs[23].slice(), insertedDocs[24].slice(), insertedDocs[25].slice(),
+    std::vector<arangodb::velocypack::Slice> expected{
+        insertedDocs[23].slice(),
+        insertedDocs[24].slice(),
+        insertedDocs[25].slice(),
     };
 
     auto result = arangodb::tests::executeQuery(
@@ -718,8 +720,10 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected {
-      insertedDocs[23].slice(), insertedDocs[24].slice(), insertedDocs[25].slice(),
+    std::vector<arangodb::velocypack::Slice> expected{
+        insertedDocs[23].slice(),
+        insertedDocs[24].slice(),
+        insertedDocs[25].slice(),
     };
 
     auto result = arangodb::tests::executeQuery(
@@ -744,7 +748,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[23].slice(), insertedDocs[24].slice(), insertedDocs[25].slice(),
+        insertedDocs[23].slice(),
+        insertedDocs[24].slice(),
+        insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -767,9 +773,7 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryGeoDistanceTest,
-  IResearchQueryGeoDistanceTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryGeoDistanceTest,
+                        IResearchQueryGeoDistanceTest, GetLinkVersions());
 
-}
+}  // namespace

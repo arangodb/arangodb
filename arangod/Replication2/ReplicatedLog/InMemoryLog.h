@@ -33,9 +33,11 @@
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
 #pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
 #pragma warning(disable : 4334)
 #endif
 #include <immer/flex_vector.hpp>
@@ -57,7 +59,8 @@ struct PersistedLogIterator;
 struct InMemoryLog {
  public:
   template<typename T>
-  using log_type_t = ::immer::flex_vector<T, arangodb::immer::arango_memory_policy>;
+  using log_type_t =
+      ::immer::flex_vector<T, arangodb::immer::arango_memory_policy>;
   using log_type = log_type_t<InMemoryLogEntry>;
   using log_type_persisted = log_type_t<PersistingLogEntry>;
 
@@ -80,8 +83,10 @@ struct InMemoryLog {
   [[nodiscard]] auto getLastTermIndexPair() const noexcept -> TermIndexPair;
   [[nodiscard]] auto getLastIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getLastTerm() const noexcept -> LogTerm;
-  [[nodiscard]] auto getLastEntry() const noexcept -> std::optional<InMemoryLogEntry>;
-  [[nodiscard]] auto getFirstEntry() const noexcept -> std::optional<InMemoryLogEntry>;
+  [[nodiscard]] auto getLastEntry() const noexcept
+      -> std::optional<InMemoryLogEntry>;
+  [[nodiscard]] auto getFirstEntry() const noexcept
+      -> std::optional<InMemoryLogEntry>;
   [[nodiscard]] auto getFirstIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getNextIndex() const noexcept -> LogIndex;
   [[nodiscard]] auto getEntryByIndex(LogIndex idx) const noexcept
@@ -103,20 +108,24 @@ struct InMemoryLog {
 
   void appendInPlace(LoggerContext const& logContext, InMemoryLogEntry entry);
 
-  [[nodiscard]] auto append(LoggerContext const& logContext, log_type entries) const
-      -> InMemoryLog;
   [[nodiscard]] auto append(LoggerContext const& logContext,
-                            log_type_persisted const& entries) const -> InMemoryLog;
+                            log_type entries) const -> InMemoryLog;
+  [[nodiscard]] auto append(LoggerContext const& logContext,
+                            log_type_persisted const& entries) const
+      -> InMemoryLog;
 
-  [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<LogIterator>;
-  [[nodiscard]] auto getInternalIteratorFrom(LogIndex fromIdx) const -> std::unique_ptr<PersistedLogIterator>;
+  [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const
+      -> std::unique_ptr<LogIterator>;
+  [[nodiscard]] auto getInternalIteratorFrom(LogIndex fromIdx) const
+      -> std::unique_ptr<PersistedLogIterator>;
   [[nodiscard]] auto getMemtryIteratorFrom(LogIndex fromIdx) const
       -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
   // get an iterator for range [from, to).
   [[nodiscard]] auto getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
       -> std::unique_ptr<LogRangeIterator>;
 
-  [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const -> InMemoryLog;
+  [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const
+      -> InMemoryLog;
 
   [[nodiscard]] auto copyFlexVector() const -> log_type;
 
@@ -124,8 +133,8 @@ struct InMemoryLog {
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
 
-
   [[nodiscard]] static auto loadFromLogCore(LogCore const&) -> InMemoryLog;
+
  protected:
   explicit InMemoryLog(log_type log, LogIndex first);
 };

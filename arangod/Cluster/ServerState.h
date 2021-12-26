@@ -58,9 +58,9 @@ class ServerState {
   };
 
   enum ReadOnlyMode {
-    API_TRUE,             // Set from outside via API
+    API_TRUE,  // Set from outside via API
     API_FALSE,
-    LICENSE_TRUE,         // Set from license feature
+    LICENSE_TRUE,  // Set from license feature
     LICENSE_FALSE
   };
 
@@ -168,7 +168,8 @@ class ServerState {
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) noexcept {
-    return (role == ServerState::ROLE_DBSERVER || role == ServerState::ROLE_COORDINATOR);
+    return (role == ServerState::ROLE_DBSERVER ||
+            role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role
@@ -195,7 +196,7 @@ class ServerState {
   bool isSingleServerOrCoordinator() const noexcept {
     return isSingleServerOrCoordinator(loadRole());
   }
-  
+
   static bool isSingleServerOrCoordinator(ServerState::RoleEnum role) noexcept {
     return isCoordinator(role) || isSingleServer(role);
   }
@@ -264,7 +265,7 @@ class ServerState {
   std::string getFoxxmaster() const;
 
   void setFoxxmaster(std::string const&);
-  
+
   void setFoxxmasterQueueupdate(bool value) noexcept;
 
   bool getFoxxmasterQueueupdate() const noexcept;
@@ -296,8 +297,9 @@ class ServerState {
 
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
-  
-  /// @brief check equality of naming conventions settings with other registered servers
+
+  /// @brief check equality of naming conventions settings with other registered
+  /// servers
   bool checkNamingConventionsEquality(AgencyComm&);
 
   /// @brief try to read the rebootID from the Agency
@@ -326,7 +328,8 @@ class ServerState {
   /// @brief r/w lock for state
   mutable arangodb::basics::ReadWriteSpinLock _lock;
 
-  /// @brief the server's id, can be set just once, use getId and setId, do not access directly
+  /// @brief the server's id, can be set just once, use getId and setId, do not
+  /// access directly
   std::string _id;
   /// @brief lock for writing and reading server id
   mutable std::mutex _idLock;
@@ -337,13 +340,15 @@ class ServerState {
   /// @brief the server's rebootId.
   ///
   /// A server
-  ///   * ~boots~ if it is started on a new database directory without a UUID persisted
-  ///   * ~reboots~ if it is started on a pre-existing database directory with a UUID present
+  ///   * ~boots~ if it is started on a new database directory without a UUID
+  ///   persisted
+  ///   * ~reboots~ if it is started on a pre-existing database directory with a
+  ///   UUID present
   ///
-  /// when integrating into a cluster (via integrateIntoCluster), the server tries to increment
-  /// the agency key Current/KnownServers/_id/rebootId; if this key did not exist it is
-  /// created with the value 1, so a valid rebootId is always >= 1, and if the server booted
-  /// must be 1.
+  /// when integrating into a cluster (via integrateIntoCluster), the server
+  /// tries to increment the agency key Current/KnownServers/_id/rebootId; if
+  /// this key did not exist it is created with the value 1, so a valid rebootId
+  /// is always >= 1, and if the server booted must be 1.
   ///
   /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
   /// can be used through a notification architecture from there
@@ -364,18 +369,17 @@ class ServerState {
 
   /// @brief whether or not the cluster was initialized
   bool _initialized;
-  
+
   /// @brief lock for all foxxmaster-related members
   mutable arangodb::basics::ReadWriteSpinLock _foxxmasterLock;
-  
+
   std::string _foxxmaster;
 
   // @brief point in time since which this server is the Foxxmaster
   TRI_voc_tick_t _foxxmasterSince;
-  
+
   bool _foxxmasterQueueupdate;
 };
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
-

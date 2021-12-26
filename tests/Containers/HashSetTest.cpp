@@ -136,7 +136,8 @@ TEST(HashSetTest, test_long_string) {
   for (size_t i = 0; i < 100; ++i) {
     EXPECT_EQ(values.size(), i);
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
     EXPECT_EQ(values.size(), i + 1);
     EXPECT_FALSE(values.empty());
   }
@@ -146,7 +147,8 @@ TEST(HashSetTest, test_long_string) {
 
   for (size_t i = 0; i < 100; ++i) {
     std::string value =
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i);
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i);
     EXPECT_NE(values.find(value), values.end());
   }
 
@@ -391,7 +393,8 @@ TEST(HashSetTest, test_copy_construct_heap_huge) {
 
   for (int i = 0; i < 100; ++i) {
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
   }
 
   // copy
@@ -518,7 +521,8 @@ TEST(HashSetTest, test_copy_assign_heap_huge) {
 
   for (int i = 0; i < 100; ++i) {
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
   }
 
   // copy
@@ -621,7 +625,8 @@ TEST(HashSetTest, test_move_construct_heap_huge) {
 
   for (int i = 0; i < 100; ++i) {
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
   }
 
   // move
@@ -706,7 +711,8 @@ TEST(HashSetTest, test_move_assign_heap_huge) {
 
   for (int i = 0; i < 100; ++i) {
     values.insert(
-        std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+        std::string("test-this-will-hopefully-disable-sso-everywhere") +
+        std::to_string(i));
   }
 
   // move

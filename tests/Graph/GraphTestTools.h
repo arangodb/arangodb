@@ -69,34 +69,45 @@ namespace tests {
 namespace graph {
 
 struct GraphTestSetup
-    : public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
+    : public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
+                                            arangodb::LogLevel::ERR> {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+  std::vector<
+      std::pair<arangodb::application_features::ApplicationFeature&, bool>>
+      features;
 
   GraphTestSetup() : engine(server), server(nullptr, nullptr) {
     arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
     arangodb::ClusterEngine::Mocking = true;
-    arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+    arangodb::RandomGenerator::initialize(
+        arangodb::RandomGenerator::RandomType::MERSENNE);
 
     // setup required application features
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::transaction::ManagerFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
+                          false);
+    features.emplace_back(
+        server.addFeature<arangodb::transaction::ManagerFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
+                          false);
+    features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
+                          false);
     server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             systemDBInfo(server));
-    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
-                              system.get()),
-                          false);  // required for IResearchAnalyzerFeature
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
+                          false);  // must be first
+    system = std::make_unique<TRI_vocbase_t>(
+        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+    features.emplace_back(
+        server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
+        false);  // required for IResearchAnalyzerFeature
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
-    features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
-    features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
-                          true);  // required for IResearchAnalyzerFeature
+    features.emplace_back(
+        server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
+    features.emplace_back(
+        server.addFeature<arangodb::aql::AqlFunctionFeature>(),
+        true);  // required for IResearchAnalyzerFeature
 
     for (auto& f : features) {
       f.first.prepare();
@@ -109,7 +120,8 @@ struct GraphTestSetup
     }
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+    arangodb::tests::setDatabasePath(
+        dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
   ~GraphTestSetup() {
@@ -133,8 +145,10 @@ struct GraphTestSetup
 struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
 
-  MockGraphDatabase(application_features::ApplicationServer& server, std::string name)
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server, name, 1)) {}
+  MockGraphDatabase(application_features::ApplicationServer& server,
+                    std::string name)
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                createInfo(server, name, 1)) {}
 
   ~MockGraphDatabase() {}
 
@@ -151,8 +165,9 @@ struct MockGraphDatabase {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *vertices, arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *vertices,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 
     std::vector<velocypack::Builder> insertedDocs;
@@ -184,7 +199,8 @@ struct MockGraphDatabase {
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;
 
     for (auto& p : edgedef) {
-      //      std::cout << "edge: " << vertexCollection << " " << p.first << " -> "
+      //      std::cout << "edge: " << vertexCollection << " " << p.first << "
+      //      -> "
       //          << p.second << std::endl;
       // This is moderately horrible
       auto docJson =
@@ -203,9 +219,10 @@ struct MockGraphDatabase {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
 
-                                              *edges, arangodb::AccessMode::Type::WRITE);
+        *edges, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 
     std::vector<velocypack::Builder> insertedDocs;
@@ -252,7 +269,8 @@ struct MockGraphDatabase {
   }
 
   std::shared_ptr<Index> getEdgeIndexHandle(std::string name) {
-    std::shared_ptr<arangodb::LogicalCollection> coll = vocbase.lookupCollection(name);
+    std::shared_ptr<arangodb::LogicalCollection> coll =
+        vocbase.lookupCollection(name);
     TRI_ASSERT(coll != nullptr);    // no edge collection of this name
     TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
     for (auto const& idx : coll->getIndexes()) {
@@ -264,11 +282,12 @@ struct MockGraphDatabase {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::shared_ptr<arangodb::aql::Query> getQuery(std::string qry,
-                                                 std::vector<std::string> collections) {
+  std::shared_ptr<arangodb::aql::Query> getQuery(
+      std::string qry, std::vector<std::string> collections) {
     auto queryString = arangodb::aql::QueryString(qry);
 
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto query = arangodb::aql::Query::create(ctx, queryString, nullptr);
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ,
@@ -284,7 +303,8 @@ struct MockGraphDatabase {
     auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     auto ast = plan->getAst();
 
-    auto _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    auto _toCondition =
+        ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
 
     auto tmpVar = generateTempVar(query);
 
@@ -294,35 +314,38 @@ struct MockGraphDatabase {
     AstNode* tmpId2 = plan->getAst()->createNodeValueString("", 0);
 
     {
-      auto const* access =
-          ast->createNodeAttributeAccess(tmpId1, StaticStrings::ToString.c_str(),
-                                         StaticStrings::ToString.length());
-      auto const* cond =
-          ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
+      auto const* access = ast->createNodeAttributeAccess(
+          tmpId1, StaticStrings::ToString.c_str(),
+          StaticStrings::ToString.length());
+      auto const* cond = ast->createNodeBinaryOperator(
+          NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
       _toCondition->addMember(cond);
     }
 
     auto spo = std::make_unique<ShortestPathOptions>(*query);
     spo->setVariable(tmpVar);
-    spo->addLookupInfo(plan, "e", StaticStrings::FromString, _fromCondition->clone(ast));
-    spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString, _toCondition->clone(ast));
+    spo->addLookupInfo(plan, "e", StaticStrings::FromString,
+                       _fromCondition->clone(ast));
+    spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString,
+                              _toCondition->clone(ast));
 
     return spo;
   }
 
-  arangodb::aql::AstNode* buildOutboundCondition(arangodb::aql::Query* query,
-                                                 arangodb::aql::Variable const* tmpVar) {
+  arangodb::aql::AstNode* buildOutboundCondition(
+      arangodb::aql::Query* query, arangodb::aql::Variable const* tmpVar) {
     auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     auto ast = plan->getAst();
-    auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    auto fromCondition =
+        ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
     AstNode* tmpId2 = plan->getAst()->createNodeValueMutableString("", 0);
 
-    auto const* access =
-        ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString.c_str(),
-                                       StaticStrings::FromString.length());
-    auto const* cond =
-        ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
+    auto const* access = ast->createNodeAttributeAccess(
+        tmpId1, StaticStrings::FromString.c_str(),
+        StaticStrings::FromString.length());
+    auto const* cond = ast->createNodeBinaryOperator(
+        NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
     fromCondition->addMember(cond);
     return fromCondition;
   }
@@ -336,7 +359,8 @@ struct MockGraphDatabase {
 
 bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
                std::vector<std::string> vertices,
-               std::vector<std::pair<std::string, std::string>> edges, std::string& msgs);
+               std::vector<std::pair<std::string, std::string>> edges,
+               std::string& msgs);
 
 }  // namespace graph
 }  // namespace tests

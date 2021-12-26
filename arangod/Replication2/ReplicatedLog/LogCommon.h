@@ -31,9 +31,11 @@
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
 #pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
 #pragma warning(disable : 4334)
 #endif
 #include <immer/box.hpp>
@@ -56,12 +58,12 @@ class Slice;
 namespace arangodb::replication2 {
 
 /**
- * This implements all comparsion operators for a type `T` with another type `S`,
- * given that `operator<=(T const&, S const&)` is available.
+ * This implements all comparsion operators for a type `T` with another type
+ * `S`, given that `operator<=(T const&, S const&)` is available.
  * @tparam T
  * @tparam S defaults to T
  */
-template <typename T, typename S = T>
+template<typename T, typename S = T>
 struct implement_compare {
   [[nodiscard]] friend auto operator==(T const& left, S const& right) -> bool {
     return left <= right && right <= left;
@@ -85,7 +87,8 @@ struct LogIndex : implement_compare<LogIndex> {
   constexpr explicit LogIndex(std::uint64_t value) noexcept : value{value} {}
   std::uint64_t value;
 
-  [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept -> LogIndex;
+  [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept
+      -> LogIndex;
 
   [[nodiscard]] auto operator<=(LogIndex) const -> bool;
 
@@ -150,8 +153,10 @@ struct LogRange {
     auto operator++(int) noexcept -> Iterator;
     auto operator*() const noexcept -> LogIndex;
     auto operator->() const noexcept -> LogIndex const*;
-    friend auto operator==(Iterator const& a, Iterator const& b) noexcept -> bool;
-    friend auto operator!=(Iterator const& a, Iterator const& b) noexcept -> bool;
+    friend auto operator==(Iterator const& a, Iterator const& b) noexcept
+        -> bool;
+    friend auto operator!=(Iterator const& a, Iterator const& b) noexcept
+        -> bool;
 
    private:
     friend LogRange;
@@ -171,15 +176,19 @@ auto intersect(LogRange a, LogRange b) noexcept -> LogRange;
 auto operator==(LogRange, LogRange) noexcept -> bool;
 auto operator!=(LogRange, LogRange) noexcept -> bool;
 
-auto operator==(LogRange::Iterator const& a, LogRange::Iterator const& b) noexcept -> bool;
-auto operator!=(LogRange::Iterator const& a, LogRange::Iterator const& b) noexcept -> bool;
+auto operator==(LogRange::Iterator const& a,
+                LogRange::Iterator const& b) noexcept -> bool;
+auto operator!=(LogRange::Iterator const& a,
+                LogRange::Iterator const& b) noexcept -> bool;
 
 struct LogPayload {
   explicit LogPayload(velocypack::UInt8Buffer dummy);
 
   // Named constructors, have to make copies.
-  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice) -> LogPayload;
-  [[nodiscard]] static auto createFromString(std::string_view string) -> LogPayload;
+  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
+      -> LogPayload;
+  [[nodiscard]] static auto createFromString(std::string_view string)
+      -> LogPayload;
 
   friend auto operator==(LogPayload const&, LogPayload const&) -> bool;
   friend auto operator!=(LogPayload const&, LogPayload const&) -> bool;
@@ -202,10 +211,10 @@ class PersistingLogEntry {
   PersistingLogEntry(TermIndexPair, std::optional<LogPayload>);
   PersistingLogEntry(LogIndex, velocypack::Slice persisted);
 
-
   [[nodiscard]] auto logTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto logIndex() const noexcept -> LogIndex;
-  [[nodiscard]] auto logPayload() const noexcept -> std::optional<LogPayload> const&;
+  [[nodiscard]] auto logPayload() const noexcept
+      -> std::optional<LogPayload> const&;
   [[nodiscard]] auto logTermIndexPair() const noexcept -> TermIndexPair;
 
   class OmitLogIndex {};
@@ -214,7 +223,8 @@ class PersistingLogEntry {
   void toVelocyPack(velocypack::Builder& builder, OmitLogIndex) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> PersistingLogEntry;
 
-  [[nodiscard]] auto operator==(PersistingLogEntry const&) const noexcept -> bool;
+  [[nodiscard]] auto operator==(PersistingLogEntry const&) const noexcept
+      -> bool;
 
  private:
   void entriesWithoutIndexToVelocyPack(velocypack::Builder& builder) const;
@@ -242,7 +252,8 @@ class InMemoryLogEntry {
  private:
   bool _waitForSync;
   // Immutable box that allows sharing, i.e. cheap copying.
-  ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy> _logEntry;
+  ::immer::box<PersistingLogEntry, ::arangodb::immer::arango_memory_policy>
+      _logEntry;
   // Timepoint at which the insert was started (not the point in time where it
   // was committed)
   clock::time_point _insertTp{};
@@ -312,14 +323,19 @@ struct LogConfig {
   auto toVelocyPack(velocypack::Builder&) const -> void;
   explicit LogConfig(velocypack::Slice);
   LogConfig() noexcept = default;
-  LogConfig(std::size_t writeConcern, std::size_t replicationFactor, bool waitForSync) noexcept;
+  LogConfig(std::size_t writeConcern, std::size_t replicationFactor,
+            bool waitForSync) noexcept;
 
-  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
-  friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept
+      -> bool;
+  friend auto operator!=(LogConfig const& left, LogConfig const& right) noexcept
+      -> bool;
 };
 
-[[nodiscard]] auto operator==(LogConfig const& left, LogConfig const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(LogConfig const& left, LogConfig const& right) noexcept -> bool;
+[[nodiscard]] auto operator==(LogConfig const& left,
+                              LogConfig const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(LogConfig const& left,
+                              LogConfig const& right) noexcept -> bool;
 
 }  // namespace arangodb::replication2
 
@@ -345,26 +361,28 @@ struct velocypack::Extractor<replication2::LogId> {
   }
 };
 
-}
+}  // namespace arangodb
 
-template <>
+template<>
 struct std::hash<arangodb::replication2::LogIndex> {
-  [[nodiscard]] auto operator()(arangodb::replication2::LogIndex const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(
+      arangodb::replication2::LogIndex const& v) const noexcept -> std::size_t {
     return std::hash<uint64_t>{}(v.value);
   }
 };
 
-template <>
+template<>
 struct std::hash<arangodb::replication2::LogTerm> {
-  [[nodiscard]] auto operator()(arangodb::replication2::LogTerm const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(
+      arangodb::replication2::LogTerm const& v) const noexcept -> std::size_t {
     return std::hash<uint64_t>{}(v.value);
   }
 };
 
-template <>
+template<>
 struct std::hash<arangodb::replication2::LogId> {
-  [[nodiscard]] auto operator()(arangodb::replication2::LogId const& v) const noexcept -> std::size_t {
+  [[nodiscard]] auto operator()(
+      arangodb::replication2::LogId const& v) const noexcept -> std::size_t {
     return std::hash<arangodb::basics::Identifier>{}(v);
   }
 };
-
