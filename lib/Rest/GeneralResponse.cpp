@@ -291,7 +291,8 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID):
     case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD):
     case static_cast<int>(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS):
-    case static_cast<int>(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES):
+    case static_cast<int>(
+        TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES):
     case static_cast<int>(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY):
     case static_cast<int>(TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN):
     case static_cast<int>(TRI_ERROR_TYPE_ERROR):
@@ -358,16 +359,20 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_NO_SMART_COLLECTION):
     case static_cast<int>(TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_CANNOT_DROP_SMART_COLLECTION):
-    case static_cast<int>(TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE):
+    case static_cast<int>(
+        TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH):
     case static_cast<int>(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE):
-    case static_cast<int>(TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE):
+    case static_cast<int>(
+        TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE):
-    case static_cast<int>(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE):
+    case static_cast<int>(
+        TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_VALIDATION_FAILED):
     case static_cast<int>(TRI_ERROR_VALIDATION_BAD_PARAMETER):
-    case static_cast<int>(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED):
+    case static_cast<int>(
+        TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED):
       return ResponseCode::BAD;
 
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):
@@ -414,11 +419,13 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_USER_DUPLICATE):
     case static_cast<int>(TRI_ERROR_TASK_DUPLICATE_ID):
     case static_cast<int>(TRI_ERROR_GRAPH_DUPLICATE):
-    case static_cast<int>(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED):
+    case static_cast<int>(
+        TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED):
       return ResponseCode::CONFLICT;
-    
+
     case static_cast<int>(TRI_ERROR_HTTP_PRECONDITION_FAILED):
-    case static_cast<int>(TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED):
+    case static_cast<int>(
+        TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED):
       return ResponseCode::PRECONDITION_FAILED;
 
     case static_cast<int>(TRI_ERROR_DEADLOCK):

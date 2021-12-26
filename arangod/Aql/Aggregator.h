@@ -34,7 +34,7 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 struct Options;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -42,10 +42,11 @@ struct Aggregator {
   Aggregator() = delete;
   Aggregator(Aggregator const&) = delete;
   Aggregator& operator=(Aggregator const&) = delete;
-  
+
   struct Factory {
     virtual ~Factory() = default;
-    virtual std::unique_ptr<Aggregator> operator()(velocypack::Options const*) const = 0;
+    virtual std::unique_ptr<Aggregator> operator()(
+        velocypack::Options const*) const = 0;
     virtual void createInPlace(void*, velocypack::Options const*) const = 0;
     virtual std::size_t getAggregatorSize() const = 0;
   };
@@ -109,4 +110,3 @@ struct Aggregator {
 
 }  // namespace aql
 }  // namespace arangodb
-

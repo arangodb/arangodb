@@ -33,7 +33,8 @@ CostEstimate::CostEstimate(double estimatedCost, std::size_t estimatedNrItems)
 CostEstimate::CostEstimate() : CostEstimate(-1.0, 0) {}
 
 bool CostEstimate::operator==(CostEstimate const& other) const {
-  return estimatedCost == other.estimatedCost && estimatedNrItems == other.estimatedNrItems;
+  return estimatedCost == other.estimatedCost &&
+         estimatedNrItems == other.estimatedNrItems;
 }
 
 CostEstimate CostEstimate::empty() { return {0.0, 0}; }

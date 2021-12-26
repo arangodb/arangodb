@@ -35,7 +35,8 @@ namespace arangodb::basics {
 ////////////////////////////////////////////////////////////////////////////////
 inline void cpu_relax() noexcept {
 // TODO use <boost/fiber/detail/cpu_relax.hpp> when available (>1.65.0?)
-#if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || defined(_M_X64)
+#if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || \
+    defined(_M_X64)
 #if defined _WIN32
   YieldProcessor();
 #else
@@ -48,4 +49,3 @@ inline void cpu_relax() noexcept {
 }
 
 }  // namespace arangodb::basics
-

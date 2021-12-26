@@ -45,14 +45,15 @@ static uint64_t counter = 0;
 // -----------------------------------------------------------------------------
 
 class CFilesTest : public ::testing::Test {
-protected:
-  CFilesTest () : _directory(true) {
+ protected:
+  CFilesTest() : _directory(true) {
     long systemError;
     std::string errorMessage;
 
     if (!Initialized) {
       Initialized = true;
-      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+      arangodb::RandomGenerator::initialize(
+          arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
     _directory.appendText(TRI_GetTempPath());
@@ -64,14 +65,14 @@ protected:
     TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
   }
 
-  ~CFilesTest () {
+  ~CFilesTest() {
     // let's be sure we delete the right stuff
     TRI_ASSERT(_directory.length() > 10);
 
     TRI_RemoveDirectory(_directory.c_str());
   }
 
-  StringBuffer* writeFile (const char* blob) {
+  StringBuffer* writeFile(const char* blob) {
     StringBuffer* filename = new StringBuffer(true);
     filename->appendText(_directory);
     filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
@@ -83,10 +84,9 @@ protected:
 
     if (fd) {
       size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
-      (void) numWritten;
+      (void)numWritten;
       fclose(fd);
-    }
-    else {
+    } else {
       EXPECT_TRUE(false == true);
     }
 
@@ -96,23 +96,21 @@ protected:
   StringBuffer _directory;
 };
 
-
 struct ByteCountFunctor {
-
   size_t _byteCount;
 
-  ByteCountFunctor() : _byteCount(0) {};
+  ByteCountFunctor() : _byteCount(0){};
 
-  bool operator() (const char * data, size_t size) {
-    _byteCount+=size;
+  bool operator()(const char* data, size_t size) {
+    _byteCount += size;
     return true;
   };
-};// struct ByteCountFunctor
+};  // struct ByteCountFunctor
 
 TEST_F(CFilesTest, tst_copyfile) {
   std::ostringstream out;
   out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter;
-  
+
   std::string source = out.str();
   out << "-dest";
   std::string dest = out.str();
@@ -130,7 +128,7 @@ TEST_F(CFilesTest, tst_copyfile) {
   std::ignore = FileUtils::remove(source);
   FileUtils::spit(source, std::string("foobar"), false);
   EXPECT_TRUE(false == TRI_CopyFile(source, dest, error));
-  
+
   std::ignore = FileUtils::remove(source);
   std::ignore = FileUtils::remove(dest);
   FileUtils::spit(source, std::string("foobar"), false);
@@ -142,7 +140,7 @@ TEST_F(CFilesTest, tst_copyfile) {
   for (size_t i = 0; i < 10; ++i) {
     value += value;
   }
- 
+
   std::ignore = FileUtils::remove(source);
   std::ignore = FileUtils::remove(dest);
   FileUtils::spit(source, value, false);
@@ -162,7 +160,8 @@ TEST_F(CFilesTest, tst_copyfile) {
 
 TEST_F(CFilesTest, tst_createdirectory) {
   std::ostringstream out;
-  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter
+      << "-dir";
 
   std::string filename = out.str();
   long unused1;
@@ -179,8 +178,9 @@ TEST_F(CFilesTest, tst_createdirectory) {
 
 TEST_F(CFilesTest, tst_createdirectoryrecursive) {
   std::ostringstream out;
-  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
-  
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter
+      << "-dir";
+
   std::string filename1 = out.str();
   out << TRI_DIR_SEPARATOR_CHAR << "abc";
   std::string filename2 = out.str();
@@ -203,8 +203,9 @@ TEST_F(CFilesTest, tst_createdirectoryrecursive) {
 
 TEST_F(CFilesTest, tst_removedirectorydeterministic) {
   std::ostringstream out;
-  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
-  
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter
+      << "-dir";
+
   std::string filename1 = out.str();
   out << TRI_DIR_SEPARATOR_CHAR << "abc";
   std::string filename2 = out.str();
@@ -256,9 +257,10 @@ TEST_F(CFilesTest, tst_filesize_empty) {
 
 TEST_F(CFilesTest, tst_filesize_exists) {
   const char* buffer = "the quick brown fox";
-  
+
   StringBuffer* filename = writeFile(buffer);
-  EXPECT_TRUE(static_cast<int>(strlen(buffer)) == TRI_SizeFile(filename->c_str()));
+  EXPECT_TRUE(static_cast<int>(strlen(buffer)) ==
+              TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -269,8 +271,8 @@ TEST_F(CFilesTest, tst_filesize_exists) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(CFilesTest, tst_filesize_non) {
-  EXPECT_TRUE(-1 == (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
-  EXPECT_TRUE(-1 == (int) TRI_SizeFile("dihnui8ngiu54"));
+  EXPECT_TRUE(-1 == (int)TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
+  EXPECT_TRUE(-1 == (int)TRI_SizeFile("dihnui8ngiu54"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,28 +289,28 @@ TEST_F(CFilesTest, tst_absolute_paths) {
 
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp");
   EXPECT_TRUE(std::string("\\tmp\\the-fox.lol") == path);
-  
+
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp\\the-fox");
   EXPECT_TRUE(std::string("\\tmp\\the-fox\\the-fox.lol") == path);
-  
+
   path = TRI_GetAbsolutePath("file", "\\");
   EXPECT_TRUE(std::string("\\file") == path);
-  
+
   path = TRI_GetAbsolutePath(".\\file", "\\");
   EXPECT_TRUE(std::string("\\.\\file") == path);
-  
+
   path = TRI_GetAbsolutePath("\\file", "\\tmp");
   EXPECT_TRUE(std::string("\\tmp\\file") == path);
-  
+
   path = TRI_GetAbsolutePath("\\file\\to\\file", "\\tmp");
   EXPECT_TRUE(std::string("\\tmp\\file\\to\\file") == path);
-  
+
   path = TRI_GetAbsolutePath("file\\to\\file", "\\tmp");
   EXPECT_TRUE(std::string("\\tmp\\file\\to\\file") == path);
-  
+
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "abc");
   EXPECT_TRUE(std::string("c:\\file\\to\\file") == path);
-  
+
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "\\tmp");
   EXPECT_TRUE(std::string("c:\\file\\to\\file") == path);
 
@@ -319,25 +321,25 @@ TEST_F(CFilesTest, tst_absolute_paths) {
 
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
   EXPECT_TRUE(std::string("/tmp/the-fox.lol") == path);
-  
+
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
   EXPECT_TRUE(std::string("/tmp/the-fox/the-fox.lol") == path);
-  
+
   path = TRI_GetAbsolutePath("file", "/");
   EXPECT_TRUE(std::string("/file") == path);
-  
+
   path = TRI_GetAbsolutePath("./file", "/");
   EXPECT_TRUE(std::string("/./file") == path);
-  
+
   path = TRI_GetAbsolutePath("/file", "/tmp");
   EXPECT_TRUE(std::string("/file") == path);
-  
+
   path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
   EXPECT_TRUE(std::string("/file/to/file") == path);
-  
+
   path = TRI_GetAbsolutePath("file/to/file", "/tmp");
   EXPECT_TRUE(std::string("/tmp/file/to/file") == path);
-  
+
   path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
   EXPECT_TRUE(std::string("c:file/to/file") == path);
 #endif
@@ -417,12 +419,17 @@ TEST_F(CFilesTest, tst_getfilename) {
 
 TEST_F(CFilesTest, tst_dirname) {
 #ifdef _WIN32
-  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\"));
-  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\baz"));
-  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\baz.text"));
-  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\VERSION-1.tmp"));
-  EXPECT_EQ("\\Users\\abc def\\foobar", TRI_Dirname("\\Users\\abc def\\foobar\\VERSION-1.tmp"));
-#else 
+  EXPECT_EQ("C:\\Users\\abc def\\foobar",
+            TRI_Dirname("C:\\Users\\abc def\\foobar\\"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar",
+            TRI_Dirname("C:\\Users\\abc def\\foobar\\baz"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar",
+            TRI_Dirname("C:\\Users\\abc def\\foobar\\baz.text"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar",
+            TRI_Dirname("C:\\Users\\abc def\\foobar\\VERSION-1.tmp"));
+  EXPECT_EQ("\\Users\\abc def\\foobar",
+            TRI_Dirname("\\Users\\abc def\\foobar\\VERSION-1.tmp"));
+#else
   EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/"));
   EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/abc"));
   EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/abc.txt"));
@@ -460,7 +467,10 @@ TEST_F(CFilesTest, tst_processFile) {
   good = TRI_ProcessFile(filename->c_str(), shaReader);
 
   EXPECT_TRUE(good);
-  EXPECT_TRUE(sha.finalize().compare("9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f") == 0);
+  EXPECT_TRUE(
+      sha.finalize().compare(
+          "9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f") ==
+      0);
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -474,15 +484,15 @@ TEST_F(CFilesTest, tst_readpointer) {
     // buffer big enough
     int fd = TRI_OPEN(filename->c_str(), O_RDONLY | TRI_O_CLOEXEC);
     EXPECT_GE(fd, 0);
-  
+
     char result[100];
     TRI_read_return_t numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
     EXPECT_EQ(numRead, static_cast<TRI_read_return_t>(strlen(buffer)));
     EXPECT_EQ(0, strncmp(buffer, &result[0], strlen(buffer)));
-  
+
     TRI_CLOSE(fd);
   }
-  
+
   {
     // read multiple times
     int fd = TRI_OPEN(filename->c_str(), O_RDONLY | TRI_O_CLOEXEC);
@@ -492,18 +502,18 @@ TEST_F(CFilesTest, tst_readpointer) {
     TRI_read_return_t numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
     EXPECT_EQ(numRead, 10);
     EXPECT_EQ(0, strncmp(buffer, &result[0], 10));
-    
+
     numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
     EXPECT_EQ(numRead, 10);
     EXPECT_EQ(0, strncmp(buffer + 10, &result[0], 10));
-    
+
     numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
     EXPECT_EQ(numRead, 10);
     EXPECT_EQ(0, strncmp(buffer + 20, &result[0], 10));
-    
+
     TRI_CLOSE(fd);
   }
-  
+
   {
     // buffer way too small
     int fd = TRI_OPEN(filename->c_str(), O_RDONLY | TRI_O_CLOEXEC);
@@ -513,10 +523,10 @@ TEST_F(CFilesTest, tst_readpointer) {
     TRI_read_return_t numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
     EXPECT_EQ(numRead, 5);
     EXPECT_EQ(0, strncmp(buffer, &result[0], 5));
-    
+
     TRI_CLOSE(fd);
   }
-  
+
   {
     // buffer way too small
     int fd = TRI_OPEN(filename->c_str(), O_RDONLY | TRI_O_CLOEXEC);
@@ -526,11 +536,10 @@ TEST_F(CFilesTest, tst_readpointer) {
     TRI_read_return_t numRead = TRI_ReadPointer(fd, &result[0], sizeof(result));
     EXPECT_EQ(numRead, 1);
     EXPECT_EQ(0, strncmp(buffer, &result[0], 1));
-    
+
     TRI_CLOSE(fd);
   }
-  
+
   TRI_UnlinkFile(filename->c_str());
   delete filename;
 }
-

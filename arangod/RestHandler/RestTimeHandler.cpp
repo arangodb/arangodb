@@ -33,18 +33,20 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestTimeHandler::RestTimeHandler(application_features::ApplicationServer& server,
-                                 GeneralRequest* request, GeneralResponse* response)
+RestTimeHandler::RestTimeHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestTimeHandler::execute() {
   VPackBuilder result;
   result.openObject(true);
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  result.add(StaticStrings::Code,
+             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   result.add("time", VPackValue(TRI_microtime()));
   result.close();
-  
+
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

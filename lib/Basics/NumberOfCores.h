@@ -32,6 +32,5 @@ namespace NumberOfCores {
 std::size_t getValue();
 bool overridden();
 
-}
+}  // namespace NumberOfCores
 }  // namespace arangodb
-

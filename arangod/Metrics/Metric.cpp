@@ -27,7 +27,8 @@
 
 namespace arangodb::metrics {
 
-Metric::Metric(std::string_view name, std::string_view help, std::string_view labels) noexcept
+Metric::Metric(std::string_view name, std::string_view help,
+               std::string_view labels) noexcept
     : _name{name}, _help{help}, _labels{labels} {}
 
 std::string_view Metric::help() const noexcept { return _help; }
@@ -36,7 +37,8 @@ std::string_view Metric::name() const noexcept { return _name; }
 
 std::string_view Metric::labels() const noexcept { return _labels; }
 
-void Metric::toPrometheusBegin(std::string& result, std::string_view name) const {
+void Metric::toPrometheusBegin(std::string& result,
+                               std::string_view name) const {
   result.append("# HELP ").append(name).append(" ").append(help()).append("\n");
   result.append("# TYPE ").append(name).append(" ").append(type()).append("\n");
 }
