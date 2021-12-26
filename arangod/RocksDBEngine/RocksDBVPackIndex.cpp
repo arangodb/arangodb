@@ -254,15 +254,19 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     do {
       rocksdb::Slice key = _iterator->key();
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
+      
+      VPackSlice extraFields = VPackSlice::emptyArraySlice();
 
       if (_index->_unique) {
         LocalDocumentId const documentId(RocksDBValue::documentId(_iterator->value()));
-        cb(documentId, RocksDBKey::indexedVPack(key), VPackSlice::emptyArraySlice());
+        if (_index->hasExtraFields()) {
+          extraFields = RocksDBValue::uniqueIndexExtraFields(_iterator->value());
+        }
+        cb(documentId, RocksDBKey::indexedVPack(key), extraFields);
       } else {
         LocalDocumentId const documentId(RocksDBKey::indexDocumentId(key));
-        VPackSlice extraFields = VPackSlice::emptyArraySlice();
         if (_index->hasExtraFields()) {
-          extraFields = VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data()));
+          extraFields = RocksDBValue::indexExtraFields(_iterator->value());
         }
         cb(documentId, RocksDBKey::indexedVPack(key), extraFields);
       }
@@ -867,12 +871,27 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
 
   // now we are going to construct the value to insert into rocksdb
   if (_unique) {
-    // unique indexes have a different key structure
+    // build index value (extraFields array will be stored in value if
+    // extraFields are used)
     RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(documentId);
+    if (!_extraFieldsPaths.empty()) {
+      transaction::BuilderLeaser leased(&trx);
+      leased->openArray(true);
+      for (auto const it : _extraFieldsPaths) {
+        VPackSlice s = doc.get(it);
+        if (s.isNone()) {
+          s = VPackSlice::nullSlice();
+        }
+        leased->add(s);
+      }
+      leased->close();
+      value = RocksDBValue::UniqueVPackIndexValue(documentId, leased->slice());
+    }
 
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
 
+    // unique indexes have a different key structure
     for (RocksDBKey const& key : elements) {
       if (performChecks) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
@@ -923,6 +942,8 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     // AQL queries never read from the same collection, after writing into it
     IndexingDisabler guard(mthds, trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL) && options.canDisableIndexing);
 
+    // build index value (extraFields array will be stored in value if
+    // extraFields are used)
     RocksDBValue value = RocksDBValue::VPackIndexValue();
     if (!_extraFieldsPaths.empty()) {
       transaction::BuilderLeaser leased(&trx);

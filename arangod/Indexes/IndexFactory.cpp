@@ -454,12 +454,6 @@ Result IndexFactory::processIndexExtraFields(VPackSlice definition, VPackBuilder
       res = validateFieldsDefinition(definition, StaticStrings::IndexExtraFields, 
                                      minFields, maxFields, allowSubAttributes);
       if (res.ok() && fieldsSlice.length() > 0) {
-        if (bool unique = basics::VelocyPackHelper::getBooleanValue(
-             definition, StaticStrings::IndexUnique, false); unique) {
-          res.reset(TRI_ERROR_BAD_PARAMETER,
-                    "extra fields cannot be used on a unique index");
-        }
-
         std::unordered_set<std::string_view> fields;
         for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
           fields.insert(it.stringView());
