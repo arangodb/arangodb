@@ -57,7 +57,7 @@ class Methods;
 }
 
 class RocksDBVPackIndex : public RocksDBIndex {
-  template<bool reverse> friend class RocksDBVPackIndexIterator;
+  template<bool unique, bool reverse> friend class RocksDBVPackIndexIterator;
 
  public:
   static uint64_t HashForKey(const rocksdb::Slice& key);
@@ -90,8 +90,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
 
   /// @brief attempts to locate an entry in the index
-  std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
-                                        arangodb::velocypack::Slice const, bool reverse, ReadOwnWrites readOwnWrites) const;
+  std::unique_ptr<IndexIterator> lookup(transaction::Methods* trx,
+                                        arangodb::velocypack::Slice searchValues, 
+                                        bool reverse, ReadOwnWrites readOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                              arangodb::aql::AstNode const* node,
@@ -181,6 +182,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         ::arangodb::containers::SmallVector<RocksDBKey>& elements,
                         ::arangodb::containers::SmallVector<uint64_t>& hashes,
                         ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
+
+  std::unique_ptr<IndexIterator> buildIterator(transaction::Methods* trx,
+                                               RocksDBKeyBounds bounds,
+                                               bool reverse, ReadOwnWrites readOwnWrites) const;
 
  private:
   /// @brief the attribute paths (for regular fields)
