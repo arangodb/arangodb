@@ -98,6 +98,18 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     TRI_ASSERT(collection != nullptr);
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
+
+    TRI_IF_FAILURE("MaterializeExecutor::all_fail") { continue; }
+
+    TRI_IF_FAILURE("MaterializeExecutor::only_one") {
+      static bool skipMe{false};
+      if (skipMe) {
+        continue;
+      } else {
+        skipMe = true;
+      }
+    }
+
     written = collection->getPhysical()->read(
         &_trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback, ReadOwnWrites::no).ok();
     if (written) {
